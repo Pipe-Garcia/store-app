@@ -173,9 +173,9 @@ Use Postman or any REST client to test the API.
 
 If you'd like to collaborate or provide feedback, feel free to reach out:
 
- - 📧 <a href="pipeg1069@gmail.com">pipeg1069@gmail.com</a>
- - 💼 <a href="https://www.linkedin.com/in/felipe-garc%C3%ADa-dev/">LinkedIn</a>
- - 🐙 <a href="https://github.com/Pipe-Garcia">GitHub</a>
+ - 📧 <a href="pipeg1069@gmail.com" target="_blank">pipeg1069@gmail.com</a>
+ - 💼 <a href="https://www.linkedin.com/in/felipe-garc%C3%ADa-dev/" target="_blank">LinkedIn</a>
+ - 🐙 <a href="https://github.com/Pipe-Garcia" target="_blank">GitHub</a>
 
 ---
 
