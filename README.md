@@ -152,6 +152,27 @@ Applied to DTOs such as ClientCreateDTO, ProductCreateDTO, and more.
 
 Use Postman or any REST client to test the API.
 
+
+---
+
+## 🧪 Postman Collection
+
+You can test all endpoints using the official Postman collection:
+
+📂 [`Bazar-API.postman_collection`](./postman/Bazar-API.postman_collection)
+
+### ✅ Includes:
+- Full CRUD for Clients, Products, and Sales
+- Sale detail queries (e.g. top sale, products with low stock)
+- Bonus endpoints for business insights
+
+To use:
+1. Download or open the JSON file
+2. Open Postman → `Import` → `File` → select the JSON
+3. Run the requests!
+
+
+
 ---
 
 ### 💡 Future Enhancements
