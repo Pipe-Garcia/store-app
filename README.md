@@ -1,4 +1,4 @@
-🛍️ Bazar Backend API - Spring Boot
+# 🛍️ Bazar Backend API - Spring Boot
 
 This is a **RESTful API built with Spring Boot** for managing the sales system of a local bazaar. It allows the handling of **products, clients, and sales**, including advanced queries such as top-selling product, low-stock products, and highest sale.
 
