@@ -1,7 +1,7 @@
 package com.appTest.store.controllers;
 
 import com.appTest.store.dto.product.*;
-import com.appTest.store.models.Product;
+import com.appTest.store.models.Material;
 import com.appTest.store.services.IProductService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,9 +21,9 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<List<ProductDTO>> getAllProducts() {
-        List<Product> productList = servProd.getAllProducts();
+        List<Material> materialList = servProd.getAllProducts();
 
-        List<ProductDTO> productDTOList = productList.stream()
+        List<ProductDTO> productDTOList = materialList.stream()
                                             .map(product -> servProd.convertProductToDto(product))
                                             .collect(Collectors.toList());
 
@@ -32,11 +32,11 @@ public class ProductController {
 
     @GetMapping ("/{id}")
     public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
-        Product product = servProd.getProductById(id);
-        if (product == null) {
+        Material material = servProd.getProductById(id);
+        if (material == null) {
             return ResponseEntity.notFound().build();
         }
-        ProductDTO productDTO = servProd.convertProductToDto(product);
+        ProductDTO productDTO = servProd.convertProductToDto(material);
         return ResponseEntity.ok(productDTO);
     }
 

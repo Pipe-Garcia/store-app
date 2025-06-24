@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -18,7 +19,10 @@ public class Sale {
     private Double total;
 
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProductSale> productSaleList;
+    private List<SaleDetail> saleDetailList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Payment> paymentList = new ArrayList<>();
 
     @ManyToOne
     @JoinColumn(name = "client_id")
@@ -26,11 +30,9 @@ public class Sale {
 
     public Sale () {}
 
-    public Sale(Client client, Long idSale, LocalDate dateSale, List<ProductSale> productSaleList, Double total) {
+    public Sale(Client client, LocalDate dateSale, Double total) {
         this.client = client;
-        this.idSale = idSale;
         this.dateSale = dateSale;
-        this.productSaleList = productSaleList;
         this.total = total;
     }
 }

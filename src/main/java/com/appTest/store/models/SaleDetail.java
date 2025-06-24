@@ -6,11 +6,11 @@ import lombok.Setter;
 
 @Entity
 @Getter @Setter
-public class ProductSale {
+public class SaleDetail {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idProductSale;
+    private Long idSaleDetail;
 
     private Double quantity;
     private Double priceUni;
@@ -20,16 +20,15 @@ public class ProductSale {
     private Sale sale;
 
     @ManyToOne
-    @JoinColumn(name = "product_id")
-    private Product product;
+    @JoinColumn(name = "material_id")
+    private Material material;
 
-    public ProductSale() {}
+    public SaleDetail() {}
 
-    public ProductSale(Long idProductSale, Double quantity, Double priceUni, Sale sale, Product product) {
-        this.idProductSale = idProductSale;
+    public SaleDetail(Double quantity, Double priceUni, Sale sale, Material material) {
         this.quantity = quantity;
         this.priceUni = priceUni;
         this.sale = sale;
-        this.product = product;
+        this.material = material;
     }
 }

@@ -3,8 +3,8 @@ package com.appTest.store.services;
 import com.appTest.store.dto.productSale.ProductSaleRequestDTO;
 import com.appTest.store.dto.sale.*;
 import com.appTest.store.models.Client;
-import com.appTest.store.models.Product;
-import com.appTest.store.models.ProductSale;
+import com.appTest.store.models.Material;
+import com.appTest.store.models.SaleDetail;
 import com.appTest.store.models.Sale;
 import com.appTest.store.repositories.IClientRepository;
 import com.appTest.store.repositories.IProductRepository;
@@ -75,29 +75,29 @@ public class SaleService implements ISaleService{
         Client client = repoClient.findById(dto.getClientId()).orElse(null);
         sale.setClient(client);
 
-        List<ProductSale> productSaleList = new ArrayList<>();
+        List<SaleDetail> saleDetailList = new ArrayList<>();
         double totalAmount = 0.0;
 
         for (ProductSaleRequestDTO item : dto.getProducts()) {
-            Product product = repoProd.findById(item.getProductId()).orElse(null);
-            if (product != null) {
-                ProductSale ps = new ProductSale();
-                ps.setProduct(product);
+            Material material = repoProd.findById(item.getProductId()).orElse(null);
+            if (material != null) {
+                SaleDetail ps = new SaleDetail();
+                ps.setMaterial(material);
                 ps.setSale(sale);
                 ps.setQuantity(item.getQuantity());
-                ps.setPriceUni(product.getPrice());
+                ps.setPriceUni(material.getPrice());
 
-                productSaleList.add(ps);
+                saleDetailList.add(ps);
 
-                totalAmount += product.getPrice() * item.getQuantity();
+                totalAmount += material.getPrice() * item.getQuantity();
 
 
-                product.setQuantityAvailable(product.getQuantityAvailable() - item.getQuantity());
+                material.setQuantityAvailable(material.getQuantityAvailable() - item.getQuantity());
             }
         }
 
         sale.setTotal(totalAmount);
-        sale.setProductSaleList(productSaleList);
+        sale.setSaleDetailList(saleDetailList);
 
         repoSale.save(sale);
     }

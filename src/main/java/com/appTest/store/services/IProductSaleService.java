@@ -2,17 +2,17 @@ package com.appTest.store.services;
 
 import com.appTest.store.dto.productSale.ProductMostSoldDTO;
 import com.appTest.store.dto.productSale.ProductSaleDTO;
-import com.appTest.store.models.ProductSale;
+import com.appTest.store.models.SaleDetail;
 
 import java.util.List;
 
 public interface IProductSaleService {
 
-      public List<ProductSale> getAllProductSale();
+      public List<SaleDetail> getAllProductSale();
 
-      public ProductSale getProductSaleById(Long idProductSale);
+      public SaleDetail getProductSaleById(Long idProductSale);
 
-      public ProductSaleDTO convertProductSaleToDto(ProductSale productSale);
+      public ProductSaleDTO convertProductSaleToDto(SaleDetail saleDetail);
 
       public ProductMostSoldDTO getMostSoldProduct();
 

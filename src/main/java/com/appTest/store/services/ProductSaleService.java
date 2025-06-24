@@ -2,7 +2,7 @@ package com.appTest.store.services;
 
 import com.appTest.store.dto.productSale.ProductMostSoldDTO;
 import com.appTest.store.dto.productSale.ProductSaleDTO;
-import com.appTest.store.models.ProductSale;
+import com.appTest.store.models.SaleDetail;
 import com.appTest.store.repositories.IProductSaleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -18,23 +18,23 @@ public class ProductSaleService implements IProductSaleService{
     private IProductSaleRepository repoProdSale;
 
     @Override
-    public List<ProductSale> getAllProductSale() {
+    public List<SaleDetail> getAllProductSale() {
         return repoProdSale.findAll();
     }
 
     @Override
-    public ProductSale getProductSaleById(Long idProductSale) {
+    public SaleDetail getProductSaleById(Long idProductSale) {
         return repoProdSale.findById(idProductSale).orElse(null);
     }
 
     @Override
-    public ProductSaleDTO convertProductSaleToDto(ProductSale productSale) {
+    public ProductSaleDTO convertProductSaleToDto(SaleDetail saleDetail) {
 
-        Double quantityProd = productSale.getQuantity();
-        Double priceProd = productSale.getPriceUni();
-        String nameProd = productSale.getProduct().getName();
+        Double quantityProd = saleDetail.getQuantity();
+        Double priceProd = saleDetail.getPriceUni();
+        String nameProd = saleDetail.getMaterial().getName();
 
-        LocalDate dateSale = productSale.getSale().getDateSale();
+        LocalDate dateSale = saleDetail.getSale().getDateSale();
 
         return new ProductSaleDTO(
                 dateSale,
@@ -53,8 +53,8 @@ public class ProductSaleService implements IProductSaleService{
 
     @Override
     public boolean deleteProductSaleById(Long idProductSale) {
-        ProductSale productSale = repoProdSale.findById(idProductSale).orElse(null);
-        if (productSale != null) {
+        SaleDetail saleDetail = repoProdSale.findById(idProductSale).orElse(null);
+        if (saleDetail != null) {
             repoProdSale.deleteById(idProductSale);
             return true;
         }

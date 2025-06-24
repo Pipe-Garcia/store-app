@@ -1,7 +1,7 @@
 package com.appTest.store.services;
 
 import com.appTest.store.dto.product.*;
-import com.appTest.store.models.Product;
+import com.appTest.store.models.Material;
 import com.appTest.store.repositories.IProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,25 +15,25 @@ public class ProductService implements IProductService{
     private IProductRepository repoProd;
 
     @Override
-    public List<Product> getAllProducts() {
+    public List<Material> getAllProducts() {
         return repoProd.findAll();
     }
 
     @Override
-    public ProductDTO convertProductToDto(Product product) {
-        int totalSales = (product.getProductSaleList() != null) ? product.getProductSaleList().size() : 0;
+    public ProductDTO convertProductToDto(Material material) {
+        int totalSales = (material.getSaleDetailList() != null) ? material.getSaleDetailList().size() : 0;
 
         return new ProductDTO(
-                product.getBrand(),
-                product.getName(),
-                product.getPrice(),
-                product.getQuantityAvailable(),
+                material.getBrand(),
+                material.getName(),
+                material.getPrice(),
+                material.getQuantityAvailable(),
                 totalSales
         );
     }
 
     @Override
-    public Product getProductById(Long idProduct) {
+    public Material getProductById(Long idProduct) {
         return repoProd.findById(idProduct).orElse(null);
     }
 
@@ -50,33 +50,33 @@ public class ProductService implements IProductService{
 
     @Override
     public void createProduct(ProductCreateDTO dto) {
-        Product product = new Product();
-        product.setName(dto.getName());
-        product.setBrand(dto.getBrand());
-        product.setPrice(dto.getPrice());
+        Material material = new Material();
+        material.setName(dto.getName());
+        material.setBrand(dto.getBrand());
+        material.setPrice(dto.getPrice());
 
-        repoProd.save(product);
+        repoProd.save(material);
     }
 
     @Override
     public void updateProduct(ProductUpdateDTO dto) {
-        Product product = repoProd.findById(dto.getIdProduct()).orElse(null);
+        Material material = repoProd.findById(dto.getIdProduct()).orElse(null);
 
-        if (product != null) {
-            if (dto.getName() != null) product.setName(dto.getName());
-            if (dto.getBrand() != null) product.setBrand(dto.getBrand());
-            if (dto.getPrice() != null) product.setPrice(dto.getPrice());
-            if (dto.getQuantityAvailable() != null) product.setQuantityAvailable(dto.getQuantityAvailable());
+        if (material != null) {
+            if (dto.getName() != null) material.setName(dto.getName());
+            if (dto.getBrand() != null) material.setBrand(dto.getBrand());
+            if (dto.getPrice() != null) material.setPrice(dto.getPrice());
+            if (dto.getQuantityAvailable() != null) material.setQuantityAvailable(dto.getQuantityAvailable());
 
-            repoProd.save(product);
+            repoProd.save(material);
         }
     }
 
     @Override
     public boolean deleteProductById(Long idProduct) {
-        Product product = repoProd.findById(idProduct).orElse(null);
-        if (product != null) {
-            repoProd.delete(product);
+        Material material = repoProd.findById(idProduct).orElse(null);
+        if (material != null) {
+            repoProd.delete(material);
             return true;
         }
         return false;

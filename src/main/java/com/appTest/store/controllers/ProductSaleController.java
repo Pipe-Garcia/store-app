@@ -2,7 +2,7 @@ package com.appTest.store.controllers;
 
 import com.appTest.store.dto.productSale.ProductMostSoldDTO;
 import com.appTest.store.dto.productSale.ProductSaleDTO;
-import com.appTest.store.models.ProductSale;
+import com.appTest.store.models.SaleDetail;
 import com.appTest.store.services.IProductSaleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +20,9 @@ public class ProductSaleController {
 
     @GetMapping
     public ResponseEntity<List<ProductSaleDTO>> getAllProductSale() {
-        List<ProductSale> productSaleList = servProdSale.getAllProductSale();
+        List<SaleDetail> saleDetailList = servProdSale.getAllProductSale();
 
-        List<ProductSaleDTO> productSaleDTOList = productSaleList.stream()
+        List<ProductSaleDTO> productSaleDTOList = saleDetailList.stream()
                 .map(productSale -> servProdSale.convertProductSaleToDto(productSale))
                 .collect(Collectors.toList());
 
@@ -31,11 +31,11 @@ public class ProductSaleController {
 
     @GetMapping ("/{id}")
     public ResponseEntity<ProductSaleDTO> getProductSaleById(@PathVariable Long id) {
-        ProductSale productSale = servProdSale.getProductSaleById(id);
-        if (productSale == null) {
+        SaleDetail saleDetail = servProdSale.getProductSaleById(id);
+        if (saleDetail == null) {
             return ResponseEntity.notFound().build();
         }
-        ProductSaleDTO productSaleDTO = servProdSale.convertProductSaleToDto(productSale);
+        ProductSaleDTO productSaleDTO = servProdSale.convertProductSaleToDto(saleDetail);
         return ResponseEntity.ok(productSaleDTO);
     }
 

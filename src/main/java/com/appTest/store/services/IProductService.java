@@ -1,17 +1,17 @@
 package com.appTest.store.services;
 
 import com.appTest.store.dto.product.*;
-import com.appTest.store.models.Product;
+import com.appTest.store.models.Material;
 
 import java.util.List;
 
 public interface IProductService {
 
-      public List<Product> getAllProducts();
+      public List<Material> getAllProducts();
 
-      public ProductDTO convertProductToDto(Product product);
+      public ProductDTO convertProductToDto(Material material);
 
-      public Product getProductById(Long idProduct);
+      public Material getProductById(Long idProduct);
 
       public List<ProductStockAlertDTO> getProductsWithLowStock();
 
