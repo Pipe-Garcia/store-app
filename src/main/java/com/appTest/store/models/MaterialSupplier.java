@@ -23,7 +23,7 @@ public class MaterialSupplier {
     @JoinColumn(name = "supplier_id", nullable = false)
     private Supplier supplier;
 
-    @OneToMany(mappedBy = "materialSupplier")
+    @OneToMany(mappedBy = "materialSupplier", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseDetail> purchaseDetails = new ArrayList<>();
 
     @Column(nullable = false)

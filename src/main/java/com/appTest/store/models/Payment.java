@@ -1,19 +1,22 @@
 package com.appTest.store.models;
 
+import com.appTest.store.listeners.AuditListener;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
+@EntityListeners(AuditListener.class)
 @Getter @Setter
 public class Payment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idPayment;
-    private Double amount;
+    private BigDecimal amount;
     private LocalDate datePayment;
     private String methodPayment;
     private String status;
@@ -23,7 +26,7 @@ public class Payment {
 
     public Payment() {}
 
-    public Payment(Double amount, LocalDate datePayment, String methodPayment, Sale sale, String status) {
+    public Payment(BigDecimal amount, LocalDate datePayment, String methodPayment, Sale sale, String status) {
         this.amount = amount;
         this.datePayment = datePayment;
         this.methodPayment = methodPayment;

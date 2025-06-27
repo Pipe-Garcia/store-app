@@ -1,13 +1,16 @@
 package com.appTest.store.models;
 
+import com.appTest.store.listeners.AuditListener;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@EntityListeners(AuditListener.class)
 @Getter @Setter
 public class Material {
 
@@ -16,9 +19,9 @@ public class Material {
     private Long idMaterial;
     private String name;
     private String brand;
-    private Double priceArs;
-    private Double priceUsd;
-    private Double measurementUnit;
+    private BigDecimal priceArs;
+    private BigDecimal priceUsd;
+    private BigDecimal measurementUnit;
     private Long internalNumber;
 
     @ManyToOne
@@ -26,6 +29,12 @@ public class Material {
     private Family family;
 
     @OneToMany(mappedBy = "material")
+    private List<OrderDetail> orderDetails = new ArrayList<>();
+
+    @OneToMany(mappedBy = "material")
+    private List<MaterialSupplier> materialSuppliers = new ArrayList<>();
+
+    @OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Stock> stockList = new ArrayList<>();
 
     @OneToMany(mappedBy = "material")
@@ -33,7 +42,7 @@ public class Material {
 
     public Material() {}
 
-    public Material(String brand, Family family, Long internalNumber, Double measurementUnit, String name, Double priceArs, Double priceUsd) {
+    public Material(String brand, Family family, Long internalNumber, BigDecimal measurementUnit, String name, BigDecimal priceArs, BigDecimal priceUsd) {
         this.brand = brand;
         this.family = family;
         this.internalNumber = internalNumber;

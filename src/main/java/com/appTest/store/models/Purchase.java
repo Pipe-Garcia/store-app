@@ -1,5 +1,6 @@
 package com.appTest.store.models;
 
+import com.appTest.store.listeners.AuditListener;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@EntityListeners(AuditListener.class)
 @Getter @Setter
 public class Purchase {
 
@@ -21,7 +23,7 @@ public class Purchase {
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;
 
-    @OneToMany(mappedBy = "purchase")
+    @OneToMany(mappedBy = "purchase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseDetail> purchaseDetails = new ArrayList<>();
 
     public Purchase() {}

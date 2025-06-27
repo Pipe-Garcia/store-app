@@ -1,5 +1,6 @@
 package com.appTest.store.models;
 
+import com.appTest.store.listeners.AuditListener;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@EntityListeners(AuditListener.class)
 @Getter @Setter
 public class Client {
 
@@ -25,17 +27,18 @@ public class Client {
     @OneToMany(mappedBy = "client")
     private List<Sale> sales = new ArrayList<>();
 
+    @OneToMany(mappedBy = "client")
+    private List<Order> orders = new ArrayList<>();
+
     public Client () {}
 
-    public Client(String address, String dni, String email, Long idClient, String locality, String name, Long phoneNumber, List<Sale> sales, String surname) {
+    public Client(String address, String dni, String email, String locality, String name, Long phoneNumber, String surname) {
         this.address = address;
         this.dni = dni;
         this.email = email;
-        this.idClient = idClient;
         this.locality = locality;
         this.name = name;
         this.phoneNumber = phoneNumber;
-        this.sales = sales;
         this.surname = surname;
     }
 }
