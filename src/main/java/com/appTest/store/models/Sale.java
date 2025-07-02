@@ -1,6 +1,5 @@
 package com.appTest.store.models;
 
-import com.appTest.store.listeners.AuditListener;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@EntityListeners(AuditListener.class)
+
 @Getter @Setter
 public class Sale {
 
@@ -26,8 +25,8 @@ public class Sale {
     private List<Payment> paymentList = new ArrayList<>();
 
     @ManyToOne
-    @JoinColumn(name = "order_id")
-    private Order order;
+    @JoinColumn(name = "order_id", referencedColumnName = "idOrder")
+    private Orders orders;
 
     @ManyToOne
     @JoinColumn(name = "client_id")
@@ -35,9 +34,9 @@ public class Sale {
 
     public Sale () {}
 
-    public Sale(Client client, LocalDate dateSale, Order order) {
+    public Sale(Client client, LocalDate dateSale, Orders orders) {
         this.client = client;
         this.dateSale = dateSale;
-        this.order = order;
+        this.orders = orders;
     }
 }

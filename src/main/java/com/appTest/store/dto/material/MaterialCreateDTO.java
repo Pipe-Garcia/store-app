@@ -1,4 +1,4 @@
-package com.appTest.store.dto.product;
+package com.appTest.store.dto.material;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -7,10 +7,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class ProductCreateDTO implements Serializable {
+public class MaterialCreateDTO implements Serializable {
 
     @NotBlank(message = "Name cannot be blank")
     @Size(min = 2, max = 50)
@@ -20,5 +21,12 @@ public class ProductCreateDTO implements Serializable {
     private String brand;
 
     @DecimalMin(value = "0.01", message = "Price must be greater than 0")
-    private Double price;
+    private BigDecimal priceArs;
+
+    @DecimalMin(value = "0.01", message = "Price must be greater than 0")
+    private BigDecimal priceUsd;
+
+    private BigDecimal measurementUnit;
+
+    private Long internalNumber;
 }

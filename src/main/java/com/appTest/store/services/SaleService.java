@@ -1,18 +1,19 @@
 package com.appTest.store.services;
 
-import com.appTest.store.dto.productSale.ProductSaleRequestDTO;
+import com.appTest.store.dto.saleDetail.SaleDetailRequestDTO;
 import com.appTest.store.dto.sale.*;
 import com.appTest.store.models.Client;
 import com.appTest.store.models.Material;
 import com.appTest.store.models.SaleDetail;
 import com.appTest.store.models.Sale;
 import com.appTest.store.repositories.IClientRepository;
-import com.appTest.store.repositories.IProductRepository;
+import com.appTest.store.repositories.IMaterialRepository;
 import com.appTest.store.repositories.ISaleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +30,7 @@ public class SaleService implements ISaleService{
 
     @Autowired
     @Lazy
-    private IProductRepository repoProd;
+    private IMaterialRepository repoMat;
 
     @Override
     public List<Sale> getAllSales() {
@@ -48,11 +49,23 @@ public class SaleService implements ISaleService{
 
         String completeNameClient = nameClient + " " + surnameClient;
 
+        String paymentMethod = sale.getPaymentList().isEmpty() ? "Not specified"
+                : sale.getPaymentList().get(0).getMethodPayment();
+
+        BigDecimal total  = calculateTotal(sale);
+
         return new SaleDTO(
                 completeNameClient,
                 sale.getDateSale(),
-                sale.getTotal()
+                total,
+                paymentMethod
         );
+    }
+
+    private BigDecimal calculateTotal(Sale sale) {
+        return sale.getSaleDetailList().stream()
+                .map(detail -> detail.getQuantity().multiply(detail.getPriceUni()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     @Override
@@ -76,27 +89,20 @@ public class SaleService implements ISaleService{
         sale.setClient(client);
 
         List<SaleDetail> saleDetailList = new ArrayList<>();
-        double totalAmount = 0.0;
 
-        for (ProductSaleRequestDTO item : dto.getProducts()) {
-            Material material = repoProd.findById(item.getProductId()).orElse(null);
+        for (SaleDetailRequestDTO item : dto.getMaterials()) {
+            Material material = repoMat.findById(item.getMaterialId()).orElse(null);
             if (material != null) {
                 SaleDetail ps = new SaleDetail();
                 ps.setMaterial(material);
                 ps.setSale(sale);
                 ps.setQuantity(item.getQuantity());
-                ps.setPriceUni(material.getPrice());
+                ps.setPriceUni(material.getPriceArs());
 
                 saleDetailList.add(ps);
 
-                totalAmount += material.getPrice() * item.getQuantity();
-
-
-                material.setQuantityAvailable(material.getQuantityAvailable() - item.getQuantity());
             }
         }
-
-        sale.setTotal(totalAmount);
         sale.setSaleDetailList(saleDetailList);
 
         repoSale.save(sale);
@@ -109,7 +115,6 @@ public class SaleService implements ISaleService{
 
             if (sale != null) {
                 if (dto.getDateSale() != null) sale.setDateSale(dto.getDateSale());
-                if (dto.getTotal() != null) sale.setTotal(dto.getTotal());
 
                 if (dto.getClientId() != null) {
                     Client client = repoClient.findById(dto.getClientId()).orElse(null);

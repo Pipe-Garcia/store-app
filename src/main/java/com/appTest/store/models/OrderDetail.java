@@ -16,8 +16,8 @@ public class OrderDetail {
     private BigDecimal budget;
 
     @ManyToOne
-    @JoinColumn(name = "order_id")
-    private Order order;
+    @JoinColumn(name = "order_id", referencedColumnName = "idOrder")
+    private Orders orders;
 
     @ManyToOne
     @JoinColumn(name = "material_id")
@@ -25,9 +25,9 @@ public class OrderDetail {
 
     public OrderDetail() {}
 
-    public OrderDetail(BigDecimal budget, Material material, Order order) {
+    public OrderDetail(BigDecimal budget, Material material, Orders orders) {
         this.budget = budget;
         this.material = material;
-        this.order = order;
+        this.orders = orders;
     }
 }

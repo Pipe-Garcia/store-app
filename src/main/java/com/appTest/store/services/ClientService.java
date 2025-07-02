@@ -5,7 +5,9 @@ import com.appTest.store.dto.client.ClientDTO;
 import com.appTest.store.dto.client.ClientUpdateDTO;
 import com.appTest.store.models.Client;
 import com.appTest.store.repositories.IClientRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,6 +17,15 @@ public class ClientService implements IClientService{
 
     @Autowired
     private IClientRepository repoClient;
+
+//    @Autowired
+//    @Lazy
+//    private AuditService auditService;
+//
+//    public ClientService(IClientRepository repoClient, AuditService auditService) {
+//        this.repoClient=repoClient;
+//        this.auditService=auditService;
+//    }
 
     @Override
     public List<Client> getAllClientes() {
@@ -29,7 +40,11 @@ public class ClientService implements IClientService{
                 client.getName(),
                 client.getSurname(),
                 quantSales,
-                client.getDni()
+                client.getDni(),
+                client.getEmail(),
+                client.getAddress(),
+                client.getLocality(),
+                client.getPhoneNumber()
         );
     }
 
@@ -38,14 +53,22 @@ public class ClientService implements IClientService{
         return repoClient.findById(idClient).orElse(null);
     }
 
+
+
     @Override
+    @Transactional
     public void createClient(ClientCreateDTO dto) {
         Client client = new Client();
         client.setName(dto.getName());
         client.setSurname(dto.getSurname());
         client.setDni(dto.getDni());
+        client.setEmail(dto.getEmail());
+        client.setAddress(dto.getAddress());
+        client.setLocality(dto.getLocality());
+        client.setPhoneNumber(dto.getPhoneNumber());
 
         repoClient.save(client);
+//        auditService.createAudit(client, "INSERT", null);
     }
 
     @Override

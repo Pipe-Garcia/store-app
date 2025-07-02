@@ -1,6 +1,6 @@
 package com.appTest.store.dto.sale;
 
-import com.appTest.store.dto.productSale.ProductSaleRequestDTO;
+import com.appTest.store.dto.saleDetail.SaleDetailRequestDTO;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,5 +18,5 @@ public class SaleCreateDTO implements Serializable {
     @NotNull(message = "Client ID is required")
     private Long clientId;
 
-    private List<ProductSaleRequestDTO> products;
+    private List<SaleDetailRequestDTO> materials;
 }

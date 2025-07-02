@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -20,7 +21,7 @@ public class SaleUpdateDTO implements Serializable {
 
     @NotNull(message = "Total cannot be null")
     @DecimalMin(value = "0.0", inclusive = false, message = "Total must be greater than zero")
-    private Double total;
+    private BigDecimal total;
 
     @NotNull(message = "Client ID is required")
     private Long clientId;

@@ -5,19 +5,22 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter @Setter
-@JsonPropertyOrder({ "dateSale", "total", "clientName" })
+@JsonPropertyOrder({ "dateSale", "total", "clientName", "paymentMethod" })
 public class SaleDTO implements Serializable {
     private LocalDate dateSale;
-    private Double total;
+    private BigDecimal total;
     private String clientName;
+    private String paymentMethod;
 
     public SaleDTO () {}
-    public SaleDTO(String clientName, LocalDate dateSale, Double total) {
+    public SaleDTO(String clientName, LocalDate dateSale, BigDecimal total, String paymentMethod) {
         this.dateSale = dateSale;
         this.total = total;
         this.clientName = clientName;
+
     }
 }
