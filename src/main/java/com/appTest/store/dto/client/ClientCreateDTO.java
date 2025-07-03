@@ -23,18 +23,18 @@ public class ClientCreateDTO implements Serializable {
     private String dni;
 
     @NotBlank(message = "Email is required")
-    @Size(min = 2, max = 40, message = "Email must be between 10 and 40 characters")
+    @Size(min = 7, max = 40, message = "Email must be between 7 and 40 characters")
     private String email;
 
     @NotBlank(message = "Address is required")
-    @Size(min = 2, max = 40, message = "Address must be between 10 and 40 characters")
+    @Size(min = 2, max = 40, message = "Address must be between 2 and 40 characters")
     private String address;
 
     @NotBlank(message = "Locality is required")
-    @Size(min = 2, max = 40, message = "Locality must be between 10 and 40 characters")
+    @Size(min = 2, max = 40, message = "Locality must be between 2 and 40 characters")
     private String locality;
 
     @NotBlank(message = "Phone number is required")
-    @Size(min = 2, max = 40, message = "Phone number must be between 6 and 40 numbers")
-    private Long phoneNumber;
+    @Size(min = 6, max = 30, message = "Phone number must be between 6 and 40 characters")
+    private String phoneNumber;
 }

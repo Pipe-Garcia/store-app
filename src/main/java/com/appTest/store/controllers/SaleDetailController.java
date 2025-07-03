@@ -16,38 +16,38 @@ import java.util.stream.Collectors;
 public class SaleDetailController {
 
     @Autowired
-    private ISaleDetailService servMatSale;
+    private ISaleDetailService servSaleDetail;
 
     @GetMapping
     public ResponseEntity<List<SaleDetailDTO>> getAllSaleDetail() {
-        List<SaleDetail> saleDetailList = servMatSale.getAllSaleDetail();
+        List<SaleDetail> saleDetailList = servSaleDetail.getAllSaleDetail();
 
-        List<SaleDetailDTO> materialSaleDTOList = saleDetailList.stream()
-                .map(materialSale -> servMatSale.convertSaleDetailToDto(materialSale))
+        List<SaleDetailDTO> saleDetailDTOList = saleDetailList.stream()
+                .map(saleDetail -> servSaleDetail.convertSaleDetailToDto(saleDetail))
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(materialSaleDTOList);
+        return ResponseEntity.ok(saleDetailDTOList);
     }
 
     @GetMapping ("/{id}")
     public ResponseEntity<SaleDetailDTO> getSaleDetailById(@PathVariable Long id) {
-        SaleDetail saleDetail = servMatSale.getSaleDetailById(id);
+        SaleDetail saleDetail = servSaleDetail.getSaleDetailById(id);
         if (saleDetail == null) {
             return ResponseEntity.notFound().build();
         }
-        SaleDetailDTO materialSaleDTO = servMatSale.convertSaleDetailToDto(saleDetail);
-        return ResponseEntity.ok(materialSaleDTO);
+        SaleDetailDTO saleDetailDTO = servSaleDetail.convertSaleDetailToDto(saleDetail);
+        return ResponseEntity.ok(saleDetailDTO);
     }
 
     @GetMapping ("/material-most-sold")
     public ResponseEntity<MaterialMostSoldDTO> getMaterialMostSold() {
-        MaterialMostSoldDTO materialMostSoldDTO = servMatSale.getMostSoldMaterial();
+        MaterialMostSoldDTO materialMostSoldDTO = servSaleDetail.getMostSoldMaterial();
         return ResponseEntity.ok(materialMostSoldDTO);
     }
 
     @DeleteMapping ("/{id}")
     public ResponseEntity<String> deleteSaleDetailById (@PathVariable Long id) {
-        boolean deleted = servMatSale.deleteSaleDetailById(id);
+        boolean deleted = servSaleDetail.deleteSaleDetailById(id);
         if (deleted) {
             return ResponseEntity.ok("The sale detail has been successfully deleted.");
         }

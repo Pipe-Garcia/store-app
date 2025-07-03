@@ -46,18 +46,19 @@ public class SaleService implements ISaleService{
     public SaleDTO convertSaleToDto(Sale sale) {
         String nameClient = (sale.getClient() != null) ? sale.getClient().getName() : "Name not found";
         String surnameClient = (sale.getClient() != null) ? sale.getClient().getSurname() : "Surname not found";
+
         String completeNameClient = nameClient + " " + surnameClient;
 
         String paymentMethod = sale.getPaymentList().isEmpty() ? "Not specified"
-                : sale.getPaymentList().get(0).getMethodPayment(); // Asume getPaymentMethod()
+                : sale.getPaymentList().get(0).getMethodPayment();
 
-        BigDecimal total = calculateTotal(sale); // Metodo para calcular total
+        BigDecimal total  = calculateTotal(sale);
 
         return new SaleDTO(
-                        completeNameClient,
-                        sale.getDateSale(),
-                        total,
-                        paymentMethod
+                completeNameClient,
+                sale.getDateSale(),
+                total,
+                paymentMethod
         );
     }
 
@@ -83,6 +84,7 @@ public class SaleService implements ISaleService{
     public void createSale(SaleCreateDTO dto) {
         Sale sale = new Sale();
         sale.setDateSale(dto.getDateSale());
+
         Client client = repoClient.findById(dto.getClientId()).orElse(null);
         sale.setClient(client);
 

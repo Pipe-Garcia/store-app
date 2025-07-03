@@ -1,6 +1,5 @@
 package com.appTest.store.models;
 
-import com.appTest.store.listeners.AuditListener;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@EntityListeners(AuditListener.class)
+
 @Getter @Setter
 public class Material {
 
@@ -51,4 +50,5 @@ public class Material {
         this.priceArs = priceArs;
         this.priceUsd = priceUsd;
     }
+
 }
