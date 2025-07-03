@@ -4,21 +4,22 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 @Getter @Setter
 public class SaleHighestDTO implements Serializable {
     private Long idSale;
-    private Double total;
-    private int productCount;
+    private BigDecimal total;
+    private int materialCount;
     private String clientName;
     private String clientSurname;
 
     public SaleHighestDTO() {}
-    public SaleHighestDTO(String clientName, String clientSurname, Long idSale, int productCount, Double total) {
+    public SaleHighestDTO(String clientName, String clientSurname, Long idSale, int materialCount, BigDecimal total) {
         this.clientName = clientName;
         this.clientSurname = clientSurname;
         this.idSale = idSale;
-        this.productCount = productCount;
+        this.materialCount = materialCount;
         this.total = total;
     }
 }

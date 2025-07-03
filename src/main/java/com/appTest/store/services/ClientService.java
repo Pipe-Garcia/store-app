@@ -28,8 +28,12 @@ public class ClientService implements IClientService{
         return new ClientDTO(
                 client.getName(),
                 client.getSurname(),
+                client.getDni(),
+                client.getEmail(),
+                client.getAddress(),
+                client.getPhoneNumber(),
                 quantSales,
-                client.getDni()
+                client.getLocality()
         );
     }
 
