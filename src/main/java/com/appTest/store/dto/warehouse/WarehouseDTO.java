@@ -8,9 +8,9 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 @Getter @Setter
-@JsonPropertyOrder({"address", "name", "location", "totalStock"})
+@JsonPropertyOrder({"idWarehouse", "address", "name", "location", "totalStock"})
 public class WarehouseDTO implements Serializable {
-
+    private Long idWarehouse;
     private String address;
     private String name;
     private String location;
@@ -18,7 +18,8 @@ public class WarehouseDTO implements Serializable {
 
     public WarehouseDTO() {}
 
-    public WarehouseDTO(String address, String location, String name, BigDecimal totalStock) {
+    public WarehouseDTO(Long idWarehouse, String address, String location, String name, BigDecimal totalStock) {
+        this.idWarehouse = idWarehouse;
         this.address = address;
         this.location = location;
         this.name = name;

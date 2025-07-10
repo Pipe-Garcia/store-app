@@ -1,10 +1,13 @@
 package com.appTest.store.services;
 
 import com.appTest.store.dto.material.*;
+import com.appTest.store.models.Family;
 import com.appTest.store.models.Material;
 import com.appTest.store.models.Stock;
+import com.appTest.store.repositories.IFamilyRepository;
 import com.appTest.store.repositories.IMaterialRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,6 +18,10 @@ public class MaterialService implements IMaterialService{
 
     @Autowired
     private IMaterialRepository repoMat;
+
+    @Autowired
+    @Lazy
+    private IFamilyRepository repoFam;
 
     @Override
     public List<Material> getAllMaterials() {
@@ -32,9 +39,14 @@ public class MaterialService implements IMaterialService{
                 .sum();
 
         return new MaterialDTO(
+                material.getIdMaterial(),
                 material.getName(),
                 material.getBrand(),
-                material.getPriceArs(), // O priceUsd según prefieras
+                material.getPriceArs(),
+                material.getPriceUsd(),
+                material.getMeasurementUnit(),
+                material.getInternalNumber(),
+                material.getDescription(),
                 totalQuantityAvailable,
                 totalSales,
                 material.getStockList().size(),
@@ -62,30 +74,46 @@ public class MaterialService implements IMaterialService{
 
     @Override
     public void createMaterial(MaterialCreateDTO dto) {
+
         Material material = new Material();
+
         material.setName(dto.getName());
         material.setBrand(dto.getBrand());
         material.setPriceArs(dto.getPriceArs());
         material.setPriceUsd(dto.getPriceUsd());
         material.setMeasurementUnit(dto.getMeasurementUnit());
         material.setInternalNumber(dto.getInternalNumber());
-        material.setFamily(dto.getFamilyId());
+        material.setDescription(dto.getDescription());
+
+        Family family = repoFam.findById(dto.getFamilyId())
+                .orElseThrow(() -> new RuntimeException("Family not found with ID: " + dto.getFamilyId()));
+        material.setFamily(family);
 
         repoMat.save(material);
     }
 
     @Override
     public void updateMaterial(MaterialUpdateDTO dto) {
-        Material material = repoMat.findById(dto.getIdMaterial()).orElse(null);
+        Material material = repoMat.findById(dto.getIdMaterial())
+                .orElseThrow(() -> new RuntimeException("Material not found with ID: " + dto.getIdMaterial()));
 
-        if (material != null) {
-            if (dto.getName() != null) material.setName(dto.getName());
-            if (dto.getBrand() != null) material.setBrand(dto.getBrand());
-            if (dto.getPrice() != null) material.setPriceArs(dto.getPrice());
+        if (dto.getName() != null) material.setName(dto.getName());
+        if (dto.getBrand() != null) material.setBrand(dto.getBrand());
+        if (dto.getPriceArs() != null) material.setPriceArs(dto.getPriceArs());
+        if (dto.getPriceUsd() != null) material.setPriceUsd(dto.getPriceUsd());
+        if (dto.getMeasurementUnit() != null) material.setMeasurementUnit(dto.getMeasurementUnit());
+        if (dto.getDescription() != null) material.setDescription(dto.getDescription());
+        if (dto.getInternalNumber() != null) material.setInternalNumber(dto.getInternalNumber());
 
-            repoMat.save(material);
+        if (dto.getFamilyId() != null) {
+            Family family = repoFam.findById(dto.getFamilyId())
+                    .orElseThrow(() -> new RuntimeException("Family not found with ID: " + dto.getFamilyId()));
+            material.setFamily(family);
         }
+
+        repoMat.save(material);
     }
+
 
     @Override
     public boolean deleteMaterialById(Long idMaterial) {

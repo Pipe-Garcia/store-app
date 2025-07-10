@@ -23,6 +23,17 @@ public class MaterialUpdateDTO implements Serializable {
     private String brand;
 
     @DecimalMin(value = "0.0", inclusive = false, message = "Total must be greater than zero")
-    private BigDecimal price;
+    private BigDecimal priceArs;
+
+    @DecimalMin(value = "0.0", inclusive = false, message = "Total must be greater than zero")
+    private BigDecimal priceUsd;
+
+    private String measurementUnit;
+
+    private String internalNumber;
+
+    private String description;
+
+    private Long familyId;
 
 }

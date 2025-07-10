@@ -29,14 +29,19 @@ public class Sale {
     private Orders orders;
 
     @ManyToOne
+    @JoinColumn(name = "delivery_id")
+    private Delivery delivery;
+
+    @ManyToOne
     @JoinColumn(name = "client_id")
     private Client client;
 
     public Sale () {}
 
-    public Sale(Client client, LocalDate dateSale, Orders orders) {
+    public Sale(Client client, LocalDate dateSale, Orders orders, Delivery delivery) {
         this.client = client;
         this.dateSale = dateSale;
         this.orders = orders;
+        this.delivery = delivery;
     }
 }

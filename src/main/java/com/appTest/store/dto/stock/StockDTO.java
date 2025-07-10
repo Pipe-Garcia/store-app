@@ -9,9 +9,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter @Setter
-@JsonPropertyOrder({"nameWarehouse", "nameMaterial", "quantityAvailable", "lastUpdate"})
+@JsonPropertyOrder({"idStock", "nameWarehouse", "nameMaterial", "quantityAvailable", "lastUpdate"})
 public class StockDTO implements Serializable {
-
+    private Long idStock;
     private String nameWarehouse;
     private String nameMaterial;
     private BigDecimal quantityAvailable;
@@ -19,7 +19,8 @@ public class StockDTO implements Serializable {
 
     public StockDTO() {}
 
-    public StockDTO(String nameMaterial, String nameWarehouse, BigDecimal quantityAvailable, LocalDate lastUpdate) {
+    public StockDTO(Long idStock, String nameMaterial, String nameWarehouse, BigDecimal quantityAvailable, LocalDate lastUpdate) {
+        this.idStock = idStock;
         this.nameMaterial = nameMaterial;
         this.nameWarehouse = nameWarehouse;
         this.quantityAvailable = quantityAvailable;

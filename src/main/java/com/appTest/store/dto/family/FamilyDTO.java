@@ -7,15 +7,16 @@ import lombok.Setter;
 import java.io.Serializable;
 
 @Getter @Setter
-@JsonPropertyOrder({"typeFamily", "quantMaterials"})
+@JsonPropertyOrder({"idFamily", "typeFamily", "quantMaterials"})
 public class FamilyDTO implements Serializable {
-
+    private Long idFamily;
     private String typeFamily;
     private int quantMaterials;
 
     public FamilyDTO() {}
 
-    public FamilyDTO(int quantMaterials, String typeFamily) {
+    public FamilyDTO(Long idFamily, int quantMaterials, String typeFamily) {
+        this.idFamily = idFamily;
         this.quantMaterials = quantMaterials;
         this.typeFamily = typeFamily;
     }

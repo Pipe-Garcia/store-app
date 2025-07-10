@@ -19,17 +19,20 @@ public class Delivery {
     private LocalDate deliveryDate;
 
     @ManyToOne
-    @JoinColumn(name = "orderDetail_id")
-    private OrderDetail orderDetail;
+    @JoinColumn(name = "order_id", referencedColumnName = "idOrder")
+    private Orders orders;
 
     @OneToMany(mappedBy = "delivery", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Sale> sales = new ArrayList<>();
+
+    @OneToMany(mappedBy = "delivery", cascade = CascadeType.ALL)
     private List<SaleDetail> saleDetails = new ArrayList<>();
 
     public Delivery() {}
 
-    public Delivery(LocalDate deliveryDate, OrderDetail orderDetail, String status) {
+    public Delivery(LocalDate deliveryDate, Orders orders, String status) {
         this.deliveryDate = deliveryDate;
-        this.orderDetail = orderDetail;
+        this.orders = orders;
         this.status = status;
     }
 }

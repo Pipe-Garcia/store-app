@@ -3,13 +3,16 @@ package com.appTest.store.services;
 import com.appTest.store.dto.client.ClientCreateDTO;
 import com.appTest.store.dto.client.ClientDTO;
 import com.appTest.store.dto.client.ClientUpdateDTO;
+import com.appTest.store.dto.orders.OrdersDTO;
 import com.appTest.store.models.Client;
+import com.appTest.store.models.Orders;
 import com.appTest.store.repositories.IClientRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -36,7 +39,9 @@ public class ClientService implements IClientService{
     public ClientDTO convertClientToDto(Client client) {
         int quantSales = (client.getSales() != null) ? client.getSales().size() : 0;
 
+        Orders latestOrder = findLatestOrderByClient(client);
         return new ClientDTO(
+                client.getIdClient(),
                 client.getName(),
                 client.getSurname(),
                 quantSales,
@@ -44,7 +49,8 @@ public class ClientService implements IClientService{
                 client.getEmail(),
                 client.getAddress(),
                 client.getLocality(),
-                client.getPhoneNumber()
+                client.getPhoneNumber(),
+                latestOrder
         );
     }
 
@@ -53,6 +59,11 @@ public class ClientService implements IClientService{
         return repoClient.findById(idClient).orElse(null);
     }
 
+    public Orders findLatestOrderByClient(Client client) {
+        return client.getOrders().stream()
+                .max(Comparator.comparing(Orders::getDateCreate))
+                .orElse(null);
+    }
 
 
     @Override

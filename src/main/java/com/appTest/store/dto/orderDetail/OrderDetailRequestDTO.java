@@ -1,4 +1,4 @@
-package com.appTest.store.dto.saleDetail;
+package com.appTest.store.dto.orderDetail;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -10,7 +10,9 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 @Getter @Setter
-public class SaleDetailRequestDTO implements Serializable {
+public class OrderDetailRequestDTO implements Serializable {
+
+
     @NotNull(message = "Material ID is required")
     private Long materialId;
 
