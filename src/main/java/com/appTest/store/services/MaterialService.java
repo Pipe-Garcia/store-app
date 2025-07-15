@@ -38,6 +38,7 @@ public class MaterialService implements IMaterialService{
                 .mapToInt(sd -> sd.getQuantity().intValue()) // Suma de cantidades vendidas
                 .sum();
 
+        String category = material.getFamily().getTypeFamily();
         return new MaterialDTO(
                 material.getIdMaterial(),
                 material.getName(),
@@ -47,6 +48,7 @@ public class MaterialService implements IMaterialService{
                 material.getMeasurementUnit(),
                 material.getInternalNumber(),
                 material.getDescription(),
+                category,
                 totalQuantityAvailable,
                 totalSales,
                 material.getStockList().size(),

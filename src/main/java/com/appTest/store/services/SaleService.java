@@ -32,6 +32,10 @@ public class SaleService implements ISaleService{
     @Lazy
     private IMaterialRepository repoMat;
 
+    @Autowired
+    @Lazy
+    private IStockService servStock;
+
     @Override
     public List<Sale> getAllSales() {
         return repoSale.findAll();
@@ -54,11 +58,18 @@ public class SaleService implements ISaleService{
 
         BigDecimal total  = calculateTotal(sale);
 
+        Long deliveryId = sale.getDelivery().getIdDelivery();
+
+        LocalDate deliveryDate = sale.getDelivery().getDeliveryDate();
+
         return new SaleDTO(
+                sale.getIdSale(),
                 completeNameClient,
                 sale.getDateSale(),
                 total,
-                paymentMethod
+                paymentMethod,
+                deliveryId,
+                deliveryDate
         );
     }
 
@@ -102,6 +113,7 @@ public class SaleService implements ISaleService{
                 ps.setPriceUni(material.getPriceArs());
 
                 saleDetailList.add(ps);
+                servStock.decreaseStock(item.getMaterialId(), item.getWarehouseId(), item.getQuantity());
 
             }
         }

@@ -7,6 +7,7 @@ import com.appTest.store.dto.orders.OrdersDTO;
 import com.appTest.store.models.Client;
 import com.appTest.store.models.Orders;
 import com.appTest.store.repositories.IClientRepository;
+import com.appTest.store.repositories.IOrdersRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -21,6 +22,9 @@ public class ClientService implements IClientService{
     @Autowired
     private IClientRepository repoClient;
 
+    @Autowired
+    @Lazy
+    private IOrdersRepository repoOrders;
 //    @Autowired
 //    @Lazy
 //    private AuditService auditService;
@@ -31,7 +35,7 @@ public class ClientService implements IClientService{
 //    }
 
     @Override
-    public List<Client> getAllClientes() {
+    public List<Client> getAllClients() {
         return repoClient.findAll();
     }
 
@@ -39,7 +43,11 @@ public class ClientService implements IClientService{
     public ClientDTO convertClientToDto(Client client) {
         int quantSales = (client.getSales() != null) ? client.getSales().size() : 0;
 
-        Orders latestOrder = findLatestOrderByClient(client);
+        Orders latestOrder = repoOrders
+                .findTopByClientOrderByDateCreateDesc(client)
+                .orElse(null);
+
+        Long latestOrderId = (latestOrder != null) ? latestOrder.getIdOrder() : null;
         return new ClientDTO(
                 client.getIdClient(),
                 client.getName(),
@@ -50,7 +58,7 @@ public class ClientService implements IClientService{
                 client.getAddress(),
                 client.getLocality(),
                 client.getPhoneNumber(),
-                latestOrder
+                latestOrderId
         );
     }
 

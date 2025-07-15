@@ -11,13 +11,12 @@ import java.io.Serializable;
 public class FamilyDTO implements Serializable {
     private Long idFamily;
     private String typeFamily;
-    private int quantMaterials;
+   // private int quantMaterials;
 
     public FamilyDTO() {}
 
-    public FamilyDTO(Long idFamily, int quantMaterials, String typeFamily) {
+    public FamilyDTO(Long idFamily, String typeFamily) {
         this.idFamily = idFamily;
-        this.quantMaterials = quantMaterials;
         this.typeFamily = typeFamily;
     }
 }

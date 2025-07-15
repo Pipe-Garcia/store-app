@@ -34,15 +34,12 @@ public class SaleDetailService implements ISaleDetailService{
         BigDecimal quantityMat = saleDetail.getQuantity();
         BigDecimal priceMat = saleDetail.getPriceUni();
         String nameMat = saleDetail.getMaterial().getName();
-        Long deliveryId = saleDetail.getDelivery().getIdDelivery();
-        LocalDate deliveryDate = saleDetail.getDelivery().getDeliveryDate();
 
         return new SaleDetailDTO(
+                saleDetail.getIdSaleDetail(),
                 priceMat,
                 nameMat,
-                quantityMat,
-                deliveryId,
-                deliveryDate
+                quantityMat
         );
     }
 

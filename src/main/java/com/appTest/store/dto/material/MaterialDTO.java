@@ -8,7 +8,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 @Getter @Setter
-@JsonPropertyOrder({ "idMaterial", "name", "brand", "priceArs", "priceUsd", "measurementUnit" , "internalNumber", "description", "quantityAvailable", "totalSales", "stockCount", "supplierCount", "saleDetailCount", "orderDetailCount" })
+@JsonPropertyOrder({ "idMaterial", "name", "brand", "priceArs", "priceUsd", "measurementUnit" , "internalNumber", "description", "category", "quantityAvailable", "totalSales", "stockCount", "supplierCount", "saleDetailCount", "orderDetailCount" })
 public class MaterialDTO implements Serializable {
     private Long idMaterial;
     private String name;
@@ -18,6 +18,7 @@ public class MaterialDTO implements Serializable {
     private String measurementUnit;
     private String internalNumber;
     private String description;
+    private String category;
     private BigDecimal quantityAvailable; // Total de Stock
     private int totalSales; // Total de ventas (ajustaremos la lógica)
     private int stockCount; // Cantidad de Stock asociados
@@ -27,7 +28,7 @@ public class MaterialDTO implements Serializable {
 
     public MaterialDTO() {}
 
-    public MaterialDTO(Long idMaterial, String brand, String name, BigDecimal priceArs, BigDecimal priceUsd, String measurementUnit, String internalNumber, String description, BigDecimal quantityAvailable, int totalSales,
+    public MaterialDTO(Long idMaterial, String brand, String name, BigDecimal priceArs, BigDecimal priceUsd, String measurementUnit, String internalNumber, String description, String category, BigDecimal quantityAvailable, int totalSales,
                        int stockCount, int supplierCount, int saleDetailCount, int orderDetailCount) {
         this.idMaterial = idMaterial;
         this.name = name;
@@ -37,6 +38,7 @@ public class MaterialDTO implements Serializable {
         this.measurementUnit = measurementUnit;
         this.internalNumber = internalNumber;
         this.description = description;
+        this.category = category;
         this.quantityAvailable = quantityAvailable;
         this.totalSales = totalSales;
         this.stockCount = stockCount;
