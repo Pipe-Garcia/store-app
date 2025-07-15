@@ -21,5 +21,9 @@ public class ClientUpdateDTO implements Serializable {
 
     @Size(min = 7, max = 10, message = "DNI must be between 7 and 10 digits")
     private String dni;
+
+    @Size(min = 5, max = 100, message = "Email must be between 5 and 100 characters")
+    private String email;
+
 }
 

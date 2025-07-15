@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../files-css/style.css">
+    <title>Editar Cliente</title>
+</head>
+<body>
+    <header class="header">
+    <nav class="nav-header">
+      <ul class="ul-header">
+        <li><a href="../files-html/index.html">Inicio</a></li>
+        <li><a href="../files-html/materiales.html">Materiales</a></li>
+        <li><a href="">Ventas</a></li>
+        <li><a href="../files-html/clientes.html">Clientes</a></li>
+        <li><a href="">Compras</a></li>
+        <li><a href="">Pedidos</a></li>
+        <li><a href="">Entregas</a></li>
+        <li><a href="">Proveedores</a></li>
+        <li><a href="">Almacenes</a></li>
+      </ul>
+    </nav>
+  </header>
+    <div class="form-editar">
+        <h2>Editar Cliente</h2>
+    <form id="formEditarCliente">
+        <label for="name">Nombre:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="surname">Apellido:</label>
+        <input type="text" id="surname" name="surname" required>
+
+        <label for="dni">DNI:</label>
+        <input type="text" id="dni" name="dni" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email">
+    <!--<label for="phoneNumber">Teléfono:</label>
+    <input type="text" id="phoneNumber" name="phoneNumber">-->
+        <br><br>
+        <button type="submit">Guardar Cambios</button>
+    </form>
+
+    </div>
+    
+    <script src="../files-js/editar-clientes.js"></script>
+</body>
+</html>

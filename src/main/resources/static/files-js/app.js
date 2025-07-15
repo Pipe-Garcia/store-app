@@ -1,0 +1,1 @@
+const API_STORE_URL = 'http://localhost:8080/';

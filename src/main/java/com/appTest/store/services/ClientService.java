@@ -37,6 +37,7 @@ public class ClientService implements IClientService{
         int quantSales = (client.getSales() != null) ? client.getSales().size() : 0;
 
         return new ClientDTO(
+                client.getIdClient(),
                 client.getName(),
                 client.getSurname(),
                 quantSales,
@@ -47,6 +48,7 @@ public class ClientService implements IClientService{
                 client.getPhoneNumber()
         );
     }
+
 
     @Override
     public Client getClientById(Long idClient) {
@@ -79,6 +81,7 @@ public class ClientService implements IClientService{
             if (dto.getName() != null) client.setName(dto.getName());
             if (dto.getSurname() != null) client.setSurname(dto.getSurname());
             if (dto.getDni() != null) client.setDni(dto.getDni());
+            if (dto.getEmail() != null) client.setEmail(dto.getEmail());
 
             repoClient.save(client);
         }

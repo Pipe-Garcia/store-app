@@ -10,8 +10,11 @@ import java.math.BigDecimal;
 @Setter
 public class MaterialUpdateDTO implements Serializable {
     private Long idMaterial;
+    // Long internalNumber;
     private String name;
     private String brand;
     private BigDecimal price;
     private BigDecimal quantityAvailable;
+
+
 }

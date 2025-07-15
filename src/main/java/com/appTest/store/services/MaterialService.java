@@ -24,6 +24,8 @@ public class MaterialService implements IMaterialService{
         int totalSales = (material.getSaleDetailList() != null) ? material.getSaleDetailList().size() : 0;
 
         return new MaterialDTO(
+                material.getIdMaterial(),
+                material.getInternalNumber(),
                 material.getBrand(),
                 material.getName(),
                 material.getPriceArs(),
@@ -65,6 +67,7 @@ public class MaterialService implements IMaterialService{
         Material material = repoMat.findById(dto.getIdMaterial()).orElse(null);
 
         if (material != null) {
+            //if (dto.getInternalNumber() != null) material.setInternalNumber(dto.getInternalNumber());
             if (dto.getName() != null) material.setName(dto.getName());
             if (dto.getBrand() != null) material.setBrand(dto.getBrand());
             if (dto.getPrice() != null) material.setPriceArs(dto.getPrice());
