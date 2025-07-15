@@ -13,7 +13,12 @@ public class OrderDetail {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idOrderDetail;
-    private BigDecimal budget;
+
+    @Column(nullable = false)
+    private BigDecimal quantity = BigDecimal.ZERO;
+
+    @Column(nullable = false)
+    private BigDecimal priceUni = BigDecimal.ZERO;
 
     @ManyToOne
     @JoinColumn(name = "order_id", referencedColumnName = "idOrder")
@@ -25,9 +30,10 @@ public class OrderDetail {
 
     public OrderDetail() {}
 
-    public OrderDetail(BigDecimal budget, Material material, Orders orders) {
-        this.budget = budget;
+    public OrderDetail(Material material, Orders orders, BigDecimal quantity, BigDecimal priceUni) {
         this.material = material;
         this.orders = orders;
+        this.quantity = quantity;
+        this.priceUni = priceUni;
     }
 }

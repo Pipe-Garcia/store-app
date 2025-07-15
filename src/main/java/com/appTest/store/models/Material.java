@@ -20,8 +20,9 @@ public class Material {
     private String brand;
     private BigDecimal priceArs;
     private BigDecimal priceUsd;
-    private BigDecimal measurementUnit;
-    private Long internalNumber;
+    private String measurementUnit;
+    private String internalNumber;
+    private String description;
 
     @ManyToOne
     @JoinColumn(name = "family_id")
@@ -41,7 +42,7 @@ public class Material {
 
     public Material() {}
 
-    public Material(String brand, Family family, Long internalNumber, BigDecimal measurementUnit, String name, BigDecimal priceArs, BigDecimal priceUsd) {
+    public Material(String brand, Family family, String internalNumber, String measurementUnit, String name, BigDecimal priceArs, BigDecimal priceUsd, String description) {
         this.brand = brand;
         this.family = family;
         this.internalNumber = internalNumber;
@@ -49,6 +50,7 @@ public class Material {
         this.name = name;
         this.priceArs = priceArs;
         this.priceUsd = priceUsd;
+        this.description = description;
     }
 
 }

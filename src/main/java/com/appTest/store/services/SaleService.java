@@ -32,6 +32,10 @@ public class SaleService implements ISaleService{
     @Lazy
     private IMaterialRepository repoMat;
 
+    @Autowired
+    @Lazy
+    private IStockService servStock;
+
     @Override
     public List<Sale> getAllSales() {
         return repoSale.findAll();
@@ -54,11 +58,18 @@ public class SaleService implements ISaleService{
 
         BigDecimal total  = calculateTotal(sale);
 
+        Long deliveryId = sale.getDelivery().getIdDelivery();
+
+        LocalDate deliveryDate = sale.getDelivery().getDeliveryDate();
+
         return new SaleDTO(
+                sale.getIdSale(),
                 completeNameClient,
                 sale.getDateSale(),
                 total,
-                paymentMethod
+                paymentMethod,
+                deliveryId,
+                deliveryDate
         );
     }
 
@@ -85,13 +96,15 @@ public class SaleService implements ISaleService{
         Sale sale = new Sale();
         sale.setDateSale(dto.getDateSale());
 
-        Client client = repoClient.findById(dto.getClientId()).orElse(null);
+        Client client = repoClient.findById(dto.getClientId())
+                .orElseThrow(() -> new RuntimeException("Client not found with ID: " + dto.getClientId()));
         sale.setClient(client);
 
         List<SaleDetail> saleDetailList = new ArrayList<>();
 
         for (SaleDetailRequestDTO item : dto.getMaterials()) {
-            Material material = repoMat.findById(item.getMaterialId()).orElse(null);
+            Material material = repoMat.findById(item.getMaterialId())
+                    .orElseThrow(() -> new RuntimeException("Material not found with ID: " + item.getMaterialId()));
             if (material != null) {
                 SaleDetail ps = new SaleDetail();
                 ps.setMaterial(material);
@@ -100,6 +113,7 @@ public class SaleService implements ISaleService{
                 ps.setPriceUni(material.getPriceArs());
 
                 saleDetailList.add(ps);
+                servStock.decreaseStock(item.getMaterialId(), item.getWarehouseId(), item.getQuantity());
 
             }
         }

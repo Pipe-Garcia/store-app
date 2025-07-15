@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface IClientService {
 
-    public List<Client> getAllClientes();
+    public List<Client> getAllClients();
 
     public com.appTest.store.dto.client.ClientDTO convertClientToDto (Client client);
 

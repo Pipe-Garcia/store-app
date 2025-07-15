@@ -21,4 +21,8 @@ public class Family {
     private List<Material> materials = new ArrayList<>();
 
     public Family() {}
+
+    public Family( String typeFamily) {
+        this.typeFamily = typeFamily;
+    }
 }

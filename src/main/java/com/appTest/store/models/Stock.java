@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Entity
 @Getter @Setter
@@ -18,6 +19,9 @@ public class Stock {
     @DecimalMin(value = "0.0")
     private BigDecimal quantityAvailable = BigDecimal.ZERO;
 
+    @Column(name = "last_update")
+    private LocalDate lastUpdate;
+
     @ManyToOne
     @JoinColumn(name = "material_id", nullable = false)
     private Material material;
@@ -28,9 +32,10 @@ public class Stock {
 
     public Stock() {}
 
-    public Stock(Material material, BigDecimal quantityAvailable, Warehouse warehouse) {
+    public Stock(Material material, BigDecimal quantityAvailable, Warehouse warehouse, LocalDate lastUpdate) {
         this.material = material;
         this.quantityAvailable = quantityAvailable;
         this.warehouse = warehouse;
+        this.lastUpdate = LocalDate.now();
     }
 }

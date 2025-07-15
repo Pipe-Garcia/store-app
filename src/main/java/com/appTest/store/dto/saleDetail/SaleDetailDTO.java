@@ -6,21 +6,21 @@ import lombok.Setter;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Getter @Setter
-@JsonPropertyOrder({ "quantity", "priceUni", "dateSale", "materialName" })
+@JsonPropertyOrder({ "idSaleDetail", "materialName", "quantity", "priceUni"})
 public class SaleDetailDTO implements Serializable {
+    private Long idSaleDetail;
     private BigDecimal quantity;
     private BigDecimal priceUni;
-    private LocalDate dateSale;
     private String materialName;
 
-    public SaleDetailDTO () {}
-    public SaleDetailDTO(LocalDate dateSale, BigDecimal priceUni, String materialName, BigDecimal quantity) {
-        this.quantity = quantity;
+    public SaleDetailDTO() {}
+
+    public SaleDetailDTO(Long idSaleDetail, BigDecimal priceUni, String materialName, BigDecimal quantity) {
+        this.idSaleDetail = idSaleDetail;
         this.priceUni = priceUni;
-        this.dateSale = dateSale;
         this.materialName = materialName;
+        this.quantity = quantity;
     }
 }

@@ -8,23 +8,42 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 @Getter @Setter
-@JsonPropertyOrder({ "idMaterial","internalNumber","name","brand", "price", "totalSales" })
+@JsonPropertyOrder({ "idMaterial", "name", "brand", "priceArs", "priceUsd", "measurementUnit" , "internalNumber", "description", "category", "quantityAvailable", "totalSales", "stockCount", "supplierCount", "saleDetailCount", "orderDetailCount" })
 public class MaterialDTO implements Serializable {
-
     private Long idMaterial;
-    private Long internalNumber;
     private String name;
     private String brand;
-    private BigDecimal price;
-    private int totalSales;
+    private BigDecimal priceArs; // Asumimos priceArs como principal
+    private BigDecimal priceUsd;
+    private String measurementUnit;
+    private String internalNumber;
+    private String description;
+    private String category;
+    private BigDecimal quantityAvailable; // Total de Stock
+    private int totalSales; // Total de ventas (ajustaremos la lógica)
+    private int stockCount; // Cantidad de Stock asociados
+    private int supplierCount; // Cantidad de MaterialSuppliers
+    private int saleDetailCount; // Cantidad de SaleDetails
+    private int orderDetailCount; // Cantidad de OrderDetails
 
-    public MaterialDTO () {}
-    public MaterialDTO(Long idMaterial,Long internalNumber, String brand, String name, BigDecimal price, int totalSales) {
+    public MaterialDTO() {}
+
+    public MaterialDTO(Long idMaterial, String brand, String name, BigDecimal priceArs, BigDecimal priceUsd, String measurementUnit, String internalNumber, String description, String category, BigDecimal quantityAvailable, int totalSales,
+                       int stockCount, int supplierCount, int saleDetailCount, int orderDetailCount) {
         this.idMaterial = idMaterial;
-        this.internalNumber = internalNumber;
         this.name = name;
         this.brand = brand;
-        this.price = price;
+        this.priceArs = priceArs;
+        this.priceUsd = priceUsd;
+        this.measurementUnit = measurementUnit;
+        this.internalNumber = internalNumber;
+        this.description = description;
+        this.category = category;
+        this.quantityAvailable = quantityAvailable;
         this.totalSales = totalSales;
+        this.stockCount = stockCount;
+        this.supplierCount = supplierCount;
+        this.saleDetailCount = saleDetailCount;
+        this.orderDetailCount = orderDetailCount;
     }
 }

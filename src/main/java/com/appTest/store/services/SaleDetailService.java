@@ -31,17 +31,15 @@ public class SaleDetailService implements ISaleDetailService{
     @Override
     public SaleDetailDTO convertSaleDetailToDto(SaleDetail saleDetail) {
 
-        BigDecimal quantityProd = saleDetail.getQuantity();
-        BigDecimal priceProd = saleDetail.getPriceUni();
-        String nameProd = saleDetail.getMaterial().getName();
-
-        LocalDate dateSale = saleDetail.getSale().getDateSale();
+        BigDecimal quantityMat = saleDetail.getQuantity();
+        BigDecimal priceMat = saleDetail.getPriceUni();
+        String nameMat = saleDetail.getMaterial().getName();
 
         return new SaleDetailDTO(
-                dateSale,
-                priceProd,
-                nameProd,
-                quantityProd
+                saleDetail.getIdSaleDetail(),
+                priceMat,
+                nameMat,
+                quantityMat
         );
     }
 

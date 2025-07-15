@@ -11,12 +11,14 @@ import java.util.List;
 
 @Getter @Setter
 public class SaleCreateDTO implements Serializable {
-
-    @NotNull(message = "Sale date is required")
+    @NotNull(message = "Date sale is required")
     private LocalDate dateSale;
 
     @NotNull(message = "Client ID is required")
     private Long clientId;
 
+    @NotNull(message = "Materials are required")
     private List<SaleDetailRequestDTO> materials;
+
+    private Long deliveryId;
 }

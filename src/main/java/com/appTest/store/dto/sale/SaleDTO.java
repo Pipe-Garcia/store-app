@@ -9,18 +9,25 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter @Setter
-@JsonPropertyOrder({ "dateSale", "total", "clientName", "paymentMethod" })
+@JsonPropertyOrder({ "idSale", "dateSale", "total", "clientName", "deliveryId", "deliveryDate", "paymentMethod" })
 public class SaleDTO implements Serializable {
+    private Long idSale;
     private LocalDate dateSale;
     private BigDecimal total;
     private String clientName;
+    private Long deliveryId;
+    private LocalDate deliveryDate;
     private String paymentMethod;
 
-    public SaleDTO () {}
-    public SaleDTO(String clientName, LocalDate dateSale, BigDecimal total, String paymentMethod) {
+    public SaleDTO() {}
+
+    public SaleDTO( Long idSale, String clientName, LocalDate dateSale, BigDecimal total, String paymentMethod, Long deliveryId, LocalDate deliveryDate) {
+        this.idSale = idSale;
         this.dateSale = dateSale;
         this.total = total;
         this.clientName = clientName;
-
+        this.paymentMethod = paymentMethod;
+        this.deliveryId = deliveryId;
+        this.deliveryDate = deliveryDate;
     }
 }

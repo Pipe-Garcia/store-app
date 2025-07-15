@@ -23,7 +23,7 @@ public class ClientController {
 
     @GetMapping
     public ResponseEntity<List<ClientDTO>> getAllClients() {
-        List<Client> clientList = servClient.getAllClientes();
+        List<Client> clientList = servClient.getAllClients();
         List<ClientDTO> clientDTOList = clientList.stream()
                                         .map(client -> servClient.convertClientToDto(client))
                                         .collect(Collectors.toList());
