@@ -19,14 +19,11 @@ public class Delivery {
     private LocalDate deliveryDate;
 
     @ManyToOne
-    @JoinColumn(name = "order_id", referencedColumnName = "idOrder")
+    @JoinColumn(name = "order_id", referencedColumnName = "idOrders")
     private Orders orders;
 
     @OneToMany(mappedBy = "delivery", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Sale> sales = new ArrayList<>();
-
-    @OneToMany(mappedBy = "delivery", cascade = CascadeType.ALL)
-    private List<SaleDetail> saleDetails = new ArrayList<>();
 
     public Delivery() {}
 

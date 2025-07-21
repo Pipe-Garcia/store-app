@@ -53,15 +53,16 @@ public class MaterialController {
     }
 
     @PostMapping
-    public ResponseEntity<String> createMaterial(@RequestBody @Valid MaterialCreateDTO dto) {
-        servMat.createMaterial(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body("The material has been successfully created.");
+    public ResponseEntity<MaterialDTO> createMaterial(@RequestBody @Valid MaterialCreateDTO dto) {
+        MaterialDTO createdMaterial =  servMat.createMaterial(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdMaterial);
     }
 
     @PutMapping
-    public ResponseEntity<String> updateMaterial(@RequestBody MaterialUpdateDTO dto) {
+    public ResponseEntity<MaterialDTO> updateMaterial(@RequestBody @Valid MaterialUpdateDTO dto) {
         servMat.updateMaterial(dto);
-        return ResponseEntity.ok().body("The material has been successfully updated.");
+        Material material = servMat.getMaterialById(dto.getIdMaterial());
+        return ResponseEntity.ok(servMat.convertMaterialToDto(material));
     }
 
     @DeleteMapping("/{id}")

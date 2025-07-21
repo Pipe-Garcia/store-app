@@ -20,7 +20,6 @@ public class MaterialSupplierCreateDTO implements Serializable {
     @DecimalMin(value = "0.01", message = "Price unit must be greater than 0")
     private BigDecimal priceUnit;
 
-    @NotNull(message = "Delivery time is required")
     @Min(value = 0, message = "Delivery time must be at least 0 days")
     private Integer deliveryTimeDays;
 }

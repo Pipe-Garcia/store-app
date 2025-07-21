@@ -19,7 +19,7 @@ public interface ISaleService {
 
     public SaleHighestDTO getHighestSale();
 
-    public void createSale(SaleCreateDTO dto);
+    public SaleDTO createSale(SaleCreateDTO dto);
 
     public void updateSale(SaleUpdateDTO dto);
 

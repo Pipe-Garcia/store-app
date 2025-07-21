@@ -1,5 +1,7 @@
 package com.appTest.store.dto.material;
 
+import com.appTest.store.dto.stock.StockCreateDTO;
+import com.appTest.store.dto.warehouse.WarehouseCreateDTO;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -32,10 +34,10 @@ public class MaterialCreateDTO implements Serializable {
     @NotNull(message = "Family ID is required")
     private Long familyId;
 
-    // 🔽 Campos adicionales para el stock inicial
-    @DecimalMin(value = "0.0", inclusive = false, message = "Initial quantity must be greater than 0")
-    private BigDecimal initialQuantity;
+    // ➕ Stock inicial (opcional)
+    private StockCreateDTO stock;
 
-    private Long warehouseId;
+    // ➕ Datos para el Warehouse (opcional)
+    private WarehouseCreateDTO warehouse;
 }
 

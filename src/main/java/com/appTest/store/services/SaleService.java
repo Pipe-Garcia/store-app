@@ -2,13 +2,10 @@ package com.appTest.store.services;
 
 import com.appTest.store.dto.saleDetail.SaleDetailRequestDTO;
 import com.appTest.store.dto.sale.*;
-import com.appTest.store.models.Client;
-import com.appTest.store.models.Material;
-import com.appTest.store.models.SaleDetail;
-import com.appTest.store.models.Sale;
-import com.appTest.store.repositories.IClientRepository;
-import com.appTest.store.repositories.IMaterialRepository;
-import com.appTest.store.repositories.ISaleRepository;
+import com.appTest.store.models.*;
+import com.appTest.store.repositories.*;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -25,15 +22,18 @@ public class SaleService implements ISaleService{
     private ISaleRepository repoSale;
 
     @Autowired
-    @Lazy
     private IClientRepository repoClient;
 
     @Autowired
-    @Lazy
     private IMaterialRepository repoMat;
 
     @Autowired
-    @Lazy
+    private IPaymentRepository repoPayment;
+
+    @Autowired
+    private IDeliveryRepository repoDelivery;
+
+    @Autowired
     private IStockService servStock;
 
     @Override
@@ -58,9 +58,9 @@ public class SaleService implements ISaleService{
 
         BigDecimal total  = calculateTotal(sale);
 
-        Long deliveryId = sale.getDelivery().getIdDelivery();
+        Long deliveryId = (sale.getDelivery() != null) ? sale.getDelivery().getIdDelivery() : null;
 
-        LocalDate deliveryDate = sale.getDelivery().getDeliveryDate();
+
 
         return new SaleDTO(
                 sale.getIdSale(),
@@ -68,8 +68,7 @@ public class SaleService implements ISaleService{
                 sale.getDateSale(),
                 total,
                 paymentMethod,
-                deliveryId,
-                deliveryDate
+                deliveryId
         );
     }
 
@@ -92,19 +91,20 @@ public class SaleService implements ISaleService{
 
 
     @Override
-    public void createSale(SaleCreateDTO dto) {
+    @Transactional
+    public SaleDTO createSale(SaleCreateDTO dto) {
         Sale sale = new Sale();
         sale.setDateSale(dto.getDateSale());
 
         Client client = repoClient.findById(dto.getClientId())
-                .orElseThrow(() -> new RuntimeException("Client not found with ID: " + dto.getClientId()));
+                .orElseThrow(() -> new EntityNotFoundException("Client not found with ID: " + dto.getClientId()));
         sale.setClient(client);
 
         List<SaleDetail> saleDetailList = new ArrayList<>();
 
         for (SaleDetailRequestDTO item : dto.getMaterials()) {
             Material material = repoMat.findById(item.getMaterialId())
-                    .orElseThrow(() -> new RuntimeException("Material not found with ID: " + item.getMaterialId()));
+                    .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + item.getMaterialId()));
             if (material != null) {
                 SaleDetail ps = new SaleDetail();
                 ps.setMaterial(material);
@@ -119,28 +119,62 @@ public class SaleService implements ISaleService{
         }
         sale.setSaleDetailList(saleDetailList);
 
+        Sale savedSale = repoSale.save(sale);
+
+
+        if (dto.getPayment() != null) {
+            Payment payment = new Payment();
+            payment.setAmount(dto.getPayment().getAmount());
+            payment.setDatePayment(dto.getPayment().getDatePayment());
+            payment.setMethodPayment(dto.getPayment().getMethodPayment());
+            BigDecimal totalPaid = savedSale.getPaymentList().stream()
+                    .map(Payment::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .add(dto.getPayment().getAmount());
+            BigDecimal saleTotal = calculateTotal(savedSale);
+            payment.setStatus(calculatePaymentStatus(totalPaid, saleTotal));
+            payment.setSale(savedSale);
+            repoPayment.save(payment);
+        }
+
+        if (dto.getDeliveryId() != null) {
+            Delivery delivery = repoDelivery.findById(dto.getDeliveryId())
+                    .orElseThrow(() -> new EntityNotFoundException("Delivery not found with ID: " + dto.getDeliveryId()));
+            sale.setDelivery(delivery);
+        }
+
+
+        return convertSaleToDto(savedSale);
+    }
+
+
+    private String calculatePaymentStatus(BigDecimal totalPaid, BigDecimal saleTotal) {
+        if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {
+            return "PENDING";
+        } else if (totalPaid.compareTo(saleTotal) < 0) {
+            return "PARTIAL";
+        } else {
+            return "PAID";
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updateSale(SaleUpdateDTO dto) {
+        Sale sale = repoSale.findById(dto.getIdSale())
+                .orElseThrow(() -> new EntityNotFoundException("Sale not found"));
+        if (dto.getDateSale() != null) sale.setDateSale(dto.getDateSale());
+        if (dto.getClientId() != null) {
+            Client client = repoClient.findById(dto.getClientId())
+                    .orElseThrow(() -> new EntityNotFoundException("Client not found"));
+            sale.setClient(client);
+        }
         repoSale.save(sale);
     }
 
-
     @Override
-    public void updateSale(SaleUpdateDTO dto) {
-            Sale sale = repoSale.findById(dto.getIdSale()).orElse(null);
-
-            if (sale != null) {
-                if (dto.getDateSale() != null) sale.setDateSale(dto.getDateSale());
-
-                if (dto.getClientId() != null) {
-                    Client client = repoClient.findById(dto.getClientId()).orElse(null);
-                    sale.setClient(client);
-                };
-
-                repoSale.save(sale);
-            }
-    }
-
-    @Override
+    @Transactional
     public void deleteSaleById(Long idSale) {
-            repoSale.deleteById(idSale);
+        repoSale.deleteById(idSale);
     }
 }

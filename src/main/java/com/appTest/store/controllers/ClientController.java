@@ -4,7 +4,9 @@ import com.appTest.store.dto.client.ClientCreateDTO;
 import com.appTest.store.dto.client.ClientDTO;
 import com.appTest.store.dto.client.ClientUpdateDTO;
 import com.appTest.store.models.Client;
+import com.appTest.store.repositories.IClientRepository;
 import com.appTest.store.services.IClientService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,9 @@ public class ClientController {
 
     @Autowired
     private IClientService servClient;
+
+    @Autowired
+    private IClientRepository repoClient;
 
     @GetMapping
     public ResponseEntity<List<ClientDTO>> getAllClients() {
@@ -44,15 +49,17 @@ public class ClientController {
     }
 
     @PostMapping
-    public ResponseEntity<String> createClient(@RequestBody @Valid ClientCreateDTO dto) {
-        servClient.createClient(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body("The client has been successfully created.");
+    public ResponseEntity<ClientDTO> createClient(@RequestBody @Valid ClientCreateDTO dto) {
+        ClientDTO createdClient = servClient.createClient(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdClient);
     }
 
     @PutMapping
-    public ResponseEntity<String> updateClient(@RequestBody ClientUpdateDTO dto) {
+    public ResponseEntity<ClientDTO> updateClient(@RequestBody @Valid ClientUpdateDTO dto) {
         servClient.updateClient(dto);
-        return ResponseEntity.ok().body("The client has been successfully updated.");
+        Client client = repoClient.findById(dto.getIdClient())
+                .orElseThrow(() -> new EntityNotFoundException("Client not found"));
+        return ResponseEntity.ok(servClient.convertClientToDto(client));
     }
 
     @DeleteMapping ("/{id}")

@@ -26,11 +26,11 @@ public class StockService implements IStockService{
     private IStockRepository repoStock;
 
     @Autowired
-    @Lazy
+    
     private IMaterialRepository repoMat;
 
     @Autowired
-    @Lazy
+    
     private IWarehouseRepository repoWare;
 
     @Override

@@ -8,17 +8,19 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 @Getter @Setter
-@JsonPropertyOrder({"idOrderDetail", "materialName", "priceUni", "quantity"})
+@JsonPropertyOrder({"idOrderDetail", "ordersId", "materialName", "priceUni", "quantity"})
 public class OrderDetailDTO implements Serializable {
     private Long idOrderDetail;
+    private Long ordersId;
     private String materialName;
     private BigDecimal priceUni;
     private BigDecimal quantity;
 
     public OrderDetailDTO() {}
 
-    public OrderDetailDTO(Long idOrderDetail, String materialName, BigDecimal priceUni, BigDecimal quantity) {
+    public OrderDetailDTO(Long idOrderDetail, Long ordersId, String materialName, BigDecimal priceUni, BigDecimal quantity) {
         this.idOrderDetail = idOrderDetail;
+        this.ordersId = ordersId;
         this.materialName = materialName;
         this.priceUni = priceUni;
         this.quantity = quantity;
