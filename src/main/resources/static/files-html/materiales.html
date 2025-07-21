@@ -19,7 +19,7 @@
         <li><a href="">Pedidos</a></li>
         <li><a href="">Entregas</a></li>
         <li><a href="">Proveedores</a></li>
-        <li><a href="">Almacenes</a></li>
+        <li><a href="../files-html/almacen.html">Almacenes</a></li>
     </ul>
     </nav>
 </header>
@@ -28,6 +28,7 @@
     <div class="titulos-mat">
         <h1 style="margin: 10px 0 0 50px;">Materiales </h1>
         <h4><a href="../files-html/editar-stock.html">Editar Stock</a></h4>
+        <h4><a href="../files-html/familias.html">Familias</a></h4>
     </div>
     <hr><br>
 
@@ -39,28 +40,38 @@
       <button onclick="toggleFormularioMaterial()">Nuevo Material</button>
     </div>
 
-    <div class="formulario-nuevo" id="formularioNuevoMaterial">
-        <input type="number" id="internalNumber" placeholder="Código interno" required>
-        <input type="text" id="name" placeholder="Nombre" required>
-        <input type="text" id="brand" placeholder="Proveedor" required>
-        <input type="number" step="0.01" id="priceArs" placeholder="Precio ARS" required>
-        <button onclick="agregarMaterial()">Agregar Material</button>
+  <div class="formulario-nuevo" id="formularioNuevoMaterial">
+      <input type="number" id="internalNumber" placeholder="Código interno" required>
+      <input type="text" id="name" placeholder="Nombre" required>
+      <input type="text" id="brand" placeholder="Proveedor" required>
+      <input type="number" step="0.01" id="priceArs" placeholder="Precio ARS" required>
+
+      <select id="familyId" required>
+        <option value="">Seleccionar familia</option>
+      </select>
+        <select id="warehouseId" required>
+        <option value="">Seleccionar almacén</option>
+      </select>
+
+
+      <input type="number" step="0.01" id="initialQuantity" placeholder="Cantidad inicial" required>
+
+      <button onclick="agregarMaterial()">Agregar Material</button>
+  </div>
+
     </div>
-
-</div>
-        <div class="encabezado-materiales">
-            <div>Codigo</div>
-            <div>Nombre</div>
-            <div>Proveedor</div>
-            <div>Stock</div>
-            <div>Precio</div>
-            <div>Acciones</div>
-        </div>
+    <div class="encabezado-materiales">
+        <div>Codigo</div>
+        <div>Nombre</div>
+        <div>Proveedor</div>
+        <div>Stock</div>
+        <div>Precio</div>
+        <div>Acciones</div>
+    </div>
     <div id="lista-materiales"></div>
-  
 
+    
   <script src="../files-js/materiales.js"></script>
 </body>
-</html>
-</body>
+
 </html>

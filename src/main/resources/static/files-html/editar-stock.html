@@ -23,9 +23,8 @@
     </nav>
   </header>
 
-  <section class="form-editar" style="max-width:500px; margin:auto;">
+  <section class="form-editar" style="max-width:600px; margin:auto;">
     <h2>Editar stock de material</h2>
-
     <div class="busqueda">
       <input type="text" id="buscar" placeholder="Código o nombre">
       <button onclick="buscarMaterial()">Buscar</button>
@@ -37,6 +36,9 @@
 
       <label for="cantidad">Cantidad (+/-):</label>
       <input type="number" id="cantidad" required>
+
+      <label for="stockNuevo">Stock Nuevo:</label>
+      <input type="text" id="stockNuevo" disabled>
 
       <button type="submit">Actualizar stock</button>
     </form>
