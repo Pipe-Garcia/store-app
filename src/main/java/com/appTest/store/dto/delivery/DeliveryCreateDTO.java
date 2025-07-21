@@ -16,6 +16,6 @@ public class DeliveryCreateDTO implements Serializable {
     @NotNull(message = "Order ID is required")
     private Long ordersId;
 
-    private String status; // Optional: podría asignarse automáticamente a "pending"
+    private String status;
 }
 

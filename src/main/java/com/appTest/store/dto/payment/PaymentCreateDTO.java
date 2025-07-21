@@ -20,10 +20,8 @@ public class PaymentCreateDTO implements Serializable {
     @NotNull(message = "Payment method is required")
     private String methodPayment;
 
-    @NotNull(message = "Payment status is required")
     private String status;
 
-    @NotNull(message = "Sale ID is required")
     private Long saleId;
 }
 

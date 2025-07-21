@@ -56,15 +56,16 @@ public class SaleController {
     }
 
     @PostMapping
-    public ResponseEntity<String> createSale(@RequestBody @Valid SaleCreateDTO dto) {
-        servSale.createSale(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body("The sale has been successfully created.");
+    public ResponseEntity<SaleDTO> createSale(@RequestBody @Valid SaleCreateDTO dto) {
+        SaleDTO createdSale = servSale.createSale(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdSale);
     }
 
     @PutMapping
-    public ResponseEntity<String> updateSale(@RequestBody SaleUpdateDTO dto) {
+    public ResponseEntity<SaleDTO> updateSale(@RequestBody @Valid SaleUpdateDTO dto) {
         servSale.updateSale(dto);
-        return ResponseEntity.ok().body("The sale has been successfully updated.");
+        Sale sale = servSale.getSaleById(dto.getIdSale());
+        return ResponseEntity.ok(servSale.convertSaleToDto(sale));
     }
 
     @DeleteMapping ("/{id}")

@@ -16,7 +16,7 @@ public class Orders {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idOrder;
+    private Long idOrders;
     private LocalDate dateCreate;
     private LocalDate dateDelivery;
 

@@ -23,7 +23,7 @@ public class FamilyController {
     private IFamilyService servFam;
 
     @Autowired
-    @Lazy
+    
     private IFamilyRepository repoFam;
 
     @PostMapping

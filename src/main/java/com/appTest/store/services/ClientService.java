@@ -23,10 +23,10 @@ public class ClientService implements IClientService{
     private IClientRepository repoClient;
 
     @Autowired
-    @Lazy
+    
     private IOrdersRepository repoOrders;
 //    @Autowired
-//    @Lazy
+//    
 //    private AuditService auditService;
 //
 //    public ClientService(IClientRepository repoClient, AuditService auditService) {
@@ -47,7 +47,7 @@ public class ClientService implements IClientService{
                 .findTopByClientOrderByDateCreateDesc(client)
                 .orElse(null);
 
-        Long latestOrderId = (latestOrder != null) ? latestOrder.getIdOrder() : null;
+        Long latestOrderId = (latestOrder != null) ? latestOrder.getIdOrders() : null;
         return new ClientDTO(
                 client.getIdClient(),
                 client.getName(),
@@ -77,7 +77,7 @@ public class ClientService implements IClientService{
 
     @Override
     @Transactional
-    public void createClient(ClientCreateDTO dto) {
+    public ClientDTO createClient(ClientCreateDTO dto) {
         Client client = new Client();
         client.setName(dto.getName());
         client.setSurname(dto.getSurname());
@@ -88,10 +88,12 @@ public class ClientService implements IClientService{
         client.setPhoneNumber(dto.getPhoneNumber());
 
         repoClient.save(client);
-//        auditService.createAudit(client, "INSERT", null);
+
+        return convertClientToDto(client);
     }
 
     @Override
+    @Transactional
     public void updateClient(ClientUpdateDTO dto) {
         Client client = repoClient.findById(dto.getIdClient()).orElse(null);
 
@@ -106,6 +108,7 @@ public class ClientService implements IClientService{
     }
 
     @Override
+    @Transactional
     public void deleteClientById(Long idClient) {
         repoClient.deleteById(idClient);
     }

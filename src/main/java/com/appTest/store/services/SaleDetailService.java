@@ -4,6 +4,7 @@ import com.appTest.store.dto.saleDetail.MaterialMostSoldDTO;
 import com.appTest.store.dto.saleDetail.SaleDetailDTO;
 import com.appTest.store.models.SaleDetail;
 import com.appTest.store.repositories.ISaleDetailRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,7 @@ public class SaleDetailService implements ISaleDetailService{
 
 
     @Override
+    @Transactional
     public boolean deleteSaleDetailById(Long idSaleDetail) {
         SaleDetail saleDetail = repoSaleDetail.findById(idSaleDetail).orElse(null);
         if (saleDetail != null) {

@@ -16,18 +16,16 @@ public class SaleDTO implements Serializable {
     private BigDecimal total;
     private String clientName;
     private Long deliveryId;
-    private LocalDate deliveryDate;
     private String paymentMethod;
 
     public SaleDTO() {}
 
-    public SaleDTO( Long idSale, String clientName, LocalDate dateSale, BigDecimal total, String paymentMethod, Long deliveryId, LocalDate deliveryDate) {
+    public SaleDTO( Long idSale, String clientName, LocalDate dateSale, BigDecimal total, String paymentMethod, Long deliveryId) {
         this.idSale = idSale;
         this.dateSale = dateSale;
         this.total = total;
         this.clientName = clientName;
         this.paymentMethod = paymentMethod;
         this.deliveryId = deliveryId;
-        this.deliveryDate = deliveryDate;
     }
 }

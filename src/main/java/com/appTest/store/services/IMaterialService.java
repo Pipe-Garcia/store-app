@@ -17,7 +17,7 @@ public interface IMaterialService {
 
       public MaterialMostExpensiveDTO getMaterialByHighestPrice();
 
-      public void createMaterial(MaterialCreateDTO dto);
+      public MaterialDTO createMaterial(MaterialCreateDTO dto);
 
       public void updateMaterial(MaterialUpdateDTO dto);
 

@@ -4,13 +4,19 @@ import com.appTest.store.dto.material.*;
 import com.appTest.store.models.Family;
 import com.appTest.store.models.Material;
 import com.appTest.store.models.Stock;
+import com.appTest.store.models.Warehouse;
 import com.appTest.store.repositories.IFamilyRepository;
 import com.appTest.store.repositories.IMaterialRepository;
+import com.appTest.store.repositories.IStockRepository;
+import com.appTest.store.repositories.IWarehouseRepository;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -20,8 +26,16 @@ public class MaterialService implements IMaterialService{
     private IMaterialRepository repoMat;
 
     @Autowired
-    @Lazy
+    
     private IFamilyRepository repoFam;
+
+    @Autowired
+    
+    private IWarehouseRepository repoWare;
+
+    @Autowired
+    
+    private IStockRepository repoStock;
 
     @Override
     public List<Material> getAllMaterials() {
@@ -75,7 +89,8 @@ public class MaterialService implements IMaterialService{
     }
 
     @Override
-    public void createMaterial(MaterialCreateDTO dto) {
+    @Transactional
+    public MaterialDTO createMaterial(MaterialCreateDTO dto) {
 
         Material material = new Material();
 
@@ -88,16 +103,40 @@ public class MaterialService implements IMaterialService{
         material.setDescription(dto.getDescription());
 
         Family family = repoFam.findById(dto.getFamilyId())
-                .orElseThrow(() -> new RuntimeException("Family not found with ID: " + dto.getFamilyId()));
+                .orElseThrow(() -> new EntityNotFoundException("Family not found with ID: " + dto.getFamilyId()));
         material.setFamily(family);
 
-        repoMat.save(material);
+        Material savedMaterial = repoMat.save(material);
+
+        Warehouse warehouse = null;
+        if (dto.getWarehouse() != null) {
+            warehouse = new Warehouse();
+            warehouse.setAddress(dto.getWarehouse().getAddress());
+            warehouse.setName(dto.getWarehouse().getName());
+            warehouse.setLocation(dto.getWarehouse().getLocation());
+            warehouse = repoWare.save(warehouse);
+        }
+
+        if (dto.getStock() != null) {
+            Stock stock = new Stock();
+            stock.setMaterial(savedMaterial);
+            stock.setWarehouse(warehouse != null ? warehouse : repoWare.findById(dto.getStock().getWarehouseId())
+                    .orElseThrow(() -> new EntityNotFoundException("Warehouse not found")));
+            stock.setQuantityAvailable(dto.getStock().getQuantityAvailable());
+            stock.setLastUpdate(LocalDate.now());
+            repoStock.save(stock);
+            savedMaterial = repoMat.findById(savedMaterial.getIdMaterial())
+                    .orElseThrow(() -> new EntityNotFoundException("Material not found after stock creation"));
+        }
+
+        return convertMaterialToDto(savedMaterial);
     }
 
     @Override
+    @Transactional
     public void updateMaterial(MaterialUpdateDTO dto) {
         Material material = repoMat.findById(dto.getIdMaterial())
-                .orElseThrow(() -> new RuntimeException("Material not found with ID: " + dto.getIdMaterial()));
+                .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + dto.getIdMaterial()));
 
         if (dto.getName() != null) material.setName(dto.getName());
         if (dto.getBrand() != null) material.setBrand(dto.getBrand());
@@ -109,7 +148,7 @@ public class MaterialService implements IMaterialService{
 
         if (dto.getFamilyId() != null) {
             Family family = repoFam.findById(dto.getFamilyId())
-                    .orElseThrow(() -> new RuntimeException("Family not found with ID: " + dto.getFamilyId()));
+                    .orElseThrow(() -> new EntityNotFoundException("Family not found with ID: " + dto.getFamilyId()));
             material.setFamily(family);
         }
 
@@ -118,6 +157,7 @@ public class MaterialService implements IMaterialService{
 
 
     @Override
+    @Transactional
     public boolean deleteMaterialById(Long idMaterial) {
         Material material = repoMat.findById(idMaterial).orElse(null);
         if (material != null) {
