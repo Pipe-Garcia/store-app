@@ -87,15 +87,19 @@ function agregarMaterial() {
   }
 
   const nuevoMaterial = {
-    name: nombre,
-    brand: proveedor,
-    priceArs: parseFloat(precio),
-    internalNumber: parseInt(codigo),
-    measurementUnit: "unidad",
-    familyId: parseInt(familyId),
-    warehouseId: parseInt(warehouseId),
-    initialQuantity: parseFloat(initialQuantity)
-  };
+  name: nombre,
+  brand: proveedor,
+  priceArs: parseFloat(precio),
+  priceUsd: parseFloat(precio), // o usá otro input si lo tenés
+  internalNumber: parseInt(codigo),
+  measurementUnit: "unidad",
+  familyId: parseInt(familyId),
+  stock: {
+    quantityAvailable: parseFloat(initialQuantity),
+    warehouseId: parseInt(warehouseId)
+  }
+};
+
 
   fetch(API_URL_MAT, {
     method: 'POST',
@@ -111,9 +115,11 @@ function agregarMaterial() {
     })
     .catch(err => {
       console.error(err);
-      alert("❌ Error al crear material");
+      alert("Error al crear material");
     });
 }
+
+
 
 
 function eliminarMaterial(id) {
