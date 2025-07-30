@@ -10,14 +10,18 @@ import java.util.List;
 
 @Entity
 @Table(name = "orders")
-
 @Getter @Setter
 public class Orders {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idOrders;
+    @Column(name = "id_order") // <- mismo nombre que en la base
+    private Long idOrder;
+
+    @Column(name = "date_create")
     private LocalDate dateCreate;
+
+    @Column(name = "date_delivery")
     private LocalDate dateDelivery;
 
     @ManyToOne
@@ -26,7 +30,6 @@ public class Orders {
 
     @OneToMany(mappedBy = "orders", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderDetail> orderDetails = new ArrayList<>();
-
 
     @OneToMany(mappedBy = "orders", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Delivery> deliveries = new ArrayList<>();

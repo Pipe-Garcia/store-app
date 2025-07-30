@@ -46,18 +46,17 @@ public class StockService implements IStockService{
 
     @Override
     public StockDTO convertStockToDto(Stock stock) {
-
-        String nameMaterial = stock.getMaterial().getName();
-        String nameWarehouse = stock.getWarehouse().getName();
-
         return new StockDTO(
-            stock.getIdStock(),
-            nameMaterial,
-                nameWarehouse,
-            stock.getQuantityAvailable(),
+                stock.getIdStock(),
+                stock.getMaterial().getIdMaterial(),
+                stock.getMaterial().getName(),
+                stock.getWarehouse().getName(),
+                stock.getQuantityAvailable(),
                 stock.getLastUpdate()
         );
+
     }
+
 
     @Override
     @Transactional
@@ -106,6 +105,10 @@ public class StockService implements IStockService{
         }
         stock.setQuantityAvailable(stock.getQuantityAvailable().subtract(quantity));
         repoStock.save(stock);
+    }
+    @Override
+    public List<Stock> getStocksByMaterial(Long materialId) {
+        return repoStock.findByMaterial_IdMaterial(materialId);
     }
 
     @Override

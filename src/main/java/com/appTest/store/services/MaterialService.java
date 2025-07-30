@@ -49,10 +49,11 @@ public class MaterialService implements IMaterialService{
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         int totalSales = material.getSaleDetailList().stream()
-                .mapToInt(sd -> sd.getQuantity().intValue()) // Suma de cantidades vendidas
+                .mapToInt(sd -> sd.getQuantity().intValue())
                 .sum();
 
         String category = material.getFamily().getTypeFamily();
+
         return new MaterialDTO(
                 material.getIdMaterial(),
                 material.getName(),
@@ -71,6 +72,7 @@ public class MaterialService implements IMaterialService{
                 material.getOrderDetails().size()
         );
     }
+
 
     @Override
     public Material getMaterialById(Long idMaterial) {

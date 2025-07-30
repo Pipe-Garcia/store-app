@@ -47,7 +47,7 @@ public class ClientService implements IClientService{
                 .findTopByClientOrderByDateCreateDesc(client)
                 .orElse(null);
 
-        Long latestOrderId = (latestOrder != null) ? latestOrder.getIdOrders() : null;
+        Long latestOrderId = (latestOrder != null) ? latestOrder.getIdOrder() : null;
         return new ClientDTO(
                 client.getIdClient(),
                 client.getName(),

@@ -10,6 +10,7 @@ import java.util.List;
 
 public interface IStockService {
     List<Stock> getAllStocks();
+    List<Stock> getStocksByMaterial(Long materialId);
     Stock getStockById(Long id);
     StockDTO convertStockToDto(Stock stock);
     StockDTO createStock(StockCreateDTO dto);

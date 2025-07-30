@@ -32,6 +32,6 @@ public class ClientUpdateDTO implements Serializable {
     private String locality;
 
     @Size(min = 2, max = 40, message = "Phone number must be between 6 and 40 numbers")
-    private Long phoneNumber;
+    private String phoneNumber;
 }
 

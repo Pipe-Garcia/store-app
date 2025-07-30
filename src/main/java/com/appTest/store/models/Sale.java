@@ -25,8 +25,10 @@ public class Sale {
     private List<Payment> paymentList = new ArrayList<>();
 
     @ManyToOne
-    @JoinColumn(name = "order_id", referencedColumnName = "idOrders")
+    @JoinColumn(name = "order_id")
     private Orders orders;
+
+
 
     @ManyToOne
     @JoinColumn(name = "delivery_id")

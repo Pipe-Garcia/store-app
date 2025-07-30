@@ -9,7 +9,7 @@ import java.io.Serializable;
 
 @Getter @Setter
 @JsonPropertyOrder({ "idClient", "name", "surname", "dni", "email", "address", "locality", "phoneNumber", "latestOrderId", "quantSales" })
-public class ClientDTO implements Serializable {
+public class  ClientDTO implements Serializable {
     private Long idClient;
     private String name;
     private String surname;

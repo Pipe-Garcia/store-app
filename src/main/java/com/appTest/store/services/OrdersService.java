@@ -56,7 +56,7 @@ public class OrdersService implements IOrdersService{
         String completeNameClient = nameClient + " " + surnameClient;
         BigDecimal total  = calculateTotal(orders);
         return new OrdersDTO(
-                orders.getIdOrders(),
+                orders.getIdOrder(),
                 completeNameClient,
                 orders.getDateCreate(),
                 orders.getDateDelivery(),

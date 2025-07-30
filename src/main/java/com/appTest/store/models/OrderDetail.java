@@ -21,8 +21,10 @@ public class OrderDetail {
     private BigDecimal priceUni = BigDecimal.ZERO;
 
     @ManyToOne
-    @JoinColumn(name = "order_id", referencedColumnName = "idOrders")
+    @JoinColumn(name = "order_id")
     private Orders orders;
+
+
 
     @ManyToOne
     @JoinColumn(name = "material_id")

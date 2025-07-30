@@ -22,11 +22,17 @@ public class StockController {
     private IStockService servStock;
 
     @GetMapping
-    public ResponseEntity<List<StockDTO>> getAllStocks() {
-        List<Stock> stockList = servStock.getAllStocks();
+    public ResponseEntity<List<StockDTO>> getStocks(@RequestParam(required = false) Long materialId) {
+        List<Stock> stockList;
+
+        if (materialId != null) {
+            stockList = servStock.getStocksByMaterial(materialId);
+        } else {
+            stockList = servStock.getAllStocks();
+        }
 
         List<StockDTO> stockDTOList = stockList.stream()
-                .map(stock -> servStock.convertStockToDto(stock))
+                .map(servStock::convertStockToDto)
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(stockDTOList);

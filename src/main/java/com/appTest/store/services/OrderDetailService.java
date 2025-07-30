@@ -36,7 +36,7 @@ public class OrderDetailService implements IOrderDetailService{
         BigDecimal priceMat = orderDetail.getPriceUni();
         return new OrderDetailDTO(
                 orderDetail.getIdOrderDetail(),
-                orderDetail.getOrders().getIdOrders(),
+                orderDetail.getOrders().getIdOrder(),
                 materialName,
                 priceMat,
                 quantityMat
