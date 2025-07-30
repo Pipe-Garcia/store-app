@@ -48,7 +48,7 @@ public class DeliveryService implements IDeliveryService{
 
         return new DeliveryDTO(
                 delivery.getIdDelivery(),
-                delivery.getOrders().getIdOrder(),
+                delivery.getOrders().getIdOrders(),
                 delivery.getDeliveryDate(),
                 delivery.getStatus(),
                 completeName

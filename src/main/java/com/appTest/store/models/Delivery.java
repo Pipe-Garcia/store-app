@@ -19,7 +19,7 @@ public class Delivery {
     private LocalDate deliveryDate;
 
     @ManyToOne
-    @JoinColumn(name = "order_id")
+    @JoinColumn(name = "order_id", referencedColumnName = "idOrders")
     private Orders orders;
 
 

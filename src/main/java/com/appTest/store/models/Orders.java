@@ -15,8 +15,7 @@ public class Orders {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_order") // <- mismo nombre que en la base
-    private Long idOrder;
+    private Long idOrders;
 
     @Column(name = "date_create")
     private LocalDate dateCreate;
