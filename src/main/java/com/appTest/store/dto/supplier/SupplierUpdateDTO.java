@@ -34,7 +34,7 @@ public class SupplierUpdateDTO implements Serializable {
     @Size(min = 2, max = 100, message = "The company name must be between 2 and 100 characters.")
     private String nameCompany;
 
-    private Long phoneNumber;
+    private String phoneNumber;
 
     @Pattern(regexp = "ACTIVE|INACTIVE", message = "The status must be ACTIVE or INACTIVE")
     private String status;

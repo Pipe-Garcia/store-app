@@ -1,8 +1,6 @@
 package com.appTest.store.dto.client;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -23,7 +21,7 @@ public class ClientCreateDTO implements Serializable {
     @Size(min = 7, max = 10, message = "DNI must be between 7 and 10 digits")
     private String dni;
 
-    @Email(message = "El email debe ser válido")
+    @Email(message = "Email must be valid.")
     private String email;
 
     @NotBlank(message = "Address is required")
@@ -37,4 +35,8 @@ public class ClientCreateDTO implements Serializable {
     @NotBlank(message = "Phone number is required")
     @Size(min = 6, max = 30, message = "Phone number must be between 6 and 40 characters")
     private String phoneNumber;
+
+    @NotNull(message = "Status is required")
+    @Pattern(regexp = "ACTIVE|INACTIVE", message = "The status must be ACTIVE or INACTIVE")
+    private String status;
 }

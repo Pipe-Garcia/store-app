@@ -58,6 +58,7 @@ public class ClientService implements IClientService{
                 client.getAddress(),
                 client.getLocality(),
                 client.getPhoneNumber(),
+                client.getStatus(),
                 latestOrderId
         );
     }
@@ -86,6 +87,7 @@ public class ClientService implements IClientService{
         client.setAddress(dto.getAddress());
         client.setLocality(dto.getLocality());
         client.setPhoneNumber(dto.getPhoneNumber());
+        client.setStatus(dto.getStatus());
 
         repoClient.save(client);
 
@@ -102,6 +104,10 @@ public class ClientService implements IClientService{
             if (dto.getSurname() != null) client.setSurname(dto.getSurname());
             if (dto.getDni() != null) client.setDni(dto.getDni());
             if (dto.getEmail() != null) client.setEmail(dto.getEmail());
+            if (dto.getAddress() != null) client.setAddress(dto.getAddress());
+            if (dto.getLocality() != null) client.setLocality(dto.getLocality());
+            if (dto.getPhoneNumber() != null) client.setPhoneNumber(dto.getPhoneNumber());
+            if (dto.getStatus() != null) client.setStatus(dto.getStatus());
 
             repoClient.save(client);
         }

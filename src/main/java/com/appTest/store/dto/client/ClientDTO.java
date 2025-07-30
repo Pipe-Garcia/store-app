@@ -8,7 +8,7 @@ import lombok.Setter;
 import java.io.Serializable;
 
 @Getter @Setter
-@JsonPropertyOrder({ "idClient", "name", "surname", "dni", "email", "address", "locality", "phoneNumber", "latestOrderId", "quantSales" })
+@JsonPropertyOrder({ "idClient", "name", "surname", "dni", "email", "address", "locality", "phoneNumber", "status", "latestOrderId", "quantSales" })
 public class  ClientDTO implements Serializable {
     private Long idClient;
     private String name;
@@ -18,11 +18,12 @@ public class  ClientDTO implements Serializable {
     private String address;
     private String locality;
     private String phoneNumber;
+    private String status;
     private Long latestOrderId;
     private int quantSales;
 
     public ClientDTO() {}
-    public ClientDTO( Long idClient, String name, String surname, int quantSales, String dni, String email, String address, String locality, String phoneNumber, Long latestOrderId) {
+    public ClientDTO( Long idClient, String name, String surname, int quantSales, String dni, String email, String address, String locality, String phoneNumber, String status, Long latestOrderId) {
         this.idClient = idClient;
         this.name = name;
         this.surname = surname;
@@ -32,6 +33,7 @@ public class  ClientDTO implements Serializable {
         this.address = address;
         this.locality = locality;
         this.phoneNumber = phoneNumber;
+        this.status = status;
         this.latestOrderId = latestOrderId;
     }
 }

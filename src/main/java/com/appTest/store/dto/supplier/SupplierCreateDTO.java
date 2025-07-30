@@ -34,7 +34,7 @@ public class SupplierCreateDTO implements Serializable {
     private String nameCompany;
 
     @NotNull(message = "Phone number is required.")
-    private Long phoneNumber;
+    private String phoneNumber;
 
     @NotNull(message = "Status is required")
     @Pattern(regexp = "ACTIVE|INACTIVE", message = "The status must be ACTIVE or INACTIVE")

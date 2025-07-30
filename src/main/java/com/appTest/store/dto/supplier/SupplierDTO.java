@@ -8,7 +8,7 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-@JsonPropertyOrder({ "idSupplier", "name", "surname", "dni", "email", "address", "locality", "nameCompany", "phoneNumber", "status", "quantPurchases" })
+@JsonPropertyOrder({ "idSupplier", "name", "surname", "dni", "email", "address", "locality", "nameCompany", "status", "phoneNumber", "quantPurchases" })
 public class SupplierDTO implements Serializable {
     private Long idSupplier;
     private String name;
@@ -19,13 +19,13 @@ public class SupplierDTO implements Serializable {
     private String locality;
     private String nameCompany;
     private String status;
-    private Long phoneNumber;
+    private String phoneNumber;
     private int quantPurchases;
 
     public SupplierDTO() {}
 
     public SupplierDTO(Long idSupplier, String name, String surname, String dni, String email, String address, String locality,
-                       String nameCompany, String status, Long phoneNumber, int quantPurchases) {
+                       String nameCompany, String status, String phoneNumber, int quantPurchases) {
         this.idSupplier = idSupplier;
         this.name = name;
         this.surname = surname;

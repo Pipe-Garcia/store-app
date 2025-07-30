@@ -131,6 +131,8 @@ public class MaterialService implements IMaterialService{
                     .orElseThrow(() -> new EntityNotFoundException("Material not found after stock creation"));
         }
 
+        savedMaterial = repoMat.findById(savedMaterial.getIdMaterial())
+                .orElseThrow(() -> new EntityNotFoundException("Material not found after creation"));
         return convertMaterialToDto(savedMaterial);
     }
 

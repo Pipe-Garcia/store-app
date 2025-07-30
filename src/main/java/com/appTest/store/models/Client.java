@@ -21,6 +21,7 @@ public class Client {
     private String address;
     private String locality;
     private String phoneNumber;
+    private String status;
 
     @OneToMany(mappedBy = "client")
     private List<Sale> sales = new ArrayList<>();
@@ -30,7 +31,7 @@ public class Client {
 
     public Client () {}
 
-    public Client(String address, String dni, String email, String locality, String name, String phoneNumber, String surname) {
+    public Client(String address, String dni, String email, String locality, String name, String phoneNumber, String surname, String status) {
         this.address = address;
         this.dni = dni;
         this.email = email;
@@ -38,5 +39,6 @@ public class Client {
         this.name = name;
         this.phoneNumber = phoneNumber;
         this.surname = surname;
+        this.status = status;
     }
 }

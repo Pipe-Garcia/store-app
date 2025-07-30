@@ -16,4 +16,7 @@ public class PurchaseCreateDTO implements Serializable {
 
     @NotNull(message = "Materials are required")
     private List<PurchaseDetailRequestDTO> materials;
+
+    @NotNull(message = "Supplier ID is required")
+    private Long supplierId;
 }

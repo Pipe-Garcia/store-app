@@ -23,7 +23,7 @@ public class Supplier {
     private String locality;
     private String nameCompany;
     private String status;
-    private Long phoneNumber;
+    private String phoneNumber;
 
     @OneToMany(mappedBy = "supplier")
     private List<MaterialSupplier> materialSuppliers = new ArrayList<>();
@@ -33,7 +33,7 @@ public class Supplier {
 
     public Supplier() {}
 
-    public Supplier(String address, String dni, String email, String locality, String name, String nameCompany, Long phoneNumber, String surname, String status) {
+    public Supplier(String address, String dni, String email, String locality, String name, String nameCompany, String phoneNumber, String surname, String status) {
         this.address = address;
         this.dni = dni;
         this.email = email;

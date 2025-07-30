@@ -18,4 +18,7 @@ public class PurchaseDetailRequestDTO implements Serializable {
     @DecimalMin(value = "1.0", message = "Quantity must be at least 1 unit")
     @Digits(integer = Integer.MAX_VALUE, fraction = 0, message = "Quantity must be an integer")
     private BigDecimal quantity;
+
+    @NotNull(message = "Warehouse ID is required")
+    private Long warehouseId;
 }

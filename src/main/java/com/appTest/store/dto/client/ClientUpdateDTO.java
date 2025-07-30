@@ -1,6 +1,7 @@
 package com.appTest.store.dto.client;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -33,5 +34,8 @@ public class ClientUpdateDTO implements Serializable {
 
     @Size(min = 2, max = 40, message = "Phone number must be between 6 and 40 numbers")
     private String phoneNumber;
+
+    @Pattern(regexp = "ACTIVE|INACTIVE", message = "The status must be ACTIVE or INACTIVE")
+    private String status;
 }
 
