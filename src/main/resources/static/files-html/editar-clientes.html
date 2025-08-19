@@ -8,39 +8,55 @@
 </head>
 <body>
     <header class="header">
-    <nav class="nav-header">
-      <ul class="ul-header">
+   <nav class="nav-header">
+    <img src="" alt="logo">
+    <ul class="ul-header">
         <li><a href="../files-html/index.html">Inicio</a></li>
         <li><a href="../files-html/materiales.html">Materiales</a></li>
         <li><a href="">Ventas</a></li>
         <li><a href="../files-html/clientes.html">Clientes</a></li>
         <li><a href="">Compras</a></li>
-        <li><a href="">Pedidos</a></li>
-        <li><a href="">Entregas</a></li>
+        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+        <li><a href="../files-html/entregas.html">Entregas</a></li>
         <li><a href="">Proveedores</a></li>
-        <li><a href="">Almacenes</a></li>
-      </ul>
+        <li><a href="../files-html/almacen.html">Almacenes</a></li>
+    </ul>
     </nav>
-  </header>
+</header>
     <div class="form-editar">
-        <h2>Editar Cliente</h2>
+      <h2>Editar Cliente</h2>
     <form id="formEditarCliente">
-        <label for="name">Nombre:</label>
-        <input type="text" id="name" name="name" required>
+    <label for="name">Nombre:</label>
+    <input type="text" id="name" name="name" required>
 
-        <label for="surname">Apellido:</label>
-        <input type="text" id="surname" name="surname" required>
+    <label for="surname">Apellido:</label>
+    <input type="text" id="surname" name="surname" required>
 
-        <label for="dni">DNI:</label>
-        <input type="text" id="dni" name="dni" required>
+    <label for="dni">DNI:</label>
+    <input type="text" id="dni" name="dni" required>
 
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email">
-    <!--<label for="phoneNumber">Teléfono:</label>
-    <input type="text" id="phoneNumber" name="phoneNumber">-->
-        <br><br>
-        <button type="submit">Guardar Cambios</button>
-    </form>
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email">
+
+    <label for="address">Dirección:</label>
+    <input type="text" id="address" name="address" required>
+
+    <label for="locality">Localidad:</label>
+    <input type="text" id="locality" name="locality" required>
+
+    <label for="phoneNumber">Teléfono:</label>
+    <input type="text" id="phoneNumber" name="phoneNumber" required>
+
+    <label for="status">Estado:</label>
+    <select id="status" required>
+        <option value="ACTIVE">Activo</option>
+        <option value="INACTIVE">Inactivo</option>
+    </select>
+
+    <br><br>
+    <button type="submit">Guardar Cambios</button>
+</form>
+
 
     </div>
     

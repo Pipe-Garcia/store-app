@@ -1,5 +1,6 @@
 const API_URL_MAT = 'http://localhost:8080/materials';
 const API_URL_FAM = 'http://localhost:8080/families';
+const API_URL_WHS = 'http://localhost:8080/warehouses'; 
 const params = new URLSearchParams(window.location.search);
 const materialId = params.get('id');
 
@@ -10,6 +11,7 @@ if (!materialId) {
 
 document.addEventListener('DOMContentLoaded', () => {
   cargarFamilias();
+  cargarAlmacenes(); 
 
   fetch(`${API_URL_MAT}/${materialId}`)
     .then(r => {
@@ -22,13 +24,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('priceArs').value = m.priceArs;
 
       setTimeout(() => {
-        const select = document.getElementById('familyId');
-        Array.from(select.options).forEach(opt => {
-          if (opt.textContent === m.category) {
-            opt.selected = true;
-          }
-        });
-      }, 300); // espera a que cargue el select
+        document.getElementById('familyId').value = m.family?.idFamily ?? '';
+        document.getElementById('warehouseId').value = m.warehouse?.idWarehouse ?? '';
+      }, 300);
     })
     .catch(err => {
       console.error(err);
@@ -42,7 +40,7 @@ function cargarFamilias() {
     .then(res => res.json())
     .then(data => {
       const select = document.getElementById('familyId');
-      select.innerHTML = '<option value="">Seleccionar familia</option>';
+      select.innerHTML = '<br><option value="">Seleccionar familia</option>';
       data.forEach(fam => {
         const opt = document.createElement('option');
         opt.value = fam.idFamily;
@@ -53,6 +51,22 @@ function cargarFamilias() {
     .catch(err => console.error("Error cargando familias:", err));
 }
 
+function cargarAlmacenes() {
+  fetch(API_URL_WHS)
+    .then(res => res.json())
+    .then(data => {
+      const select = document.getElementById('warehouseId');
+      select.innerHTML = '<option value="">Seleccionar almacén</option>';
+      data.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w.idWarehouse;
+        opt.textContent = w.name;
+        select.appendChild(opt);
+      });
+    })
+    .catch(err => console.error("Error cargando almacenes:", err));
+}
+
 document.getElementById('formEditarMaterial').addEventListener('submit', e => {
   e.preventDefault();
 
@@ -61,7 +75,8 @@ document.getElementById('formEditarMaterial').addEventListener('submit', e => {
     name: document.getElementById('name').value.trim(),
     brand: document.getElementById('brand').value.trim(),
     priceArs: parseFloat(document.getElementById('priceArs').value.trim()),
-    familyId: parseInt(document.getElementById('familyId').value)
+    familyId: parseInt(document.getElementById('familyId').value),
+    warehouseId: parseInt(document.getElementById('warehouseId').value) 
   };
 
   fetch(API_URL_MAT, {

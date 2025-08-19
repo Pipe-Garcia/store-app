@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crear Pedido</title>
+  <link rel="stylesheet" href="../files-css/style.css" />
+</head>
+<body>
+  <header class="header">
+    <nav class="nav-header">
+      <ul class="ul-header">
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="pedidos.html">Pedidos</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="seccion-crearPedido">
+    <h2>Crear pedido</h2>
+    <form id="form-pedido" class="formulario-pedido">
+      <label for="cliente">Cliente:</label>
+      <select id="cliente" required>
+        <option value="">Seleccione un cliente</option>
+      </select>
+
+      <label for="fecha-entrega">Fecha estimada de entrega:</label>
+      <input type="date" id="fecha-entrega" required />
+
+      <h3>Materiales</h3>
+      <div id="materiales-container"></div>
+        <div class="botones-crearPedidos">
+            <button type="button" onclick="agregarMaterial()">+ Agregar material</button>
+            <button type="submit">Guardar Pedido</button>
+        </div>
+    </form>
+  </main>
+
+  <script src="../files-js/crear-pedido.js"></script>
+</body>
+</html>

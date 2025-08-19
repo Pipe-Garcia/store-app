@@ -8,24 +8,25 @@
 </head>
 <body>
   <header class="header">
-    <nav class="nav-header">
-      <ul class="ul-header">
+   <nav class="nav-header">
+    <img src="" alt="logo">
+    <ul class="ul-header">
         <li><a href="../files-html/index.html">Inicio</a></li>
         <li><a href="../files-html/materiales.html">Materiales</a></li>
         <li><a href="">Ventas</a></li>
         <li><a href="../files-html/clientes.html">Clientes</a></li>
         <li><a href="">Compras</a></li>
-        <li><a href="">Pedidos</a></li>
-        <li><a href="">Entregas</a></li>
+        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+        <li><a href="../files-html/entregas.html">Entregas</a></li>
         <li><a href="">Proveedores</a></li>
         <li><a href="../files-html/almacen.html">Almacenes</a></li>
     </ul>
-      </ul>
     </nav>
-  </header>
+</header>
 
-  <section class="contenedor-almacenes">
-    <h2 class="margin-bottom: 10px;">Gestión de Almacenes</h2>
+  <div class="contenedor-almacenes">
+    <h1 style="margin: 10px 0 0 50px;">Gestión de Almacenes</h1>
+    <hr><br>
 
     <form id="formAlmacen" class="formulario-nuevo" style="margin-bottom: 20px; display: flex; gap: 10px;">
       <input type="text" id="name" placeholder="Nombre del almacén" required>
@@ -38,7 +39,7 @@
 
     <h3>Almacenes Registrados</h3>
     <div id="lista-almacenes"></div>
-  </section>
+  </div>
 
   <script src="../files-js/almacenes.js"></script>
 </body>
