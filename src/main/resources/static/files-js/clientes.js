@@ -27,7 +27,7 @@ function mostrarClientes(lista) {
             <div>${c.email}</div>
             <div>${c.phoneNumber}</div>
             <!-- <div>${c.razonSocial || ''}</div> -->
-            <!-- <div>${c.estado ? 'Habilitado' : 'Inactivo'}</div> -->
+            <div>${c.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}</div>
             <div class="acciones">
                 <button onclick="location.href='../files-html/editar-clientes.html?id=${c.idClient}'">✏️</button>
                 <button onclick="eliminarCliente(${c.idClient})">🗑️</button>
@@ -52,15 +52,21 @@ function agregarCliente() {
     }
 
     const dniExistente = clientes.some(m => String(m.dni) === dni);
-    
+    if (dniExistente) {
+        alert("Ya existe un cliente con ese DNI.");
+        return;
+    }
 
-  if (dniExistente) {
-    alert("Ya existe un cliente con ese DNI.");
-    return;
-  }
-  
-
-    const nuevo = { name, surname, dni, email, address, locality, phoneNumber };
+    const nuevo = {
+        name,
+        surname,
+        dni,
+        email,
+        address,
+        locality,
+        phoneNumber,
+        status: 'ACTIVE' 
+    };
 
     fetch(API_URL, {
         method: 'POST',
@@ -79,6 +85,7 @@ function agregarCliente() {
         alert('Error creando cliente');
     });
 }
+
 
 
 

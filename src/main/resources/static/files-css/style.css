@@ -168,7 +168,7 @@ body {
     }
   .encabezado-clientes,.cliente-cont {
   display: grid;
-  grid-template-columns: 50px 1fr 1fr 1fr 2fr 2fr 120px;
+  grid-template-columns: 50px 1fr 1fr 1fr 1fr 1fr 1fr 120px;
   align-items: center;
   padding: 10px;
   border-bottom: 1px solid #ccc;
@@ -205,8 +205,6 @@ body {
   padding: 10px;
   border-bottom: 1px solid #ccc;
 }
-
-
 
 .encabezado-materiales {
   background-color: #eaeaea;
@@ -250,4 +248,107 @@ body {
 }
 .titulos-mat h4{
   text-decoration: none;
+}
+.contenedor-tabla {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.fila {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  text-align: center;
+}
+
+.fila.encabezado {
+  font-weight: bold;
+  background-color: #f0f0f0;
+}
+.seccion-pedidos{
+  padding: 40px;
+}
+.contenedor-almacenes{
+  padding: 40px;
+}
+.seccion-entregas{
+  padding: 40px;
+}
+.titulo-pedidos{
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  
+}
+.seccion-crearPedido{
+  max-width: 600px;
+  margin: 60px auto;
+  padding: 30px;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.seccion-crearPedido h2{
+  margin-bottom: 20px;
+  text-align: center;
+}
+.formulario-pedido{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.formulario-pedido input{
+    width: 50%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+#materiales-container .select-material{
+    width: 50%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+.formulario-pedido select{
+    width: 50%;
+    padding: 10px;
+    
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+.fila-material{
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+#materiales-container button{
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.botones-crearPedidos{
+  display: flex; 
+  flex-direction: column; 
+  width: 30%; 
+  gap:10px;
+}
+.botones-crearPedidos button{
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
 }

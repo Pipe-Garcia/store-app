@@ -17,9 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('name').value = cliente.name;
       document.getElementById('surname').value = cliente.surname;
       document.getElementById('dni').value = cliente.dni;
-      
       document.getElementById('email').value = cliente.email;
-      // document.getElementById('phoneNumber').value = cliente.phoneNumber;
+      document.getElementById('address').value = cliente.address;
+      document.getElementById('locality').value = cliente.locality;
+      document.getElementById('phoneNumber').value = cliente.phoneNumber;
+      document.getElementById('status').value = cliente.status;
     })
     .catch(err => {
       console.error(err);
@@ -37,8 +39,10 @@ document.getElementById('formEditarCliente').addEventListener('submit', e => {
     surname: document.getElementById('surname').value.trim(),
     dni: document.getElementById('dni').value.trim(),
     email: document.getElementById('email').value.trim(),
-    
-    // phoneNumber: document.getElementById('phoneNumber').value.trim()
+    address: document.getElementById('address').value.trim(),
+    locality: document.getElementById('locality').value.trim(),
+    phoneNumber: document.getElementById('phoneNumber').value.trim(),
+    status: document.getElementById('status').value.trim()
   };
 
   fetch(API_URL, {
