@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class ClientController {
     private IClientRepository repoClient;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<ClientDTO>> getAllClients() {
         List<Client> clientList = servClient.getAllClients();
         List<ClientDTO> clientDTOList = clientList.stream()
@@ -36,6 +38,7 @@ public class ClientController {
     }
 
     @GetMapping ("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<ClientDTO> getClientById(@PathVariable Long id) {
         Client client = servClient.getClientById(id);
 
@@ -49,12 +52,14 @@ public class ClientController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<ClientDTO> createClient(@RequestBody @Valid ClientCreateDTO dto) {
         ClientDTO createdClient = servClient.createClient(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdClient);
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<ClientDTO> updateClient(@RequestBody @Valid ClientUpdateDTO dto) {
         servClient.updateClient(dto);
         Client client = repoClient.findById(dto.getIdClient())
@@ -63,6 +68,7 @@ public class ClientController {
     }
 
     @DeleteMapping ("/{id}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<String> deleteClientById(@PathVariable Long id) {
         Client client = servClient.getClientById(id);
 

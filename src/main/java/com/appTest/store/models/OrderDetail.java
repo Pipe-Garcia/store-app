@@ -38,4 +38,5 @@ public class OrderDetail {
         this.quantity = quantity;
         this.priceUni = priceUni;
     }
+
 }

@@ -4,13 +4,24 @@ let currentMaterial = null;
 let currentStock = null;
 
 function buscarMaterial() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('Debes iniciar sesión para buscar un material');
+    window.location.href = '../files-html/login.html';
+    return;
+  }
+
   const filtro = document.getElementById('buscar').value.trim();
   if (!filtro) {
     alert('Ingresá código o nombre');
     return;
   }
 
-  fetch(API)
+  fetch(API, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  })
     .then(r => r.json())
     .then(lista => {
       currentMaterial = lista.find(m =>
@@ -23,8 +34,11 @@ function buscarMaterial() {
         return;
       }
 
-    
-      fetch(`${API_STOCK}?materialId=${currentMaterial.idMaterial}`)
+      fetch(`${API_STOCK}?materialId=${currentMaterial.idMaterial}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
         .then(r => r.json())
         .then(stockList => {
           if (!Array.isArray(stockList) || stockList.length === 0) {
@@ -32,27 +46,28 @@ function buscarMaterial() {
             return;
           }
 
-          
           currentStock = stockList.find(s => s.idMaterial === currentMaterial.idMaterial);
 
-            if (!currentStock) {
-              alert('No se encontró stock para este material');
-              return;
-            }
-
+          if (!currentStock) {
+            alert('No se encontró stock para este material');
+            return;
+          }
 
           document.getElementById('infoMaterial').value =
             `${currentMaterial.internalNumber} – ${currentMaterial.name}`;
           document.getElementById('cantidad').value = '';
           document.getElementById('stockNuevo').value = currentStock.quantityAvailable ?? 0;
 
-         
           if (currentStock.nameWarehouse) {
             document.getElementById('almacenActual').textContent =
               `Almacén: ${currentStock.nameWarehouse}`;
           }
 
           document.getElementById('formStock').style.display = 'block';
+        })
+        .catch(err => {
+          console.error(err);
+          alert('Error al buscar stock');
         });
     })
     .catch(err => {
@@ -69,11 +84,18 @@ document.getElementById('cantidad').addEventListener('input', () => {
   document.getElementById('stockNuevo').value = nuevo;
 });
 
-document.getElementById('formStock').addEventListener('submit', e => {
+document.getElementById('formStock').addEventListener('submit', (e) => {
   e.preventDefault();
 
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('Debes iniciar sesión para actualizar el stock');
+    window.location.href = '../files-html/login.html';
+    return;
+  }
+
   if (!currentStock) {
-    alert("No se encontró stock para editar.");
+    alert('No se encontró stock para editar.');
     return;
   }
 
@@ -96,7 +118,10 @@ document.getElementById('formStock').addEventListener('submit', e => {
 
   fetch(API_STOCK, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(dto)
   })
     .then(res => {

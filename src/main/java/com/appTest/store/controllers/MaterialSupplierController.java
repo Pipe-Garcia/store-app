@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class MaterialSupplierController {
     private IMaterialSupplierService servMatSup;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<MaterialSupplierDTO>> getAllMaterialSuppliers() {
         List<MaterialSupplier> materialSupplierList = servMatSup.getAllMaterialSuppliers();
         List<MaterialSupplierDTO> materialSupplierDTOList = materialSupplierList.stream()
@@ -31,18 +33,21 @@ public class MaterialSupplierController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<MaterialSupplierDTO> getMaterialSupplierById(@PathVariable Long id) {
         MaterialSupplier materialSupplier = servMatSup.getMaterialSupplierById(id);
         return ResponseEntity.ok(servMatSup.convertMaterialSupplierToDto(materialSupplier));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<MaterialSupplierDTO> createMaterialSupplier(@RequestBody @Valid MaterialSupplierCreateDTO dto) {
         MaterialSupplierDTO createdMaterialSupplier = servMatSup.createMaterialSupplier(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdMaterialSupplier);
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<MaterialSupplierDTO> updateMaterialSupplier(@RequestBody @Valid MaterialSupplierUpdateDTO dto) {
         servMatSup.updateMaterialSupplier(dto);
         MaterialSupplier materialSupplier = servMatSup.getMaterialSupplierById(dto.getIdMaterialSupplier());
@@ -50,6 +55,7 @@ public class MaterialSupplierController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<Void> deleteMaterialSupplierById(@PathVariable Long id) {
         servMatSup.deleteMaterialSupplierById(id);
         return ResponseEntity.noContent().build();

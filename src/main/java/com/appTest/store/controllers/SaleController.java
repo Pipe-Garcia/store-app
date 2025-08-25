@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -22,6 +23,7 @@ public class SaleController {
     private ISaleService servSale;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<SaleDTO>> getAllSales() {
         List<Sale> saleList = servSale.getAllSales();
         List<SaleDTO> saleDTOList = saleList.stream()
@@ -31,6 +33,7 @@ public class SaleController {
     }
 
     @GetMapping ("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<SaleDTO> getSaleById(@PathVariable Long id) {
         Sale sale = servSale.getSaleById(id);
         if (sale == null) {
@@ -41,12 +44,14 @@ public class SaleController {
     }
 
     @GetMapping ("/date/{date}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<SaleSummaryByDateDTO> getSaleSummaryByDate(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         SaleSummaryByDateDTO saleSummaryByDateDTO = servSale.getSaleSummaryByDate(date);
         return ResponseEntity.ok(saleSummaryByDateDTO);
     }
 
     @GetMapping ("/highest")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<SaleHighestDTO> getHighestSale() {
         SaleHighestDTO saleHighestDTO  = servSale.getHighestSale();
         if (saleHighestDTO == null) {
@@ -56,12 +61,14 @@ public class SaleController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<SaleDTO> createSale(@RequestBody @Valid SaleCreateDTO dto) {
         SaleDTO createdSale = servSale.createSale(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdSale);
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<SaleDTO> updateSale(@RequestBody @Valid SaleUpdateDTO dto) {
         servSale.updateSale(dto);
         Sale sale = servSale.getSaleById(dto.getIdSale());
@@ -69,6 +76,7 @@ public class SaleController {
     }
 
     @DeleteMapping ("/{id}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<String> deleteSale(@PathVariable Long id) {
         Sale sale = servSale.getSaleById(id);
         if (sale != null) {

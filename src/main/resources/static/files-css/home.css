@@ -1,0 +1,47 @@
+h1 {
+    padding: 5px 15px;
+    margin-top: 30px;
+}
+
+.home-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    padding: 30px;
+    margin: 50px auto;
+}
+.home-container p {
+    padding: 15px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+}
+.home-container p span {
+    font-family: monospace;
+    background-color: #f4f4f4;
+    padding: 5px 10px;
+    border-radius: 5px;
+    word-break: break-all;
+    padding: auto;
+    margin-top: 8px;
+    letter-spacing: 1px;
+}
+#token {
+    font-weight: bold;
+    color: #333;
+}
+
+.home-container button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.home-container button:hover {
+    background-color: #45a049;
+}

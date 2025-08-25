@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Store App</title>
+    <link rel="stylesheet" href="../files-css/login.css">
+</head>
+<body>
+<div class="login-container">
+    <h2>Login</h2>
+    <div>
+        <p>Username:</p>
+        <input type="text" id="username" placeholder="Username" required>
+    </div>
+    <div>
+        <p>Password:</p>
+        <input type="password" id="password" placeholder = "Password" required>
+    </div>
+    <button onclick="login()">Ingresar</button>
+    <p id="message"></p>
+</div>
+
+<script>
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const message = document.getElementById('message');
+
+        const response = await fetch('http://localhost:8080/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('token', data.token); // Guardar token
+            window.location.href = 'index.html'; // Redirigir a la página principal
+        } else {
+            message.textContent = 'Invalid credentials';
+        }
+    }
+</script>
+</body>
+</html>

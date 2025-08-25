@@ -194,6 +194,42 @@ body {
   display: flex;
   gap: 5px;
   justify-content: center;
+  align-items: center; /* Alinea verticalmente los botones */
+  padding: 5px 0; /* Espacio interno para mejor presentación */
+}
+
+.acciones button {
+  padding: 5px 10px; /* Espacio interno para los botones */
+  border: none; 
+  border-radius: 4px; 
+  cursor: pointer; 
+  font-size: 14px; 
+  transition: background-color 0.3s; /* Transición suave al hover */
+  display: flex; /* Permite alinear el ícono y texto */
+  align-items: center; /* Centra el contenido verticalmente */
+  justify-content: center; /* Centra el contenido horizontalmente */
+  gap: 5px; /* Espacio entre ícono y texto */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Sombra sutil */
+}
+
+.acciones button:hover {
+  opacity: 0.9; /* Efecto de hover sutil */
+}
+
+/* Estilos específicos por acción */
+.acciones .ver-btn {
+  background-color: #52a355; /* Verde para "Ver" */
+  color: white;
+}
+
+.acciones .edit-btn {
+  background-color: #69b4f2; /* Azul para "Editar" */
+  color: white;
+}
+
+.acciones .delete-btn {
+  background-color: #fe6f65; /* Rojo para "Eliminar" */
+  color: white;
 }
 .seccion-materiales {
     padding: 40px;
@@ -238,16 +274,45 @@ body {
 }
 
 .material-cont .acciones button:first-child {
-  background-color: #666b64;
+  background-color: #8d8f8c;
   color: white;
 }
 .titulos-mat{
     display: flex;
-    align-items: flex-end;
-    gap: 10px;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 20px;
+    padding: 10px 5px;
 }
-.titulos-mat h4{
-  text-decoration: none;
+.titulos-mat h1{
+    padding: 5px 15px;
+}
+.titulos-mat a{
+    padding: 10px 15px;
+    border: 2px solid rgb(72, 72, 72);
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    background-color: rgb(245, 240, 198)
+}
+.titulos-mat a:hover,
+.titulos-mat a:focus{
+    border: 2px solid rgb(245, 240, 198);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+.titulos-mat a button{
+    text-decoration: none;
+    color: rgb(72, 72, 72);
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+    border-style: none;
+    background-color: rgb(245, 240, 198);
+}
+.titulos-mat a button:hover{
+    color: black;
+    text-decoration: underline;
+    
 }
 .contenedor-tabla {
   display: flex;
@@ -255,6 +320,23 @@ body {
   gap: 6px;
   margin-top: 20px;
 }
+.notification {
+  padding: 10px 20px;
+  border-radius: 5px;
+  margin-top: 10px; /* Espacio debajo del formulario */
+  color: white;
+  text-align: center;
+  width: 100%; /* O ajusta un ancho fijo si prefieres, ej. 300px */
+}
+
+.notification.success {
+  background-color: #4CAF50;
+}
+
+.notification.error {
+  background-color: #f44336;
+}
+
 
 .fila {
   display: grid;
@@ -279,9 +361,39 @@ body {
 }
 .titulo-pedidos{
   display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  
+  align-items: center;
+  justify-content: flex-start;
+  gap: 20px;
+  padding: 10px 5px;
+}
+.titulo-pedidos h1{
+  padding: 5px 15px;
+}
+.titulo-pedidos a:hover,
+.titulo-pedidos a:focus{ 
+    border: 2px solid rgb(245, 240, 198);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+.titulo-pedidos a{
+    padding: 10px 15px;
+    border: 2px solid rgb(72, 72, 72);
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    background-color: rgb(245, 240, 198)
+}
+.titulo-pedidos a button{
+ text-decoration: none;
+    color: rgb(72, 72, 72);
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+    border-style: none;
+    background-color: rgb(245, 240, 198);
+}
+.titulo-pedidos a button:hover{
+   color: black;
+    text-decoration: underline;
 }
 .seccion-crearPedido{
   max-width: 600px;
@@ -352,3 +464,131 @@ body {
   border-radius: 6px;
   cursor: pointer;
 }
+
+.contenedor-almacenes .almacen{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  text-align: center;
+}
+.contenedor-almacenes .almacen:nth-child(even) {
+  background-color: #fffcfc;
+}
+.contenedor-almacenes .main-container .contenedor-tabla .fila{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 10px;
+  text-align: center;
+  border-bottom: 2px solid #ccc;
+}
+.contenedor-almacenes .main-container .contenedor-tabla .fila.encabezado {
+  font-weight: bold;
+  background-color: #f0f0f0;
+  font-size: 18px;
+}
+.contenedor-almacenes .main-container h3 {
+  margin-top: 28px;
+  font-size: 24px;
+}
+
+
+.seccion-detalle-pedido,
+.seccion-editar-pedido {
+  display: flex;
+  flex-direction: column;
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px 30px 8px 30px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  gap: 20px;
+  border: 1px solid #ccc;
+}
+.seccion-detalle-pedido h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.seccion-detalle-pedido .info-pedido {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 40px;
+  gap: 10px;
+  font-size: 16px;
+}
+.seccion-detalle-pedido .info-pedido h3 {
+  margin-top: 15px;
+}
+.seccion-detalle-pedido button {
+  padding: 8px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 30px 30px 30px 30px;
+  cursor: pointer;
+  margin-top: 10px;
+  font-size: 16px;
+  align-self: center;
+  width: 120px;
+}
+
+
+#detalle-pedido p {
+  margin: 10px 0;
+}
+
+#lista-materiales li {
+  margin: 5px 0;
+}
+
+.formulario-pedido {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.fila-material {
+  display: flex;
+  gap: 10px;
+  margin: 5px 0;
+}
+
+.botones-crearPedidos {
+  display: flex;
+  gap: 13px;
+  margin-top: 10px;
+}
+.botones-crearPedidos button:nth-child(2) {
+  background-color: rgb(0, 181, 0);
+}
+.botones-crearPedidos button:nth-child(2):hover{
+  background-color: rgb(0, 147, 0);
+}
+.botones-crearPedidos button:nth-child(1):hover{
+  background-color: rgb(0, 99, 255);
+}
+
+.seccion-editar-pedido button:nth-child(3) {
+  padding: 8px 15px;
+  background-color: rgb(200, 28, 28);
+  color: whitesmoke;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+  font-size: 16px;
+  align-self: center;
+  width: 120px;
+}
+.seccion-editar-pedido button:nth-child(3):hover{
+  background-color: rgb(255, 0, 0);
+}
+
+.acciones .sale-btn {
+  background-color: #d0f26a; /* Amarillo para "Asociar Venta" */
+  color: #28a745;
+}
+

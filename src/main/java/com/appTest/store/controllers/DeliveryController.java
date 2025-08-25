@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class DeliveryController {
     private IDeliveryService servDelivery;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<DeliveryDTO>> getAllDeliveries() {
         List<Delivery> deliveryList = servDelivery.getAllDeliveries();
 
@@ -33,18 +35,21 @@ public class DeliveryController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<DeliveryDTO> getDeliveryById(@PathVariable Long id) {
         Delivery delivery = servDelivery.getDeliveryById(id);
         return ResponseEntity.ok(servDelivery.convertDeliveryToDto(delivery));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<DeliveryDTO> createDelivery(@RequestBody @Valid DeliveryCreateDTO dto) {
         DeliveryDTO createdDelivery = servDelivery.createDelivery(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdDelivery);
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<DeliveryDTO> updateDelivery(@RequestBody @Valid DeliveryUpdateDTO dto) {
         servDelivery.updateDelivery(dto);
         Delivery delivery = servDelivery.getDeliveryById(dto.getIdDelivery());
@@ -52,6 +57,7 @@ public class DeliveryController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<Void> deleteDeliveryById(@PathVariable Long id) {
         servDelivery.deleteDeliveryById(id);
         return ResponseEntity.noContent().build();

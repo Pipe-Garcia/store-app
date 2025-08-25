@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📖 - Detalle del Pedido</title>
+  <link rel="stylesheet" href="../files-css/style.css">
+</head>
+<body>
+  <header class="header">
+    <nav class="nav-header">
+      <ul class="ul-header">
+        <li><a href="../files-html/index.html">Inicio</a></li>
+        <li><a href="../files-html/materiales.html">Materiales</a></li>
+        <li><a href="">Ventas</a></li>
+        <li><a href="../files-html/clientes.html">Clientes</a></li>
+        <li><a href="">Compras</a></li>
+        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+        <li><a href="../files-html/entregas.html">Entregas</a></li>
+        <li><a href="">Proveedores</a></li>
+        <li><a href="../files-html/almacen.html">Almacenes</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="seccion-detalle-pedido">
+    <h2>Detalle del Pedido</h2>
+    <div id="detalle-pedido" class="info-pedido">
+      <p><strong>ID Pedido:</strong> <span id="id-pedido">-</span></p>
+      <p><strong>Cliente:</strong> <span id="cliente">-</span></p>
+      <p><strong>Fecha Creación:</strong> <span id="fecha-creacion">-</span></p>
+      <p><strong>Fecha Entrega:</strong> <span id="fecha-entrega">-</span></p>
+      <p><strong>Total:</strong> <span id="total">$-</span></p>
+      <h3>Materiales</h3>
+      <ul id="lista-materiales"></ul>
+    </div>
+    <button onclick="window.location.href='../files-html/pedidos.html'">Volver</button>
+  </main>
+
+  <script src="../files-js/ver-pedido.js"></script>
+</body>
+</html>

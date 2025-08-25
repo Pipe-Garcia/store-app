@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,12 +28,14 @@ public class FamilyController {
     private IFamilyRepository repoFam;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<FamilyDTO> createFamily(@RequestBody @Valid FamilyCreateDTO dto) {
         FamilyDTO createdFamily = servFam.createFamily(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdFamily);
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<FamilyDTO> updateFamily(@RequestBody @Valid FamilyUpdateDTO dto) {
         servFam.updateFamily(dto);
         Family family = repoFam.findById(dto.getIdFamily())
@@ -41,6 +44,7 @@ public class FamilyController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<String> deleteFamilyById(@PathVariable Long id) {
         Family family = servFam.getFamilyById(id);
 
@@ -53,6 +57,7 @@ public class FamilyController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<FamilyDTO>> getAllFamilies() {
         List<Family> familyList = servFam.getAllFamilies();
         List<FamilyDTO> familyDTOList = familyList.stream()
@@ -63,6 +68,7 @@ public class FamilyController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<FamilyDTO> getFamilyById(@PathVariable Long id) {
 
         Family family = servFam.getFamilyById(id);

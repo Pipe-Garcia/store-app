@@ -4,18 +4,44 @@ const API_URL_FAMILIAS = 'http://localhost:8080/families';
 let materiales = [];
 
 function cargarMateriales() {
-  fetch(API_URL_MAT)
-    .then(res => res.json())
-    .then(data => {
-      if (!Array.isArray(data)) {
-        console.error("Respuesta inesperada del backend:", data);
-        alert("Error: no se pudo obtener la lista de materiales");
-        return;
-      }
-      materiales = data;
-      mostrarMateriales(data);
-    })
-    .catch(err => console.error('Error al cargar materiales:', err));
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.error('No token found, redirecting to login');
+    window.location.href = '../files-html/login.html';
+    return;
+  }
+
+  fetch(API_URL_MAT, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`, // Corrección: usar comillas invertidas (`) y ${token}
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(res => {
+    if (!res.ok) {
+      throw new Error(`Error: ${res.status} - ${res.statusText}`); // Corrección: usar comillas invertidas (`)
+    }
+    return res.json();
+  })
+  .then(data => {
+    if (!Array.isArray(data)) {
+      console.error('Respuesta inesperada del backend:', data);
+      alert('Error: no se pudo obtener la lista de materiales');
+      return;
+    }
+    materiales = data;
+    mostrarMateriales(data);
+  })
+  .catch(err => {
+    console.error('Error al cargar materiales:', err);
+    if (err.message.includes('403') || err.message.includes('401')) {
+      alert('Sesión inválida, redirigiendo a login');
+      window.location.href = '../files-html/login.html';
+    } else {
+      alert('Error al conectar con el servidor');
+    }
+  });
 }
 
 function mostrarMateriales(lista) {
@@ -68,7 +94,33 @@ function limpiarFormularioMaterial() {
   document.getElementById('internalNumber').value = '';
 }
 
+function showNotification(message, type = 'success') {
+  const formulario = document.getElementById('formularioNuevoMaterial');
+  if (!formulario) {
+    console.error('Formulario no encontrado');
+    return;
+  }
+
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+
+  // Insertar la notificación justo después del formulario
+  formulario.parentNode.insertBefore(notification, formulario.nextSibling);
+
+  // Quitar la notificación después de 4 segundos
+  setTimeout(() => notification.remove(), 4000);
+}
+
+
 function agregarMaterial() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    showNotification('Debes iniciar sesión para agregar un material', 'error');
+    window.location.href = '../files-html/login.html';
+    return;
+  }
+
   const nombre = document.getElementById('name').value.trim();
   const proveedor = document.getElementById('brand').value.trim();
   const precio = document.getElementById('priceArs').value.trim();
@@ -82,63 +134,84 @@ function agregarMaterial() {
     !familyId || !warehouseId || initialQuantity === '' ||
     isNaN(parseFloat(precio)) || isNaN(parseFloat(initialQuantity))
   ) {
-    alert("Todos los campos son obligatorios y deben tener valores válidos.");
+    showNotification('Todos los campos son obligatorios y deben tener valores válidos.', 'error');
     return;
   }
 
   const nuevoMaterial = {
-  name: nombre,
-  brand: proveedor,
-  priceArs: parseFloat(precio),
-  priceUsd: parseFloat(precio), // o usá otro input si lo tenés
-  internalNumber: parseInt(codigo),
-  measurementUnit: "unidad",
-  familyId: parseInt(familyId),
-  stock: {
-    quantityAvailable: parseFloat(initialQuantity),
-    warehouseId: parseInt(warehouseId)
-  }
-};
-
+    name: nombre,
+    brand: proveedor,
+    priceArs: parseFloat(precio),
+    priceUsd: parseFloat(precio),
+    internalNumber: parseInt(codigo),
+    measurementUnit: 'unidad',
+    familyId: parseInt(familyId),
+    stock: {
+      quantityAvailable: parseFloat(initialQuantity),
+      warehouseId: parseInt(warehouseId)
+    }
+  };
 
   fetch(API_URL_MAT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(nuevoMaterial)
   })
     .then(res => {
-      if (!res.ok) throw new Error("Error al agregar material");
-      alert("✅ Material agregado con éxito");
+      if (!res.ok) throw new Error('Error al agregar material');
+      showNotification('✅ Material agregado con éxito', 'success');
       cargarMateriales();
       limpiarFormularioMaterial();
       toggleFormularioMaterial();
     })
     .catch(err => {
       console.error(err);
-      alert("Error al crear material");
+      showNotification('Error al crear material', 'error');
     });
 }
 
-
-
-
 function eliminarMaterial(id) {
-  if (confirm("¿Seguro que querés eliminar este material?")) {
-    fetch(`${API_URL_MAT}/${id}`, { method: 'DELETE' })
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('Debes iniciar sesión para eliminar un material');
+    window.location.href = '../files-html/login.html';
+    return;
+  }
+
+  if (confirm('¿Seguro que querés eliminar este material?')) {
+    fetch(`${API_URL_MAT}/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}` // Corrección: usar comillas invertidas (`)
+      }
+    })
       .then(res => {
-        if (!res.ok) throw new Error("No se pudo eliminar el material");
-        alert("🗑️ Material eliminado");
+        if (!res.ok) throw new Error('No se pudo eliminar el material');
+        alert('🗑️ Material eliminado');
         cargarMateriales();
       })
       .catch(err => {
         console.error(err);
-        alert("Error al eliminar material");
+        alert('Error al eliminar material');
       });
   }
 }
 
 function cargarFamiliasEnSelect() {
-  fetch(API_URL_FAMILIAS)
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.error('No token found');
+    return;
+  }
+
+  fetch(API_URL_FAMILIAS, {
+    headers: {
+      'Authorization': `Bearer ${token}`, // Corrección: usar comillas invertidas (`)
+    }
+  })
     .then(res => res.json())
     .then(data => {
       const select = document.getElementById('familyId');
@@ -149,11 +222,26 @@ function cargarFamiliasEnSelect() {
         opt.textContent = f.typeFamily;
         select.appendChild(opt);
       });
-    });
+    })
+    .catch(err => console.error('Error al cargar familias:', err));
 }
+
 function cargarAlmacenesEnSelect() {
-  fetch('http://localhost:8080/warehouses')
-    .then(res => res.json())
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.error('No token found');
+    return;
+  }
+
+  fetch('http://localhost:8080/warehouses', {
+    headers: {
+      'Authorization': `Bearer ${token}`, // Corrección: usar comillas invertidas (`)
+    }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error(`Error: ${res.status} - ${res.statusText}`);
+      return res.json();
+    })
     .then(data => {
       const select = document.getElementById('warehouseId');
       select.innerHTML = '';
@@ -179,14 +267,24 @@ function cargarAlmacenesEnSelect() {
         });
       }
     })
-    .catch(err => console.error("Error al cargar almacenes:", err));
+    .catch(err => {
+      console.error('Error al cargar almacenes:', err);
+      if (err.message.includes('403') || err.message.includes('401')) {
+        alert('Sesión inválida, redirigiendo a login');
+        window.location.href = '../files-html/login.html';
+      } else {
+        alert('Error al conectar con el servidor');
+      }
+    });
 }
 
-
-
 window.onload = () => {
-  cargarMateriales();
-  cargarFamiliasEnSelect(); // 🔥 carga familias cuando entra a la página
-  cargarAlmacenesEnSelect();
+  const token = localStorage.getItem('token');
+  if (!token) {
+    window.location.href = '../files-html/login.html';
+  } else {
+    cargarMateriales();
+    cargarFamiliasEnSelect();
+    cargarAlmacenesEnSelect();
+  }
 };
-

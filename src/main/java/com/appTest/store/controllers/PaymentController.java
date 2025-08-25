@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class PaymentController {
     private IPaymentService servPayment;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<PaymentDTO>> getAllPayments() {
         List<Payment> paymentList = servPayment.getAllPayments();
 
@@ -33,6 +35,7 @@ public class PaymentController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<PaymentDTO> getPaymentById(@PathVariable Long id) {
         Payment payment = servPayment.getPaymentById(id);
         if (payment == null) {
@@ -43,12 +46,14 @@ public class PaymentController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<PaymentDTO> createPayment(@RequestBody @Valid PaymentCreateDTO dto) {
         PaymentDTO createdPayment = servPayment.createPayment(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdPayment);
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<PaymentDTO> updatePayment(@RequestBody @Valid PaymentUpdateDTO dto) {
         servPayment.updatePayment(dto);
         Payment payment = servPayment.getPaymentById(dto.getIdPayment());
@@ -56,6 +61,7 @@ public class PaymentController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<String> deletePaymentById(@PathVariable Long id) {
         Payment payment = servPayment.getPaymentById(id);
         if (payment != null) {

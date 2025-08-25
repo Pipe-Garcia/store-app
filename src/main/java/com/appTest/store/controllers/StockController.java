@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class StockController {
     private IStockService servStock;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<StockDTO>> getStocks(@RequestParam(required = false) Long materialId) {
         List<Stock> stockList;
 
@@ -39,6 +41,7 @@ public class StockController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<StockDTO> getStockById(@PathVariable Long id) {
         Stock stock = servStock.getStockById(id);
         if (stock == null) {
@@ -49,12 +52,14 @@ public class StockController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<StockDTO> createStock(@RequestBody @Valid StockCreateDTO dto) {
         StockDTO createdStock = servStock.createStock(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdStock);
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<StockDTO> updateStock(@RequestBody @Valid StockUpdateDTO dto) {
         servStock.updateStock(dto);
         Stock stock = servStock.getStockById(dto.getIdStock());
@@ -62,6 +67,7 @@ public class StockController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<String> deleteStockById(@PathVariable Long id) {
         Stock stock = servStock.getStockById(id);
         if (stock != null) {

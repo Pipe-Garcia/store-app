@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class OrdersController {
     private IOrdersService servOrders;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<OrdersDTO>> getAllOrders() {
         List<Orders> ordersList = servOrders.getAllOrders();
         List<OrdersDTO> ordersDTOList  = ordersList.stream()
@@ -32,18 +34,21 @@ public class OrdersController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<OrdersDTO> getOrdersById(@PathVariable Long id) {
         Orders orders = servOrders.getOrdersById(id);
         return ResponseEntity.ok(servOrders.convertOrdersToDto(orders));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<OrdersDTO> createOrder(@RequestBody @Valid OrdersCreateDTO dto) {
         OrdersDTO createdOrders = servOrders.createOrder(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdOrders);
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<OrdersDTO> updateOrders(@RequestBody @Valid OrdersUpdateDTO dto) {
         servOrders.updateOrders(dto);
         Orders orders = servOrders.getOrdersById(dto.getIdOrders());
@@ -51,6 +56,7 @@ public class OrdersController {
     }
 
     @DeleteMapping ("/{id}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<String> deleteOrdersById(@PathVariable Long id) {
         Orders orders = servOrders.getOrdersById(id);
         if (orders != null) {

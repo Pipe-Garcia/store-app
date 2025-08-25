@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class WarehouseController {
     private IWarehouseService servWare;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<WarehouseDTO>> getAllWarehouses() {
         List<Warehouse> warehouseList = servWare.getAllWarehouses();
 
@@ -33,6 +35,7 @@ public class WarehouseController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<WarehouseDTO> getWarehouseById(@PathVariable Long id) {
         Warehouse warehouse = servWare.getWarehouseById(id);
         if (warehouse == null) {
@@ -44,12 +47,14 @@ public class WarehouseController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<WarehouseDTO> createWarehouse(@RequestBody @Valid WarehouseCreateDTO dto) {
         WarehouseDTO createdWarehouse = servWare.createWarehouse(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdWarehouse);
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<WarehouseDTO> updateWarehouse(@RequestBody @Valid WarehouseUpdateDTO dto) {
         servWare.updateWarehouse(dto);
         Warehouse warehouse = servWare.getWarehouseById(dto.getIdWarehouse());
@@ -57,6 +62,7 @@ public class WarehouseController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<String> deleteWarehouseById(@PathVariable Long id) {
         Warehouse warehouse = servWare.getWarehouseById(id);
 
