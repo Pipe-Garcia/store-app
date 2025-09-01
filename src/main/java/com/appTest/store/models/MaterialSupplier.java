@@ -9,8 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Getter  @Setter
+@Getter
+@Setter
 public class MaterialSupplier {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idMaterialSupplier;
@@ -39,5 +41,14 @@ public class MaterialSupplier {
         this.material = material;
         this.priceUnit = priceUnit;
         this.supplier = supplier;
+    }
+
+    // 🔧 Métodos requeridos por el SupplierService
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.priceUnit = unitPrice;
+    }
+
+    public void setEstimatedDeliveryTime(Integer estimatedDeliveryTime) {
+        this.deliveryTimeDays = estimatedDeliveryTime;
     }
 }

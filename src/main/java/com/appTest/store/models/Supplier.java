@@ -33,15 +33,17 @@ public class Supplier {
 
     public Supplier() {}
 
-    public Supplier(String address, String dni, String email, String locality, String name, String nameCompany, String phoneNumber, String surname, String status) {
-        this.address = address;
+    public Supplier(String name, String surname, String dni, String email, String address, String locality, String nameCompany, String phoneNumber, String status) {
+        this.name = name;
+        this.surname = surname;
         this.dni = dni;
         this.email = email;
+        this.address = address;
         this.locality = locality;
-        this.name = name;
         this.nameCompany = nameCompany;
         this.phoneNumber = phoneNumber;
-        this.surname = surname;
         this.status = status;
     }
+
+
 }

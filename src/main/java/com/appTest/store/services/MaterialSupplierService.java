@@ -41,16 +41,18 @@ public class MaterialSupplierService implements IMaterialSupplierService{
 
     @Override
     public MaterialSupplierDTO convertMaterialSupplierToDto(MaterialSupplier materialSupplier) {
+        Long materialId = (materialSupplier.getMaterial() != null) ? materialSupplier.getMaterial().getIdMaterial() : null;
         String materialName = (materialSupplier.getMaterial() != null) ? materialSupplier.getMaterial().getName() : "Material's name not found";
-        String supplierName = (materialSupplier.getSupplier() != null) ? materialSupplier.getSupplier().getNameCompany() : "Company's name not found";
+
         return new MaterialSupplierDTO(
                 materialSupplier.getIdMaterialSupplier(),
+                materialId,
                 materialName,
-                supplierName,
                 materialSupplier.getPriceUnit(),
                 materialSupplier.getDeliveryTimeDays()
         );
     }
+
 
     @Override
     @Transactional

@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 public class MaterialSupplierCreateDTO implements Serializable {
+
     @NotNull(message = "Material ID is required")
     private Long materialId;
 

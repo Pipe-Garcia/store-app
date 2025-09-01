@@ -1,14 +1,17 @@
 package com.appTest.store.dto.supplier;
 
+import com.appTest.store.dto.materialSupplier.MaterialSupplierCreateDTO;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.util.List;
 
 @Getter
 @Setter
 public class SupplierCreateDTO implements Serializable {
+
     @NotNull(message = "Name is required")
     @Size(min = 2, max = 100, message = "The name must be between 2 and 100 characters.")
     private String name;
@@ -39,4 +42,7 @@ public class SupplierCreateDTO implements Serializable {
     @NotNull(message = "Status is required")
     @Pattern(regexp = "ACTIVE|INACTIVE", message = "The status must be ACTIVE or INACTIVE")
     private String status;
+
+    // ✅ Lista de materiales que provee
+    private List<MaterialSupplierCreateDTO> materials;
 }
