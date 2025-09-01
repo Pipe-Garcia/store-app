@@ -96,14 +96,6 @@ function renderKpis(lowStock, masCaro, todayDto, highestDto, mostSold){
   // Material más caro (arriba)
   $('#kpiMostExpName').textContent  = masCaro?.name  || '—';
   $('#kpiMostExpPrice').textContent = fmtARS.format(Number(masCaro?.price||0));
-  // Material más caro (card duplicada de abajo)
-  if (masCaro && typeof masCaro.price !== 'undefined') {
-    $('#kpiMasCaro').textContent       = fmtARS.format(Number(masCaro.price||0));
-    $('#kpiMasCaroNombre').textContent = masCaro.name || '—';
-  } else {
-    $('#kpiMasCaro').textContent       = '$ —';
-    $('#kpiMasCaroNombre').textContent = '—';
-  }
 
   // Alertas de stock
   $('#kpiLowStockCount').textContent = Array.isArray(lowStock) ? lowStock.length : 0;

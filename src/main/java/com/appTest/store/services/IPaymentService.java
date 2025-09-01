@@ -14,4 +14,7 @@ public interface IPaymentService {
     PaymentDTO createPayment(PaymentCreateDTO dto);
     void updatePayment(PaymentUpdateDTO dto);
     void deletePaymentById(Long id);
+
+    // agrega esta firma
+    List<PaymentDTO> getBySaleId(Long saleId);
 }

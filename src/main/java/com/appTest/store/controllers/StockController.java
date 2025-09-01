@@ -1,5 +1,6 @@
 package com.appTest.store.controllers;
 
+import com.appTest.store.dto.stock.StockByWarehouseDTO;
 import com.appTest.store.dto.stock.StockCreateDTO;
 import com.appTest.store.dto.stock.StockDTO;
 import com.appTest.store.dto.stock.StockUpdateDTO;
@@ -49,6 +50,12 @@ public class StockController {
         }
         StockDTO stockDTO = servStock.convertStockToDto(stock);
         return ResponseEntity.ok(stockDTO);
+    }
+
+    @GetMapping("/by-material/{materialId}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    public ResponseEntity<List<StockByWarehouseDTO>> byMaterial(@PathVariable Long materialId){
+        return ResponseEntity.ok(servStock.byMaterial(materialId));
     }
 
     @PostMapping

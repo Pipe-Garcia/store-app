@@ -1,5 +1,6 @@
 package com.appTest.store.services;
 
+import com.appTest.store.dto.stock.StockByWarehouseDTO;
 import com.appTest.store.dto.stock.StockCreateDTO;
 import com.appTest.store.dto.stock.StockDTO;
 import com.appTest.store.dto.stock.StockUpdateDTO;
@@ -18,4 +19,5 @@ public interface IStockService {
     void deleteStockById(Long id);
     void decreaseStock(Long materialId, Long warehouseId, BigDecimal quantity);
     void increaseStock(Long materialId, Long warehouseId, BigDecimal quantity);
+    List<StockByWarehouseDTO> byMaterial(Long materialId);
 }

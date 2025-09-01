@@ -55,6 +55,12 @@ public class PaymentService implements IPaymentService{
     }
 
     @Override
+    public List<PaymentDTO> getBySaleId(Long saleId) {
+        List<Payment> list = repoPayment.findBySale_IdSale(saleId);
+        return list.stream().map(this::convertPaymentToDto).toList();
+    }
+
+    @Override
     @Transactional
     public PaymentDTO createPayment(PaymentCreateDTO dto) {
         Payment payment = new Payment();

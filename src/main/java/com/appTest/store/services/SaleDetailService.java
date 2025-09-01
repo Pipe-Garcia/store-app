@@ -50,6 +50,11 @@ public class SaleDetailService implements ISaleDetailService{
         return result.isEmpty() ? null : result.get(0);
     }
 
+    @Override
+    public List<SaleDetailDTO> getBySaleId(Long saleId) {
+        List<SaleDetail> list = repoSaleDetail.findBySaleIdWithMaterial(saleId);
+        return list.stream().map(this::convertSaleDetailToDto).toList();
+    }
 
     @Override
     @Transactional

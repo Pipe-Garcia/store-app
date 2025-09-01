@@ -1,5 +1,6 @@
 package com.appTest.store.services;
 
+import com.appTest.store.dto.stock.StockByWarehouseDTO;
 import com.appTest.store.dto.stock.StockCreateDTO;
 import com.appTest.store.dto.stock.StockDTO;
 import com.appTest.store.dto.stock.StockUpdateDTO;
@@ -26,11 +27,9 @@ public class StockService implements IStockService{
     private IStockRepository repoStock;
 
     @Autowired
-    
     private IMaterialRepository repoMat;
 
     @Autowired
-    
     private IWarehouseRepository repoWare;
 
     @Override
@@ -57,6 +56,10 @@ public class StockService implements IStockService{
 
     }
 
+    @Override
+    public List<StockByWarehouseDTO> byMaterial(Long materialId) {
+        return repoStock.findByMaterialId(materialId);
+    }
 
     @Override
     @Transactional

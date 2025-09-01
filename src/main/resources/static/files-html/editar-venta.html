@@ -1,0 +1,47 @@
+<!-- /static/files-html/editar-venta.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>📈 - Editar venta</title>
+  <link rel="stylesheet" href="../files-css/style.css" />
+  <link rel="stylesheet" href="../files-css/ventas.css" />
+</head>
+<body>
+<header class="header">
+  <nav class="nav-header">
+    <img src="" alt="logo">
+    <ul class="ul-header">
+      <li><a href="../files-html/index.html">Inicio</a></li>
+      <li><a href="../files-html/ventas.html" class="active">Ventas</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main class="page form-page narrow">
+  <div class="page-head">
+    <h1>Editar venta</h1>
+  </div>
+
+  <section class="card">
+    <div class="grid">
+      <div>
+        <label>Fecha</label>
+        <input id="fecha" type="date" required>
+      </div>
+      <div>
+        <label>Cliente</label>
+        <select id="cliente" required></select>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn primary" id="btnGuardar">Guardar cambios</button>
+      <a class="btn outline" id="btnVolver">Volver</a>
+    </div>
+  </section>
+</main>
+
+<script src="../files-js/editar-venta.js"></script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📈 - Venta | Detalle</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/ventas.css"/>
+</head>
+<body>
+<header class="header">
+  <nav class="nav-header">
+    <img src="" alt="logo"/>
+    <ul class="ul-header">
+      <li><a href="../files-html/index.html">Inicio</a></li>
+      <li><a href="../files-html/materiales.html">Materiales</a></li>
+      <li><a class="active" href="../files-html/ventas.html">Ventas</a></li>
+      <li><a href="../files-html/clientes.html">Clientes</a></li>
+      <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+      <li><a href="../files-html/entregas.html">Entregas</a></li>
+      <li><a href="../files-html/almacen.html">Almacenes</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>Detalle de Venta</h1>
+    <div class="acciones">
+      <a id="btnRegistrarPago" class="btn green">💳 Registrar pago</a>
+      <a id="btnEditar" class="btn outline">✏️ Editar</a>
+      <a class="btn outline" href="ventas.html">Volver</a>
+    </div>
+  </div>
+
+  <!-- Cabecera -->
+  <section class="card">
+    <div class="detail-grid">
+      <div><span class="muted">ID Venta:</span> <strong id="saleId">—</strong></div>
+      <div><span class="muted">Fecha:</span> <strong id="fecha">—</strong></div>
+      <div><span class="muted">Cliente:</span> <strong id="cliente">—</strong></div>
+      <div><span class="muted">Entrega asociada:</span> <strong id="entrega">—</strong></div>
+      <div><span class="muted">Total:</span> <strong id="total">$ 0,00</strong></div>
+      <div><span class="muted">Pagado:</span> <strong id="pagado">$ 0,00</strong></div>
+      <div><span class="muted">Saldo:</span> <strong id="saldo">$ 0,00</strong></div>
+      <div>
+        <span class="muted">Estado de pago:</span>
+        <span id="estado" class="pill pending">PENDING</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ítems -->
+  <section class="card">
+    <div class="card-head"><h2>Ítems de la venta</h2></div>
+    <div class="tabla" id="tablaItems">
+      <div class="fila encabezado">
+        <div>Material</div>
+        <div>Cantidad</div>
+        <div>Precio</div>
+        <div>Subtotal</div>
+      </div>
+      <!-- filas dinámicas -->
+    </div>
+    <p id="msgItems" class="muted" style="margin-top:8px; display:none;"></p>
+  </section>
+
+  <!-- Pagos -->
+  <section class="card">
+    <div class="card-head" style="display: flex; flex-direction: column; gap: 15px; max-width: 180px; align-items: start; margin-bottom: 20px;">
+      <h2>Pagos</h2>
+      <a id="btnRegistrarPago2" class="btn green">💳 Registrar pago</a>
+    </div>
+    <div class="tabla" id="tablaPagos">
+      <div class="fila encabezado">
+        <div>Fecha</div>
+        <div>Método</div>
+        <div>Estado</div>
+        <div>Importe</div>
+      </div>
+      <!-- filas dinámicas -->
+    </div>
+    <p id="msgPagos" class="muted" style="margin-top:8px; display:none;"></p>
+  </section>
+</main>
+
+<script src="../files-js/ver-venta.js"></script>
+</body>
+</html>

@@ -471,20 +471,20 @@ body {
 
 .almacen{
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   padding: 10px;
   border-bottom: 1px solid #ccc;
   text-align: center;
 }
 
-.contenedor-almacenes .almacen-container .contenedor-tabla .fila{
+.contenedor-almacenes .almacen-container .contenedor-tabla .fila-alm{
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   padding: 10px;
   text-align: center;
   border-bottom: 2px solid #ccc;
 }
-.contenedor-almacenes .almacen-container .contenedor-tabla .fila.encabezado {
+.contenedor-almacenes .almacen-container .contenedor-tabla .fila-alm.encabezado {
   font-weight: bold;
   background-color: #f0f0f0;
   font-size: 18px;
@@ -493,6 +493,7 @@ body {
 .almacen-container h3{
   padding-left: 40px;
 }
+
 
 .seccion-detalle-pedido,
 .seccion-editar-pedido {

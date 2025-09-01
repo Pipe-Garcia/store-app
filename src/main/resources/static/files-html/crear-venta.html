@@ -1,0 +1,95 @@
+<!-- /static/files-html/crear-venta.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>📈 - Nueva venta</title>
+  <link rel="stylesheet" href="../files-css/style.css" />
+  <link rel="stylesheet" href="../files-css/ventas.css" />
+</head>
+<body>
+<header class="header">
+  <nav class="nav-header">
+    <img src="" alt="logo">
+    <ul class="ul-header">
+      <li><a href="../files-html/index.html">Inicio</a></li>
+      <li><a href="../files-html/ventas.html" class="active">Ventas</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main class="page form-page narrow">
+  <div class="page-head">
+    <h1>Nueva venta</h1>
+  </div>
+
+  <section class="card">
+    <div class="grid">
+      <div>
+        <label>Fecha</label>
+        <input id="fecha" type="date" required>
+      </div>
+      <div>
+        <label>Cliente</label>
+        <select id="cliente" required></select>
+      </div>
+      <div>
+        <label for="delivery">Entrega asociada (opcional)</label>
+        <select id="delivery">
+            <option value="">—</option>
+        </select>
+        <small id="deliveryHelp" class="hint">Podés elegir una entrega COMPLETED/PARTIAL para precargar ítems.</small>
+      </div>
+    </div>
+
+    <h3 class="subhead">Ítems</h3>
+    <div class="tabla" id="items">
+      <div class="fila encabezado">
+        <div style="flex:2">Material</div>
+        <div>Depósito</div>
+        <div>Cantidad</div>
+        <div>Precio</div>
+        <div>Subtotal</div>
+        <div>—</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn outline" id="btnAdd">+ Agregar ítem</button>
+    </div>
+
+    <div class="subtotales">
+      <div>Total: <strong id="total">$ 0,00</strong></div>
+    </div>
+
+    <h3 class="subhead">Pago inicial (opcional)</h3>
+    <div class="grid">
+      <div>
+        <label>Importe</label>
+        <input id="pagoImporte" type="number" min="0" step="1">
+      </div>
+      <div>
+        <label>Fecha</label>
+        <input id="pagoFecha" type="date">
+      </div>
+      <div>
+        <label>Método</label>
+        <select id="pagoMetodo">
+          <option value="">Sin pago</option>
+          <option>Efectivo</option>
+          <option>Transferencia</option>
+          <option>Débito Mastercard</option>
+          <option>Crédito Visa</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn primary" id="btnGuardar">Crear venta</button>
+      <a class="btn outline" href="../files-html/ventas.html">Cancelar</a>
+    </div>
+  </section>
+</main>
+
+<script src="../files-js/crear-venta.js"></script>
+</body>
+</html>

@@ -17,4 +17,7 @@ public interface ISaleDetailService {
       public MaterialMostSoldDTO getMostSoldMaterial();
 
       public boolean deleteSaleDetailById(Long idSaleDetail);
+
+      // agrega esta firma
+      List<SaleDetailDTO> getBySaleId(Long saleId);
 }
