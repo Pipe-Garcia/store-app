@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <link rel="stylesheet" href="../files-css/style.css">
-  <title>Editar Material</title>
+  <title>📦 - Editar Material</title>
 </head>
 <body>
   <header class="header">
@@ -38,11 +38,13 @@
 
       <label for="familyId">Familia</label>
       <select id="familyId" required></select>
+      <small id="familyCurrent" class="field-hint"></small>
       
       <label for="warehouseId">Almacén</label>
       <select id="warehouseId" required>
         <option value=""></option>
       </select>
+      <small id="warehouseCurrent" class="field-hint"></small>
 
       <br> <br>
 
@@ -54,6 +56,6 @@
     </form>
   </section>
 
-  <script src="../files-js/editar-material.js"></script>
+  <script type="module" src="../files-js/editar-material.js"></script>
 </body>
 </html>

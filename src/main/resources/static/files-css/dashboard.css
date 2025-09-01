@@ -1,0 +1,105 @@
+/* ====== Layout base del dashboard ====== */
+:root{
+  --gap: 16px;
+  --radius: 12px;
+  --card-pad: 14px 16px;
+  --chart-height: 260px;     /* alto por defecto del gráfico */
+  --chart-max-w: 560px;      /* ancho máximo del gráfico (400–600 recomendado) */
+}
+
+.page{ 
+  padding: 24px; 
+  max-width: 1400px; /* centrado y ancho legible */
+  margin: 0 auto;
+}
+.page-head h1{
+    margin-bottom: 20px;
+}
+
+/* KPIs arriba */
+.kpi-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+.card{
+  background:#fff; border-radius: var(--radius);
+  padding: var(--card-pad);
+  box-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+.card-head {
+    display: flex;
+    justify-content: space-between;
+    
+}
+
+.kpi .kpi-title{ font-size:.95rem; color:#666; margin-bottom:6px; }
+.kpi .kpi-value{ font-size:1.8rem; font-weight:700; line-height:1.1; }
+.kpi .kpi-sub{ font-size:.9rem; color:#777; }
+
+/* Contenedor para múltiples charts y widgets */
+.cards-section{ margin-top: 8px; }
+.cards-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: var(--gap);
+  align-items: start;
+}
+
+/* Tarjetas de gráfico compactas */
+.chart-card .card-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom: 6px;
+}
+.chart-card .chart-wrap{
+  /* El truco: el canvas toma este tamaño */
+  position: relative;
+  width: 100%;
+  height: var(--chart-height);
+  max-width: var(--chart-max-w);
+  margin: 0 auto;  /* centra el canvas en la card */
+}
+.chart-card .chart-wrap canvas{
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* Tabla compacta (reusa tu grid) */
+.tabla{ display:grid; gap:8px; }
+.tabla .fila{
+  display:grid;
+  grid-template-columns: 2fr .7fr;
+  gap:10px; align-items:center;
+  background:#fff; border-radius:10px; padding:10px 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+}
+.fila.encabezado{
+  background:#eaeaea; font-weight:700; box-shadow:none;
+}
+
+/* Si la lista de alertas crece, scrollea sin desarmar el layout */
+#tablaLowStock{
+  max-height: 260px;
+  overflow:auto;
+  padding-right: 4px; /* margen para que no tape el scrollbar */
+}
+
+/* Botones utilitarios (match con tu estilo base) */
+.btn{ padding:8px 12px; border-radius:8px; border:none; cursor:pointer; }
+.btn.outline{ background:#eaeaea; color:#212529; text-decoration:none; }
+.btn.outline:hover {
+    background: #f9eeee;
+}
+
+/* Responsivo fino */
+@media (max-width: 1200px){
+  :root{ --chart-max-w: 520px; --chart-height: 240px; }
+}
+@media (max-width: 992px){
+  :root{ --chart-max-w: 460px; --chart-height: 220px; }
+}
+@media (max-width: 640px){
+  :root{ --chart-max-w: 420px; --chart-height: 200px; }
+}

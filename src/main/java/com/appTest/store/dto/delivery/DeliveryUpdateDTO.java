@@ -15,6 +15,10 @@ public class DeliveryUpdateDTO implements Serializable {
 
     private LocalDate deliveryDate;
 
-    private String status;
+    private String status; // opcional, el servicio recalcula
+
+    private java.util.List<DeliveryItemUpsertDTO> items;
+
+    private boolean deleteMissingItems; // si true → borra renglones no enviados (solo OWNER)
 }
 

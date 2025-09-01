@@ -4,48 +4,76 @@ const API_URL_ORDERS = 'http://localhost:8080/orders';
 
 let listaMateriales = [];
 
-function showNotification(message, type = 'success') {
-  const formulario = document.getElementById('form-pedido');
-  if (!formulario) {
-    console.error('Formulario no encontrado');
-    return;
+/* ===== Helpers ===== */
+const $ = (s, r=document) => r.querySelector(s);
+function getToken() {
+  return localStorage.getItem('accessToken') || localStorage.getItem('token');
+}
+function go(page) {
+  const base = location.pathname.replace(/[^/]+$/, ''); // .../files-html/
+  window.location.href = `${base}${page}`;
+}
+function flashAndGo(message, page) {
+  localStorage.setItem('flash', JSON.stringify({ message, type: 'success' }));
+  go(page);
+}
+function authHeaders(json = true) {
+  const t = getToken();
+  return { ...(json ? { 'Content-Type':'application/json' } : {}), ...(t ? { 'Authorization':`Bearer ${t}` } : {}) };
+}
+function authFetch(url, opts={}) {
+  const headers = { ...authHeaders(!opts.bodyIsForm), ...(opts.headers||{}) };
+  return fetch(url, { ...opts, headers });
+}
+let __toastRoot;
+function ensureToastRoot() {
+  if (!__toastRoot) {
+    __toastRoot = document.createElement('div');
+    Object.assign(__toastRoot.style, {
+      position:'fixed', top:'115px', right:'250px', display:'flex', flexDirection:'column',
+      gap:'8px', zIndex:9999, height:'50vh', overflowY:'auto', pointerEvents:'none', maxWidth:'400px', width:'400px'
+    });
+    document.body.appendChild(__toastRoot);
   }
-
-  const notification = document.createElement('div');
-  notification.className = `notification ${type}`;
-  notification.textContent = message;
-
-  // Insertar la notificación justo después del formulario
-  formulario.parentNode.insertBefore(notification, formulario.nextSibling);
-
-  // Quitar la notificación después de 4 segundos
-  setTimeout(() => notification.remove(), 4000);
+}
+function notify(message, type='info') {
+  ensureToastRoot();
+  const n = document.createElement('div');
+  n.className = `notification ${type}`;
+  n.textContent = message;
+  __toastRoot.appendChild(n);
+  setTimeout(() => n.remove(), 5000);
+}
+function todayLocalISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`; // YYYY-MM-DD en hora local
 }
 document.addEventListener('DOMContentLoaded', () => {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) {
-    showNotification('Debes iniciar sesión para crear un pedido', 'error');
-    window.location.href = '../files-html/login.html';
+    notify('Debes iniciar sesión para crear un pedido', 'error');
+    go('login.html');
     return;
   }
 
   cargarClientes(token);
   cargarMateriales(token);
-  document.getElementById('form-pedido').addEventListener('submit', guardarPedido);
+   $('#form-pedido').addEventListener('submit', guardarPedido);
+  // si el HTML tiene botón "Agregar material", exponer handler
+  window.agregarMaterial = agregarMaterial;
 });
 
 function cargarClientes(token) {
-  fetch(API_URL_CLIENTES, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  })
+  authFetch(API_URL_CLIENTES)
     .then(res => {
       if (!res.ok) throw new Error(`Error: ${res.status} - ${res.statusText}`);
       return res.json();
     })
     .then(clientes => {
-      const select = document.getElementById('cliente');
+      const select = $('#cliente');
       clientes.forEach(c => {
         const option = document.createElement('option');
         option.value = c.idClient;
@@ -57,11 +85,7 @@ function cargarClientes(token) {
 }
 
 function cargarMateriales(token) {
-  fetch(API_URL_MATERIALES, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  })
+  authFetch(API_URL_MATERIALES)
     .then(res => {
       if (!res.ok) throw new Error(`Error: ${res.status} - ${res.statusText}`);
       return res.json();
@@ -74,7 +98,7 @@ function cargarMateriales(token) {
 }
 
 function agregarMaterial() {
-  const contenedor = document.getElementById('materiales-container');
+  const contenedor = $('#materiales-container');
 
   const fila = document.createElement('div');
   fila.className = 'fila-material';
@@ -93,16 +117,20 @@ function agregarMaterial() {
 function guardarPedido(e) {
   e.preventDefault();
 
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) {
-    showNotification('Debes iniciar sesión para guardar un pedido', 'error');
-    window.location.href = '../files-html/login.html';
+    notify('Debes iniciar sesión para guardar un pedido', 'error');
+    go('login.html');
     return;
   }
 
-  const clienteId = document.getElementById('cliente').value;
-  const fechaEntrega = document.getElementById('fecha-entrega').value;
-  const fechaHoy = new Date().toISOString().split('T')[0];
+  const clienteId = $('#cliente').value;
+  const fechaEntrega = $('#fecha-entrega').value;
+  const fechaHoy = todayLocalISO();
+  if (fechaEntrega < fechaHoy) {
+    notify('La fecha de entrega no puede ser anterior a hoy', 'error');
+    return;
+  }
 
   const detalles = Array.from(document.querySelectorAll('.fila-material')).map(fila => {
     const materialId = fila.querySelector('.select-material').value;
@@ -115,7 +143,7 @@ function guardarPedido(e) {
   });
 
   if (!clienteId || !fechaEntrega || detalles.length === 0 || detalles.some(d => !d.materialId || d.quantity <= 0)) {
-    showNotification('Debe completar todos los campos y agregar al menos un material válido.', 'error');
+    notify('Debe completar todos los campos y agregar al menos un material válido.', 'error');
     return;
   }
 
@@ -126,24 +154,16 @@ function guardarPedido(e) {
     materials: detalles
   };
 
-  fetch(API_URL_ORDERS, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(pedido)
-  })
+  authFetch(API_URL_ORDERS, { method:'POST', body: JSON.stringify(pedido) })
     .then(res => {
       if (!res.ok) throw new Error('Error al crear el pedido');
       return res.json();
     })
     .then(data => {
-      showNotification('Pedido guardado con éxito', 'success');
-      window.location.href = 'pedidos.html';
+      flashAndGo('✅ Pedido guardado con éxito', 'pedidos.html');
     })
     .catch(err => {
       console.error(err);
-      showNotification('Ocurrió un error al guardar el pedido', 'error');
+      notify('Ocurrió un error al guardar el pedido', 'error');
     });
 }

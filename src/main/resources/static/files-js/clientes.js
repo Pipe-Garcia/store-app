@@ -1,204 +1,287 @@
+// /static/files-js/clientes.js
 const API_URL_CLI = 'http://localhost:8080/clients';
+
 let clientes = [];
 
+/* ==== Helpers comunes (mientras no tengamos core/) ==== */
+
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+function getToken() {
+  // Compat: durante la migración aceptamos ambas claves
+  return localStorage.getItem('accessToken') || localStorage.getItem('token');
+}
+
+function go(page) {
+  const base = location.pathname.replace(/[^/]+$/, ''); // deja .../files-html/
+  window.location.href = `${base}${page}`;
+}
+function flashAndGo(message, page) {
+  localStorage.setItem('flash', JSON.stringify({ message, type: 'success' }));
+  go(page);
+}
+
+
+function debounce(fn, delay = 250) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function authHeaders(json = true) {
+  const t = getToken();
+  return {
+    ...(json ? { 'Content-Type': 'application/json' } : {}),
+    ...(t ? { 'Authorization': `Bearer ${t}` } : {})
+  };
+}
+
+function authFetch(url, opts = {}) {
+  const headers = { ...authHeaders(!opts.bodyIsForm), ...(opts.headers || {}) };
+  return fetch(url, { ...opts, headers });
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+// Toasts top-right (usa tus clases .notification.*)
+let __toastRoot;
+function ensureToastRoot() {
+  if (!__toastRoot) {
+    __toastRoot = document.createElement('div');
+    Object.assign(__toastRoot.style, {
+      position: 'fixed', top: '80px', right: '16px', left: 'auto', bottom: 'auto',
+      display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 9999,
+      height: '50vh', overflowY: 'auto', pointerEvents: 'none', maxWidth: '400px', width: '400px'
+    });
+    document.body.appendChild(__toastRoot);
+ }
+}
+function notify(message, type = 'success') {
+  ensureToastRoot();
+  const div = document.createElement('div');
+  div.className = `notification ${type}`;
+  div.textContent = message;
+  __toastRoot.appendChild(div);
+  setTimeout(() => div.remove(), 5000);
+}
+// shim para compat
+const showNotification = notify;
+
+/* ================= CARGA INICIAL ================= */
+
 function cargarClientes() {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) {
-    console.error('No token found, redirecting to login');
-    window.location.href = '../files-html/login.html';
+    notify('Debes iniciar sesión', 'error');
+    go('login.html');
     return;
   }
 
-  fetch(API_URL_CLI, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`, // Corrección: usar comillas invertidas (`)
-      'Content-Type': 'application/json'
-    }
-  })
+  authFetch(API_URL_CLI, { method: 'GET' })
     .then(res => {
+      if (res.status === 401 || res.status === 403) {
+        throw new Error(String(res.status));
+      }
       if (!res.ok) {
-        throw new Error(`Error: ${res.status} - ${res.statusText}`); // Corrección: usar comillas invertidas (`)
+        throw new Error(`HTTP ${res.status}`);
       }
       return res.json();
     })
     .then(data => {
       if (!Array.isArray(data)) {
         console.error('Respuesta inesperada del backend:', data);
-        showNotification('Error: no se pudo obtener la lista de clientes', 'error');
+        notify('Error: no se pudo obtener la lista de clientes', 'error');
         return;
       }
       clientes = data;
-      mostrarClientes(data);
+      mostrarClientes(clientes);
     })
     .catch(err => {
       console.error('Error al cargar clientes:', err);
-      if (err.message.includes('403') || err.message.includes('401')) {
-        showNotification('Sesión inválida, redirigiendo a login', 'error');
-        window.location.href = '../files-html/login.html';
+      if (['401','403'].includes(err.message)) {
+        notify('Sesión inválida, redirigiendo a login', 'error');
+        go('login.html');
       } else {
-        showNotification('Error al conectar con el servidor', 'error');
+        notify('Error al conectar con el servidor', 'error');
       }
     });
 }
 
 function mostrarClientes(lista) {
-  const contenedor = document.getElementById('lista-clientes');
+  const contenedor = $('#lista-clientes');
   contenedor.innerHTML = '';
   lista.forEach(c => {
-    console.log('Cliente actual:', c);
     const fila = document.createElement('div');
     fila.className = 'cliente-cont';
+    const id  = c.idClient ?? '-';
+    const nom = escapeHtml(c.name);
+    const ape = escapeHtml(c.surname);
+    const dni = escapeHtml(String(c.dni ?? ''));
+    const eml = escapeHtml(c.email);
+    const tel = escapeHtml(c.phoneNumber);
+    const est = (c.status === 'ACTIVE') ? 'Activo' : 'Inactivo';
+
     fila.innerHTML = `
-      <div>${c.idClient || '-'}</div>
-      <div>${c.name || '-'}</div>
-      <div>${c.surname || '-'}</div>
-      <div>${c.dni || '-'}</div>
-      <div>${c.email || '-'}</div>
-      <div>${c.phoneNumber || '-'}</div>
-      <div>${c.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}</div>
+      <div>${id}</div>
+      <div>${nom || '-'}</div>
+      <div>${ape || '-'}</div>
+      <div>${dni || '-'}</div>
+      <div>${eml || '-'}</div>
+      <div>${tel || '-'}</div>
+      <div>${est}</div>
       <div class="acciones">
-          <button onclick="location.href='../files-html/editar-clientes.html?id=${c.idClient}'">✏️</button>
-          <button onclick="eliminarCliente(${c.idClient})">🗑️</button>
+        <button data-edit="${id}" title="Editar">✏️</button>
+        <button data-del="${id}" title="Eliminar">🗑️</button>
       </div>
     `;
     contenedor.appendChild(fila);
   });
 }
 
-function showNotification(message, type = 'success') {
-  const formulario = document.getElementById('formularioNuevo');
-  if (!formulario) {
-    console.error('Formulario no encontrado');
+/* ================== ACCIONES ================== */
+
+$('#lista-clientes')?.addEventListener('click', (e) => {
+  const idEdit = e.target.getAttribute('data-edit');
+  const idDel  = e.target.getAttribute('data-del');
+  if (idEdit) {
+     go(`editar-clientes.html?id=${idEdit}`);
     return;
   }
-
-  const notification = document.createElement('div');
-  notification.className = `notification ${type}`;
-  notification.textContent = message;
-
-  // Insertar la notificación justo después del formulario
-  formulario.parentNode.insertBefore(notification, formulario.nextSibling);
-
-  // Quitar la notificación después de 4 segundos
-  setTimeout(() => notification.remove(), 4000);
-}
+  if (idDel) eliminarCliente(Number(idDel));
+});
 
 function agregarCliente() {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) {
-    showNotification('Debes iniciar sesión para agregar un cliente', 'error');
-    window.location.href = '../files-html/login.html';
+    notify('Debes iniciar sesión para agregar un cliente', 'error');
+    go('login.html');
     return;
   }
 
-  const name = document.getElementById('name').value.trim();
-  const surname = document.getElementById('surname').value.trim();
-  const dni = document.getElementById('dni').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const address = document.getElementById('address').value.trim();
-  const locality = document.getElementById('locality').value.trim();
-  const phoneNumber = document.getElementById('phoneNumber').value.trim();
+  const name        = $('#name').value.trim();
+  const surname     = $('#surname').value.trim();
+  const dni         = $('#dni').value.trim();
+  const email       = $('#email').value.trim();
+  const address     = $('#address').value.trim();
+  const locality    = $('#locality').value.trim();
+  const phoneNumber = $('#phoneNumber').value.trim();
 
   if (!name || !surname || !dni || !email || !address || !locality || !phoneNumber) {
-    showNotification('Todos los campos son obligatorios.', 'error');
+    notify('Todos los campos son obligatorios.', 'error');
     return;
   }
 
-  const dniExistente = clientes.some(m => String(m.dni) === dni);
+  const dniExistente = clientes.some(m => String(m.dni ?? '') === dni);
   if (dniExistente) {
-    showNotification('Ya existe un cliente con ese DNI.', 'error');
+    notify('Ya existe un cliente con ese DNI.', 'error');
     return;
   }
 
   const nuevo = {
-    name,
-    surname,
-    dni,
-    email,
-    address,
-    locality,
-    phoneNumber,
+    name, surname, dni, email, address, locality, phoneNumber,
     status: 'ACTIVE'
   };
 
-  fetch(API_URL_CLI, { // Corrección: usar API_URL_CLI en lugar de API_URL
+  authFetch(API_URL_CLI, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
     body: JSON.stringify(nuevo)
   })
     .then(res => {
-      if (!res.ok) throw new Error('Error al agregar cliente');
-      showNotification('Cliente creado con éxito', 'success');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      notify('✅ Cliente creado con éxito', 'success');
       cargarClientes();
       limpiarFormularioCliente();
       toggleFormulario();
     })
     .catch(err => {
       console.error(err);
-      showNotification('Error creando cliente', 'error');
+      notify('Error creando cliente', 'error');
     });
 }
 
 function eliminarCliente(id) {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) {
-    showNotification('Debes iniciar sesión para eliminar un cliente', 'error');
-    window.location.href = '../files-html/login.html';
+    notify('Debes iniciar sesión para eliminar un cliente', 'error');
+    go('login.html');
     return;
   }
+  if (!id) return;
 
   if (confirm('¿Seguro que querés eliminar este cliente?')) {
-    fetch(`${API_URL_CLI}/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
+    authFetch(`${API_URL_CLI}/${id}`, { method: 'DELETE' })
       .then(res => {
-        if (!res.ok) throw new Error('No se pudo eliminar');
-        showNotification('Cliente eliminado', 'success');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        notify('✅ Cliente eliminado', 'success');
         cargarClientes();
       })
       .catch(err => {
         console.error(err);
-        showNotification('Error al eliminar cliente', 'error');
+        notify('Error al eliminar cliente', 'error');
       });
   }
 }
 
-function editarCliente(id) {
-  showNotification(`Editar cliente ${id} (formulario de edición en desarrollo)`, 'info');
-}
+/* ================== FILTROS/FORM ================== */
 
 function filtrarClientes() {
-  const filtroDni = document.getElementById('filtroDni').value.toLowerCase();
-  const filtroNombre = document.getElementById('filtroNombre').value.toLowerCase();
+  const filtroDni    = ($('#filtroDni').value || '').toLowerCase().trim();
+  const filtroNombre = ($('#filtroNombre').value || '').toLowerCase().trim();
 
-  const filtrados = clientes.filter(c =>
-    (!filtroDni || c.dni.toLowerCase().includes(filtroDni)) &&
-    (!filtroNombre || `${c.name} ${c.surname}`.toLowerCase().includes(filtroNombre))
-  );
+  const filtrados = clientes.filter(c => {
+    const dni  = String(c.dni ?? '').toLowerCase();
+    const nomApe = `${c.name ?? ''} ${c.surname ?? ''}`.toLowerCase();
+    return (!filtroDni || dni.includes(filtroDni)) &&
+           (!filtroNombre || nomApe.includes(filtroNombre));
+  });
 
   mostrarClientes(filtrados);
 }
 
 function toggleFormulario() {
-  const formulario = document.getElementById('formularioNuevo');
-  formulario.style.display = (formulario.style.display === 'none' || formulario.style.display === '') ? 'flex' : 'none';
+  const formulario = $('#formularioNuevo');
+  const isHidden = (formulario.style.display === 'none' || formulario.style.display === '');
+  formulario.style.display = isHidden ? 'flex' : 'none';
 }
 
 function limpiarFormularioCliente() {
-  document.getElementById('name').value = '';
-  document.getElementById('surname').value = '';
-  document.getElementById('dni').value = '';
-  document.getElementById('email').value = '';
-  document.getElementById('address').value = '';
-  document.getElementById('locality').value = '';
-  document.getElementById('phoneNumber').value = '';
+  ['name','surname','dni','email','address','locality','phoneNumber'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
 }
 
-window.onload = cargarClientes;
+/* ============== Eventos y bootstrap ============== */
+
+window.addEventListener('DOMContentLoaded', () => {
+
+  // flash (desde editar)
+  const flash = localStorage.getItem('flash');
+  if (flash) {
+    const { message, type } = JSON.parse(flash);
+    notify(message, type || 'success');
+    localStorage.removeItem('flash');
+  }
+
+  // Búsqueda en vivo
+  const debouncedFilter = debounce(filtrarClientes, 250);
+  $('#filtroDni')?.addEventListener('input', debouncedFilter);
+  $('#filtroNombre')?.addEventListener('input', debouncedFilter);
+  // (opcional) mantener Enter:
+  // $('#filtroDni')?.addEventListener('keydown', e => { if (e.key === 'Enter') filtrarClientes(); });
+  // $('#filtroNombre')?.addEventListener('keydown', e => { if (e.key === 'Enter') filtrarClientes(); });
+
+  cargarClientes();
+});
+
+// Exportar para onclicks del HTML
+window.agregarCliente   = agregarCliente;
+window.toggleFormulario = toggleFormulario;
+window.filtrarClientes  = filtrarClientes;

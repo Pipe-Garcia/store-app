@@ -36,8 +36,8 @@
       <input type="text" id="filtroCodigo" placeholder="Código">
       <input type="text" id="filtroNombre" placeholder="Nombre">
       <input type="text" id="filtroProveedor" placeholder="Proveedor">
-      <button onclick="filtrarMateriales()">Buscar</button>
-      <button onclick="toggleFormularioMaterial()">Nuevo Material</button>
+      <button type="button" onclick="filtrarMateriales()">Buscar</button>
+      <button type="button" onclick="toggleFormularioMaterial()">Nuevo Material</button>
     </div>
 
   <div class="formulario-nuevo" id="formularioNuevoMaterial">
@@ -72,7 +72,7 @@
     <div id="lista-materiales"></div>
 
     
-  <script src="../files-js/materiales.js"></script>
+  <script type="module" src="../files-js/materiales.js"></script>
 </body>
 
 </html>

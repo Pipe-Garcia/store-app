@@ -314,6 +314,12 @@ body {
     text-decoration: underline;
     
 }
+.field-hint{ 
+  display:block;
+  margin:4px 0 12px;
+  color:#666;
+  font-size:.9rem;
+}
 .contenedor-tabla {
   display: flex;
   flex-direction: column;
@@ -322,21 +328,25 @@ body {
 }
 .notification {
   padding: 10px 20px;
-  border-radius: 5px;
-  margin-top: 10px; /* Espacio debajo del formulario */
-  color: white;
+  border-radius: 8px;
+  margin-top: 8px auto; /* Espacio debajo del formulario */
   text-align: center;
-  width: 100%; /* O ajusta un ancho fijo si prefieres, ej. 300px */
+  width: 100%; 
+  border:1px solid rgba(0,0,0,.08);
 }
 
 .notification.success {
-  background-color: #4CAF50;
+  background:#1a9240; 
+  color:#e7f6ec;
 }
 
 .notification.error {
-  background-color: #f44336;
+  background:#b01d1d; color:#fde8e8; 
 }
 
+.notification.info    { 
+  background:#e8f1fd; color:#123e8a; 
+}
 
 .fila {
   display: grid;

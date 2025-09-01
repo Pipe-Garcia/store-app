@@ -16,6 +16,9 @@ public class DeliveryCreateDTO implements Serializable {
     @NotNull(message = "Order ID is required")
     private Long ordersId;
 
-    private String status;
+    private String status; // opcional, si se envía lo ignoramos y calculamos
+
+    @NotNull
+    private java.util.List<DeliveryItemCreateDTO> items;
 }
 

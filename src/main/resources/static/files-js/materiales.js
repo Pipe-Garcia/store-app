@@ -1,47 +1,121 @@
+// /static/files-js/materiales.js
+
 const API_URL_MAT = 'http://localhost:8080/materials';
 const API_URL_FAMILIAS = 'http://localhost:8080/families';
+const API_URL_ALMACENES = 'http://localhost:8080/warehouses';
 
 let materiales = [];
 
+/* ========= Helpers (mientras no migramos a core/) ========= */
+
+const $  = (s, r=document) => r.querySelector(s);
+
+function getToken() {
+  // compat mientras migramos login
+  return localStorage.getItem('accessToken') || localStorage.getItem('token');
+}
+
+function authHeaders(json = true) {
+  const t = getToken();
+  return {
+    ...(json ? { 'Content-Type': 'application/json' } : {}),
+    ...(t ? { 'Authorization': `Bearer ${t}` } : {})
+  };
+}
+
+function debounce(fn, delay = 250) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+}
+
+
+function authFetch(url, opts = {}) {
+  const headers = { ...authHeaders(!opts.bodyIsForm), ...(opts.headers || {}) };
+  return fetch(url, { ...opts, headers });
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+const fmtCurrency = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+
+// Toasts visibles en top-right (5s)
+let __toastRoot;
+function ensureToastRoot() {
+  if (!__toastRoot) {
+    __toastRoot = document.createElement('div');
+    Object.assign(__toastRoot.style, {
+      position: 'fixed', top: '76px', right: '16px', left: 'auto', bottom: 'auto',
+      display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 9999, height: '50vh',
+      overflowY: 'auto', pointerEvents: 'none', maxWidth: '400px', width: '400px'
+    });
+    document.body.appendChild(__toastRoot);
+  }
+}
+function notify(msg, type = 'info') {
+  ensureToastRoot();
+  const div = document.createElement('div');
+  div.className = `notification ${type}`;
+  div.textContent = msg;
+  __toastRoot.appendChild(div);
+  setTimeout(() => div.remove(), 5000);
+}
+
+function flashAndGo(message, page) {
+  localStorage.setItem('flash', JSON.stringify({ message, type: 'success' }));
+  go(page);
+}
+function go(page) {
+  // navega dentro de la carpeta actual (files-html)
+  const base = location.pathname.replace(/[^/]+$/, ''); // deja .../files-html/
+  window.location.href = `${base}${page}`;
+}
+
+
+// legacy shim (mantener compat si quedó alguna llamada)
+function showNotification(message, type = 'success') {
+   notify(message, type); 
+  }
+
+/* ==================== Carga de tabla ==================== */
+
 function cargarMateriales() {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) {
-    console.error('No token found, redirecting to login');
-    window.location.href = '../files-html/login.html';
+    go('login.html');
     return;
   }
 
-  fetch(API_URL_MAT, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`, // Corrección: usar comillas invertidas (`) y ${token}
-      'Content-Type': 'application/json'
-    }
-  })
-  .then(res => {
-    if (!res.ok) {
-      throw new Error(`Error: ${res.status} - ${res.statusText}`); // Corrección: usar comillas invertidas (`)
-    }
-    return res.json();
-  })
-  .then(data => {
-    if (!Array.isArray(data)) {
-      console.error('Respuesta inesperada del backend:', data);
-      alert('Error: no se pudo obtener la lista de materiales');
-      return;
-    }
-    materiales = data;
-    mostrarMateriales(data);
-  })
-  .catch(err => {
-    console.error('Error al cargar materiales:', err);
-    if (err.message.includes('403') || err.message.includes('401')) {
-      alert('Sesión inválida, redirigiendo a login');
-      window.location.href = '../files-html/login.html';
-    } else {
-      alert('Error al conectar con el servidor');
-    }
-  });
+  authFetch(API_URL_MAT, { method: 'GET' })
+    .then(res => {
+      if (res.status === 401 || res.status === 403) throw new Error(String(res.status));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      if (!Array.isArray(data)) {
+        console.error('Respuesta inesperada del backend:', data);
+        notify('Error: no se pudo obtener la lista de materiales', 'error');
+        return;
+      }
+      materiales = data;
+      mostrarMateriales(materiales);
+    })
+    .catch(err => {
+      console.error('Error al cargar materiales:', err);
+      if (['401','403'].includes(err.message)) {
+        notify('Sesión inválida, redirigiendo a login', 'error');
+        go('login.html');
+      } else {
+        notify('Error al conectar con el servidor', 'error');
+      }
+    });
 }
 
 function mostrarMateriales(lista) {
@@ -51,32 +125,55 @@ function mostrarMateriales(lista) {
   lista.forEach(m => {
     const fila = document.createElement('div');
     fila.className = 'material-cont';
+
+    const code   = escapeHtml(String(m.internalNumber ?? ''));
+    const name   = escapeHtml(m.name);
+    const brand  = escapeHtml(m.brand);
+    const stock  = (m.quantityAvailable ?? m.stock?.quantityAvailable ?? 0);
+    const price  = (m.priceArs ?? m.price ?? 0);
+
     fila.innerHTML = `
-      <div>${m.internalNumber || '-'}</div>
-      <div>${m.name}</div>
-      <div>${m.brand}</div>
-      <div>${m.quantityAvailable ?? 0}</div>
-      <div>$${m.priceArs}</div>
+      <div>${code || '-'}</div>
+      <div>${name || '-'}</div>
+      <div>${brand || '-'}</div>
+      <div>${stock}</div>
+      <div>${fmtCurrency.format(Number(price) || 0)}</div>
       <div class="acciones">
-          <button onclick="location.href='../files-html/editar-material.html?id=${m.idMaterial}'">✏️</button>
-          <button onclick="eliminarMaterial(${m.idMaterial})">🗑️</button>
+          <button data-edit="${m.idMaterial}" title="Editar">✏️</button>
+          <button data-del="${m.idMaterial}" title="Eliminar">🗑️</button>
       </div>
     `;
     contenedor.appendChild(fila);
   });
 }
 
+/* ================ Acciones tabla (delegación) ================ */
+
+document.getElementById('lista-materiales')?.addEventListener('click', (e) => {
+  const idEdit = e.target.getAttribute('data-edit');
+  const idDel  = e.target.getAttribute('data-del');
+
+  if (idEdit) {
+    location.href = `../files-html/editar-material.html?id=${idEdit}`;
+    return;
+  }
+  if (idDel) eliminarMaterial(Number(idDel));
+});
+
+/* ===================== Filtros / Form ===================== */
+
 function filtrarMateriales() {
-  const codigo = document.getElementById('filtroCodigo').value.trim().toLowerCase();
-  const nombre = document.getElementById('filtroNombre').value.trim().toLowerCase();
-  const proveedor = document.getElementById('filtroProveedor').value.trim().toLowerCase();
+  const codigo    = ($('#filtroCodigo').value || '').trim().toLowerCase();
+  const nombre    = ($('#filtroNombre').value || '').trim().toLowerCase();
+  const proveedor = ($('#filtroProveedor').value || '').trim().toLowerCase();
 
   const filtrados = materiales.filter(m => {
-    return (
-      (codigo === '' || String(m.internalNumber).toLowerCase().includes(codigo)) &&
-      (nombre === '' || m.name.toLowerCase().includes(nombre)) &&
-      (proveedor === '' || m.brand.toLowerCase().includes(proveedor))
-    );
+    const cod = String(m.internalNumber ?? '').toLowerCase();
+    const nom = String(m.name ?? '').toLowerCase();
+    const bra = String(m.brand ?? '').toLowerCase();
+    return (!codigo || cod.includes(codigo)) &&
+           (!nombre || nom.includes(nombre)) &&
+           (!proveedor || bra.includes(proveedor));
   });
 
   mostrarMateriales(filtrados);
@@ -84,137 +181,112 @@ function filtrarMateriales() {
 
 function toggleFormularioMaterial() {
   const formulario = document.getElementById('formularioNuevoMaterial');
-  formulario.style.display = (formulario.style.display === 'none' || formulario.style.display === '') ? 'flex' : 'none';
+  const isHidden = (formulario.style.display === 'none' || formulario.style.display === '');
+  formulario.style.display = isHidden ? 'flex' : 'none';
 }
 
 function limpiarFormularioMaterial() {
-  document.getElementById('name').value = '';
-  document.getElementById('brand').value = '';
-  document.getElementById('priceArs').value = '';
-  document.getElementById('internalNumber').value = '';
+  ['name','brand','priceArs','internalNumber','familyId','warehouseId','initialQuantity']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 }
 
-function showNotification(message, type = 'success') {
-  const formulario = document.getElementById('formularioNuevoMaterial');
-  if (!formulario) {
-    console.error('Formulario no encontrado');
-    return;
-  }
-
-  const notification = document.createElement('div');
-  notification.className = `notification ${type}`;
-  notification.textContent = message;
-
-  // Insertar la notificación justo después del formulario
-  formulario.parentNode.insertBefore(notification, formulario.nextSibling);
-
-  // Quitar la notificación después de 4 segundos
-  setTimeout(() => notification.remove(), 4000);
-}
-
+/* =================== Altas / Bajas =================== */
 
 function agregarMaterial() {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) {
-    showNotification('Debes iniciar sesión para agregar un material', 'error');
-    window.location.href = '../files-html/login.html';
+    notify('Debes iniciar sesión para agregar un material', 'error', '#formularioNuevoMaterial');
+    go('login.html');
     return;
   }
 
-  const nombre = document.getElementById('name').value.trim();
-  const proveedor = document.getElementById('brand').value.trim();
-  const precio = document.getElementById('priceArs').value.trim();
-  const codigo = document.getElementById('internalNumber').value.trim();
-  const familyId = document.getElementById('familyId').value;
-  const warehouseId = document.getElementById('warehouseId').value;
-  const initialQuantity = document.getElementById('initialQuantity').value;
+  const nombre          = $('#name').value.trim();
+  const proveedor       = $('#brand').value.trim();
+  const precioStr       = $('#priceArs').value.trim();
+  const codigoStr       = $('#internalNumber').value.trim();
+  const familyIdStr     = $('#familyId').value;
+  const warehouseIdStr  = $('#warehouseId').value;
+  const initialQtyStr   = $('#initialQuantity').value;
 
-  if (
-    !nombre || !proveedor || !precio || !codigo ||
-    !familyId || !warehouseId || initialQuantity === '' ||
-    isNaN(parseFloat(precio)) || isNaN(parseFloat(initialQuantity))
-  ) {
+  const precio = parseFloat(precioStr);
+  const codigo = parseInt(codigoStr, 10);
+  const familyId = parseInt(familyIdStr, 10);
+  const warehouseId = parseInt(warehouseIdStr, 10);
+  const initialQuantity = parseFloat(initialQtyStr);
+
+  if (!nombre || !proveedor || isNaN(precio) || isNaN(codigo) ||
+      isNaN(familyId) || isNaN(warehouseId) || isNaN(initialQuantity)) {
     showNotification('Todos los campos son obligatorios y deben tener valores válidos.', 'error');
     return;
   }
 
-  const nuevoMaterial = {
+  const payload = {
     name: nombre,
     brand: proveedor,
-    priceArs: parseFloat(precio),
-    priceUsd: parseFloat(precio),
-    internalNumber: parseInt(codigo),
+    priceArs: precio,
+    priceUsd: precio, // si luego calculás USD, ajustamos aquí
+    internalNumber: codigo,
     measurementUnit: 'unidad',
-    familyId: parseInt(familyId),
+    familyId: familyId,
     stock: {
-      quantityAvailable: parseFloat(initialQuantity),
-      warehouseId: parseInt(warehouseId)
+      quantityAvailable: initialQuantity,
+      warehouseId: warehouseId
     }
   };
 
-  fetch(API_URL_MAT, {
+  authFetch(API_URL_MAT, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(nuevoMaterial)
+    body: JSON.stringify(payload)
   })
     .then(res => {
-      if (!res.ok) throw new Error('Error al agregar material');
-      showNotification('✅ Material agregado con éxito', 'success');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      notify('✅ Material agregado con éxito', 'success');
       cargarMateriales();
       limpiarFormularioMaterial();
       toggleFormularioMaterial();
     })
     .catch(err => {
       console.error(err);
-      showNotification('Error al crear material', 'error');
+      notify('Error al crear material', 'error', '#formularioNuevoMaterial');
     });
 }
 
 function eliminarMaterial(id) {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) {
     alert('Debes iniciar sesión para eliminar un material');
     window.location.href = '../files-html/login.html';
     return;
   }
+  if (!id) return;
 
   if (confirm('¿Seguro que querés eliminar este material?')) {
-    fetch(`${API_URL_MAT}/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}` // Corrección: usar comillas invertidas (`)
-      }
-    })
+    authFetch(`${API_URL_MAT}/${id}`, { method: 'DELETE' })
       .then(res => {
-        if (!res.ok) throw new Error('No se pudo eliminar el material');
-        alert('🗑️ Material eliminado');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        notify('🗑️ Material eliminado', 'success');
         cargarMateriales();
       })
       .catch(err => {
         console.error(err);
-        alert('Error al eliminar material');
+        notify('Error al eliminar material', 'error');
       });
   }
 }
 
-function cargarFamiliasEnSelect() {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    console.error('No token found');
-    return;
-  }
+/* ============== Combos (familias / almacenes) ============== */
 
-  fetch(API_URL_FAMILIAS, {
-    headers: {
-      'Authorization': `Bearer ${token}`, // Corrección: usar comillas invertidas (`)
-    }
-  })
-    .then(res => res.json())
+function cargarFamiliasEnSelect() {
+  const token = getToken();
+  if (!token) return;
+
+  authFetch(API_URL_FAMILIAS)
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
     .then(data => {
-      const select = document.getElementById('familyId');
+      const select = $('#familyId');
       select.innerHTML = '<option value="">Seleccionar familia</option>';
       data.forEach(f => {
         const opt = document.createElement('option');
@@ -227,39 +299,31 @@ function cargarFamiliasEnSelect() {
 }
 
 function cargarAlmacenesEnSelect() {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    console.error('No token found');
-    return;
-  }
+  const token = getToken();
+  if (!token) return;
 
-  fetch('http://localhost:8080/warehouses', {
-    headers: {
-      'Authorization': `Bearer ${token}`, // Corrección: usar comillas invertidas (`)
-    }
-  })
+  authFetch(API_URL_ALMACENES)
     .then(res => {
-      if (!res.ok) throw new Error(`Error: ${res.status} - ${res.statusText}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     })
     .then(data => {
-      const select = document.getElementById('warehouseId');
+      const select = $('#warehouseId');
       select.innerHTML = '';
-
-      if (data.length === 1) {
-        const unico = data[0];
-        const option = document.createElement('option');
-        option.value = unico.idWarehouse;
-        option.textContent = `${unico.name} (${unico.location})`;
-        select.appendChild(option);
+      if (Array.isArray(data) && data.length === 1) {
+        const a = data[0];
+        const opt = document.createElement('option');
+        opt.value = a.idWarehouse;
+        opt.textContent = `${a.name} (${a.location})`;
+        select.appendChild(opt);
         select.disabled = true;
       } else {
-        const defaultOpt = document.createElement('option');
-        defaultOpt.value = '';
-        defaultOpt.textContent = 'Seleccionar almacén';
-        select.appendChild(defaultOpt);
+        const def = document.createElement('option');
+        def.value = '';
+        def.textContent = 'Seleccionar almacén';
+        select.appendChild(def);
 
-        data.forEach(a => {
+        (data || []).forEach(a => {
           const opt = document.createElement('option');
           opt.value = a.idWarehouse;
           opt.textContent = `${a.name} (${a.location})`;
@@ -269,7 +333,7 @@ function cargarAlmacenesEnSelect() {
     })
     .catch(err => {
       console.error('Error al cargar almacenes:', err);
-      if (err.message.includes('403') || err.message.includes('401')) {
+      if (String(err.message).includes('401') || String(err.message).includes('403')) {
         alert('Sesión inválida, redirigiendo a login');
         window.location.href = '../files-html/login.html';
       } else {
@@ -278,13 +342,40 @@ function cargarAlmacenesEnSelect() {
     });
 }
 
-window.onload = () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    window.location.href = '../files-html/login.html';
-  } else {
-    cargarMateriales();
-    cargarFamiliasEnSelect();
-    cargarAlmacenesEnSelect();
+/* ================= Bootstrap vista ================= */
+
+window.addEventListener('DOMContentLoaded', () => {
+
+  const flash = localStorage.getItem('flash');
+  if (flash) {
+    const { message, type } = JSON.parse(flash);
+    notify(message, type); // mostrar siempre en top-right
+    localStorage.removeItem('flash');
   }
-};
+
+  const token = getToken();
+  if (!token) {
+    go('login.html');
+    return;
+  }
+
+  // Búsqueda en vivo (input) con debounce
+  const debouncedFilter = debounce(filtrarMateriales, 250);
+  ['filtroCodigo','filtroNombre','filtroProveedor'].forEach(id => {
+    const el = document.getElementById(id);
+    el?.addEventListener('input', debouncedFilter);
+  });
+  // (opcional) seguir soportando Enter:
+  // ['filtroCodigo','filtroNombre','filtroProveedor'].forEach(id => {
+  //   const el = document.getElementById(id);
+  //   el?.addEventListener('keydown', e => { if (e.key === 'Enter') filtrarMateriales(); });
+  // });
+
+  cargarMateriales();
+  cargarFamiliasEnSelect();
+  cargarAlmacenesEnSelect();
+});
+
+window.filtrarMateriales = filtrarMateriales;
+window.toggleFormularioMaterial = toggleFormularioMaterial;
+window.agregarMaterial = agregarMaterial;

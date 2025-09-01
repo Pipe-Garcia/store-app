@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🚚 - Detalle de entrega</title>
+  <link rel="stylesheet" href="../files-css/entregas.css">
+</head>
+<body>
+
+    <header class="header">
+    <nav class="nav-header">
+        <img src="" alt="logo">
+        <ul class="ul-header">
+        <li><a href="../files-html/index.html">Inicio</a></li>
+        <li><a href="../files-html/materiales.html">Materiales</a></li>
+        <li><a href="">Ventas</a></li>
+        <li><a href="../files-html/clientes.html">Clientes</a></li>
+        <li><a href="">Compras</a></li>
+        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+        <li><a href="../files-html/entregas.html" class="active">Entregas</a></li>
+        <li><a href="">Proveedores</a></li>
+        <li><a href="../files-html/almacen.html">Almacenes</a></li>
+        </ul>
+    </nav>
+    </header>
+
+  <div class="page-edit">
+    <div class="page-head">
+      <h1>Detalle de Entrega</h1>
+      <div class="actions">
+        <a id="btnEditar" class="btn primary" href="#">Editar</a>
+        <a class="btn outline" href="entregas.html">Volver</a>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="view-delivery">
+        <div><strong>ID Entrega:</strong> <span id="id"></span></div>
+        <div><strong>Pedido:</strong> #<span id="orderId"></span></div>
+        <div><strong>Cliente:</strong> <span id="cliente"></span></div>
+        <div><strong>Fecha:</strong> <span id="fecha"></span></div>
+        <div><strong>Estado:</strong> <span id="estado" class="pill"></span></div>
+        <div><strong>Total:</strong> $ <span id="total">0,00</span></div>
+      </div>
+    </div>
+
+    <div class="tabla">
+      <div class="fila encabezado" style="grid-template-columns: 2fr 1fr 1.4fr 1fr 1fr;">
+        <div>Material</div>
+        <div>Cantidad Pedida</div>
+        <div>Cantidad Entregada</div>
+        <div>Precio</div>
+        <div>Subtotal</div>
+      </div>
+      <div id="items"></div>
+    </div>
+  </div>
+
+  <script src="../files-js/ver-entrega.js"></script>
+</body>
+</html>

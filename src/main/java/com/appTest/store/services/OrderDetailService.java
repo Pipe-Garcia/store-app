@@ -34,9 +34,11 @@ public class OrderDetailService implements IOrderDetailService{
         String materialName = (orderDetail.getMaterial() != null) ? orderDetail.getMaterial().getName() : "Unknown";
         BigDecimal quantityMat = orderDetail.getQuantity();
         BigDecimal priceMat = orderDetail.getPriceUni();
+        Long materialId = (orderDetail.getMaterial() !=null ) ? orderDetail.getMaterial().getIdMaterial() : null; // <-- materialId
         return new OrderDetailDTO(
                 orderDetail.getIdOrderDetail(),
                 orderDetail.getOrders().getIdOrders(),
+                materialId,
                 materialName,
                 priceMat,
                 quantityMat

@@ -1,20 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../files-css/style.css">
-    <link rel="stylesheet" href="../files-css/home.css">
-   
-    <title> 📊 Inicio</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📊 | Inicio</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/dashboard.css"/>
 </head>
-
 <body>
-<header class="header">
-   <nav class="nav-header">
-    <img src="../img/logo/chimi.png" alt="logo">
-    <ul class="ul-header">
-        <li><a href="../files-html/index.html">Inicio</a></li>
+  <!-- NAV (tu mismo header/nav que ya usás) -->
+  <header class="header">
+    <nav class="nav-header">
+      <img src="" alt="logo">
+      <ul class="ul-header">
+        <li><a class="active" href="../files-html/index.html">Inicio</a></li>
         <li><a href="../files-html/materiales.html">Materiales</a></li>
         <li><a href="">Ventas</a></li>
         <li><a href="../files-html/clientes.html">Clientes</a></li>
@@ -23,24 +22,96 @@
         <li><a href="../files-html/entregas.html">Entregas</a></li>
         <li><a href="">Proveedores</a></li>
         <li><a href="../files-html/almacen.html">Almacenes</a></li>
-    </ul>
+      </ul>
     </nav>
-</header>
-    <center><h1>Bienvenido!</h1></center>
-<div class="home-container">
-    <p>Has iniciado sesión! Token: <span id="token"></span></p>
-    <button onclick="logout()">Cerrar Sesión</button>
-</div>
+  </header>
 
+  <main class="page">
+    <div class="page-head">
+      <h1>Panel de Control</h1>
+    </div>
 
-<script>
-    document.getElementById('token').textContent = localStorage.getItem('token');
-    function logout() {
-        localStorage.removeItem('token');
-        window.location.href = 'login.html';
-    }
-</script>
+    <section class="kpi-grid">
+    <!-- Ventas de hoy -->
+    <div class="card kpi">
+        <div class="kpi-title">Ventas de hoy</div>
+        <div class="kpi-value" id="kpiTodayAmount">$ 0,00</div>
+        <div class="kpi-sub"><span id="kpiTodayCount">0</span> ventas</div>
+    </div>
 
-    
+    <!-- Venta más alta -->
+    <div class="card kpi">
+        <div class="kpi-title">Venta más alta</div>
+        <div class="kpi-value" id="kpiHighestSaleTotal">$ 0,00</div>
+        <div class="kpi-sub">Cliente: <span id="kpiHighestSaleClient">—</span></div>
+    </div>
+
+    <!-- Material más vendido -->
+    <div class="card kpi">
+        <div class="kpi-title">Material más vendido</div>
+        <div class="kpi-value" id="kpiMostSoldName">—</div>
+        <div class="kpi-sub"><span id="kpiMostSoldUnits">0</span> uds.</div>
+    </div>
+
+    <!-- Material más caro -->
+    <div class="card kpi">
+        <div class="kpi-title">Material más caro</div>
+        <div class="kpi-value" id="kpiMostExpName">—</div>
+        <div class="kpi-sub">Precio: <span id="kpiMostExpPrice">$ 0,00</span></div>
+    </div>
+    </section>
+
+    <!-- KPIs de resumen -->
+    <section class="kpi-grid">
+      <div class="card kpi">
+        <div class="kpi-title">Material más caro</div>
+        <div class="kpi-value" id="kpiMasCaro">$ —</div>
+        <div class="kpi-sub" id="kpiMasCaroNombre">—</div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-title">Alertas de stock</div>
+        <div class="kpi-value" id="kpiLowStockCount">0</div>
+        <div class="kpi-sub">material(es) por debajo del umbral</div>
+      </div>
+    </section>
+
+    <section class="cards-section">
+        <div class="cards-grid">
+            <!-- Ventas últimos 7 días -->
+            <section class="card chart-card">
+                <div class="card-head">
+                    <h2>Ventas últimos 7 días</h2>
+                </div>
+                <div class="chart-wrap">
+                    <canvas id="chartSales7d"></canvas>
+                </div>
+            </section>
+        </div>
+    </section>
+    <br>
+
+    <!-- Alertas de stock: gráfico + tabla -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Materiales con stock bajo</h2>
+        <a class="btn outline" href="../files-html/materiales.html">Ver materiales ↗️</a>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chartStock"></canvas>
+      </div>
+      <div class="tabla compact" id="tablaLowStock">
+        <div class="fila encabezado">
+          <div>Material</div>
+          <div>Cantidad disponible</div>
+        </div>
+        <!-- filas dinámicas -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Chart.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <script src="../files-js/index.js"></script>
 </body>
 </html>

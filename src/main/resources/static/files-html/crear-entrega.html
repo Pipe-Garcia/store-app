@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🚚 - Entregas</title>
+  <title>🚚 - Crear entrega</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/entregas.css"/>
 </head>
@@ -25,46 +25,45 @@
   </nav>
 </header>
 
-<main class="page">
-  <div class="page-head">
-    <h1>Entregas</h1>
-    <div class="actions">
-      <a class="btn primary" href="../files-html/crear-entrega.html">+ Nueva entrega</a>
+<main class="page form-page seccion-crearEntrega">
+  <h1>Crear entrega</h1>
+
+  <form id="form-entrega" class="card">
+    <div class="grid">
+      <div>
+        <label for="orders">Pedido</label>
+        <select id="orders" required>
+          <option value="">Seleccionar pedido</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="fecha">Fecha de entrega</label>
+        <input id="fecha" type="date" required />
+      </div>
     </div>
-  </div>
 
-  <hr>
-  <br>
-  <section class="filters">
-    <div class="row">
-      <label for="filtroEstado">Estado:</label>
-      <select id="filtroEstado">
-        <option value="">Todos</option>
-        <option value="PENDING">Pendientes</option>
-        <option value="PARTIAL">Parciales</option>
-        <option value="COMPLETED">Completadas</option>
-      </select>
-
-      <label for="filtroTexto">Buscar:</label>
-      <input id="filtroTexto" type="text" placeholder="Cliente o #Pedido" />
+    <div class="subhead">
+      <h3>Materiales del pedido</h3>
+      <small>Indicá cantidades a entregar (parcial o total).</small>
     </div>
-  </section>
 
-  <section class="list">
-    <div id="lista-entregas" class="tabla">
+    <div id="items" class="tabla compact">
       <div class="fila encabezado">
-        <div>Fecha</div>
-        <div>Estado</div>
-        <div>Cliente</div>
+        <div>Material</div>
         <div>Pedido</div>
-        <div>Total</div>
-        <div>Acciones</div>
+        <div>Entregar</div>
       </div>
       <!-- filas dinámicas -->
     </div>
-  </section>
+
+    <div class="form-actions">
+      <button type="submit" class="btn primary">Guardar entrega</button>
+      <a class="btn danger ghost" href="../files-html/entregas.html">Cancelar</a>
+    </div>
+  </form>
 </main>
 
-<script src="../files-js/entregas.js"></script>
+<script src="../files-js/crear-entrega.js"></script>
 </body>
 </html>

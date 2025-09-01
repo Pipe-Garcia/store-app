@@ -1,11 +1,58 @@
-const API_URL_ORDERS = 'http://localhost:8080/orders';
+const API_URL_ORDERS        = 'http://localhost:8080/orders';
 const API_URL_ORDER_DETAILS = 'http://localhost:8080/order-details';
 
-document.addEventListener('DOMContentLoaded', () => {
-  const token = localStorage.getItem('token');
+/* Helpers */
+const $ = (s, r=document) => r.querySelector(s);
+
+function getToken() {
+  return localStorage.getItem('accessToken') || localStorage.getItem('token'); 
+}
+
+function go(page) {
+  const base = location.pathname.replace(/[^/]+$/, ''); window.location.href = `${base}${page}`; 
+}
+
+function authHeaders(json=true){ 
+  const t=getToken(); return {
+     ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) 
+    }; 
+}
+
+function authFetch(url,opts={}){ 
+  const headers={
+    ...authHeaders(!opts.bodyIsForm),...(opts.headers||{})
+  }; 
+  return fetch(url,{...opts,headers}); 
+}
+
+let __toastRoot;
+function ensureToastRoot(){ 
+  if(!__toastRoot){ 
+    __toastRoot=document.createElement('div'); 
+    Object.assign(__toastRoot.style,{
+      position:'fixed',top:'36px',right:'16px',display:'flex',flexDirection:'column',
+      gap:'8px',zIndex:9999,height:'50vh',overflowY:'auto',pointerEvents:'none',maxWidth:'400px',width:'400px'}); 
+      document.body.appendChild(__toastRoot);} 
+}
+
+function notify(m,type='info'){ 
+  ensureToastRoot(); 
+  const n=document.createElement('div'); 
+  n.className=`notification ${type}`; 
+  n.textContent=m; __toastRoot.appendChild(n); 
+  setTimeout(()=>n.remove(),5000); 
+}
+
+const fmt = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
+
+const fdate = s => s ? new Date(s).toLocaleDateString('es-AR') : '—';
+ 
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const token = getToken();
   if (!token) {
-    showNotification('Debes iniciar sesión para ver el detalle del pedido', 'error');
-    window.location.href = '../files-html/login.html';
+    notify('Debes iniciar sesión para ver el detalle del pedido', 'error');
+    go('login.html');
     return;
   }
 
@@ -13,56 +60,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const orderId = urlParams.get('id');
 
   if (!orderId) {
-    showNotification('ID de pedido no especificado', 'error');
-    window.location.href = '../files-html/pedidos.html';
+    notify('ID de pedido no especificado', 'error');
+    go('pedidos.html');
     return;
   }
 
-  // Obtener datos básicos del pedido
-  fetch(`${API_URL_ORDERS}/${orderId}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  })
-    .then(res => {
-      if (!res.ok) throw new Error(`Error: ${res.status} - ${res.statusText}`);
-      return res.json();
-    })
-    .then(pedido => {
-      document.getElementById('id-pedido').textContent = pedido.idOrders || '-';
-      document.getElementById('cliente').textContent = pedido.clientName || '-';
-      document.getElementById('fecha-creacion').textContent = pedido.dateCreate || '-';
-      document.getElementById('fecha-entrega').textContent = pedido.dateDelivery || '-';
-      document.getElementById('total').textContent = `$${pedido.total || '0'}`;
+  try {
+    const pedido = await authFetch(`${API_URL_ORDERS}/${orderId}`).then(r=>r.json());
+    $('#id-pedido').textContent       = pedido.idOrders || '-';
+    $('#cliente').textContent         = pedido.clientName || '-';
+    $('#fecha-creacion').textContent  = fdate(pedido.dateCreate);
+    $('#fecha-entrega').textContent   = fdate(pedido.dateDelivery);
+    $('#total').textContent           = fmt.format(Number(pedido.total||0));
 
-      // Obtener todos los order-details y filtrar por ordersId
-      return fetch(API_URL_ORDER_DETAILS, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      }).then(res => res.json());
-    })
-    .then(detalles => {
-      const listaMateriales = document.getElementById('lista-materiales');
-      listaMateriales.innerHTML = '';
-      const detallesFiltrados = Array.isArray(detalles) ? detalles.filter(d => d.ordersId === parseInt(orderId)) : [];
-      if (detallesFiltrados.length > 0) {
-        detallesFiltrados.forEach(mat => {
-          const li = document.createElement('li');
-          li.textContent = `${mat.materialName || 'Sin nombre'} - Cantidad: ${mat.quantity || 0} - Precio Unitario: $${mat.priceUni || 0}`;
-          listaMateriales.appendChild(li);
-        });
-      } else {
-        listaMateriales.innerHTML = '<li>No se encontraron materiales para este pedido.</li>';
-      }
-    })
-    .catch(err => {
-      console.error('Error al cargar el pedido:', err);
-      showNotification('Error al cargar el detalle del pedido', 'error');
-      window.location.href = '../files-html/pedidos.html';
+    const detalles = await authFetch(`${API_URL_ORDER_DETAILS}?orderId=${orderId}`)
+      .then(r => r.ok ? r.json() : authFetch(API_URL_ORDER_DETAILS).then(x=>x.json()));
+
+    const lista = $('#lista-materiales');
+    lista.innerHTML = '';
+    const rows = Array.isArray(detalles) ? detalles.filter(d => Number(d.ordersId ?? d.orderId) === Number(orderId)) : [];
+    if (rows.length === 0) {
+      lista.innerHTML = '<li>No se encontraron materiales para este pedido.</li>';
+      return;
+    }
+    rows.forEach(mat => {
+      const li = document.createElement('li');
+      const qty = Number(mat.quantity||0);
+      const pu  = Number(mat.priceUni||0);
+      li.textContent = `${mat.materialName || `Material #${mat.materialId ?? ''}`} - Cantidad: ${qty} - Precio Unitario: ${fmt.format(pu)}`;
+      lista.appendChild(li);
     });
+  } catch (err) {
+    console.error('Error al cargar el pedido:', err);
+    notify('Error al cargar el detalle del pedido', 'error');
+    go('pedidos.html');
+  }
 });

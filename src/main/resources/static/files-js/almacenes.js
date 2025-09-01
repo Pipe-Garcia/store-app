@@ -80,8 +80,9 @@ function cargarAlmacenes() {
         const div = document.createElement('div');
         div.className = 'almacen';
         div.innerHTML = `
+          <p>${alm.location}</p>
           <p>${alm.name}</p>
-          <p>${alm.location}</p> <p>${alm.address}</p>
+          <p>${alm.address}</p>
           <div class="acciones"> 
             <button class="delete-btn" onclick="eliminarAlmacen(${alm.idWarehouse})" style="background-color: #f35262ff; color: #fff;">Eliminar 🗑️</button>
           </div>

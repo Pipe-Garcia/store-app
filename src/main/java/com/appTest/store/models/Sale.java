@@ -28,8 +28,6 @@ public class Sale {
     @JoinColumn(name = "order_id", referencedColumnName = "idOrders")
     private Orders orders;
 
-
-
     @ManyToOne
     @JoinColumn(name = "delivery_id")
     private Delivery delivery;
