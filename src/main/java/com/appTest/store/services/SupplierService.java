@@ -1,26 +1,42 @@
 package com.appTest.store.services;
 
+import com.appTest.store.dto.materialSupplier.MaterialSupplierCreateDTO;
+import com.appTest.store.dto.materialSupplier.MaterialSupplierDTO;
 import com.appTest.store.dto.supplier.SupplierCreateDTO;
 import com.appTest.store.dto.supplier.SupplierDTO;
-import com.appTest.store.dto.supplier.SupplierUpdateDTO;
+import com.appTest.store.models.Material;
+import com.appTest.store.models.MaterialSupplier;
 import com.appTest.store.models.Supplier;
+import com.appTest.store.repositories.IMaterialRepository;
+import com.appTest.store.repositories.IMaterialSupplierRepository;
 import com.appTest.store.repositories.ISupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
-public class SupplierService implements ISupplierService{
+public class SupplierService implements ISupplierService {
 
     @Autowired
     private ISupplierRepository repoSupplier;
 
+    @Autowired
+    private IMaterialSupplierRepository matSupRepo;
+
+    @Autowired
+    private IMaterialRepository materialRepo;
+
     @Override
-    public List<Supplier> getAllSuppliers() {
-        return repoSupplier.findAll();
+    public List<SupplierDTO> getAllSuppliers() {
+        return repoSupplier.findAll()
+                .stream()
+                .map(this::convertSupplierToDto)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -30,27 +46,59 @@ public class SupplierService implements ISupplierService{
     }
 
     @Override
-    public SupplierDTO convertSupplierToDto(Supplier supplier) {
-        int quantPurchases = (supplier.getPurchases() != null) ? supplier.getPurchases().size() : 0;
-        return new SupplierDTO(
-                supplier.getIdSupplier(),
-                supplier.getName(),
-                supplier.getSurname(),
-                supplier.getDni(),
-                supplier.getEmail(),
-                supplier.getAddress(),
-                supplier.getLocality(),
-                supplier.getNameCompany(),
-                supplier.getStatus(),
-                supplier.getPhoneNumber(),
-                quantPurchases
-        );
+    public SupplierDTO getSupplierDtoById(Long id) {
+        Supplier supplier = getSupplierById(id);
+        SupplierDTO dto = convertSupplierToDto(supplier);
+
+        // Agregar materiales asociados
+        List<MaterialSupplier> asociados = matSupRepo.findBySupplier(supplier);
+        List<MaterialSupplierDTO> materiales = new ArrayList<>();
+        for (MaterialSupplier ms : asociados) {
+            MaterialSupplierDTO matDTO = new MaterialSupplierDTO();
+            matDTO.setIdMaterialSupplier(ms.getIdMaterialSupplier());
+            matDTO.setMaterialId(ms.getMaterial().getIdMaterial());
+            matDTO.setMaterialName(ms.getMaterial().getName());
+            matDTO.setPriceUnit(ms.getPriceUnit());
+            matDTO.setDeliveryTimeDays(ms.getDeliveryTimeDays());
+            materiales.add(matDTO);
+        }
+
+        dto.setMaterials(materiales);
+        return dto;
     }
 
     @Override
     @Transactional
     public SupplierDTO createSupplier(SupplierCreateDTO dto) {
-        Supplier supplier = new Supplier();
+        Supplier supplier = new Supplier(
+                dto.getName(), dto.getSurname(), dto.getDni(), dto.getEmail(),
+                dto.getAddress(), dto.getLocality(), dto.getNameCompany(),
+                dto.getPhoneNumber(), dto.getStatus()
+        );
+        Supplier saved = repoSupplier.save(supplier);
+
+        if (dto.getMaterials() != null) {
+            for (MaterialSupplierCreateDTO matDTO : dto.getMaterials()) {
+                Material material = materialRepo.findById(matDTO.getMaterialId())
+                        .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + matDTO.getMaterialId()));
+                MaterialSupplier matSup = new MaterialSupplier(
+                        matDTO.getDeliveryTimeDays(),
+                        material,
+                        matDTO.getPriceUnit(),
+                        saved
+                );
+                matSupRepo.save(matSup);
+            }
+        }
+
+        return convertSupplierToDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public SupplierDTO updateSupplier(Long id, SupplierCreateDTO dto) {
+        Supplier supplier = getSupplierById(id);
+
         supplier.setName(dto.getName());
         supplier.setSurname(dto.getSurname());
         supplier.setDni(dto.getDni());
@@ -61,34 +109,49 @@ public class SupplierService implements ISupplierService{
         supplier.setPhoneNumber(dto.getPhoneNumber());
         supplier.setStatus(dto.getStatus());
 
-        Supplier savedSupplier = repoSupplier.save(supplier);
-        savedSupplier = repoSupplier.findById(savedSupplier.getIdSupplier())
-                .orElseThrow(() -> new EntityNotFoundException("Supplier not found after creation"));
-        return convertSupplierToDto(savedSupplier);
-    }
+        Supplier saved = repoSupplier.save(supplier);
 
-    @Override
-    @Transactional
-    public void updateSupplier(SupplierUpdateDTO dto) {
-        Supplier supplier = repoSupplier.findById(dto.getIdSupplier())
-                .orElseThrow(() -> new EntityNotFoundException("Supplier not found with ID: " + dto.getIdSupplier()));
+        matSupRepo.deleteBySupplier(supplier);
 
-        if (supplier != null) {
-            if (dto.getName() != null) supplier.setName(dto.getName());
-            if (dto.getSurname() != null) supplier.setSurname(dto.getSurname());
-            if (dto.getDni() != null) supplier.setDni(dto.getDni());
-            if (dto.getEmail() != null) supplier.setEmail(dto.getEmail());
-            if (dto.getAddress() != null) supplier.setAddress(dto.getAddress());
-            if (dto.getLocality() != null) supplier.setLocality(dto.getLocality());
-            if (dto.getNameCompany() != null) supplier.setNameCompany(dto.getNameCompany());
-            if (dto.getPhoneNumber() != null) supplier.setPhoneNumber(dto.getPhoneNumber());
-            if (dto.getStatus() != null) supplier.setStatus(dto.getStatus());
+        if (dto.getMaterials() != null) {
+            for (MaterialSupplierCreateDTO matDTO : dto.getMaterials()) {
+                Material material = materialRepo.findById(matDTO.getMaterialId())
+                        .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + matDTO.getMaterialId()));
+                MaterialSupplier matSup = new MaterialSupplier(
+                        matDTO.getDeliveryTimeDays(),
+                        material,
+                        matDTO.getPriceUnit(),
+                        saved
+                );
+                matSupRepo.save(matSup);
+            }
         }
+
+        return convertSupplierToDto(saved);
     }
 
     @Override
     @Transactional
     public void deleteSupplierById(Long id) {
+        Supplier supplier = getSupplierById(id);
+        matSupRepo.deleteBySupplier(supplier);
         repoSupplier.deleteById(id);
+    }
+
+    @Override
+    public SupplierDTO convertSupplierToDto(Supplier s) {
+        SupplierDTO dto = new SupplierDTO();
+        dto.setIdSupplier(s.getIdSupplier());
+        dto.setName(s.getName());
+        dto.setSurname(s.getSurname());
+        dto.setDni(s.getDni());
+        dto.setEmail(s.getEmail());
+        dto.setAddress(s.getAddress());
+        dto.setLocality(s.getLocality());
+        dto.setNameCompany(s.getNameCompany());
+        dto.setStatus(s.getStatus());
+        dto.setPhoneNumber(s.getPhoneNumber());
+        dto.setQuantPurchases(s.getPurchases() != null ? s.getPurchases().size() : 0);
+        return dto;
     }
 }

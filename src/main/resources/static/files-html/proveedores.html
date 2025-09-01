@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Proveedores</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/proveedores.css"/>
+</head>
+<body>
+  <header class="header">
+    <nav class="nav-header">
+      <img src="" alt="logo">
+      <ul class="ul-header">
+        <li><a href="../files-html/index.html">Inicio</a></li>
+        <li><a href="../files-html/materiales.html">Materiales</a></li>
+        <li><a href="">Ventas</a></li>
+        <li><a href="../files-html/clientes.html">Clientes</a></li>
+        <li><a href="">Compras</a></li>
+        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+        <li><a href="../files-html/entregas.html">Entregas</a></li>
+        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
+        <li><a href="../files-html/almacen.html">Almacenes</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="main-container">
+    <h1>Proveedores</h1>
+    <hr><br>
+    
+    <div class="filtros">
+      <input type="text" id="filtroDni" placeholder="Buscar por DNI">
+      <input type="text" id="filtroEmpresa" placeholder="Buscar por empresa">
+      <button onclick="filtrarProveedores()">Buscar</button>
+      <button onclick="location.href='crear-proveedor.html'" >Nuevo Proveedor</button>
+    </div>
+</div>
+
+    <div id="contenedor-proveedores" class="contenedor-tabla">
+      <div>
+        <div>Nombre</div>
+        <div>Empresa</div>
+        <div>Teléfono</div>
+        <div>Email</div>
+        <div>Estado</div>
+        <div>Acciones</div>
+      </div>
+      
+    </div>
+  <script src="../files-js/proveedores.js"></script>
+</body>
+</html>

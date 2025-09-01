@@ -93,10 +93,7 @@ body {
   .cliente-cont div{
     display: flex;
   }
-  .cliente-cont:nth-child(even) {
-      background-color: #f9f9f9;
-  }
-
+ 
   .acciones button {
       margin-right: 5px;
       background-color: #dc3545;
@@ -179,9 +176,8 @@ body {
   font-weight: bold;
 }
 
-.cliente-cont:nth-child(even) {
-  background-color: #f9f9f9;
-}
+
+
 
 .cliente-cont div {
   padding: 5px;
@@ -247,9 +243,7 @@ body {
   font-weight: bold;
 }
 
-.material-cont:nth-child(even) {
-  background-color: #f9f9f9;
-}
+
 
 .material-cont div {
   padding: 5px;
@@ -465,33 +459,30 @@ body {
   cursor: pointer;
 }
 
-.contenedor-almacenes .almacen{
+.almacen{
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   padding: 10px;
   border-bottom: 1px solid #ccc;
   text-align: center;
 }
-.contenedor-almacenes .almacen:nth-child(even) {
-  background-color: #fffcfc;
-}
-.contenedor-almacenes .main-container .contenedor-tabla .fila{
+
+.contenedor-almacenes .almacen-container .contenedor-tabla .fila{
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   padding: 10px;
   text-align: center;
   border-bottom: 2px solid #ccc;
 }
-.contenedor-almacenes .main-container .contenedor-tabla .fila.encabezado {
+.contenedor-almacenes .almacen-container .contenedor-tabla .fila.encabezado {
   font-weight: bold;
   background-color: #f0f0f0;
   font-size: 18px;
 }
-.contenedor-almacenes .main-container h3 {
-  margin-top: 28px;
-  font-size: 24px;
-}
 
+.almacen-container h3{
+  padding-left: 40px;
+}
 
 .seccion-detalle-pedido,
 .seccion-editar-pedido {
@@ -526,7 +517,7 @@ body {
   background-color: #007bff;
   color: white;
   border: none;
-  border-radius: 30px 30px 30px 30px;
+  border-radius: 10px;
   cursor: pointer;
   margin-top: 10px;
   font-size: 16px;
@@ -590,5 +581,12 @@ body {
 .acciones .sale-btn {
   background-color: #d0f26a; /* Amarillo para "Asociar Venta" */
   color: #28a745;
+}
+.encabezado-pedidos{
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  text-align: center;
 }
 

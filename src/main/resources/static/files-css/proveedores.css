@@ -1,0 +1,200 @@
+.main-container{
+    padding: 40px;
+}
+.main-container h1 {
+    margin: 10px 0 0 50px;
+}
+.filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+   
+}
+.filtros input{
+    padding: 8px;
+    flex: 1 1 200px;
+}
+.filtros  button{
+    background-color: #28a745;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+}
+.contenedor-tabla{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 20px;
+}
+.encabezado-prov{
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  text-align: center;
+
+ font-weight: bold;
+    background-color: #eaeaea;
+}
+.proveedores-cont{
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    text-align: center;
+
+}
+.proveedores-cont button{
+  padding: 5px 10px; 
+  border: none; 
+  border-radius: 4px; 
+  cursor: pointer; 
+  font-size: 14px; 
+  transition: background-color 0.3s; 
+  align-items: center; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
+  
+}
+.btn-edit{
+    background-color: #69b4f2;
+}
+.btn-ver{
+    background-color: #666b64;
+}
+.btn-eliminar{
+    background-color: #fe6f65;
+}
+.btn-eliminar-2{
+    margin-left: 10px;
+    background-color: #fe6f65;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 8px 7px;
+}
+
+/*Formulario para crear un proveedor */
+.form-container {
+  max-width: 600px;
+  margin: 40px auto;
+  background-color: #f8f8f8;
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.form-container h1 {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 7px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+}
+
+.btn-guardar {
+  margin-top: 15px;
+  width: 38%;
+  background-color: #0a0;
+  color: white;
+  padding: 8px;
+  font-size: 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-guardar:hover {
+  background-color: #080;
+}
+.autocomplete-list {
+  
+  border: 1px solid #ccc;
+  max-height: 150px;
+  overflow-y: auto;
+  background-color: #fff;
+  position: absolute;
+  z-index: 1000;
+  width: 35%;
+  border-radius: 5px;
+}
+
+.autocomplete-list div {
+  padding: 10px;
+  cursor: pointer;
+}
+
+.autocomplete-list div:hover {
+  background-color: #eee;
+}
+
+.btn-agregarMatProv{
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.seccion-detalle-prov{
+      display: flex;
+    flex-direction: column;
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px 30px 8px 30px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    gap: 20px;
+    border: 1px solid #ccc;
+}
+.seccion-detalle-prov h2{
+  text-align: center;
+  margin-bottom: 20px;
+}
+.seccion-detalle-prov p{
+    display: flex;
+   
+    align-items: flex-start;
+    margin-left: 40px;
+    gap: 10px;
+    font-size: 16px;
+}
+.materiales-lista{
+   display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-left: 40px;
+    gap: 10px;
+    font-size: 16px;
+}
+.materiales-lista button{
+    padding: 8px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 16px;
+    align-self: center;
+    width: 120px;
+}
