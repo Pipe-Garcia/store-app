@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🏭 - Almacenes</title>
+  <title>🏭 - Nuevo Almacén</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/almacenes.css"/>
 </head>
@@ -28,40 +28,36 @@
 
   <main class="page">
     <div class="page-head">
-      <h1>Almacenes</h1>
-      <div class="actions">
-        <!-- Botón directo a crear-almacen.html -->
-        <a class="btn primary" href="../files-html/crear-almacen.html">+ Nuevo Almacén</a>
-      </div>
+      <h1>Nuevo Almacén</h1>
+      
     </div>
 
-    <!-- Filtros -->
-    <section class="filters card">
-      <div class="row">
-        <label>Nombre
-          <input type="text" id="filtroNombre" placeholder="Buscar por nombre">
+    <section class="card">
+      <form id="formCrearAlmacen" class="form-almacen" novalidate>
+        <label>
+          <input type="text" id="name" placeholder="Nombre" required>
         </label>
-        <label>Localidad
-          <input type="text" id="filtroLocalidad" placeholder="Buscar por localidad">
+
+        <label>
+          <input type="text" id="address" placeholder="Dirección" required>
         </label>
-        <button id="btnLimpiar" class="btn outline">Limpiar</button>
-      </div>
+
+        <label>
+          <input type="text" id="location" placeholder="Localidad" required>
+        </label>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary">Guardar</button>
+          <button type="reset" class="btn outline">Limpiar</button>
+          <a class="btn outline" href="../files-html/almacen.html">Cancelar</a>
+        </div>
+      </form>
     </section>
 
-    <!-- Lista -->
-    <section class="card">
-      <div class="tabla" id="lista-almacenes">
-        <div class="fila encabezado">
-          <div>Nombre</div>
-          <div>Dirección</div>
-          <div>Localidad</div>
-          <div>Acciones</div>
-        </div>
-        <!-- filas dinámicas -->
-      </div>
-    </section>
+    <!-- Mensajes -->
+    <section id="alerta" class="alerta" style="display:none;"></section>
   </main>
 
-  <script src="../files-js/almacenes.js"></script>
+  <script src="../files-js/crear-almacen.js"></script>
 </body>
 </html>

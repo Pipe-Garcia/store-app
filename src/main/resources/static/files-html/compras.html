@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>👤 - Proveedores</title>
+  <title>🛒 - Compras</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
-  <link rel="stylesheet" href="../files-css/proveedores.css"/>
+  <link rel="stylesheet" href="../files-css/compras.css"/>
 </head>
 <body>
   <!-- NAV -->
@@ -17,10 +17,10 @@
         <li><a href="../files-html/materiales.html">Materiales</a></li>
         <li><a href="../files-html/ventas.html">Ventas</a></li>
         <li><a href="../files-html/clientes.html">Clientes</a></li>
-        <li><a href="../files-html/compras.html">Compras</a></li>
+        <li><a class="active" href="../files-html/compras.html">Compras</a></li>
         <li><a href="../files-html/pedidos.html">Pedidos</a></li>
         <li><a href="../files-html/entregas.html">Entregas</a></li>
-        <li><a class="active" href="../files-html/proveedores.html">Proveedores</a></li>
+        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
         <li><a href="../files-html/almacen.html">Almacenes</a></li>
       </ul>
     </nav>
@@ -28,9 +28,9 @@
 
   <main class="page">
     <div class="page-head">
-      <h1>Proveedores</h1>
+      <h1>Compras</h1>
       <div class="actions">
-        <a class="btn primary" href="../files-html/crear-proveedor.html">+ Nuevo Proveedor</a>
+        <a class="btn primary" href="../files-html/crear-compra.html">+ Nueva compra</a>
       </div>
     </div>
 
@@ -38,36 +38,34 @@
     <!-- Filtros -->
     <section class="filters card">
       <div class="row">
-        <label>DNI
-          <input type="text" id="filtroDni" placeholder="Buscar por DNI">
+        <label>Proveedor
+          <input type="text" id="buscarProveedor" placeholder="Nombre proveedor...">
         </label>
 
-        <label>Empresa
-          <input type="text" id="filtroEmpresa" placeholder="Buscar por empresa">
+        <label>Desde
+          <input type="date" id="buscarDesde"/>
         </label>
 
-        
-        <label>Estado
-          <select id="filtroEstado">
-            <option value="">Todos</option>
-            <option value="ACTIVE">Activos</option>
-            <option value="INACTIVE">Inactivos</option>
-          </select>
+        <label>Hasta
+          <input type="date" id="buscarHasta"/>
+        </label>
+
+        <label>Buscar
+          <input type="text" id="buscarTexto" placeholder="ID o proveedor..."/>
         </label>
 
         <button id="btnLimpiar" class="btn outline">Limpiar</button>
       </div>
     </section>
 
-    <!-- Lista -->
+    <!-- Lista de compras -->
     <section class="card">
-      <div class="tabla" id="lista-proveedores">
+      <div class="tabla" id="lista-compras">
         <div class="fila encabezado">
-          <div>Nombre</div>
-          <div>Empresa</div>
-          <div>Teléfono</div>
-          <div>Email</div>
-          <div>Estado</div>
+          <div>ID</div>
+          <div>Fecha</div>
+          <div>Proveedor</div>
+          <div>Total</div>
           <div>Acciones</div>
         </div>
         <!-- filas dinámicas -->
@@ -75,6 +73,6 @@
     </section>
   </main>
 
-  <script src="../files-js/proveedores.js"></script>
+  <script src="../files-js/compras.js"></script>
 </body>
 </html>

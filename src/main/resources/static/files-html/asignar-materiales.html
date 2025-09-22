@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>➕ Asignar materiales</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/proveedores.css"/>
+</head>
+<body>
+<header class="header">
+  <nav class="nav-header">
+    <ul class="ul-header">
+      <li><a href="../files-html/proveedores.html" class="active">Proveedores</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main class="page form-page narrow">
+  <div class="page-head">
+    <h1>Asignar materiales al proveedor</h1>
+    <div class="actions">
+      <a class="btn success" href="proveedores.html">Guardar</a>
+    </div>
+  </div>
+
+  <!-- Info proveedor -->
+  <section class="card">
+    <div class="detail-grid">
+      <div>
+        <div class="muted">ID Proveedor</div>
+        <div id="proveedorId">—</div>
+      </div>
+      <div>
+        <div class="muted">Nombre</div>
+        <div id="proveedorNombre">—</div>
+      </div>
+      <div>
+        <div class="muted">Empresa</div>
+        <div id="proveedorEmpresa">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Formulario de materiales -->
+  <section class="card">
+    <h3 class="subhead">Agregar material</h3>
+    <div class="grid">
+      <div>
+        <label for="material-input">Material</label>
+        <input type="text" id="material-input" placeholder="Buscar material..." autocomplete="off" />
+        <div id="suggestions" class="autocomplete-list"></div>
+      </div>
+      <div>
+        <label for="precio-unitario">Precio unitario</label>
+        <input type="number" id="precio-unitario" step="0.01" required />
+      </div>
+      <div>
+        <label for="tiempo-entrega">Tiempo de entrega (días)</label>
+        <input type="number" id="tiempo-entrega" min="1" required />
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn primary" id="btnAddMat"> Agregar</button>
+    </div>
+  </section>
+
+  <!-- Lista de materiales asignados -->
+  <section class="card">
+  <h3 class="subhead">Materiales asignados</h3>
+  <div class="tabla" id="lista-mat-proveedor">
+    <div class="fila encabezado">
+      <div>Material</div>
+      <div>Precio unitario</div>
+      <div>Entrega (días)</div>
+      <div>Acciones</div>
+    </div>
+    <!-- filas dinámicas -->
+  </div>
+</section>
+
+</main>
+
+<script src="../files-js/asignar-materiales.js"></script>
+
+<script>
+// Opcional: enganchar el botón al handler existente
+document.addEventListener('DOMContentLoaded', ()=>{
+  const b = document.getElementById('btnAddMat');
+  if (b && typeof agregarMaterialProveedor === 'function') {
+    b.addEventListener('click', agregarMaterialProveedor);
+  }
+});
+</script>
+</body>
+</html>

@@ -3,105 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Crear Proveedor</title>
+  <title>👤 - Nuevo proveedor</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/proveedores.css"/>
 </head>
 <body>
-  <header class="header">
-   <nav class="nav-header">
-    <img src="" alt="logo">
+<header class="header">
+  <nav class="nav-header">
     <ul class="ul-header">
-        <li><a href="../files-html/index.html">Inicio</a></li>
-        <li><a href="../files-html/materiales.html">Materiales</a></li>
-        <li><a href="">Ventas</a></li>
-        <li><a href="../files-html/clientes.html">Clientes</a></li>
-        <li><a href="">Compras</a></li>
-        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-        <li><a href="../files-html/entregas.html">Entregas</a></li>
-        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
-        <li><a href="../files-html/almacen.html">Almacenes</a></li>
+      <li><a href="../files-html/index.html">Inicio</a></li>
+      <li><a href="../files-html/proveedores.html" class="active">Proveedores</a></li>
     </ul>
-    </nav>
+  </nav>
 </header>
-  <div class="form-container">
-    <h1 id="titulo-form">Crear proveedor</h1>
 
-    <form id="form-proveedor">
-      <input type="hidden" id="idProveedor" />
-
-      <div class="form-group">
-        <label for="nombre">Nombre:</label>
-        <input type="text" id="nombre" placeholder="Nombre" required />
-      </div>
-
-      <div class="form-group">
-        <label for="apellido">Apellido:</label>
-        <input type="text" id="apellido" placeholder="Apellido" />
-      </div>
-
-      <div class="form-group">
-        <label for="dni">DNI:</label>
-        <input type="text" id="dni" placeholder="DNI" required />
-      </div>
-
-      <div class="form-group">
-        <label for="email">Email:</label>
-        <input type="email" id="email" placeholder="Email" />
-      </div>
-
-      <div class="form-group">
-        <label for="direccion">Dirección:</label>
-        <input type="text" id="direccion" placeholder="Dirección" required />
-      </div>
-
-      <div class="form-group">
-        <label for="localidad">Localidad:</label>
-        <input type="text" id="localidad" placeholder="Localidad" />
-      </div>
-
-      <div class="form-group">
-        <label for="empresa">Empresa:</label>
-        <input type="text" id="empresa" placeholder="Nombre de empresa" required />
-      </div>
-
-      <div class="form-group">
-        <label for="telefono">Teléfono:</label>
-        <input type="text" id="telefono" placeholder="Teléfono" />
-      </div>
-
-      <div class="form-group">
-        <label for="estado">Estado:</label>
-        <select id="estado">
-          <option value="ACTIVE">Activo</option>
-          <option value="INACTIVE">Inactivo</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="material-input">Material que provee:</label>
-        <input type="text" id="material-input" placeholder="Buscar material por nombre" autocomplete="off" />
-        <div id="suggestions" class="autocomplete-list"></div>
-      </div>
-
-      <div class="form-group">
-        <label for="precio-unitario">Precio unitario:</label>
-        <input type="number" id="precio-unitario" placeholder="Precio" step="0.01" />
-      </div>
-
-      <div class="form-group">
-        <label for="tiempo-entrega">Tiempo estimado de entrega (días):</label>
-        <input type="number" id="tiempo-entrega" placeholder="Días" />
-      </div>
-
-  <button class="btn-agregarMatProv" type="button" onclick="agregarMaterialProveedor()">+ Agregar material a la lista</button>
-
-
-<ul id="lista-materiales-proveedor"></ul>
-
-      <button type="submit" class="btn-guardar">Guardar Proveedor</button>
-    </form>
+<main class="page form-page narrow">
+  <div class="page-head">
+    <h1>Nuevo proveedor</h1>
   </div>
 
-  <script src="../files-js/crear-proveedor.js"></script>
+  <section class="card">
+    <form id="form-proveedor">
+      <div class="grid">
+        <div>
+          <label for="nombre">Nombre</label>
+          <input type="text" id="nombre" required />
+        </div>
+        <div>
+          <label for="apellido">Apellido</label>
+          <input type="text" id="apellido" />
+        </div>
+        <div>
+          <label for="dni">DNI</label>
+          <input type="text" id="dni" required />
+        </div>
+        <div>
+          <label for="empresa">Empresa</label>
+          <input type="text" id="empresa" required />
+        </div>
+        <div>
+          <label for="telefono">Teléfono</label>
+          <input type="text" id="telefono" />
+        </div>
+        <div>
+          <label for="email">Email</label>
+          <input type="email" id="email" />
+        </div>
+        <div>
+          <label for="direccion">Dirección</label>
+          <input type="text" id="direccion" required />
+        </div>
+        <div>
+          <label for="localidad">Localidad</label>
+          <input type="text" id="localidad" />
+        </div>
+        <div>
+          <label for="estado">Estado</label>
+          <select id="estado">
+            <option value="ACTIVE">Activo</option>
+            <option value="INACTIVE">Inactivo</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn primary">Guardar proveedor</button>
+        <a href="proveedores.html" class="btn outline">Cancelar</a>
+      </div>
+    </form>
+  </section>
+</main>
+
+
+<script src="../files-js/crear-proveedor.js"></script>
 </body>
 </html>

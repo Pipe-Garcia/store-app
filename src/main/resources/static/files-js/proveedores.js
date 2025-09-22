@@ -1,53 +1,68 @@
 const API_URL_PROVEEDORES = 'http://localhost:8080/suppliers';
 
-// Verificar si hay token
+const $  = (s,r=document)=>r.querySelector(s);
+const fmtEstado = (estado)=> estado ? estado : '—';
+
+// Token
 const token = localStorage.getItem('token');
 if (!token) {
-  alert('Debes iniciar sesión para ver los proveedores');
+  alert('Debes iniciar sesión para acceder');
   window.location.href = '../files-html/login.html';
 }
 
-document.addEventListener('DOMContentLoaded', cargarProveedores);
+let proveedores = [];
 
-function cargarProveedores() {
-  fetch(API_URL_PROVEEDORES, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  })
-    .then(res => {
-      if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
-      return res.json();
-    })
-    .then(data => {
-      if (!Array.isArray(data)) {
-        console.error("Respuesta inesperada:", data);
-        alert("No se pudo obtener la lista de proveedores.");
-        return;
-      }
-      mostrarProveedores(data);
-    })
-    .catch(err => {
-      console.error("Error al cargar proveedores:", err);
-      alert("Error al conectar con el servidor.");
+document.addEventListener('DOMContentLoaded', async ()=>{
+  await cargarProveedores();
+  applyFilters();
+
+  $('#filtroDni').addEventListener('input', applyFilters);
+  $('#filtroEmpresa').addEventListener('input', applyFilters);
+  $('#filtroEstado').addEventListener('change', applyFilters);   // 👈 nuevo
+  $('#btnLimpiar').addEventListener('click', limpiarFiltros);
+});
+
+// Cargar todos los proveedores
+async function cargarProveedores(){
+  try{
+    const res = await fetch(API_URL_PROVEEDORES, {
+      headers: { 'Authorization': `Bearer ${token}` }
     });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    proveedores = await res.json() || [];
+  }catch(err){
+    console.error("Error cargando proveedores:", err);
+    alert("No se pudieron cargar los proveedores.");
+  }
 }
-function filtrarProveedores() {
-  const filtroDni = document.getElementById('filtroDni').value.toLowerCase();
-  const filtroEmpresa = document.getElementById('filtroEmpresa').value.toLowerCase();
 
-  const filtrados = proveedores.filter(p =>
-    (!filtroDni || String(p.dni).toLowerCase().includes(filtroDni)) &&
-    (!filtroEmpresa || p.nameCompany.toLowerCase().includes(filtroEmpresa))
-  );
-
-  mostrarProveedores(filtrados);
+// Filtros
+function limpiarFiltros(){
+  $('#filtroDni').value = '';
+  $('#filtroEmpresa').value = '';
+  $('#filtroEstado').value = '';           // 👈 reset del select
+  applyFilters();
 }
-  
-function mostrarProveedores(lista) {
-  const contenedor = document.getElementById('contenedor-proveedores');
-  contenedor.innerHTML = `
-    <div class="encabezado-prov">
+
+function applyFilters(){
+  const dni     = ($('#filtroDni').value||'').toLowerCase();
+  const empresa = ($('#filtroEmpresa').value||'').toLowerCase();
+  const estado  = $('#filtroEstado').value; // '' | 'ACTIVE' | 'INACTIVE'
+
+  let list = proveedores.slice();
+
+  if (dni)     list = list.filter(p => String(p.dni||'').toLowerCase().includes(dni));
+  if (empresa) list = list.filter(p => (p.nameCompany||'').toLowerCase().includes(empresa));
+  if (estado)  list = list.filter(p => (p.status||'').toUpperCase() === estado); // 👈 aplica estado
+
+  renderLista(list);
+}
+
+// Renderizar tabla
+function renderLista(lista){
+  const cont = $('#lista-proveedores');
+  cont.innerHTML = `
+    <div class="fila encabezado">
       <div>Nombre</div>
       <div>Empresa</div>
       <div>Teléfono</div>
@@ -57,51 +72,54 @@ function mostrarProveedores(lista) {
     </div>
   `;
 
-  lista.forEach(p => {
-    const fila = document.createElement('div');
-    fila.className = 'proveedores-cont';
+  if (!lista.length){
+    const r=document.createElement('div');
+    r.className='fila';
+    r.innerHTML = `<div style="grid-column:1/-1;color:#666;">No hay proveedores para los filtros aplicados.</div>`;
+    cont.appendChild(r);
+    return;
+  }
 
-    fila.innerHTML = `
-      <div>${p.name} ${p.surname ?? ''}</div>
-      <div>${p.nameCompany}</div>
-      <div>${p.phoneNumber}</div>
-      <div>${p.email ?? '-'}</div>
-      <div>${p.status}</div>
-      <div>
-        <button class="btn-edit" onclick="editarProveedor(${p.idSupplier})">✏️</button>
-        <button class="btn-ver" onclick="verMateriales(${p.idSupplier})">📦</button>
-        <button class="btn-eliminar" onclick="eliminarProveedor(${p.idSupplier})">🗑️</button>
+  for (const p of lista){
+    const row = document.createElement('div');
+    row.className='fila';
+    row.innerHTML = `
+      <div>${p.name || ''} ${p.surname || ''}</div>
+      <div>${p.nameCompany || '—'}</div>
+      <div>${p.phoneNumber || '—'}</div>
+      <div>${p.email || '—'}</div>
+      <div>${fmtEstado(p.status)}</div>
+      <div class="acciones">
+        <a class="btn outline" href="editar-proveedor.html?id=${p.idSupplier}">✏️ Editar</a>
+        <a class="btn outline" href="detalle-proveedor.html?id=${p.idSupplier}">📦 Ver detalle</a>
+        <a class="btn outline" href="asignar-materiales.html?id=${p.idSupplier}">➕ Asignar articulo</a>
+        <button class="btn danger" data-del="${p.idSupplier}">🗑️ Eliminar</button>
       </div>
     `;
+    cont.appendChild(row);
+  }
 
-    contenedor.appendChild(fila);
-  });
+  // Delegación eventos
+  cont.onclick = async (ev)=>{
+    const id = ev.target.getAttribute('data-del');
+    if(id) eliminarProveedor(id);
+  };
 }
 
-function editarProveedor(id) {
-  window.location.href = `editar-proveedor.html?id=${id}`;
-}
-
-function verMateriales(id) {
-  window.location.href = `detalle-proveedor.html?id=${id}`;
-}
-
-function eliminarProveedor(id) {
-  if (confirm("¿Seguro que desea eliminar este proveedor?")) {
-    fetch(`${API_URL_PROVEEDORES}/${id}`, {
+// Acciones
+async function eliminarProveedor(id){
+  if (!confirm("¿Seguro que desea eliminar este proveedor?")) return;
+  try{
+    const res = await fetch(`${API_URL_PROVEEDORES}/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-      .then(res => {
-        if (!res.ok) throw new Error("No se pudo eliminar");
-        alert("Proveedor eliminado correctamente");
-        location.reload();
-      })
-      .catch(err => {
-        console.error("Error al eliminar proveedor:", err);
-        alert("Error al eliminar proveedor");
-      });
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error("No se pudo eliminar");
+    alert("Proveedor eliminado correctamente");
+    proveedores = proveedores.filter(p=>p.idSupplier!==Number(id));
+    applyFilters();
+  }catch(err){
+    console.error("Error eliminando proveedor:", err);
+    alert("Error al eliminar proveedor");
   }
 }

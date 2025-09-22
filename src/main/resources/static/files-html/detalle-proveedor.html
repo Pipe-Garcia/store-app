@@ -1,59 +1,58 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="../files-css/style.css" />
-  <link rel="stylesheet" href="../files-css/proveedores.css" />
-
-  <title>Detalle de Proveedor</title>
+  <title>📄 Detalle proveedor</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/proveedores.css"/>
 </head>
 <body>
-  <header class="header">
-   <nav class="nav-header">
-    <img src="" alt="logo">
+<header class="header">
+  <nav class="nav-header">
     <ul class="ul-header">
-        <li><a href="../files-html/index.html">Inicio</a></li>
-        <li><a href="../files-html/materiales.html">Materiales</a></li>
-        <li><a href="">Ventas</a></li>
-        <li><a href="../files-html/clientes.html">Clientes</a></li>
-        <li><a href="">Compras</a></li>
-        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-        <li><a href="../files-html/entregas.html">Entregas</a></li>
-        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
-        <li><a href="../files-html/almacen.html">Almacenes</a></li>
+      <li><a href="../files-html/proveedores.html" class="active">Proveedores</a></li>
     </ul>
-    
-    </nav>
-
+  </nav>
 </header>
 
-  <main class="container">
-    
-
-    <div class="seccion-detalle-prov">
-      <h2>Detalle del Proveedor</h2>
-    
-      <p><strong>Nombre:</strong> <span id="nombre"></span></p>
-      <p><strong>Empresa:</strong> <span id="empresa"></span></p>
-      <p><strong>Teléfono:</strong> <span id="telefono"></span></p>
-      <p><strong>Email:</strong> <span id="email"></span></p>
-      <p><strong>Localidad:</strong> <span id="localidad"></span></p>
-      <p><strong>Dirección:</strong> <span id="direccion"></span></p>
-      <p><strong>Estado:</strong> <span id="estado"></span></p>
-      <p><strong>Cantidad de compras:</strong> <span id="compras"></span></p>
-          <div class="materiales-lista">
-            <h2>Materiales que provee</h2>
-              <ul id="lista-materiales"></ul>
-              <button onclick="window.history.back()">Volver</button>
-          </div>
+<main class="page">
+  <div class="page-head">
+    <h1>Detalle del proveedor</h1>
+    <div class="actions">
+      <a class="btn outline" id="btnEditar" href="#">✏️ Editar</a>
+      <a class="btn outline" id="btnAsignar" href="#">➕ Asignar materiales</a>
     </div>
-  </main>
-       
+  </div>
 
-   
+  <!-- Info proveedor -->
+  <section class="card">
+    <div class="detail-grid">
+      <div><div class="muted">Nombre</div><div id="dNombre">—</div></div>
+      <div><div class="muted">Empresa</div><div id="dEmpresa">—</div></div>
+      <div><div class="muted">DNI</div><div id="dDni">—</div></div>
+      <div><div class="muted">Email</div><div id="dEmail">—</div></div>
+      <div><div class="muted">Teléfono</div><div id="dTelefono">—</div></div>
+      <div><div class="muted">Dirección</div><div id="dDireccion">—</div></div>
+      <div><div class="muted">Localidad</div><div id="dLocalidad">—</div></div>
+      <div><div class="muted">Estado</div><div id="dEstado">—</div></div>
+    </div>
+  </section>
 
-   
-  <script src="../files-js/detalle-proveedor.js"></script>
+  <!-- Materiales asociados -->
+  <section class="card">
+    <h3 class="subhead">Materiales que provee</h3>
+    <div class="tabla" id="tabla-materiales">
+      <div class="fila encabezado">
+        <div>Material</div>
+        <div>Precio unitario</div>
+        <div>Entrega (días)</div>
+      </div>
+      <!-- filas dinámicas -->
+    </div>
+  </section>
+</main>
+
+<script src="../files-js/detalle-proveedor.js"></script>
 </body>
 </html>

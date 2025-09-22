@@ -18,11 +18,12 @@ public class WarehouseDTO implements Serializable {
 
     public WarehouseDTO() {}
 
-    public WarehouseDTO(Long idWarehouse, String address, String location, String name, BigDecimal totalStock) {
+    // ✅ Constructor corregido (name antes que location)
+    public WarehouseDTO(Long idWarehouse, String address, String name, String location, BigDecimal totalStock) {
         this.idWarehouse = idWarehouse;
         this.address = address;
-        this.location = location;
         this.name = name;
+        this.location = location;
         this.totalStock = totalStock;
     }
 }

@@ -104,10 +104,7 @@ body {
       cursor: pointer;
   }
 
-  .acciones button:first-child {
-      background-color: #666b64;
-      color: black;
-  }
+  
   .formulario-nuevo {
     display: none; 
     margin: 20px 0;
@@ -195,7 +192,7 @@ body {
 }
 
 .acciones button {
-  padding: 5px 10px; /* Espacio interno para los botones */
+  padding: 8px 12px; /* Espacio interno para los botones */
   border: none; 
   border-radius: 4px; 
   cursor: pointer; 

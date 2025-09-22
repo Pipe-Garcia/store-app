@@ -1,131 +1,119 @@
+// almacenes.js (limpio - listado)
 const API_URL_WAREHOUSES = 'http://localhost:8080/warehouses';
+const $  = (s,r=document)=>r.querySelector(s);
 
-document.getElementById('formAlmacen').addEventListener('submit', (e) => {
-  e.preventDefault();
+// Token
+const token = localStorage.getItem('token');
+if (!token) {
+  alert('Debes iniciar sesión para acceder');
+  window.location.href = '../files-html/login.html';
+}
 
-  const token = localStorage.getItem('token');
-  if (!token) {
-    alert('Debes iniciar sesión para crear un almacén');
-    window.location.href = '../files-html/login.html';
-    return;
-  }
+let almacenes = [];
 
-  const name = document.getElementById('name').value.trim();
-  const address = document.getElementById('address').value.trim();
-  const location = document.getElementById('location').value.trim();
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // Filtros (con guardas por si faltan elementos)
+  $('#filtroNombre')?.addEventListener('input', applyFilters);
+  $('#filtroLocalidad')?.addEventListener('input', applyFilters);
+  $('#btnLimpiar')?.addEventListener('click', limpiarFiltros);
 
-  if (!name || !address || !location) {
-    alert('Todos los campos son obligatorios.');
-    return;
-  }
-
-  const nuevo = { name, address, location };
-
-  fetch(API_URL_WAREHOUSES, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`, // Agregar token
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(nuevo)
-  })
-    .then(res => {
-      if (!res.ok) throw new Error('Error al crear almacén');
-      alert('📦 Almacén creado con éxito');
-      document.getElementById('formAlmacen').reset();
-      cargarAlmacenes();
-    })
-    .catch(err => {
-      console.error(err);
-      alert('Error creando almacén');
-    });
+  await cargarAlmacenes();
+  applyFilters();
 });
 
-function cargarAlmacenes() {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    console.error('No token found, redirecting to login');
-    window.location.href = '../files-html/login.html';
-    return;
-  }
-
-  fetch(API_URL_WAREHOUSES, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`, // Agregar token
-      'Content-Type': 'application/json'
-    }
-  })
-    .then(res => {
-      if (!res.ok) throw new Error(`Error: ${res.status} - ${res.statusText}`);
-      return res.json();
-    })
-    .then(data => {
-      const contenedor = document.getElementById('lista-almacenes');
-      contenedor.innerHTML = `
-        <div class="fila encabezado">
-          <div>Nombre</div>
-          <div>Ubicación</div>
-          <div>Dirección</div>
-          <div>Acciones</>
-        </div>
-      `;
-
-      if (!Array.isArray(data) || data.length === 0) {
-        contenedor.innerHTML = '<p>No hay almacenes registrados.</p>';
-        return;
-      }
-
-      data.forEach(alm => {
-        const div = document.createElement('div');
-        div.className = 'almacen';
-        div.innerHTML = `
-          <p>${alm.location}</p>
-          <p>${alm.name}</p>
-          <p>${alm.address}</p>
-          <div class="acciones"> 
-            <button class="delete-btn" onclick="eliminarAlmacen(${alm.idWarehouse})" style="background-color: #f35262ff; color: #fff;">Eliminar 🗑️</button>
-          </div>
-        `;
-        contenedor.appendChild(div);
-      });
-    })
-    .catch(err => {
-      console.error('Error al cargar almacenes:', err);
-      if (err.message.includes('403') || err.message.includes('401')) {
-        alert('Sesión inválida, redirigiendo a login');
-        window.location.href = '../files-html/login.html';
-      } else {
-        alert('Error al conectar con el servidor');
-      }
+// Cargar todos
+async function cargarAlmacenes(){
+  try{
+    const res = await fetch(API_URL_WAREHOUSES, {
+      headers: { 'Authorization': `Bearer ${token}` }
     });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    almacenes = await res.json() || [];
+  }catch(err){
+    console.error("Error cargando almacenes:", err);
+    alert("No se pudieron cargar los almacenes.");
+  }
 }
 
-function eliminarAlmacen(id) {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    alert('Debes iniciar sesión para eliminar un almacén');
-    window.location.href = '../files-html/login.html';
+// Filtros
+function limpiarFiltros(){
+  const n = $('#filtroNombre');
+  const l = $('#filtroLocalidad');
+  if (n) n.value = '';
+  if (l) l.value = '';
+  applyFilters();
+}
+
+function applyFilters(){
+  const nombre    = ($('#filtroNombre')?.value||'').toLowerCase();
+  const localidad = ($('#filtroLocalidad')?.value||'').toLowerCase();
+
+  let list = almacenes.slice();
+  if (nombre)    list = list.filter(a => (a.name||'').toLowerCase().includes(nombre));
+  if (localidad) list = list.filter(a => (a.location||'').toLowerCase().includes(localidad));
+
+  renderLista(list);
+}
+
+// Render
+function renderLista(lista){
+  const cont = $('#lista-almacenes');
+  if (!cont) return;
+
+  cont.innerHTML = `
+    <div class="fila encabezado">
+      <div>Nombre</div>
+      <div>Dirección</div>
+      <div>Localidad</div>
+      <div>Acciones</div>
+    </div>
+  `;
+
+  if (!lista.length){
+    const r=document.createElement('div');
+    r.className='fila';
+    r.innerHTML = `<div style="grid-column:1/-1;color:#666;">No hay almacenes para los filtros aplicados.</div>`;
+    cont.appendChild(r);
     return;
   }
 
-  if (confirm('¿Seguro que querés eliminar este almacén?')) {
-    fetch(`${API_URL_WAREHOUSES}/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}` // Agregar token
-      }
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('No se pudo eliminar');
-        alert('Almacén eliminado');
-        cargarAlmacenes();
-      })
-      .catch(err => {
-        console.error(err);
-        alert('Error eliminando almacén');
-      });
+  for (const a of lista){
+    const row = document.createElement('div');
+    row.className='fila';
+   row.innerHTML = `
+  <div>${a.name || '—'}</div>
+  <div>${a.address || '—'}</div>
+  <div>${a.location || '—'}</div>
+  <div class="acciones">
+    <a class="btn outline" href="../files-html/editar-almacen.html?id=${a.idWarehouse}">✏️ Editar</a>
+    <button class="btn danger" data-del="${a.idWarehouse}">🗑️ Eliminar</button>
+  </div>
+`;
+
+    cont.appendChild(row);
   }
+
+  // Delegación de eventos para eliminar
+  cont.onclick = async (ev)=>{
+    const id = ev.target.getAttribute('data-del');
+    if(id) eliminarAlmacen(id);
+  };
 }
 
-window.onload = cargarAlmacenes;
+// Eliminar
+async function eliminarAlmacen(id){
+  if (!confirm("¿Seguro que desea eliminar este almacén?")) return;
+  try{
+    const res = await fetch(`${API_URL_WAREHOUSES}/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error("No se pudo eliminar");
+    alert("Almacén eliminado correctamente");
+    almacenes = almacenes.filter(a=>a.idWarehouse!==Number(id));
+    applyFilters();
+  }catch(err){
+    console.error("Error eliminando almacén:", err);
+    alert("Error al eliminar almacén");
+  }
+}
