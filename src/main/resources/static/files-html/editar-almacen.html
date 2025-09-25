@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🏭 - Almacenes</title>
+  <title>🏭 - Editar Almacén</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/almacenes.css"/>
 </head>
 <body>
-  <!-- NAV -->
   <header class="header">
     <nav class="nav-header">
       <img src="" alt="logo">
@@ -19,7 +18,6 @@
         <li><a href="../files-html/clientes.html">Clientes</a></li>
         <li><a href="../files-html/compras.html">Compras</a></li>
         <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-        <li><a href="../files-html/reservas.html">Reservas</a></li>
         <li><a href="../files-html/entregas.html">Entregas</a></li>
         <li><a href="../files-html/proveedores.html">Proveedores</a></li>
         <li><a class="active" href="../files-html/almacen.html">Almacenes</a></li>
@@ -29,40 +27,36 @@
 
   <main class="page">
     <div class="page-head">
-      <h1>Almacenes</h1>
-      <div class="actions">
-        <!-- Botón directo a crear-almacen.html -->
-        <a class="btn primary" href="../files-html/crear-almacen.html">+ Nuevo Almacén</a>
-      </div>
+      <h1>Editar Almacén</h1>
     </div>
 
-    <!-- Filtros -->
-    <section class="filters card">
-      <div class="row">
-        <label>Nombre
-          <input type="text" id="filtroNombre" placeholder="Buscar por nombre">
-        </label>
-        <label>Localidad
-          <input type="text" id="filtroLocalidad" placeholder="Buscar por localidad">
-        </label>
-        <button id="btnLimpiar" class="btn outline">Limpiar</button>
-      </div>
-    </section>
+    <section id="alerta" class="alerta" style="display:none;"></section>
 
-    <!-- Lista -->
     <section class="card">
-      <div class="tabla" id="lista-almacenes">
-        <div class="fila encabezado">
-          <div>Nombre</div>
-          <div>Dirección</div>
-          <div>Localidad</div>
-          <div>Acciones</div>
-        </div>
-        <!-- filas dinámicas -->
-      </div>
+      <form id="formEditarAlmacen" class="form-almacen" novalidate>
+  <input type="hidden" id="idWarehouse">
+
+  <label>Nombre interno
+    <input type="text" id="name" required>
+  </label>
+
+  <label>Dirección
+    <input type="text" id="address" required>
+  </label>
+
+  <label>Localidad (ciudad)
+    <input type="text" id="location" required>
+  </label>
+
+  <div class="form-actions">
+    <button id="btnGuardar" type="submit" class="btn primary" disabled>Guardar cambios</button>
+    <a class="btn outline" href="../files-html/almacen.html">Cancelar</a>
+  </div>
+</form>
+
     </section>
   </main>
 
-  <script src="../files-js/almacenes.js"></script>
+  <script src="../files-js/editar-almacen.js"></script>
 </body>
 </html>
