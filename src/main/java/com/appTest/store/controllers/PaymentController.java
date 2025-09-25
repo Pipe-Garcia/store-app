@@ -47,8 +47,8 @@ public class PaymentController {
 
     @GetMapping("/by-sale/{saleId}")
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<List<PaymentDTO>> getPaymentsBySale(@PathVariable Long saleId) {
-        return ResponseEntity.ok(servPayment.getBySaleId(saleId));
+    public ResponseEntity<List<PaymentDTO>> bySale(@PathVariable Long saleId) {
+        return ResponseEntity.ok(servPayment.findBySaleId(saleId));
     }
 
     @PostMapping

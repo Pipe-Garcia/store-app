@@ -21,5 +21,3 @@ public class SaleSummaryByDateDTO implements Serializable {
         this.totalSales = totalSales;
     }
 }
-
-

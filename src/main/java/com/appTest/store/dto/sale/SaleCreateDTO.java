@@ -23,5 +23,7 @@ public class SaleCreateDTO implements Serializable {
 
     private Long deliveryId;
 
+    private Long orderId;
+
     private PaymentCreateDTO payment;
 }

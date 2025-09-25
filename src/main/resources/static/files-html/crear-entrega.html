@@ -13,13 +13,10 @@
     <img src="" alt="logo">
     <ul class="ul-header">
       <li><a href="../files-html/index.html">Inicio</a></li>
-      <li><a href="../files-html/materiales.html">Materiales</a></li>
-      <li><a href="">Ventas</a></li>
+      <li><a href="../files-html/ventas.html">Ventas</a></li>
       <li><a href="../files-html/clientes.html">Clientes</a></li>
-      <li><a href="">Compras</a></li>
       <li><a href="../files-html/pedidos.html">Pedidos</a></li>
       <li><a href="../files-html/entregas.html" class="active">Entregas</a></li>
-      <li><a href="">Proveedores</a></li>
       <li><a href="../files-html/almacen.html">Almacenes</a></li>
     </ul>
   </nav>
@@ -31,10 +28,11 @@
   <form id="form-entrega" class="card">
     <div class="grid">
       <div>
-        <label for="orders">Pedido</label>
-        <select id="orders" required>
-          <option value="">Seleccionar pedido</option>
+        <label for="venta">Venta</label>
+        <select id="venta" required>
+          <option value="">Seleccionar venta (pagada)</option>
         </select>
+        <small class="hint">Si la lista está vacía, buscá por número de venta abajo.</small>
       </div>
 
       <div>
@@ -43,15 +41,30 @@
       </div>
     </div>
 
+    <div class="grid" style="margin-top:8px;">
+      <div>
+        <label for="ventaLookup">O buscar venta por número</label>
+        <div style="display:flex; gap:8px;">
+          <input id="ventaLookup" type="number" min="1" placeholder="Ej: 14" />
+          <button type="button" class="btn outline" id="btnBuscarVenta">Buscar</button>
+        </div>
+      </div>
+      <div>
+        <label>Pedido asociado</label>
+        <input id="pedidoAsociado" type="text" disabled value="—"/>
+      </div>
+    </div>
+
     <div class="subhead">
-      <h3>Materiales del pedido</h3>
-      <small>Indicá cantidades a entregar (parcial o total).</small>
+      <h3>Materiales pendientes</h3>
+      <small>Indicá cantidades a entregar (no podés superar el pendiente). Elegí también el depósito.</small>
     </div>
 
     <div id="items" class="tabla compact">
-      <div class="fila encabezado">
+      <div class="fila encabezado" style="grid-template-columns: 2fr 1.3fr .8fr .8fr;">
         <div>Material</div>
-        <div>Pedido</div>
+        <div>Depósito</div>
+        <div>Pendiente</div>
         <div>Entregar</div>
       </div>
       <!-- filas dinámicas -->

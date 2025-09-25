@@ -9,6 +9,7 @@ import com.appTest.store.models.Stock;
 import com.appTest.store.models.Warehouse;
 import com.appTest.store.repositories.IMaterialRepository;
 import com.appTest.store.repositories.IStockRepository;
+import com.appTest.store.repositories.IStockReservationRepository;
 import com.appTest.store.repositories.IWarehouseRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -37,6 +38,9 @@ public class StockService implements IStockService{
         return repoStock.findAll();
     }
 
+    @Autowired
+    private IStockReservationRepository repoReservation;
+
     @Override
     public Stock getStockById(Long id) {
         return repoStock.findById(id)
@@ -59,6 +63,25 @@ public class StockService implements IStockService{
     @Override
     public List<StockByWarehouseDTO> byMaterial(Long materialId) {
         return repoStock.findByMaterialId(materialId);
+    }
+
+    @Override
+    public BigDecimal availability(Long materialId, Long warehouseId) {
+        return repoStock.findByMaterial_IdMaterialAndWarehouse_IdWarehouse(materialId, warehouseId)
+                .map(Stock::getQuantityAvailable)
+                .orElse(BigDecimal.ZERO);
+    }
+
+    @Override
+    public BigDecimal reserved(Long materialId, Long warehouseId) {
+        return repoReservation.sumActiveByMaterialWarehouse(materialId, warehouseId);
+    }
+
+    @Override
+    public BigDecimal availableForReservation(Long materialId, Long warehouseId) {
+        BigDecimal onHand = availability(materialId, warehouseId); // ya lo tenías
+        BigDecimal resv   = reserved(materialId, warehouseId);
+        return onHand.subtract(resv);
     }
 
     @Override

@@ -34,23 +34,26 @@
         <select id="cliente" required></select>
       </div>
       <div>
-        <label for="delivery">Entrega asociada (opcional)</label>
-        <select id="delivery">
+        <label for="orderSelect">Pedido (opcional)</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="orderSelect">
             <option value="">—</option>
-        </select>
-        <small id="deliveryHelp" class="hint">Podés elegir una entrega COMPLETED/PARTIAL para precargar ítems.</small>
+          </select>
+          <button id="btnClearOrder" class="btn outline" style="display:none;">Limpiar</button>
+        </div>
+        <small class="hint">Solo se listan pedidos con saldo pendiente. Si seleccionás uno, se precargan sus renglones y se bloquea el cliente.</small>
       </div>
     </div>
 
     <h3 class="subhead">Ítems</h3>
     <div class="tabla" id="items">
       <div class="fila encabezado">
-        <div style="flex:2">Material</div>
+        <div>Material</div>
         <div>Depósito</div>
         <div>Cantidad</div>
         <div>Precio</div>
         <div>Subtotal</div>
-        <div>—</div>
+        <div>Quitar</div>
       </div>
     </div>
     <div class="form-actions">
