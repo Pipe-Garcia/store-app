@@ -19,6 +19,7 @@
         <li><a href="../files-html/clientes.html">Clientes</a></li>
         <li><a href="">Compras</a></li>
         <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+        <li><a href="../files-html/reservas.html">Reservas</a></li>
         <li><a href="../files-html/entregas.html">Entregas</a></li>
         <li><a href="../files-html/proveedores.html">Proveedores</a></li>
         <li><a href="../files-html/almacen.html">Almacenes</a></li>
@@ -62,6 +63,28 @@
         <div class="kpi-sub">Precio: <span id="kpiMostExpPrice">$ 0,00</span></div>
     </div>
     </section>
+
+    <br>
+
+    <section class="cards cards-3" id="cards-resumen">
+      <div class="card">
+        <div class="card-head"><h3>Reservas activas</h3></div>
+        <div class="kpi" id="kpiReservas">—</div>
+        <small class="muted">Stock separado para pedidos/clientes</small>
+        <div><a class="btn" href="../files-html/reservas.html" style="margin-top:.5rem;">Ver reservas</a></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Pedidos con reserva</h3></div>
+        <div class="kpi" id="kpiPedidosReservados">—</div>
+        <small class="muted">Pedidos que ya tienen stock reservado</small>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Entregas próximas (7 días)</h3></div>
+        <div class="kpi" id="kpiEntregas">—</div>
+        <small class="muted">Pendientes o parciales</small>
+      </div>
+    </section>
+    <br>
 
     <!-- KPIs de resumen -->
     <section class="kpi-grid">

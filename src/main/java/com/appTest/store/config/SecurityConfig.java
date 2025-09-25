@@ -31,9 +31,13 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // permite los recursos estáticos si decidís servir el front desde Spring
                         .requestMatchers("/", "/index.html", "/files-html/**", "/files-css/**", "/files-js/**", "/img.logo/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
+
+                        // ⟵ habilitar reservas
+                        .requestMatchers("/stock-reservations/**").hasAnyRole("EMPLOYEE","OWNER")
+                        .requestMatchers("/reservations/**").hasAnyRole("EMPLOYEE","OWNER")
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthorizationFilter(jwtUtil),

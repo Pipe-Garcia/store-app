@@ -55,9 +55,13 @@ public class PaymentService implements IPaymentService{
     }
 
     @Override
-    public List<PaymentDTO> getBySaleId(Long saleId) {
-        List<Payment> list = repoPayment.findBySale_IdSale(saleId);
-        return list.stream().map(this::convertPaymentToDto).toList();
+    public java.util.List<PaymentDTO> findBySaleId(Long saleId) {
+        var list = repoPayment.findBySale_IdSale(saleId);
+        java.util.List<PaymentDTO> dto = new java.util.ArrayList<>();
+        for (var p : list){
+            dto.add(convertPaymentToDto(p));
+        }
+        return dto;
     }
 
     @Override

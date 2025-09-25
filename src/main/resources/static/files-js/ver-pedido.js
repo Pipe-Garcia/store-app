@@ -1,98 +1,75 @@
-const API_URL_ORDERS        = 'http://localhost:8080/orders';
-const API_URL_ORDER_DETAILS = 'http://localhost:8080/order-details';
+// /static/files-js/ver-pedido.js
+const API_URL_ORDERS_VIEW = 'http://localhost:8080/orders'; // /{id}/view
 
 /* Helpers */
 const $ = (s, r=document) => r.querySelector(s);
+const fmt  = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
+const fdate = s => s ? new Date(s).toLocaleDateString('es-AR') : '—';
 
-function getToken() {
-  return localStorage.getItem('accessToken') || localStorage.getItem('token'); 
-}
-
-function go(page) {
-  const base = location.pathname.replace(/[^/]+$/, ''); window.location.href = `${base}${page}`; 
-}
-
-function authHeaders(json=true){ 
-  const t=getToken(); return {
-     ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) 
-    }; 
-}
-
-function authFetch(url,opts={}){ 
-  const headers={
-    ...authHeaders(!opts.bodyIsForm),...(opts.headers||{})
-  }; 
-  return fetch(url,{...opts,headers}); 
-}
+function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
+function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
 
 let __toastRoot;
-function ensureToastRoot(){ 
-  if(!__toastRoot){ 
-    __toastRoot=document.createElement('div'); 
-    Object.assign(__toastRoot.style,{
-      position:'fixed',top:'36px',right:'16px',display:'flex',flexDirection:'column',
-      gap:'8px',zIndex:9999,height:'50vh',overflowY:'auto',pointerEvents:'none',maxWidth:'400px',width:'400px'}); 
-      document.body.appendChild(__toastRoot);} 
+function notify(m,type='info'){
+  if(!__toastRoot){
+    __toastRoot=document.createElement('div');
+    Object.assign(__toastRoot.style,{position:'fixed',top:'36px',right:'16px',display:'flex',flexDirection:'column',gap:'8px',zIndex:9999});
+    document.body.appendChild(__toastRoot);
+  }
+  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=m; __toastRoot.appendChild(n);
+  setTimeout(()=>n.remove(),4200);
 }
 
-function notify(m,type='info'){ 
-  ensureToastRoot(); 
-  const n=document.createElement('div'); 
-  n.className=`notification ${type}`; 
-  n.textContent=m; __toastRoot.appendChild(n); 
-  setTimeout(()=>n.remove(),5000); 
+function authHeaders(json=true){
+  const t=getToken();
+  return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
 }
+function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 
-const fmt = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
+document.addEventListener('DOMContentLoaded', async ()=>{
+  if(!getToken()){ notify('Iniciá sesión','error'); return go('login.html'); }
 
-const fdate = s => s ? new Date(s).toLocaleDateString('es-AR') : '—';
- 
+  const id = new URLSearchParams(location.search).get('id');
+  if(!id){ notify('ID de pedido no especificado','error'); return go('pedidos.html'); }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const token = getToken();
-  if (!token) {
-    notify('Debes iniciar sesión para ver el detalle del pedido', 'error');
-    go('login.html');
-    return;
-  }
+  try{
+    const res = await authFetch(`${API_URL_ORDERS_VIEW}/${id}/view`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const view = await res.json();
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const orderId = urlParams.get('id');
-
-  if (!orderId) {
-    notify('ID de pedido no especificado', 'error');
-    go('pedidos.html');
-    return;
-  }
-
-  try {
-    const pedido = await authFetch(`${API_URL_ORDERS}/${orderId}`).then(r=>r.json());
-    $('#id-pedido').textContent       = pedido.idOrders || '-';
-    $('#cliente').textContent         = pedido.clientName || '-';
-    $('#fecha-creacion').textContent  = fdate(pedido.dateCreate);
-    $('#fecha-entrega').textContent   = fdate(pedido.dateDelivery);
-    $('#total').textContent           = fmt.format(Number(pedido.total||0));
-
-    const detalles = await authFetch(`${API_URL_ORDER_DETAILS}?orderId=${orderId}`)
-      .then(r => r.ok ? r.json() : authFetch(API_URL_ORDER_DETAILS).then(x=>x.json()));
+    $('#id-pedido').textContent      = view.idOrders ?? '-';
+    $('#cliente').textContent        = view.clientName ?? '-';
+    $('#fecha-creacion').textContent = fdate(view.dateCreate);
+    $('#fecha-entrega').textContent  = fdate(view.dateDelivery);
+    $('#total').textContent          = fmt.format(Number(view.total||0));
+    $('#pendiente').textContent      = String(view.remainingUnits ?? '-');
+    $('#estado').textContent         = view.soldOut ? 'VENDIDO (sin pendiente)' : 'CON PENDIENTE';
 
     const lista = $('#lista-materiales');
     lista.innerHTML = '';
-    const rows = Array.isArray(detalles) ? detalles.filter(d => Number(d.ordersId ?? d.orderId) === Number(orderId)) : [];
-    if (rows.length === 0) {
+
+    const rows = Array.isArray(view.details) ? view.details : [];
+    if(!rows.length){
       lista.innerHTML = '<li>No se encontraron materiales para este pedido.</li>';
       return;
     }
-    rows.forEach(mat => {
+
+    rows.forEach(det=>{
+      const ordered   = Number(det.quantityOrdered || 0);
+      const allocated = Number(det.quantityConsumed || 0); // 👈
+      const remaining = Number(det.remainingUnits  || 0);
+      const delivered = 0; // o bórralo del texto si no querés mostrarlo
+      const name = det.materialName || `Material #${det.materialId ?? ''}`;
+      const pu   = Number(det.priceUni || 0);
+
       const li = document.createElement('li');
-      const qty = Number(mat.quantity||0);
-      const pu  = Number(mat.priceUni||0);
-      li.textContent = `${mat.materialName || `Material #${mat.materialId ?? ''}`} - Cantidad: ${qty} - Precio Unitario: ${fmt.format(pu)}`;
+      li.textContent =
+        `${name} — Pedidas: ${ordered} | Comprometidas: ${allocated} | ` +
+        `Entregadas: ${delivered} | Pendientes: ${remaining} | Precio: ${fmt.format(pu)}`;
       lista.appendChild(li);
     });
-  } catch (err) {
-    console.error('Error al cargar el pedido:', err);
-    notify('Error al cargar el detalle del pedido', 'error');
-    go('pedidos.html');
+  }catch(e){
+    console.error(e);
+    notify('Error al cargar el detalle del pedido','error');
   }
 });

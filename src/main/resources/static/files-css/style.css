@@ -499,7 +499,7 @@ body {
 .seccion-editar-pedido {
   display: flex;
   flex-direction: column;
-  max-width: 800px;
+  max-width: 900px;
   margin: 40px auto;
   padding: 20px;
   background-color: #f9f9f9;
@@ -601,3 +601,5 @@ body {
   text-align: center;
 }
 
+.tag { display:inline-block; padding:.2rem .5rem; border-radius:999px; font-size:.8rem; }
+.tag-ice { background:#e8f1fd; color:#1e63d5; } /* “stock reservado” */

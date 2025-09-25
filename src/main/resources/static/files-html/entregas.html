@@ -18,6 +18,7 @@
       <li><a href="../files-html/clientes.html">Clientes</a></li>
       <li><a href="">Compras</a></li>
       <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+      <li><a href="../files-html/reservas.html">Reservas</a></li>
       <li><a href="../files-html/entregas.html" class="active">Entregas</a></li>
       <li><a href="../files-html/proveedores.html">Proveedores</a></li>
       <li><a href="../files-html/almacen.html">Almacenes</a></li>
@@ -33,20 +34,51 @@
     </div>
   </div>
 
-  <hr>
-  <br>
-  <section class="filters">
-    <div class="row">
-      <label for="filtroEstado">Estado:</label>
-      <select id="filtroEstado">
-        <option value="">Todos</option>
-        <option value="PENDING">Pendientes</option>
-        <option value="PARTIAL">Parciales</option>
-        <option value="COMPLETED">Completadas</option>
-      </select>
+  <hr><br>
 
-      <label for="filtroTexto">Buscar:</label>
-      <input id="filtroTexto" type="text" placeholder="Cliente o #Pedido" />
+  <!-- Filtros estilo "Pedidos" -->
+  <section class="filters card" style="padding:12px">
+    <div class="row" style="flex-wrap:wrap; gap:12px">
+      <label>Pedido #
+        <input type="number" id="fOrderId" placeholder="ID" style="width:120px"/>
+      </label>
+
+      <label>Cliente
+        <select id="fClient">
+          <option value="">Todos</option>
+        </select>
+      </label>
+
+      <label>Fecha Entrega — Desde
+        <input type="date" id="fFrom"/>
+      </label>
+
+      <label>Hasta
+        <input type="date" id="fTo"/>
+      </label>
+
+      <label>Estado
+        <select id="fStatus">
+          <option value="">Todos</option>
+          <option value="PENDING">Pendiente</option>
+          <option value="PARTIAL">Parcial</option>
+          <option value="COMPLETED">Completada</option>
+        </select>
+      </label>
+
+      <label>Buscar
+        <input id="fText" type="text" placeholder="Cliente o #Pedido"/>
+      </label>
+
+      <label>Total Pedido — Min
+        <input type="number" id="fMinTotal" step="1" min="0" style="width:120px"/>
+      </label>
+
+      <label>Max
+        <input type="number" id="fMaxTotal" step="1" min="0" style="width:120px"/>
+      </label>
+
+      <button id="btnClear" class="btn outline">Limpiar</button>
     </div>
   </section>
 
@@ -57,7 +89,7 @@
         <div>Estado</div>
         <div>Cliente</div>
         <div>Pedido</div>
-        <div>Total</div>
+        <div>Total Pedido</div>
         <div>Acciones</div>
       </div>
       <!-- filas dinámicas -->

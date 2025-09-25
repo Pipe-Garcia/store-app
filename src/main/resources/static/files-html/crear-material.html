@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>➕ Crear material</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/materiales.css"/>
+</head>
+<body>
+<header class="header">
+  <nav class="nav-header">
+    <ul class="ul-header">
+      <li><a href="../files-html/index.html">Inicio</a></li>
+      <li><a class="active" href="../files-html/materiales.html">Materiales</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main class="page">
+  <div class="encabezado-lista">
+    <h1>Nuevo material</h1>
+  
+  </div>
+
+  <section class="card" style="background:#fff; border:1px solid #e7eaf0; border-radius:12px;">
+    <form id="frmNuevoMat" class="form-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:12px;">
+      <div>
+        <label class="lbl">Código interno</label>
+        <input class="in" id="internalNumber" type="text" required>
+      </div>
+      <div>
+        <label class="lbl">Nombre</label>
+        <input class="in" id="name" required>
+      </div>
+      <div>
+        <label class="lbl">Marca</label>
+        <input class="in" id="brand" required>
+      </div>
+      <div>
+        <label class="lbl">Precio ARS</label>
+        <input class="in" id="priceArs" type="number" step="0.01" min="0" required>
+      </div>
+      <div>
+        <label class="lbl">Familia</label>
+        <select class="in" id="familyId" required>
+          <option value="">Seleccionar…</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Unidad de medida</label>
+        <input class="in" id="measurementUnit" placeholder="unidad, caja, kg…">
+      </div>
+      <div style="grid-column:1/-1;">
+        <label class="lbl">Descripción</label>
+        <textarea class="in" id="description" rows="3" placeholder="Detalle del material"></textarea>
+      </div>
+      <div>
+        <label class="lbl">Depósito inicial</label>
+        <select class="in" id="warehouseId" required>
+          <option value="">Seleccionar…</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Cantidad inicial</label>
+        <input class="in" id="initialQuantity" type="number" step="1" min="0" required>
+      </div>
+
+      <div class="form-actions" style="grid-column:1/-1;display:flex;gap:.5rem;justify-content:flex-end;">
+        <button type="button" class="btn" id="btnCancelar">Cancelar</button>
+        <button type="submit" class="btn primary">Crear</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+<script type="module" src="../files-js/crear-material.js"></script>
+</body>
+</html>

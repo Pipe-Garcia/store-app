@@ -1,0 +1,43 @@
+.page { max-width: 1800px; margin: 1rem auto; }
+    
+.card { border:1px solid #e5e7eb; border-radius:16px; background:#fff; box-shadow:0 6px 18px rgba(0,0,0,.06); padding:1rem; }
+    
+.grid {
+     display:grid; gap:.75rem; 
+}
+    
+.grid-5 { grid-template-columns: 1fr 1fr 1fr 1fr auto; }
+    
+.table {
+    width:100%; 
+    border-collapse: collapse; 
+}
+    
+.table th, .table td { 
+    padding:.6rem .5rem; border-bottom:1px solid #efefef; 
+}
+
+.table th, .table tr {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr)
+}
+
+.badge { display:inline-block; padding:.15rem .5rem; border-radius:999px; font-size:.85rem; }
+    
+.b-green { background:#e8f7ee; color:#10783f; }
+    
+.b-blue  { background:#e8f1fd; color:#1e63d5; }
+    
+.b-gray  { background:#f1f5f9; color:#475569; }
+    
+.b-red   { background:#fee2e2; color:#991b1b; }
+    
+.actions { display:flex; gap:.5rem; }
+    
+.btn-blue{ background:#2291f2; color:#fff; }
+    
+.btn-blue:hover{ filter:brightness(.96); }
+    
+.muted { color:#666; }
+    
+select.in, input.in { padding: 8px; }

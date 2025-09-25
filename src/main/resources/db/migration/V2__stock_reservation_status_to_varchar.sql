@@ -1,0 +1,2 @@
+ALTER TABLE stock_reservation
+  MODIFY COLUMN status VARCHAR(20) NOT NULL;

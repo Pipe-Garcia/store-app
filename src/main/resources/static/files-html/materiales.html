@@ -1,78 +1,106 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../files-css/style.css">
-    <title>📦 - Materiales</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📦 - Materiales</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/materiales.css"/>
 </head>
 <body>
 <header class="header">
-   <nav class="nav-header">
+  <nav class="nav-header">
     <img src="" alt="logo">
     <ul class="ul-header">
-        <li><a href="../files-html/index.html">Inicio</a></li>
-        <li><a href="../files-html/materiales.html">Materiales</a></li>
-        <li><a href="../files-html/ventas.html">Ventas</a></li>
-        <li><a href="../files-html/clientes.html">Clientes</a></li>
-        <li><a href="">Compras</a></li>
-        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-        <li><a href="../files-html/entregas.html">Entregas</a></li>
-        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
-        <li><a href="../files-html/almacen.html">Almacenes</a></li>
+      <li><a href="../files-html/index.html">Inicio</a></li>
+      <li><a class="active" href="../files-html/materiales.html">Materiales</a></li>
+      <li><a href="../files-html/ventas.html">Ventas</a></li>
+      <li><a href="../files-html/clientes.html">Clientes</a></li>
+      <li><a href="">Compras</a></li>
+      <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+      <li><a href="../files-html/reservas.html">Reservas</a></li>
+      <li><a href="../files-html/entregas.html">Entregas</a></li>
+      <li><a href="../files-html/proveedores.html">Proveedores</a></li>
+      <li><a href="../files-html/almacen.html">Almacenes</a></li>
     </ul>
-    </nav>
+  </nav>
 </header>
 
- <div class="seccion-materiales">
-    <div class="titulos-mat">
-        <h1>Materiales </h1>
-        <a href="../files-html/editar-stock.html"><button>Editar Stock</button></a>
-        <a href="../files-html/familias.html"><button>Familias</button></a>
+<main class="page">
+  <div class="encabezado-lista-materiales">
+    <h1>Materiales</h1>
+    <div class="enc-actions">
+      <a class="btn outline" href="../files-html/editar-stock.html">Editar stock</a>
+      <a class="btn outline" href="../files-html/familias.html">Familias</a>
+      <a class="btn primary" href="../files-html/crear-material.html">+ Nuevo material</a>
     </div>
-    <hr><br>
-
-    <div class="busqueda">
-      <input type="text" id="filtroCodigo" placeholder="Código">
-      <input type="text" id="filtroNombre" placeholder="Nombre">
-      <input type="text" id="filtroProveedor" placeholder="Proveedor">
-      <button type="button" onclick="filtrarMateriales()">Buscar</button>
-      <button type="button" onclick="toggleFormularioMaterial()">Nuevo Material</button>
-    </div>
-
-  <div class="formulario-nuevo" id="formularioNuevoMaterial">
-      <input type="number" id="internalNumber" placeholder="Código interno" required>
-      <input type="text" id="name" placeholder="Nombre" required>
-      <input type="text" id="brand" placeholder="Proveedor" required>
-      <input type="number" step="0.01" id="priceArs" placeholder="Precio ARS" required>
-
-      <select id="familyId" required>
-        <option value="">Seleccionar familia</option>
-      </select>
-        <select id="warehouseId" required>
-        <option value="">Seleccionar almacén</option>
-      </select>
-
-
-      <input type="number" step="0.01" id="initialQuantity" placeholder="Cantidad inicial" required>
-
-      <button onclick="agregarMaterial()">Agregar Material</button>
   </div>
 
-  </div>
-  
-    <div class="encabezado-materiales">
-        <div>Codigo</div>
-        <div>Nombre</div>
-        <div>Proveedor</div>
-        <div>Stock</div>
-        <div>Precio</div>
-        <div>Acciones</div>
+  <!-- Filtros -->
+  <section class="filtros card">
+    <div class="grid-filtros">
+      <select id="f_family" class="in">
+        <option value="">Familia (todas)</option>
+      </select>
+      <input id="f_min" class="in" type="number" min="0" step="1" placeholder="Precio mín. ARS">
+      <input id="f_max" class="in" type="number" min="0" step="1" placeholder="Precio máx. ARS">
+      <input id="f_q" class="in" placeholder="Código interno, nombre, marca, descripción…">
+      <div class="acciones-filtros">
+        <button id="btnBuscar" class="btn">Buscar</button>
+        <button id="btnLimpiar" class="btn outline">Limpiar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tabla estilo Ventas -->
+  <div class="tabla materiales">
+    <div class="fila encabezado">
+      <div>Código</div>
+      <div>Nombre</div>
+      <div>Marca</div>
+      <div>Stock</div>
+      <div>Precio</div>
+      <div>Acciones</div>
     </div>
     <div id="lista-materiales"></div>
+  </div>
+</main>
 
-    
-  <script type="module" src="../files-js/materiales.js"></script>
+<!-- Dialog para reservar -->
+<dialog id="dlgReserva" class="card" style="max-width:560px;">
+  <div class="card-head"><h2>Reservar stock</h2></div>
+  <div class="grid" style="grid-template-columns: 1fr; gap:.75rem;">
+    <div>
+      <label class="lbl">Material</label>
+      <input id="resvMatName" class="in" readonly>
+      <input id="resvMatId" type="hidden">
+    </div>
+    <div>
+      <label class="lbl">Depósito</label>
+      <select id="resvWarehouse" class="in"></select>
+      <small id="resvFree" style="color:#666"></small>
+    </div>
+    <div>
+      <label class="lbl">Cliente (opcional)</label>
+      <select id="resvClient" class="in"><option value="">—</option></select>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr; gap:.75rem;">
+      <div>
+        <label class="lbl">Cantidad</label>
+        <input id="resvQty" type="number" min="1" step="1" class="in">
+      </div>
+      <div>
+        <label class="lbl">Vence (opcional)</label>
+        <input id="resvExpires" type="date" class="in">
+      </div>
+    </div>
+  </div>
+  <div class="card-foot" style="display:flex; gap:.5rem; justify-content:flex-end;">
+    <button id="btnResvCancel" class="btn">Cancelar</button>
+    <button id="btnResvSave" class="btn primary">Guardar</button>
+  </div>
+</dialog>
+
+<script type="module" src="../files-js/materiales.js"></script>
 </body>
-
 </html>
