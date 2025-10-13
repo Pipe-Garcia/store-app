@@ -16,5 +16,5 @@ public interface IPaymentService {
     void deletePaymentById(Long id);
 
     // agrega esta firma
-    List<PaymentDTO> findBySaleId(Long saleId);
+    List<PaymentDTO> getBySaleId(Long saleId);
 }

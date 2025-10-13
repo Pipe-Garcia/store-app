@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>📄 - Listado de Pedidos</title>
   <link rel="stylesheet" href="../files-css/style.css">
-  <link rel="stylesheet" href="../files-css/pedidos.css">
 </head>
 <body>
   <header class="header">
@@ -18,7 +17,6 @@
         <li><a href="../files-html/clientes.html">Clientes</a></li>
         <li><a href="../files-html/compras.html">Compras</a></li>
         <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-        <li><a href="../files-html/reservas.html">Reservas</a></li>
         <li><a href="../files-html/entregas.html">Entregas</a></li>
         <li><a href="../files-html/proveedores.html">Proveedores</a></li>
         <li><a href="../files-html/almacen.html">Almacenes</a></li>
@@ -26,99 +24,27 @@
     </nav>
 </header>
 
-  <main class="page">
-    <div class="page-head">
+  <div class="seccion-pedidos">
+    <div class="titulo-pedidos">
       <h1>Pedidos</h1>
-      <a class="btn primary" href="../files-html/crear-pedido.html">+ Nuevo pedido</a>
+      <a href="../files-html/crear-pedido.html"><button>Crear Pedido</button></a>
     </div>
-
     <hr><br>
+  </div>
 
-    <!-- Filtros -->
-    <section class="card filters" style="margin-bottom:12px;">
-    <div class="row">
-      <label>
-        <span>Pedido #</span>
-        <input id="f_orderId" type="number" class="in" placeholder="ID" min="1">
-      </label>
-
-      <label>
-        <span>Cliente</span>
-        <select id="f_client" class="in">
-          <option value="">Todos</option>
-        </select>
-      </label>
-
-      <!-- Creación -->
-      <label class="stack">
-        <span>Fecha Creación</span>
-        <div class="range-2">
-          <div class="subcol">
-            <small class="sub">Desde</small>
-            <input id="f_c_from" type="date" class="in" aria-label="Fecha de creación desde">
-          </div>
-          <span class="dash"></span>
-          <div class="subcol">
-            <small class="sub">Hasta</small>
-            <input id="f_c_to" type="date" class="in" aria-label="Fecha de creación hasta">
-          </div>
-        </div>
-      </label>
-
-      <!-- Entrega -->
-      <label class="stack">
-        <span>Fecha Entrega</span>
-        <div class="range-2">
-          <div class="subcol">
-            <small class="sub">Desde</small>
-            <input id="f_d_from" type="date" class="in" aria-label="Fecha de entrega desde">
-          </div>
-          <span class="dash"></span>
-          <div class="subcol">
-            <small class="sub">Hasta</small>
-            <input id="f_d_to" type="date" class="in" aria-label="Fecha de entrega hasta">
-          </div>
-        </div>
-      </label>
-
-      <!-- Total: doble slider + leyenda -->
-      <label class="stack wide">
-        <span>Total Pedido</span>
-        <div id="priceRange" class="price-range">
-          <input id="f_t_slider_min" type="range" min="0" max="1000" step="100">
-          <input id="f_t_slider_max" type="range" min="0" max="1000" step="100">
-          <div class="price-legend">
-            <span id="priceFrom">$ 0</span>
-            <span></span>
-            <span id="priceTo">$ 0</span>
-          </div>
-        </div>
-        <input id="f_t_min" type="number" hidden>
-        <input id="f_t_max" type="number" hidden>
-      </label>
-
-      <label>
-        <span>Reserva</span>
-        <select id="f_resv" class="in">
-          <option value="">Todos</option>
-          <option value="con">Con reserva</option>
-          <option value="sin">Sin reserva</option>
-        </select>
-      </label>
-
-      <button id="btnLimpiar" class="btn outline" style="align-self:flex-end;">Limpiar</button>
+  <main class="pedidos-container">
+    <h2 style="margin-left: 30px;">Listado de Pedidos</h2>
+    <div id="contenedor-pedidos" class="contenedor-tabla">
+      <div class="encabezado-pedidos">
+        <div>Pedido</div>
+        <div>Cliente</div>
+        <div>Fecha creación</div>
+        <div>Fecha entrega</div>
+        <div>Total</div>
+        <div>Acciones</div>
+      </div>
     </div>
-  </section>
-
-  <!-- Lista de pedidos -->
-  <section class="card" style="margin-top:12px;">
-    <div id="lista-pedidos"></div>
-  </section>
-
-
   </main>
-
-
 
   <script src="../files-js/pedidos.js"></script>
 </body>

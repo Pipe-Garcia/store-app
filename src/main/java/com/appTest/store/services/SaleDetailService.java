@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -52,18 +51,9 @@ public class SaleDetailService implements ISaleDetailService{
     }
 
     @Override
-    public List<SaleDetailDTO> findBySaleId(Long saleId) {
-        var list = repoSaleDetail.findBySaleIdWithMaterial(saleId);
-        List<SaleDetailDTO> dto = new ArrayList<>();
-        for (var sd : list){
-            dto.add(new SaleDetailDTO(
-                    sd.getIdSaleDetail(),
-                    sd.getPriceUni(),
-                    sd.getMaterial()!=null? sd.getMaterial().getName() : "—",
-                    sd.getQuantity()
-            ));
-        }
-        return dto;
+    public List<SaleDetailDTO> getBySaleId(Long saleId) {
+        List<SaleDetail> list = repoSaleDetail.findBySaleIdWithMaterial(saleId);
+        return list.stream().map(this::convertSaleDetailToDto).toList();
     }
 
     @Override

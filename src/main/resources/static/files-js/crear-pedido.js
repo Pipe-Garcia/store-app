@@ -1,216 +1,169 @@
-// /static/files-js/crear-pedido.js
-const API_URL_CLIENTS       = 'http://localhost:8080/clients';
-const API_URL_MATERIALS     = 'http://localhost:8080/materials';
-const API_URL_STOCKS_BY_MAT = (id)=> `http://localhost:8080/stocks/by-material/${id}`;
-const API_URL_ORDERS        = 'http://localhost:8080/orders';
-const API_URL_RES_BULK      = 'http://localhost:8080/stock-reservations/bulk';
+const API_URL_CLIENTES = 'http://localhost:8080/clients';
+const API_URL_MATERIALES = 'http://localhost:8080/materials';
+const API_URL_ORDERS = 'http://localhost:8080/orders';
 
-const $  = (s,r=document)=>r.querySelector(s);
+let listaMateriales = [];
 
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){ const t=getToken(); return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) }; }
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
-function go(page){ const base=location.pathname.replace(/[^/]+$/,''); location.href=`${base}${page}`; }
-function notify(msg,type='info'){
-  let root=document.querySelector('#toasts');
-  if(!root){ root=document.createElement('div'); root.id='toasts'; root.style.cssText='position:fixed;top:76px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:9999'; document.body.appendChild(root); }
-  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; root.appendChild(n);
-  setTimeout(()=>n.remove(),4200);
+/* ===== Helpers ===== */
+const $ = (s, r=document) => r.querySelector(s);
+function getToken() {
+  return localStorage.getItem('accessToken') || localStorage.getItem('token');
 }
+function go(page) {
+  const base = location.pathname.replace(/[^/]+$/, ''); // .../files-html/
+  window.location.href = `${base}${page}`;
+}
+function flashAndGo(message, page) {
+  localStorage.setItem('flash', JSON.stringify({ message, type: 'success' }));
+  go(page);
+}
+function authHeaders(json = true) {
+  const t = getToken();
+  return { ...(json ? { 'Content-Type':'application/json' } : {}), ...(t ? { 'Authorization':`Bearer ${t}` } : {}) };
+}
+function authFetch(url, opts={}) {
+  const headers = { ...authHeaders(!opts.bodyIsForm), ...(opts.headers||{}) };
+  return fetch(url, { ...opts, headers });
+}
+let __toastRoot;
+function ensureToastRoot() {
+  if (!__toastRoot) {
+    __toastRoot = document.createElement('div');
+    Object.assign(__toastRoot.style, {
+      position:'fixed', top:'115px', right:'250px', display:'flex', flexDirection:'column',
+      gap:'8px', zIndex:9999, height:'50vh', overflowY:'auto', pointerEvents:'none', maxWidth:'400px', width:'400px'
+    });
+    document.body.appendChild(__toastRoot);
+  }
+}
+function notify(message, type='info') {
+  ensureToastRoot();
+  const n = document.createElement('div');
+  n.className = `notification ${type}`;
+  n.textContent = message;
+  __toastRoot.appendChild(n);
+  setTimeout(() => n.remove(), 5000);
+}
+function todayLocalISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`; // YYYY-MM-DD en hora local
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const token = getToken();
+  if (!token) {
+    notify('Debes iniciar sesión para crear un pedido', 'error');
+    go('login.html');
+    return;
+  }
 
-let materiales = [];   // catálogo cache
-let clientes   = [];
-
-window.addEventListener('DOMContentLoaded', async ()=>{
-  if(!getToken()){ go('login.html'); return; }
-
-  await Promise.all([cargarClientes(), cargarMateriales()]);
-  // fecha default: hoy + 7
-  const d=new Date(); d.setDate(d.getDate()+7);
-  $('#fechaEntrega').value = new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
-
-  $('#btnAdd').addEventListener('click', addRow);
-  $('#btnCancelar').addEventListener('click', ()=> go('pedidos.html'));
-  $('#btnGuardar').addEventListener('click', guardar);
-  $('#chkReservarTodos').addEventListener('change', toggleMasterReservas);
-
-  // una fila inicial
-  addRow();
+  cargarClientes(token);
+  cargarMateriales(token);
+   $('#form-pedido').addEventListener('submit', guardarPedido);
+  // si el HTML tiene botón "Agregar material", exponer handler
+  window.agregarMaterial = agregarMaterial;
 });
 
-/* =================== Carga catálogos =================== */
-async function cargarClientes(){
-  const r=await authFetch(API_URL_CLIENTS);
-  clientes = r.ok ? await r.json() : [];
-  const sel = $('#cliente');
-  sel.innerHTML = `<option value="">Seleccionar cliente</option>` +
-    clientes.map(c=>`<option value="${c.idClient}">${(c.name||'')+' '+(c.surname||'')}</option>`).join('');
+function cargarClientes(token) {
+  authFetch(API_URL_CLIENTES)
+    .then(res => {
+      if (!res.ok) throw new Error(`Error: ${res.status} - ${res.statusText}`);
+      return res.json();
+    })
+    .then(clientes => {
+      const select = $('#cliente');
+      clientes.forEach(c => {
+        const option = document.createElement('option');
+        option.value = c.idClient;
+        option.textContent = `${c.name} ${c.surname}`;
+        select.appendChild(option);
+      });
+    })
+    .catch(err => console.error('Error al cargar clientes:', err));
 }
 
-async function cargarMateriales(){
-  const r=await authFetch(API_URL_MATERIALS);
-  materiales = r.ok ? await r.json() : [];
+function cargarMateriales(token) {
+  authFetch(API_URL_MATERIALES)
+    .then(res => {
+      if (!res.ok) throw new Error(`Error: ${res.status} - ${res.statusText}`);
+      return res.json();
+    })
+    .then(data => {
+      listaMateriales = data;
+      agregarMaterial();
+    })
+    .catch(err => console.error('Error al cargar materiales:', err));
 }
 
-/* =================== Filas =================== */
-function newRowEl(){
-  const row = document.createElement('div');
-  row.className = 'fila'; // <- antes era "row"
-  row.innerHTML = `
-    <select class="in sel-mat">
-      <option value="">Seleccionar material</option>
+function agregarMaterial() {
+  const contenedor = $('#materiales-container');
+
+  const fila = document.createElement('div');
+  fila.className = 'fila-material';
+  fila.innerHTML = `
+    <select class="select-material" required>
+      <option value="">Seleccione material</option>
+      ${listaMateriales.map(m => `<option value="${m.idMaterial}">${m.name}</option>`).join('')}
     </select>
-
-    <select class="in sel-wh" disabled title="Elegí material primero">
-      <option value="">Depósito</option>
-    </select>
-
-    <input type="number" min="1" step="1" class="in in-qty" value="1">
-
-    <div class="cell-center">
-      <input type="checkbox" class="chk-res" title="Reservar">
-    </div>
-
-    <div class="cell-right">
-      <button class="btn icon trash btn-del" title="Quitar">🗑️</button>
-    </div>
+    <input type="number" min="1" class="input-cantidad" placeholder="Cantidad" required />
+    <button type="button" onclick="this.parentElement.remove()">🗑️</button>
   `;
-  return row;
+
+  contenedor.appendChild(fila);
 }
 
-
-async function addRow(e){
-  if(e) e.preventDefault();
-  const row = newRowEl();
-  $('#items').appendChild(row);
-
-  // cargar materiales (con placeholder)
-  const selMat = row.querySelector('.sel-mat');
-  selMat.insertAdjacentHTML('beforeend',
-    materiales.map(m=>`<option value="${m.idMaterial}">${m.name}</option>`).join('')
-  );
-
-  // listeners
-  selMat.addEventListener('change', ()=> onMaterialChange(row));
-  row.querySelector('.btn-del').addEventListener('click', ()=>{ row.remove(); syncMasterCheckbox(); });
-
-  // sync del checkbox de cada fila -> maestro
-  row.querySelector('.chk-res').addEventListener('change', syncMasterCheckbox);
-}
-
-async function onMaterialChange(row){
-  const matId = Number(row.querySelector('.sel-mat').value||0);
-  const selWh = row.querySelector('.sel-wh');
-  const chk   = row.querySelector('.chk-res');
-
-  selWh.disabled = true;
-  selWh.innerHTML = `<option value="">Depósito</option>`;
-  chk.checked = false; // al cambiar material, desmarco reserva de esa fila
-  syncMasterCheckbox();
-
-  if(!matId) return;
-
-  try{
-    const r = await authFetch(API_URL_STOCKS_BY_MAT(matId));
-    const list = r.ok ? await r.json() : [];
-    if(!Array.isArray(list) || list.length===0){
-      selWh.innerHTML = `<option value="">(sin stock)</option>`;
-      return;
-    }
-    selWh.innerHTML = `<option value="">Seleccionar depósito</option>` + list.map(s=>{
-      const free = Number(s.quantityAvailable||0);
-      const dis  = free<=0 ? 'disabled' : '';
-      return `<option value="${s.warehouseId}" data-free="${free}" ${dis}>
-        ${s.warehouseName} — disp: ${free}
-      </option>`;
-    }).join('');
-    selWh.disabled = false;
-  }catch(e){
-    console.error(e);
-    selWh.innerHTML = `<option value="">(error)</option>`;
-  }
-}
-
-/* ========= Maestro “Reservar todos” <-> filas ========= */
-function toggleMasterReservas(){
-   const master = $('#chkReservarTodos').checked;
-   document.querySelectorAll('#items .fila .chk-res').forEach(chk=>{
-     chk.checked = master;
-   });
-   // asegura que el master quede consistente si no hay filas, etc.
-   syncMasterCheckbox();
-}
-
-function syncMasterCheckbox(){
-   const chks = Array.from(document.querySelectorAll('#items .fila .chk-res'));
-   if(!chks.length){ $('#chkReservarTodos').checked = false; return; }
-   $('#chkReservarTodos').checked = chks.every(c=>c.checked);
-}
-
-
-/* =================== Guardar =================== */
-async function guardar(e){
+function guardarPedido(e) {
   e.preventDefault();
-  const clientId = Number($('#cliente').value||0);
-  const dateDelivery = $('#fechaEntrega').value;
 
-  if(!clientId){ notify('Seleccioná un cliente','error'); return; }
-  if(!dateDelivery){ notify('Ingresá una fecha de entrega','error'); return; }
-
-  // construir materiales (pedido)
-  const rows = Array.from(document.querySelectorAll('#items .fila'));
-  const mats = [];
-  for (const row of rows){
-    const materialId  = Number(row.querySelector('.sel-mat').value||0);
-    const quantity    = Number(row.querySelector('.in-qty').value||0);
-    if(materialId && quantity>0) mats.push({ materialId, quantity });
+  const token = getToken();
+  if (!token) {
+    notify('Debes iniciar sesión para guardar un pedido', 'error');
+    go('login.html');
+    return;
   }
-  if(!mats.length){ notify('Agregá al menos un material','error'); return; }
 
-  const orderPayload = {
-    dateCreate: new Date().toISOString().slice(0,10),
-    dateDelivery,
-    clientId,
-    materials: mats
+  const clienteId = $('#cliente').value;
+  const fechaEntrega = $('#fecha-entrega').value;
+  const fechaHoy = todayLocalISO();
+  if (fechaEntrega < fechaHoy) {
+    notify('La fecha de entrega no puede ser anterior a hoy', 'error');
+    return;
+  }
+
+  const detalles = Array.from(document.querySelectorAll('.fila-material')).map(fila => {
+    const materialId = fila.querySelector('.select-material').value;
+    const cantidad = fila.querySelector('.input-cantidad').value;
+
+    return {
+      materialId: parseInt(materialId),
+      quantity: parseFloat(cantidad)
+    };
+  });
+
+  if (!clienteId || !fechaEntrega || detalles.length === 0 || detalles.some(d => !d.materialId || d.quantity <= 0)) {
+    notify('Debe completar todos los campos y agregar al menos un material válido.', 'error');
+    return;
+  }
+
+  const pedido = {
+    clientId: parseInt(clienteId),
+    dateCreate: fechaHoy,
+    dateDelivery: fechaEntrega,
+    materials: detalles
   };
 
-  try{
-    // 1) Crear pedido
-    const res = await authFetch(API_URL_ORDERS,{ method:'POST', body: JSON.stringify(orderPayload) });
-    if(!res.ok){ const t=await res.text().catch(()=> ''); console.warn('POST /orders', res.status, t); throw new Error(`HTTP ${res.status}`); }
-    const dto = await res.json();
-    notify('✅ Pedido creado','success');
-
-    // 2) Reservas si corresponde
-    const reservarTodos = $('#chkReservarTodos').checked;
-    const items = [];
-    for (const row of rows){
-      const marked = reservarTodos || row.querySelector('.chk-res').checked;
-      if(!marked) continue;
-
-      const materialId  = Number(row.querySelector('.sel-mat').value||0);
-      const warehouseId = Number(row.querySelector('.sel-wh').value||0);
-      const qty         = Number(row.querySelector('.in-qty').value||0);
-      const opt         = row.querySelector('.sel-wh')?.selectedOptions?.[0];
-      const free        = Number(opt?.dataset?.free||0);
-
-      if(!materialId || !warehouseId) continue;
-      if(!(qty>0)) continue;
-      if(qty>free){ notify(`La cantidad supera lo disponible (${free})`, 'error'); continue; }
-
-      items.push({ materialId, warehouseId, quantity: qty });
-    }
-
-    if(items.length){
-      const r2 = await authFetch(API_URL_RES_BULK,{ method:'POST', body: JSON.stringify({ orderId: dto.idOrders, items }) });
-      if(!r2.ok){ const t=await r2.text().catch(()=> ''); console.warn('POST /stock-reservations/bulk', r2.status, t); throw new Error(`HTTP ${r2.status}`); }
-      const list = await r2.json();
-      notify(`✅ ${list.length} reserva(s) creadas`, 'success');
-    }
-
-    setTimeout(()=> go(`ver-pedido.html?id=${dto.idOrders}`), 700);
-  }catch(err){
-    console.error(err);
-    notify('No se pudo crear el pedido o las reservas','error');
-  }
+  authFetch(API_URL_ORDERS, { method:'POST', body: JSON.stringify(pedido) })
+    .then(res => {
+      if (!res.ok) throw new Error('Error al crear el pedido');
+      return res.json();
+    })
+    .then(data => {
+      flashAndGo('✅ Pedido guardado con éxito', 'pedidos.html');
+    })
+    .catch(err => {
+      console.error(err);
+      notify('Ocurrió un error al guardar el pedido', 'error');
+    });
 }

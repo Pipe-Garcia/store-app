@@ -1,136 +1,61 @@
-// ========= Endpoints =========
+// ========= Constantes =========
 const API_URL_DELIVERIES = 'http://localhost:8080/deliveries';
-const API_URL_DELIVERIES_SEARCH = 'http://localhost:8080/deliveries/search';
-const API_URL_CLIENTS = 'http://localhost:8080/clients';
-const API_URL_ORDER   = id => `http://localhost:8080/orders/${id}`;
-
-const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
-const UI_STATUS = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', COMPLETED:'COMPLETADA' };
+const API_URL_OD_BY_ORDER = 'http://localhost:8080/order-details/order'; // /{ordersId}
+const fmtARS = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
 // ========= Helpers =========
 const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
 function authHeaders(json=true){
-  const t=getToken();
+  const t = getToken();
   return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
 }
 function authFetch(url, opts={}){ return fetch(url, { ...opts, headers:{ ...authHeaders(!opts.bodyIsForm), ...(opts.headers||{}) }}); }
-function notify(msg,type='info'){
-  const div=document.createElement('div'); div.className=`notification ${type}`; div.textContent=msg;
-  document.body.appendChild(div); setTimeout(()=>div.remove(),4000);
+function notify(msg,type='info',anchorSelector){
+  const anchor = anchorSelector ? $(anchorSelector) : document.body;
+  const div = document.createElement('div');
+  div.className = `notification ${type}`;
+  div.textContent = msg;
+  (anchor||document.body).appendChild(div);
+  setTimeout(()=>div.remove(),4000);
 }
-function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
+function flashAndGo(message, page){ localStorage.setItem('flash', JSON.stringify({ message, type:'success' })); go(page); }
+function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); window.location.href = `${base}${page}`; }
 
 // ========= Estado =========
-let ENTREGAS = [];        // crudo del back
-let TOTALS_BY_ORDER = new Map(); // orderId -> total
+let entregas = [];
 
 // ========= Bootstrap =========
-window.addEventListener('DOMContentLoaded', async () => {
+window.addEventListener('DOMContentLoaded', () => {
+  const flash = localStorage.getItem('flash');
+  if (flash) { const { message, type } = JSON.parse(flash); notify(message, type||'success'); localStorage.removeItem('flash'); }
+
   if (!getToken()) { go('login.html'); return; }
 
-  // clientes select
-  await loadClients();
+  $('#filtroEstado')?.addEventListener('change', applyFilters);
+  $('#filtroTexto')?.addEventListener('input', applyFilters);
 
-  // listeners filtros
-  ['fOrderId','fClient','fFrom','fTo','fStatus','fText','fMinTotal','fMaxTotal']
-    .forEach(id => $(id)?.addEventListener(id==='fText'?'input':'change', applyFilters));
-
-  $('#btnClear')?.addEventListener('click', ()=>{
-    ['fOrderId','fClient','fFrom','fTo','fStatus','fText','fMinTotal','fMaxTotal']
-      .forEach(id => { const el=$(id); if (el) el.value=''; });
-    applyFilters();
-  });
-
-  await loadDeliveries();
+  cargarEntregas();
 });
 
-async function loadClients(){
-  try{
-    const r = await authFetch(API_URL_CLIENTS);
-    const data = r.ok ? await r.json() : [];
-    const sel = $('#fClient');
-    sel.innerHTML = `<option value="">Todos</option>`;
-    data.sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
-        .forEach(c=>{
-          const opt = document.createElement('option');
-          opt.value = String(c.idClient || c.id);
-          opt.textContent = `${c.name||''} ${c.surname||''}`.trim() || `#${c.idClient||c.id}`;
-          sel.appendChild(opt);
-        });
-  }catch(e){ console.warn('clients', e); }
-}
+async function cargarEntregas() {
+  const estado = $('#filtroEstado')?.value || '';
+  const url = estado ? `${API_URL_DELIVERIES}?status=${encodeURIComponent(estado)}` : API_URL_DELIVERIES;
 
-function buildQuery(){
-  const q = new URLSearchParams();
-  const st = $('#fStatus')?.value; if (st) q.set('status', st);
-  const oid = $('#fOrderId')?.value; if (oid) q.set('orderId', oid);
-  const cid = $('#fClient')?.value; if (cid) q.set('clientId', cid);
-  const from = $('#fFrom')?.value; if (from) q.set('from', from);
-  const to   = $('#fTo')?.value;   if (to)   q.set('to', to);
-  return q.toString();
-}
-
-async function loadDeliveries(){
-  try{
-    const qs = buildQuery();
-    const url = qs ? `${API_URL_DELIVERIES_SEARCH}?${qs}` : API_URL_DELIVERIES;
-    const r = await authFetch(url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    ENTREGAS = await r.json() || [];
-
-    // traer totales de cada pedido para filtro y render
-    await hydrateOrderTotals(ENTREGAS);
-
-    // si no hay min/max, precargo desde dataset
-    const totals = ENTREGAS.map(e => TOTALS_BY_ORDER.get(e.ordersId)||0);
-    const min = totals.length ? Math.min(...totals) : 0;
-    const max = totals.length ? Math.max(...totals) : 0;
-    const minEl = $('#fMinTotal'), maxEl = $('#fMaxTotal');
-    if (minEl && !minEl.value) minEl.value = String(min);
-    if (maxEl && !maxEl.value) maxEl.value = String(max);
-
+  try {
+    const res = await authFetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) { notify('No se pudo cargar el listado de entregas','error'); return; }
+    entregas = data;
+    await loadTotalsFor(entregas);
     applyFilters();
-  }catch(e){
-    console.error('deliveries', e);
-    notify('No se pudieron cargar las entregas','error');
+  } catch (err) {
+    console.error('Error entregas:', err);
+    if (String(err.message).includes('401') || String(err.message).includes('403')) { notify('Sesión inválida. Iniciá sesión nuevamente','error'); go('login.html'); }
+    else { notify('Error al conectar con el servidor','error'); }
   }
-}
-
-async function hydrateOrderTotals(list){
-  const ids = [...new Set(list.map(e => e.ordersId).filter(Boolean))];
-  const pairs = await Promise.all(ids.map(async id=>{
-    try{
-      const r = await authFetch(API_URL_ORDER(id));
-      if (!r.ok) return [id, 0];
-      const dto = await r.json();
-      return [id, Number(dto.total||0)];
-    }catch(_){ return [id,0]; }
-  }));
-  TOTALS_BY_ORDER = new Map(pairs);
-}
-
-function applyFilters(){
-  const text = ($('#fText')?.value || '').toLowerCase();
-  const minT = Number($('#fMinTotal')?.value || '0');
-  const maxT = Number($('#fMaxTotal')?.value || Number.MAX_SAFE_INTEGER);
-
-  let list = ENTREGAS.slice();
-
-  // texto
-  if (text) {
-    list = list.filter(e =>
-      (e.clientName||'').toLowerCase().includes(text) ||
-      String(e.ordersId||'').includes(text)
-    );
-  }
-  // total range
-  list = list.filter(e => {
-    const tot = TOTALS_BY_ORDER.get(e.ordersId) || 0;
-    return tot >= minT && tot <= maxT;
-  });
-
-  renderLista(list);
 }
 
 function renderLista(lista){
@@ -141,44 +66,110 @@ function renderLista(lista){
       <div>Estado</div>
       <div>Cliente</div>
       <div>Pedido</div>
-      <div>Total Pedido</div>
+      <div>Total</div>
       <div>Acciones</div>
     </div>
   `;
 
   if (!lista.length){
     const row = document.createElement('div');
-    row.className='fila';
-    row.innerHTML = `<div style="grid-column:1/-1;color:#666;">Sin resultados.</div>`;
+    row.className = 'fila';
+    row.innerHTML = `<div style="grid-column:1/-1;color:#666;">No hay resultados.</div>`;
     cont.appendChild(row);
     return;
   }
 
   for (const e of lista){
-    const pillCls = (e.status==='COMPLETED')?'completed':(e.status==='PARTIAL')?'partial':'pending';
-    const total = TOTALS_BY_ORDER.get(e.ordersId) || 0;
-
     const row = document.createElement('div');
-    row.className='fila';
+    row.className = 'fila';
+    const pill = `<span class="pill ${e.status?.toLowerCase() || 'pending'}">${e.status || '-'}</span>`;
+    const totalFmt = v => fmtARS.format(Number(v||0));
+
     row.innerHTML = `
       <div>${e.deliveryDate ?? '-'}</div>
-      <div><span class="pill ${pillCls}">${UI_STATUS[e.status] || e.status || '-'}</span></div>
+      <div>${pill}</div>
       <div>${e.clientName ?? '-'}</div>
       <div>#${e.ordersId ?? '-'}</div>
-      <div>${fmtARS.format(total)}</div>
+      <div>${totalFmt(e.total)}</div>
       <div class="acciones" style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn view" data-view="${e.idDelivery}">👁 Ver</button>
-        <button class="btn primary" data-edit="${e.idDelivery}">✏️ Editar</button>
+        <button class="btn view"  data-view="${e.idDelivery}">👁 Ver</button>
+        <button class="btn primary"   data-edit="${e.idDelivery}">✏️ Editar</button>
+        <button class="btn green"     data-done="${e.idDelivery}">✅ Entregado</button>
+        <button class="btn outline"   data-sale="${e.idDelivery}">💲 Asociar venta</button>
       </div>
     `;
     cont.appendChild(row);
   }
 
-  cont.onclick = (ev)=>{
-    const btn = ev.target.closest('button'); if (!btn) return;
-    const vid = btn.getAttribute('data-view');
-    const eid = btn.getAttribute('data-edit');
-    if (vid) go(`ver-entrega.html?id=${vid}`);
-    if (eid) go(`editar-entrega.html?id=${eid}`);
+  // delegación de eventos
+  cont.onclick = (ev) => {
+    const target = ev.target.closest('button'); if (!target) return;
+    const viewId = target.getAttribute('data-view');
+    const editId = target.getAttribute('data-edit');
+    const doneId = target.getAttribute('data-done');
+    const saleId = target.getAttribute('data-sale');
+
+    if (viewId) go(`ver-entrega.html?id=${viewId}`);
+    if (editId) go(`editar-entrega.html?id=${editId}`);
+    if (doneId) marcarComoEntregada(Number(doneId));
+    if (saleId) asociarVenta(Number(saleId));
   };
+}
+
+function applyFilters(){
+  const estado = $('#filtroEstado')?.value || '';
+  const q = ($('#filtroTexto')?.value || '').toLowerCase();
+
+  let list = entregas.slice();
+  if (estado) list = list.filter(e => (e.status||'').toUpperCase() === estado.toUpperCase());
+  if (q) list = list.filter(e =>
+    String(e.ordersId ?? '').includes(q) ||
+    String(e.clientName ?? '').toLowerCase().includes(q)
+  );
+  renderLista(list);
+}
+
+async function marcarComoEntregada(idDelivery){
+  if (!confirm('¿Marcar esta entrega como COMPLETED?')) return;
+  try {
+    const res = await authFetch(API_URL_DELIVERIES, {
+      method: 'PUT',
+      body: JSON.stringify({ idDelivery: idDelivery, status: 'COMPLETED' })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    // Optimista
+    const i = entregas.findIndex(x => x.idDelivery === idDelivery);
+    if (i > -1) entregas[i].status = 'COMPLETED';
+    notify('Entrega marcada como COMPLETED','success');
+    applyFilters();
+
+    // Refresco real
+    setTimeout(() => cargarEntregas(), 150);
+  } catch (err){
+    console.error(err);
+    notify('No se pudo actualizar la entrega','error');
+  }
+}
+
+function asociarVenta(idDelivery){
+  notify(`(Próximo paso) Crear venta desde entrega #${idDelivery}`,'info');
+}
+
+// ====== Totales por pedido (usa /orders/{id}) ======
+async function loadTotalsFor(list){
+  const ids = [...new Set(list.map(e => e.ordersId).filter(Boolean))];
+  if (!ids.length) return;
+  try {
+    const pairs = await Promise.all(ids.map(async (id) => {
+      const r = await authFetch(`http://localhost:8080/orders/${id}`);
+      if (!r.ok) return [id, 0];
+      const dto = await r.json(); // OrdersDTO con total
+      return [id, Number(dto.total || 0)];
+    }));
+    const map = new Map(pairs);
+    entregas = entregas.map(e => ({ ...e, total: map.get(e.ordersId) ?? 0 }));
+  } catch (e) {
+    console.warn('No se pudieron calcular totales de pedidos', e);
+  }
 }

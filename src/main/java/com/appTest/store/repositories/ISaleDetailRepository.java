@@ -16,7 +16,7 @@ public interface ISaleDetailRepository extends JpaRepository <SaleDetail, Long> 
             "FROM SaleDetail ps GROUP BY ps.material ORDER BY SUM(ps.quantity) DESC")
     List<MaterialMostSoldDTO> getMostSoldMaterial(org.springframework.data.domain.Pageable pageable);
 
-    // IMPORTANTE: suma este metodo
+    // IMPORTANTE: suma este método
     @Query("""
     select sd
     from SaleDetail sd

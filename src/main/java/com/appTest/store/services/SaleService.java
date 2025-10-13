@@ -3,18 +3,17 @@ package com.appTest.store.services;
 import com.appTest.store.dto.saleDetail.SaleDetailRequestDTO;
 import com.appTest.store.dto.sale.*;
 import com.appTest.store.models.*;
-import com.appTest.store.models.enums.ReservationStatus;
 import com.appTest.store.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class SaleService implements ISaleService{
@@ -37,15 +36,6 @@ public class SaleService implements ISaleService{
     @Autowired
     private IStockService servStock;
 
-    @Autowired
-    private IOrdersRepository repoOrders;
-
-    @Autowired
-    private IStockReservationService reservationService;
-
-    @Autowired
-    private IStockReservationRepository repoReservation;
-
     @Override
     public List<Sale> getAllSales() {
         return repoSale.findAll();
@@ -58,50 +48,29 @@ public class SaleService implements ISaleService{
 
     @Override
     public SaleDTO convertSaleToDto(Sale sale) {
-        // Cliente
-        Long clientId = (sale.getClient()!=null) ? sale.getClient().getIdClient() : null;
-        String clientName = (sale.getClient()!=null)
-                ? (sale.getClient().getName() + " " + sale.getClient().getSurname()).trim()
-                : "—";
+        String nameClient = (sale.getClient() != null) ? sale.getClient().getName() : "Name not found";
+        String surnameClient = (sale.getClient() != null) ? sale.getClient().getSurname() : "Surname not found";
 
-        // Totales
-        BigDecimal total = calculateTotal(sale);
-        BigDecimal paid  = sale.getPaymentList()==null ? BigDecimal.ZERO :
-                sale.getPaymentList().stream()
-                        .map(Payment::getAmount)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+        String completeNameClient = nameClient + " " + surnameClient;
 
-        BigDecimal balance = total.subtract(paid);
-        if (balance.signum() < 0) balance = BigDecimal.ZERO;
+        String paymentMethod = sale.getPaymentList().isEmpty() ? "Not specified"
+                : sale.getPaymentList().get(0).getMethodPayment();
 
-        String status = computePaymentStatus(total, paid);
+        BigDecimal total  = calculateTotal(sale);
 
-        // (opcional/compat) primer metodo de pago
-        String paymentMethod = (sale.getPaymentList()!=null && !sale.getPaymentList().isEmpty())
-                ? sale.getPaymentList().get(0).getMethodPayment()
-                : null;
+        Long deliveryId = (sale.getDelivery() != null) ? sale.getDelivery().getIdDelivery() : null;
 
-        
-        Long orderId    = (sale.getOrders()!=null)   ? sale.getOrders().getIdOrders()    : null;
 
-        // Armar DTO
-        SaleDTO dto = new SaleDTO();
-        dto.setIdSale(sale.getIdSale());
-        dto.setClientId(clientId);
-        dto.setClientName(clientName);
-        dto.setDateSale(sale.getDateSale());
-        dto.setTotal(total);
-        dto.setPaid(paid);
-        dto.setBalance(balance);
-        dto.setPaymentStatus(status);
-        dto.setPaymentMethod(paymentMethod); // opcional
-        dto.setDeliveryId(
-                sale.getDelivery() != null ? sale.getDelivery().getIdDelivery() : null
+
+        return new SaleDTO(
+                sale.getIdSale(),
+                completeNameClient,
+                sale.getDateSale(),
+                total,
+                paymentMethod,
+                deliveryId
         );
-        dto.setOrderId(orderId);
-        return dto;
     }
-
 
     private BigDecimal calculateTotal(Sale sale) {
         return sale.getSaleDetailList().stream()
@@ -124,11 +93,6 @@ public class SaleService implements ISaleService{
     @Override
     @Transactional
     public SaleDTO createSale(SaleCreateDTO dto) {
-        if (dto.getMaterials()==null || dto.getMaterials().isEmpty()) {
-            throw new IllegalArgumentException("At least one item is required.");
-        }
-
-        // --- Cabecera ---
         Sale sale = new Sale();
         sale.setDateSale(dto.getDateSale());
 
@@ -136,97 +100,63 @@ public class SaleService implements ISaleService{
                 .orElseThrow(() -> new EntityNotFoundException("Client not found with ID: " + dto.getClientId()));
         sale.setClient(client);
 
-        // (opcional) vincular entrega antes de persistir, si vino
-        if (dto.getDeliveryId() != null) {
-            Delivery delivery = repoDelivery.findById(dto.getDeliveryId())
-                    .orElseThrow(() -> new EntityNotFoundException("Delivery not found with ID: " + dto.getDeliveryId()));
-            // si querés: validar que no esté ya ligada a otra venta
-            sale.setDelivery(delivery);
-        }
-
-        // ✅ Vincular PEDIDO si vino orderId
-        if (dto.getOrderId() != null) {
-            Orders order = repoOrders.findById(dto.getOrderId())
-                    .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + dto.getOrderId()));
-            sale.setOrders(order);
-        }
-
-        // --- Detalle ---
         List<SaleDetail> saleDetailList = new ArrayList<>();
 
         for (SaleDetailRequestDTO item : dto.getMaterials()) {
-            if (item.getMaterialId()==null || item.getWarehouseId()==null)
-                throw new IllegalArgumentException("MaterialId and WarehouseId are required.");
-            if (item.getQuantity()==null || item.getQuantity().signum() <= 0)
-                throw new IllegalArgumentException("Quantity must be > 0.");
-
             Material material = repoMat.findById(item.getMaterialId())
                     .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + item.getMaterialId()));
+            if (material != null) {
+                SaleDetail ps = new SaleDetail();
+                ps.setMaterial(material);
+                ps.setSale(sale);
+                ps.setQuantity(item.getQuantity());
+                ps.setPriceUni(material.getPriceArs());
 
-            // 1) ALLOCATE (comprometer) reservas del cliente (no descuenta on-hand)
-            BigDecimal toSell   = item.getQuantity();
-            BigDecimal allocated = reservationService.allocateForSale(
-                    dto.getClientId(), item.getMaterialId(), item.getWarehouseId(), toSell, dto.getOrderId()
-            );
-            BigDecimal remainder = toSell.subtract(allocated); // debería ser 0, salvo que quieras no “forzar” allocation total
+                saleDetailList.add(ps);
+                servStock.decreaseStock(item.getMaterialId(), item.getWarehouseId(), item.getQuantity());
 
-
-            // 2) Si quedó remanente, validar ATP y crear ALLOCATED directo
-            if (remainder.signum() > 0) {
-                BigDecimal free = servStock.availableForReservation(item.getMaterialId(), item.getWarehouseId());
-                if (remainder.compareTo(free) > 0) {
-                    throw new IllegalStateException("Not enough free stock (reserved by others).");
-                }
-                // 3) Crear ALLOCATED directo (venta compromete, no descuenta on-hand)
-                reservationService.recordDirectAllocation(
-                        dto.getClientId(), item.getMaterialId(), item.getWarehouseId(), remainder, dto.getOrderId()
-                );
             }
-
-            // 4) Registrar el detalle (snapshot de precio actual)
-            SaleDetail d = new SaleDetail();
-            d.setMaterial(material);
-            d.setSale(sale);
-            d.setQuantity(item.getQuantity());
-            d.setPriceUni(material.getPriceArs()!=null ? material.getPriceArs() : BigDecimal.ZERO);
-
-            saleDetailList.add(d);
         }
         sale.setSaleDetailList(saleDetailList);
 
-        // --- Persistir venta ---
         Sale savedSale = repoSale.save(sale);
 
-        // --- Pago inicial (opcional) ---
-        if (dto.getPayment() != null) {
-            Payment p = new Payment();
-            p.setAmount(dto.getPayment().getAmount());
-            p.setDatePayment(dto.getPayment().getDatePayment());
-            p.setMethodPayment(dto.getPayment().getMethodPayment());
-            p.setSale(savedSale);
-            repoPayment.save(p);
 
-            // mantener coherente el grafo en memoria para el DTO
-            if (savedSale.getPaymentList()==null) savedSale.setPaymentList(new ArrayList<>());
-            savedSale.getPaymentList().add(p);
+        if (dto.getPayment() != null) {
+            Payment payment = new Payment();
+            payment.setAmount(dto.getPayment().getAmount());
+            payment.setDatePayment(dto.getPayment().getDatePayment());
+            payment.setMethodPayment(dto.getPayment().getMethodPayment());
+            BigDecimal totalPaid = savedSale.getPaymentList().stream()
+                    .map(Payment::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .add(dto.getPayment().getAmount());
+            BigDecimal saleTotal = calculateTotal(savedSale);
+            payment.setStatus(calculatePaymentStatus(totalPaid, saleTotal));
+            payment.setSale(savedSale);
+            repoPayment.save(payment);
         }
 
-        // --- DTO con total/paid/balance/status consistentes ---
+        if (dto.getDeliveryId() != null) {
+            Delivery delivery = repoDelivery.findById(dto.getDeliveryId())
+                    .orElseThrow(() -> new EntityNotFoundException("Delivery not found with ID: " + dto.getDeliveryId()));
+            sale.setDelivery(delivery);
+        }
+
+
         return convertSaleToDto(savedSale);
     }
 
-    // ADD: helper de consumo
 
-    private String computePaymentStatus(BigDecimal total, BigDecimal paid){
-        if (paid == null)  paid  = BigDecimal.ZERO;
-        if (total == null) total = BigDecimal.ZERO;
-
-        if (paid.compareTo(BigDecimal.ZERO) <= 0) return "PENDING";
-        if (paid.compareTo(total) < 0)          return "PARTIAL";
-        return "PAID";
+    private String calculatePaymentStatus(BigDecimal totalPaid, BigDecimal saleTotal) {
+        if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {
+            return "PENDING";
+        } else if (totalPaid.compareTo(saleTotal) < 0) {
+            return "PARTIAL";
+        } else {
+            return "PAID";
+        }
     }
-
-
 
     @Override
     @Transactional
@@ -246,27 +176,5 @@ public class SaleService implements ISaleService{
     @Transactional
     public void deleteSaleById(Long idSale) {
         repoSale.deleteById(idSale);
-    }
-
-    @Override
-    @Transactional
-    public List<Sale> search(LocalDate from,
-                                       LocalDate to,
-                                       Long clientId,
-                                       String paymentStatus) {
-        var list = repoSale.search(from, to, clientId);
-        if (paymentStatus == null || paymentStatus.isBlank()) return list;
-
-        final String want = paymentStatus.toUpperCase();
-        return list.stream()
-                .filter(s -> {
-                    var total = calculateTotal(s);
-                    var paid  = (s.getPaymentList()==null) ? BigDecimal.ZERO :
-                            s.getPaymentList().stream()
-                                    .map(Payment::getAmount)
-                                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    return computePaymentStatus(total, paid).equals(want);
-                })
-                .collect(Collectors.toList());
     }
 }

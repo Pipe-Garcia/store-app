@@ -44,8 +44,8 @@ public class SaleDetailController {
 
     @GetMapping("/by-sale/{saleId}")
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<List<SaleDetailDTO>> bySale(@PathVariable Long saleId) {
-        return ResponseEntity.ok(servSaleDetail.findBySaleId(saleId));
+    public ResponseEntity<List<SaleDetailDTO>> getItemsBySale(@PathVariable Long saleId) {
+        return ResponseEntity.ok(servSaleDetail.getBySaleId(saleId));
     }
 
     @GetMapping ("/material-most-sold")

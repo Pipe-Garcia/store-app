@@ -154,7 +154,7 @@ a.btn{ text-decoration:none; }
 .subtotales{ display:flex; justify-content:flex-end; margin:10px 0; font-size:1.1rem; }
 .subtotales strong{ font-size:1.25rem; }
 
-.tabla .fila { grid-template-columns: 2fr 1fr .8fr 1fr 1fr .5fr; gap: 5px;}
+.tabla .fila { grid-template-columns: 2fr 1fr .8fr 1fr 1fr .5fr; }
 .tabla .fila.encabezado { background:#eaeaea; font-weight:700; }
 
 #delivery {
@@ -181,5 +181,3 @@ a.btn{ text-decoration:none; }
   .filters select,
   .filters input[type="text"]{ min-width: 150px; }
 }
-
-button:disabled { opacity:.55; cursor:not-allowed; }

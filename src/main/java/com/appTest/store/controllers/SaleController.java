@@ -2,7 +2,6 @@ package com.appTest.store.controllers;
 
 import com.appTest.store.dto.sale.*;
 import com.appTest.store.models.Sale;
-import com.appTest.store.repositories.ISaleRepository;
 import com.appTest.store.services.ISaleService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,9 +21,6 @@ public class SaleController {
 
     @Autowired
     private ISaleService servSale;
-
-    @Autowired
-    private ISaleRepository repoSale;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
@@ -52,19 +48,6 @@ public class SaleController {
     public ResponseEntity<SaleSummaryByDateDTO> getSaleSummaryByDate(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         SaleSummaryByDateDTO saleSummaryByDateDTO = servSale.getSaleSummaryByDate(date);
         return ResponseEntity.ok(saleSummaryByDateDTO);
-    }
-
-    @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<List<SaleDTO>> search(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(required = false) Long clientId,
-            @RequestParam(required = false) String paymentStatus // PENDING|PARTIAL|PAID
-    ) {
-        List<Sale> list = servSale.search(from, to, clientId, paymentStatus);
-        List<SaleDTO> dto = list.stream().map(servSale::convertSaleToDto).collect(Collectors.toList());
-        return ResponseEntity.ok(dto);
     }
 
     @GetMapping ("/highest")

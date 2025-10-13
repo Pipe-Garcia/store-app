@@ -37,41 +37,9 @@ function todayISO(){
 
 let chart7d = null;
 
-async function cargarKPIs(){
-  try{
-    // 1) Reservas activas
-    const r1 = await authFetch('http://localhost:8080/stock-reservations/search?status=ACTIVE');
-    const reservas = r1.ok ? await r1.json() : [];
-    $('#kpiReservas').textContent = reservas.length;
-
-    // 2) Pedidos con reserva (distintos orderId)
-    const ids = new Set(reservas.filter(x=>x.orderId!=null).map(x=>x.orderId));
-    $('#kpiPedidosReservados').textContent = ids.size;
-
-    // 3) Entregas próximas 7 días (pend/partial)
-    const r2 = await authFetch('http://localhost:8080/deliveries'); // si tenés /search mejor
-    const dels = r2.ok ? await r2.json() : [];
-    const today = new Date(); today.setHours(0,0,0,0);
-    const in7   = new Date(today); in7.setDate(today.getDate()+7);
-
-    const prox = (dels||[]).filter(d=>{
-      if(!d.deliveryDate) return false;
-      const dd=new Date(d.deliveryDate+'T00:00:00');
-      const st=(d.status||'').toUpperCase();
-      return dd>=today && dd<=in7 && st!=='COMPLETED';
-    });
-    $('#kpiEntregas').textContent = prox.length;
-  }catch(e){
-    console.warn(e);
-  }
-}
-
-
-
-
-window.addEventListener('DOMContentLoaded', ()=>{ if(getToken) cargarKPIs();
+window.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ location.href='../files-html/login.html'; return; }
-  cargarDashboard();
+  await cargarDashboard();
 });
 
 async function cargarDashboard(){

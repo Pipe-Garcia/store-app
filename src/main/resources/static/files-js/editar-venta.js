@@ -36,13 +36,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   if(sale){
     $('#fecha').value = sale.dateSale || '';
-    if (sale.clientId){
-      sel.value = String(sale.clientId);
-    } else {
-      // fallback defensivo (no debería ocurrir)
-      const match = clients.find(c => `${c.name||''} ${c.surname||''}`.trim() === (sale.clientName||'').trim());
-      if(match) sel.value = String(match.idClient||match.id);
-    }
+    // no viene clientId en tu SaleDTO → buscamos por nombre (fallback):
+    const match = clients.find(c => `${c.name||''} ${c.surname||''}`.trim() === (sale.clientName||'').trim());
+    if(match) sel.value = String(match.idClient||match.id);
   }
 
   $('#btnGuardar').onclick = async ()=>{

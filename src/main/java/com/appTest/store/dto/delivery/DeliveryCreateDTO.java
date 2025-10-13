@@ -16,9 +16,6 @@ public class DeliveryCreateDTO implements Serializable {
     @NotNull(message = "Order ID is required")
     private Long ordersId;
 
-    // NUEVO 👇 (opcional en el payload)
-    private Long saleId;
-
     private String status; // opcional, si se envía lo ignoramos y calculamos
 
     @NotNull

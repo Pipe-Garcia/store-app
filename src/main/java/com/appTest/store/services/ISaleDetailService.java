@@ -19,7 +19,5 @@ public interface ISaleDetailService {
       public boolean deleteSaleDetailById(Long idSaleDetail);
 
       // agrega esta firma
-      List<SaleDetailDTO> findBySaleId(Long saleId);
-
-
+      List<SaleDetailDTO> getBySaleId(Long saleId);
 }

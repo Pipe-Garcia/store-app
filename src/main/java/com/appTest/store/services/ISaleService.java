@@ -16,5 +16,4 @@ public interface ISaleService {
     public SaleDTO createSale(SaleCreateDTO dto);
     public void updateSale(SaleUpdateDTO dto);
     public void deleteSaleById(Long idSale);
-    List<Sale> search(LocalDate from, LocalDate to, Long clientId, String paymentStatus);
 }

@@ -4,7 +4,6 @@ import com.appTest.store.dto.stock.StockByWarehouseDTO;
 import com.appTest.store.dto.stock.StockCreateDTO;
 import com.appTest.store.dto.stock.StockDTO;
 import com.appTest.store.dto.stock.StockUpdateDTO;
-import com.appTest.store.dto.stock.AvailabilityDTO;
 import com.appTest.store.models.Stock;
 import com.appTest.store.services.IStockService;
 import jakarta.validation.Valid;
@@ -52,27 +51,6 @@ public class StockController {
         StockDTO stockDTO = servStock.convertStockToDto(stock);
         return ResponseEntity.ok(stockDTO);
     }
-
-    @GetMapping("/availability")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<AvailabilityDTO> availability(
-            @RequestParam Long materialId,
-            @RequestParam Long warehouseId
-    ){
-        var qty = servStock.availability(materialId, warehouseId);
-        return ResponseEntity.ok(new AvailabilityDTO(materialId, warehouseId, qty));
-    }
-
-    @GetMapping("/available-for-reservation")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<com.appTest.store.dto.stock.AvailabilityDTO> availableForReservation(
-            @RequestParam Long materialId,
-            @RequestParam Long warehouseId
-    ){
-        var qty = servStock.availableForReservation(materialId, warehouseId);
-        return ResponseEntity.ok(new com.appTest.store.dto.stock.AvailabilityDTO(materialId, warehouseId, qty));
-    }
-
 
     @GetMapping("/by-material/{materialId}")
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")

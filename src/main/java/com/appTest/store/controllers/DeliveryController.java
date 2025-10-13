@@ -1,4 +1,3 @@
-// src/main/java/com/appTest/store/controllers/DeliveryController.java
 package com.appTest.store.controllers;
 
 import com.appTest.store.dto.delivery.DeliveryCreateDTO;
@@ -29,9 +28,11 @@ public class DeliveryController {
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<DeliveryDTO>> getAllDeliveries() {
         List<Delivery> deliveryList = servDelivery.getAllDeliveries();
+
         List<DeliveryDTO> deliveryDTOList = deliveryList.stream()
-                .map(servDelivery::convertDeliveryToDto)
+                .map(delivery -> servDelivery.convertDeliveryToDto(delivery))
                 .collect(Collectors.toList());
+
         return ResponseEntity.ok(deliveryDTOList);
     }
 
@@ -57,25 +58,16 @@ public class DeliveryController {
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate to
     ) {
-        // Mantengo el comportamiento actual (si querés, luego lo cambiamos a repo.search)
-        List<Delivery> list = servDelivery.getAllDeliveries();
+        com.appTest.store.models.enums.DeliveryStatus st = null;
+        if (status != null && !status.isBlank()) {
+            st = com.appTest.store.models.enums.DeliveryStatus.valueOf(status.toUpperCase());
+        }
+        List<Delivery> list = servDelivery.getAllDeliveries(); // si preferís: repoDelivery.search(st, orderId, clientId, from, to)
+
+
         return ResponseEntity.ok(
                 list.stream().map(servDelivery::convertDeliveryToDto).collect(java.util.stream.Collectors.toList())
         );
-    }
-
-    // ===== NUEVO: entregas por pedido (compacto) =====
-    @GetMapping("/by-order/{orderId}")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<List<DeliveryDTO>> getByOrder(@PathVariable Long orderId) {
-        return ResponseEntity.ok(servDelivery.getDeliveriesByOrder(orderId));
-    }
-
-    // ===== NUEVO: entregas por pedido (detallado) =====
-    @GetMapping("/by-order/{orderId}/detail")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<List<DeliveryDetailDTO>> getDetailsByOrder(@PathVariable Long orderId) {
-        return ResponseEntity.ok(servDelivery.getDeliveryDetailsByOrder(orderId));
     }
 
     @PostMapping

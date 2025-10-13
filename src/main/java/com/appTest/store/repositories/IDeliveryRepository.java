@@ -1,4 +1,3 @@
-// src/main/java/com/appTest/store/repositories/IDeliveryRepository.java
 package com.appTest.store.repositories;
 
 import com.appTest.store.models.Delivery;
@@ -37,16 +36,4 @@ public interface IDeliveryRepository extends JpaRepository<Delivery, Long> {
             @Param("from") LocalDate from,
             @Param("to") LocalDate to
     );
-
-    // ===== NUEVO: listar entregas por pedido =====
-    @EntityGraph(attributePaths = {"orders", "orders.client"})
-    List<Delivery> findByOrders_IdOrders(Long orderId);
-
-    // ===== NUEVO (detallado con items) =====
-    @EntityGraph(attributePaths = {
-            "orders", "orders.client",
-            "items", "items.orderDetail", "items.material", "items.warehouse"
-    })
-    @Query("select d from Delivery d where d.orders.idOrders = :orderId")
-    List<Delivery> findByOrderIdWithGraph(@Param("orderId") Long orderId);
 }

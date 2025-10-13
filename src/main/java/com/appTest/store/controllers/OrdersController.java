@@ -1,7 +1,9 @@
 package com.appTest.store.controllers;
 
 
-import com.appTest.store.dto.orders.*;
+import com.appTest.store.dto.orders.OrdersCreateDTO;
+import com.appTest.store.dto.orders.OrdersDTO;
+import com.appTest.store.dto.orders.OrdersUpdateDTO;
 import com.appTest.store.models.Orders;
 import com.appTest.store.services.IOrdersService;
 import jakarta.validation.Valid;
@@ -37,20 +39,6 @@ public class OrdersController {
         Orders orders = servOrders.getOrdersById(id);
         return ResponseEntity.ok(servOrders.convertOrdersToDto(orders));
     }
-
-    @GetMapping("/{id}/view")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<OrdersViewDTO> getOrderView(@PathVariable Long id){
-        return ResponseEntity.ok(servOrders.getOrderView(id));
-    }
-
-    // GET /orders/{id}/delivery-pending
-    @GetMapping("/{id}/delivery-pending")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public List<OrderDeliveryPendingDTO> getDeliveryPending(@PathVariable Long id) {
-        return servOrders.getDeliveryPending(id);
-    }
-
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")

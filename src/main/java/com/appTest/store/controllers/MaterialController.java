@@ -2,7 +2,6 @@ package com.appTest.store.controllers;
 
 import com.appTest.store.dto.material.*;
 import com.appTest.store.models.Material;
-import com.appTest.store.repositories.IMaterialRepository;
 import com.appTest.store.services.IMaterialService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,9 +19,6 @@ public class MaterialController {
 
     @Autowired
     private IMaterialService servMat;
-
-    @Autowired
-    private IMaterialRepository repoMat;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
@@ -60,18 +55,6 @@ public class MaterialController {
     public ResponseEntity<MaterialMostExpensiveDTO> getMaterialByHighestPrice() {
         MaterialMostExpensiveDTO materialMostExpensiveDTO = servMat.getMaterialByHighestPrice();
         return ResponseEntity.ok(materialMostExpensiveDTO);
-    }
-
-    @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<List<MaterialDTO>> search(
-            @RequestParam(required=false) String q,
-            @RequestParam(required=false) Long familyId,
-            @RequestParam(required=false) BigDecimal minPrice,
-            @RequestParam(required=false) BigDecimal maxPrice
-    ){
-        var list = repoMat.search((q!=null && !q.isBlank())? q : null, familyId, minPrice, maxPrice);
-        return ResponseEntity.ok(list.stream().map(servMat::convertMaterialToDto).toList());
     }
 
     @PostMapping

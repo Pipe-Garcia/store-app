@@ -20,7 +20,4 @@ public interface IStockService {
     void decreaseStock(Long materialId, Long warehouseId, BigDecimal quantity);
     void increaseStock(Long materialId, Long warehouseId, BigDecimal quantity);
     List<StockByWarehouseDTO> byMaterial(Long materialId);
-    BigDecimal availability(Long materialId, Long warehouseId);
-    BigDecimal reserved(Long materialId, Long warehouseId);
-    BigDecimal availableForReservation(Long materialId, Long warehouseId);
 }

@@ -1,78 +1,41 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>📝 Crear pedido</title>
-  <link rel="stylesheet" href="../files-css/style.css"/>
-  <link rel="stylesheet" href="../files-css/dashboard.css"/>
-  <link rel="stylesheet" href="../files-css/pedidos.css"/>
-  <link rel="stylesheet" href="../files-css/crear-pedido.css">
+  <title>✏️ - Crear Pedido</title>
+  <link rel="stylesheet" href="../files-css/style.css" />
 </head>
 <body>
-<header class="header">
-  <nav class="nav-header">
-    <ul class="ul-header">
-      <li><a href="../files-html/index.html">Inicio</a></li>
-      <li><a href="../files-html/materiales.html">Materiales</a></li>
-      <li><a class="active" href="../files-html/pedidos.html">Pedidos</a></li>
-    </ul>
-  </nav>
-</header>
+  <header class="header">
+    <nav class="nav-header">
+      <ul class="ul-header">
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="pedidos.html">Pedidos</a></li>
+      </ul>
+    </nav>
+  </header>
 
-<main class="page">
-  <div class="page-head" style="margin-left: 280px;"><h1>Crear pedido</h1></div>
+  <main class="seccion-crearPedido">
+    <h2>Crear pedido</h2>
+    <form id="form-pedido" class="formulario-pedido">
+      <label for="cliente">Cliente:</label>
+      <select id="cliente" required>
+        <option value="">Seleccione un cliente</option>
+      </select>
 
-  <section class="order-card">
-    <div class="order-grid">
-      <div>
-        <label class="lbl" for="cliente">Cliente</label>
-        <select id="cliente" class="in">
-          <option value="">Seleccionar cliente</option>
-        </select>
-      </div>
-      <div>
-        <label class="lbl" for="fechaEntrega">Fecha estimada de entrega</label>
-        <input id="fechaEntrega" type="date" class="in"/>
-      </div>
-    </div>
+      <label for="fecha-entrega">Fecha estimada de entrega:</label>
+      <input type="date" id="fecha-entrega" required />
 
-    <div class="sep"></div>
+      <h3>Materiales</h3>
+      <div id="materiales-container"></div>
+        <div class="botones-crearPedidos">
+            <button type="button" onclick="agregarMaterial()">+ Agregar material</button>
+            <button type="submit">Guardar Pedido</button>
+        </div>
+    </form>
+  </main>
 
-    <h3>Materiales</h3>
-    <div class="items">
-      <div class="fila head">
-        <div>Material</div>
-        <div>Depósito</div>
-        <div>Cant.</div>
-        <div>Reservar</div>
-        <div>Quitar</div>
-      </div>
-
-      <!-- tu JS sigue escribiendo aquí las filas -->
-      <div id="items"></div>
-    </div>
-
-    <div class="hint" style="margin-top:.25rem;">
-      Si marcás <strong>Reservar</strong>, al guardar se crea la reserva de stock para ese renglón.
-    </div>
-
-    <div class="toolbar">
-      <button id="btnAdd" class="btn blue">＋ Agregar material</button>
-
-      <label class="chk-all">
-        <input type="checkbox" id="chkReservarTodos">
-        <span>Reservar stock de todos los renglones al guardar</span>
-      </label>
-    </div>
-
-    <div class="order-actions">
-      <button id="btnCancelar" class="btn outline">Cancelar</button>
-      <button id="btnGuardar" class="btn primary">Guardar pedido</button>
-    </div>
-  </section>
-</main>
-
-<script type="module" src="../files-js/crear-pedido.js"></script>
+  <script src="../files-js/crear-pedido.js"></script>
 </body>
 </html>
