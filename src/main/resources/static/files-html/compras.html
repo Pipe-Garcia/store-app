@@ -25,8 +25,9 @@
     <!-- Filtros -->
     <section class="filters card">
       <div class="row">
-        <label>Proveedor
-          <input type="text" id="buscarProveedor" placeholder="Nombre proveedor...">
+        <!-- Reemplazamos el de 'Proveedor' por el de 'Buscar ID o proveedor' -->
+        <label>Buscar
+          <input type="text" id="buscarTexto" placeholder="ID o proveedor..."/>
         </label>
 
         <label>Desde
@@ -37,10 +38,7 @@
           <input type="date" id="buscarHasta"/>
         </label>
 
-        <label>Buscar
-          <input type="text" id="buscarTexto" placeholder="ID o proveedor..."/>
-        </label>
-
+        <!-- Eliminado el segundo input de 'Buscar' -->
         <button id="btnLimpiar" class="btn outline">Limpiar</button>
       </div>
     </section>

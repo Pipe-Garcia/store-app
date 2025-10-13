@@ -1,4 +1,4 @@
-/* ====== Variables y base ====== */
+
 :root{
   --gap: 14px;
   --radius: 12px;
@@ -10,7 +10,7 @@
 .page-head{ display:flex; align-items:center; margin-bottom:12px; gap: 35px;}
 .page-head h1{ margin-left: 15px; }
 
-/* ====== Cards / contenedores ====== */
+
 .card{
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
@@ -19,7 +19,6 @@
 
 .card:has(#lista-compras){ overflow-x:auto; }
 
-/* ====== Filtros ====== */
 .filters .row{
   display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px;
 }
@@ -34,7 +33,6 @@
 }
 #btnLimpiar{ align-self:flex-end; }
 
-/* ====== Botones ====== */
 .btn{
   display:inline-flex; align-items:center; gap:6px;
   padding:8px 12px; border-radius:8px; border:1px solid transparent;
@@ -57,7 +55,7 @@
 a.btn{ text-decoration:none; }
 .acciones{ display:flex; flex-wrap:wrap; gap:8px; }
 
-/* ====== Tabla de compras ====== */
+
 #lista-compras{ display:grid; gap:8px; min-width: 720px; }
 #lista-compras .fila{
   display:grid;
@@ -70,14 +68,13 @@ a.btn{ text-decoration:none; }
   background:#f1f3f5; font-weight:800; box-shadow:none; position:sticky; top:0; z-index:1;
   border:1px solid #e9ecef;
 }
-
 #lista-compras .fila:not(.encabezado):nth-child(odd){ background:#fcfcfd; }
 #lista-compras .fila:not(.encabezado):hover{ box-shadow: 0 6px 16px rgba(0,0,0,.06); }
 
-/* Alineación columnas numéricas */
+
 #lista-compras .fila > div:nth-child(3){ text-align:right; }
 
-/* ====== Formularios ====== */
+
 .form-page.narrow { max-width: 900px; margin: 0 auto; }
 .form-page .card {
   background:#fff; padding:16px; border-radius:12px;
@@ -96,17 +93,75 @@ a.btn{ text-decoration:none; }
 .subhead { margin:14px 0 8px; }
 .form-actions { margin-top:16px; display:flex; gap:10px; }
 
+
+#tabla-items .fila{
+  display:grid;
+  grid-template-columns: 2fr 1fr 0.8fr 1fr 1fr auto;
+  align-items:center; gap:10px;
+  background:#fff; border-radius:10px; padding:12px 14px;
+  box-shadow: var(--shadow);
+  margin-top:8px;
+}
+#tabla-items .fila.encabezado{
+  background:#f1f3f5; font-weight:600; box-shadow:none;
+  border:1px solid #e9ecef;
+}
+#tabla-items .fila select,
+#tabla-items .fila input[type="number"]{
+  width:100%; padding:6px 8px;
+  border:1px solid #dfe3e6; border-radius:8px;
+  background:#fff;
+}
+
 .subtotales{ display:flex; justify-content:flex-end; margin:10px 0; font-size:1.1rem; }
 .subtotales strong{ font-size:1.25rem; }
 
-/* ====== Responsivo ====== */
+
+#tabla-detalles .fila{
+  display:grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  align-items:center; gap:10px;
+  background:#fff; border-radius:10px; padding:12px 14px;
+  box-shadow: var(--shadow);
+  margin-top:8px;
+}
+#tabla-detalles .fila.encabezado{
+  background:#f1f3f5; font-weight:600; box-shadow:none;
+  border:1px solid #e9ecef;
+}
+
+
 @media (max-width: 1100px){
   #lista-compras .fila{
     grid-template-columns: 1fr 1.4fr 1fr 1.3fr;
   }
+  #tabla-items .fila{
+    grid-template-columns: 1.5fr 1fr 0.8fr 1fr 1fr auto;
+  }
+  #tabla-detalles .fila{
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  }
 }
+
 @media (max-width: 900px){
   .filters input[type="date"],
   .filters select,
   .filters input[type="text"]{ min-width: 150px; }
+}
+
+@media (max-width: 700px){
+ 
+  #lista-compras .fila.encabezado,
+  #tabla-items .fila.encabezado,
+  #tabla-detalles .fila.encabezado { display:none; }
+
+  #lista-compras .fila,
+  #tabla-items .fila,
+  #tabla-detalles .fila {
+    grid-template-columns: 1fr 1fr;
+    gap:8px 12px;
+  }
+
+
+  .acciones{ justify-content:flex-end; grid-column: 1 / -1; }
 }

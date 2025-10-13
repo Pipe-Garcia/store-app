@@ -27,6 +27,17 @@ public class PurchaseDetailController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(purchaseDetailDTOList);
     }
+    @GetMapping("/purchase/{purchaseId}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    public ResponseEntity<List<PurchaseDetailDTO>> getPurchaseDetailsByPurchaseId(@PathVariable Long purchaseId) {
+        List<PurchaseDetail> purchaseDetails = servPurchaseDetail.getAllPurchaseDetail().stream()
+                .filter(pd -> pd.getPurchase().getIdPurchase().equals(purchaseId))
+                .collect(Collectors.toList());
+        List<PurchaseDetailDTO> dtoList = purchaseDetails.stream()
+                .map(servPurchaseDetail::convertPurchaseDetailToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtoList);
+    }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")

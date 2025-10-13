@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-public class MaterialSupplierService implements IMaterialSupplierService{
+public class MaterialSupplierService implements IMaterialSupplierService {
 
     @Autowired
     private IMaterialSupplierRepository repoMatSup;
@@ -53,7 +53,6 @@ public class MaterialSupplierService implements IMaterialSupplierService{
         );
     }
 
-
     @Override
     @Transactional
     public MaterialSupplierDTO createMaterialSupplier(MaterialSupplierCreateDTO dto) {
@@ -69,7 +68,6 @@ public class MaterialSupplierService implements IMaterialSupplierService{
         materialSupplier.setSupplier(supplier);
 
         materialSupplier.setPriceUnit(dto.getPriceUnit());
-
         materialSupplier.setDeliveryTimeDays(dto.getDeliveryTimeDays());
 
         MaterialSupplier savedMaterialSupplier = repoMatSup.save(materialSupplier);
@@ -89,12 +87,20 @@ public class MaterialSupplierService implements IMaterialSupplierService{
             if (dto.getDeliveryTimeDays() != null) materialSupplier.setDeliveryTimeDays(dto.getDeliveryTimeDays());
             repoMatSup.save(materialSupplier);
         }
-
     }
 
     @Override
     @Transactional
     public void deleteMaterialSupplierById(Long id) {
         repoMatSup.deleteById(id);
+    }
+
+    // =========================
+    // NUEVO: materiales por proveedor
+    // =========================
+    @Override
+    public List<MaterialSupplier> getBySupplierId(Long supplierId) {
+        // Si preferís @Query("..."), cambiá a repoMatSup.findBySupplierId(supplierId)
+        return repoMatSup.findBySupplier_IdSupplier(supplierId);
     }
 }
