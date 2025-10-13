@@ -60,4 +60,14 @@ public class MaterialSupplierController {
         servMatSup.deleteMaterialSupplierById(id);
         return ResponseEntity.noContent().build();
     }
+    @GetMapping("/by-supplier/{supplierId}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    public ResponseEntity<List<MaterialSupplierDTO>> getBySupplier(@PathVariable Long supplierId) {
+        List<MaterialSupplier> list = servMatSup.getBySupplierId(supplierId);
+        List<MaterialSupplierDTO> dto = list.stream()
+                .map(servMatSup::convertMaterialSupplierToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dto);
+    }
+
 }

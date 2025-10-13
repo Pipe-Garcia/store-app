@@ -1,71 +1,81 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../files-css/style.css">
-    <title>👤 - Clientes</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>👤 - Clientes</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/clientes.css"/>
 </head>
 <body>
-    
- <header class="header">
-   <nav class="nav-header">
-    <img src="" alt="logo">
-    <ul class="ul-header">
+  <header class="header">
+    <nav class="nav-header">
+      <img src="" alt="logo">
+      <ul class="ul-header">
         <li><a href="../files-html/index.html">Inicio</a></li>
         <li><a href="../files-html/materiales.html">Materiales</a></li>
         <li><a href="../files-html/ventas.html">Ventas</a></li>
-        <li><a href="../files-html/clientes.html">Clientes</a></li>
-        <li><a href="">Compras</a></li>
+        <li><a class="active" href="../files-html/clientes.html">Clientes</a></li>
+        <li><a href="../files-html/compras.html">Compras</a></li>
         <li><a href="../files-html/pedidos.html">Pedidos</a></li>
         <li><a href="../files-html/reservas.html">Reservas</a></li>
         <li><a href="../files-html/entregas.html">Entregas</a></li>
         <li><a href="../files-html/proveedores.html">Proveedores</a></li>
         <li><a href="../files-html/almacen.html">Almacenes</a></li>
-    </ul>
-    
+      </ul>
     </nav>
+  </header>
 
-</header>
-
-<div class="seccion-clientes">
-    <h1 style="margin: 10px 0 0 50px;">Clientes</h1>
-<hr><br>
-
-<div class="busqueda">
-    <input type="text" id="filtroDni" placeholder="Buscar por DNI">
-    <input type="text" id="filtroNombre" placeholder="Buscar por nombre/apellido">
-    <button onclick="filtrarClientes()">Buscar</button>
-    <button onclick="toggleFormulario()">Nuevo Cliente</button>
-</div>
-
- <div class="formulario-nuevo" id="formularioNuevo">
-    <input type="text" id="name" placeholder="Nombre">
-    <input type="text" id="surname" placeholder="Apellido">
-    <input type="text" id="dni" placeholder="DNI">
-    <input type="email" id="email" placeholder="Email">
-    <input type="text" id="address" placeholder="Dirección">
-    <input type="text" id="locality" placeholder="Localidad">
-    <input type="text" id="phoneNumber" placeholder="Teléfono">
-    <button onclick="agregarCliente()">Agregar Cliente</button>
-</div>
-
-</div>
-    <div class="encabezado-clientes">
-        <div>ID</div>
-        <div>Nombre</div>
-        <div>Apellido</div>
-        <div>DNI</div>
-        <div>Email</div>
-        <div>Teléfono</div>
-        <div>Estado</div>
-        <div>Acciones</div>
+  <main class="page">
+    <div class="page-head">
+      <h1>Clientes</h1>
+      <div class="actions">
+        <a class="btn primary" href="../files-html/crear-cliente.html">+ Nuevo cliente</a>
+      </div>
     </div>
-    
-    <div id="lista-clientes"></div>
 
+    <hr><br>
 
-<div id="container-clientes"></div>
-<script type="module" src="../files-js/clientes.js"></script>
+    <!-- Filtros -->
+    <section class="filters card">
+      <div class="row">
+        <label>DNI
+          <input type="text" id="filtroDni" placeholder="Buscar por DNI..."/>
+        </label>
+
+        <label>Nombre
+          <input type="text" id="filtroNombre" placeholder="Buscar por nombre/apellido..."/>
+        </label>
+
+        <!-- NUEVO: filtro por estado -->
+        <label>Estado
+          <select id="filtroEstado">
+            <option value="ALL" selected>Todos</option>
+            <option value="ACTIVE">Activo</option>
+            <option value="INACTIVE">Inactivo</option>
+          </select>
+        </label>
+
+        <button class="btn outline" onclick="filtrarClientes()">Buscar</button>
+      </div>
+    </section>
+
+    <!-- Lista -->
+    <section class="card">
+      <div class="tabla">
+        <div class="fila encabezado">
+          <div>ID</div>
+          <div>Cliente</div>
+          <div>DNI</div>
+          <div>Teléfono</div>
+          <div>Estado</div>
+          <div>Acciones</div>
+        </div>
+        <div id="lista-clientes"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="../files-js/clientes.js"></script>
 </body>
 </html>

@@ -10,7 +10,11 @@ import java.util.List;
 @Repository
 public interface IMaterialSupplierRepository extends JpaRepository<MaterialSupplier, Long> {
 
+
     List<MaterialSupplier> findBySupplier(Supplier supplier);
 
     void deleteBySupplier(Supplier supplier);
+
+
+    List<MaterialSupplier> findBySupplier_IdSupplier(Long supplierId);
 }

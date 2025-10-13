@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🛒 - Compras</title>
+  <title>🧾 - Detalle de compra</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/compras.css"/>
 </head>
 <body>
-  <!-- NAV -->
+
   <header class="header">
     <nav class="nav-header">
       <img src="" alt="logo">
@@ -28,49 +28,36 @@
 
   <main class="page">
     <div class="page-head">
-      <h1>Compras</h1>
+      <h1>Detalle de compra</h1>
       <div class="actions">
-        <a class="btn primary" href="../files-html/crear-compra.html">+ Nueva compra</a>
+        <a class="btn outline" href="../files-html/compras.html">← Volver</a>
       </div>
     </div>
 
-    <hr><br>
-    <!-- Filtros -->
-    <section class="filters card">
+   
+    <section class="card" id="cabecera">
       <div class="row">
-        <!-- Reemplazamos el de 'Proveedor' por el de 'Buscar ID o proveedor' -->
-        <label>Buscar
-          <input type="text" id="buscarTexto" placeholder="ID o proveedor..."/>
-        </label>
-
-        <label>Desde
-          <input type="date" id="buscarDesde"/>
-        </label>
-
-        <label>Hasta
-          <input type="date" id="buscarHasta"/>
-        </label>
-
-        <!-- Eliminado el segundo input de 'Buscar' -->
-        <button id="btnLimpiar" class="btn outline">Limpiar</button>
+        <div><strong>ID:</strong> <span id="c_id">-</span></div>
+        <div><strong>Fecha:</strong> <span id="c_fecha">-</span></div>
+        <div><strong>Proveedor:</strong> <span id="c_proveedor">-</span></div>
+        <div><strong>Total:</strong> <span id="c_total">$0,00</span></div>
       </div>
     </section>
 
-    <!-- Lista de compras -->
+  
     <section class="card">
-      <div class="tabla" id="lista-compras">
+      <div class="tabla" id="tabla-detalles">
         <div class="fila encabezado">
-          <div>ID</div>
-          <div>Fecha</div>
-          <div>Proveedor</div>
-          <div>Total</div>
-          <div>Acciones</div>
+          <div>Material</div>
+          <div>Precio unit.</div>
+          <div>Cantidad</div>
+          <div>Subtotal</div>
         </div>
-        <!-- filas dinámicas -->
+       
       </div>
     </section>
   </main>
 
-  <script src="../files-js/compras.js"></script>
+  <script src="../files-js/detalle-compra.js"></script>
 </body>
 </html>

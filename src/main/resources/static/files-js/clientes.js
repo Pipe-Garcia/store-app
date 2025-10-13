@@ -4,7 +4,6 @@ const API_URL_CLI = 'http://localhost:8080/clients';
 let clientes = [];
 
 /* ==== Helpers comunes (mientras no tengamos core/) ==== */
-
 const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
@@ -21,7 +20,6 @@ function flashAndGo(message, page) {
   localStorage.setItem('flash', JSON.stringify({ message, type: 'success' }));
   go(page);
 }
-
 
 function debounce(fn, delay = 250) {
   let t;
@@ -101,7 +99,7 @@ function cargarClientes() {
         return;
       }
       clientes = data;
-      mostrarClientes(clientes);
+      filtrarClientes(); // render inmediato con filtros actuales
     })
     .catch(err => {
       console.error('Error al cargar clientes:', err);
@@ -117,23 +115,34 @@ function cargarClientes() {
 function mostrarClientes(lista) {
   const contenedor = $('#lista-clientes');
   contenedor.innerHTML = '';
+  if (!lista.length) {
+    const fila = document.createElement('div');
+    fila.className = 'cliente-cont';
+    fila.innerHTML = `<div style="grid-column:1/-1;color:#666;text-align:center;">No hay clientes para los filtros aplicados.</div>`;
+    contenedor.appendChild(fila);
+    return;
+  }
+
   lista.forEach(c => {
     const fila = document.createElement('div');
     fila.className = 'cliente-cont';
-    const id  = c.idClient ?? '-';
-    const nom = escapeHtml(c.name);
-    const ape = escapeHtml(c.surname);
-    const dni = escapeHtml(String(c.dni ?? ''));
-    const eml = escapeHtml(c.email);
-    const tel = escapeHtml(c.phoneNumber);
-    const est = (c.status === 'ACTIVE') ? 'Activo' : 'Inactivo';
+
+    const id   = c.idClient ?? '-';
+    const nom  = escapeHtml(c.name || '');
+    const ape  = escapeHtml(c.surname || '');
+    const full = (nom || ape) ? `${nom} ${ape}`.trim() : '-';
+    const dni  = escapeHtml(String(c.dni ?? ''));
+    const tel  = escapeHtml(c.phoneNumber || '');
+
+    // render local: activo si status === 'ACTIVE' (texto) o truthy/1
+    const estUpper = String(c.status ?? '').toUpperCase();
+    const isActive = (estUpper === 'ACTIVE') || c.status === true || c.status === 1;
+    const est  = isActive ? 'Activo' : 'Inactivo';
 
     fila.innerHTML = `
       <div>${id}</div>
-      <div>${nom || '-'}</div>
-      <div>${ape || '-'}</div>
+      <div>${full}</div>
       <div>${dni || '-'}</div>
-      <div>${eml || '-'}</div>
       <div>${tel || '-'}</div>
       <div>${est}</div>
       <div class="acciones">
@@ -148,8 +157,11 @@ function mostrarClientes(lista) {
 /* ================== ACCIONES ================== */
 
 $('#lista-clientes')?.addEventListener('click', (e) => {
-  const idEdit = e.target.getAttribute('data-edit');
-  const idDel  = e.target.getAttribute('data-del');
+  const targetBtn = e.target.closest('button');
+  if (!targetBtn) return;
+
+  const idEdit = targetBtn.getAttribute('data-edit');
+  const idDel  = targetBtn.getAttribute('data-del');
   if (idEdit) {
      go(`editar-clientes.html?id=${idEdit}`);
     return;
@@ -165,13 +177,13 @@ function agregarCliente() {
     return;
   }
 
-  const name        = $('#name').value.trim();
-  const surname     = $('#surname').value.trim();
-  const dni         = $('#dni').value.trim();
-  const email       = $('#email').value.trim();
-  const address     = $('#address').value.trim();
-  const locality    = $('#locality').value.trim();
-  const phoneNumber = $('#phoneNumber').value.trim();
+  const name        = $('#name')?.value.trim();
+  const surname     = $('#surname')?.value.trim();
+  const dni         = $('#dni')?.value.trim();
+  const email       = $('#email')?.value.trim();
+  const address     = $('#address')?.value.trim();
+  const locality    = $('#locality')?.value.trim();
+  const phoneNumber = $('#phoneNumber')?.value.trim();
 
   if (!name || !surname || !dni || !email || !address || !locality || !phoneNumber) {
     notify('Todos los campos son obligatorios.', 'error');
@@ -219,8 +231,10 @@ function eliminarCliente(id) {
     authFetch(`${API_URL_CLI}/${id}`, { method: 'DELETE' })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // Actualizamos estado local y re-renderizamos con filtros vigentes
+        clientes = clientes.filter(c => c.idClient !== id);
         notify('✅ Cliente eliminado', 'success');
-        cargarClientes();
+        filtrarClientes();
       })
       .catch(err => {
         console.error(err);
@@ -231,15 +245,32 @@ function eliminarCliente(id) {
 
 /* ================== FILTROS/FORM ================== */
 
+// Normaliza a boolean "activo"
+function esActivo(status) {
+  const s = String(status ?? '').toUpperCase();
+  return s === 'ACTIVE' || status === true || status === 1;
+}
+
 function filtrarClientes() {
-  const filtroDni    = ($('#filtroDni').value || '').toLowerCase().trim();
-  const filtroNombre = ($('#filtroNombre').value || '').toLowerCase().trim();
+  const filtroDni    = ($('#filtroDni')?.value || '').toLowerCase().trim();
+  const filtroNombre = ($('#filtroNombre')?.value || '').toLowerCase().trim();
+  const filtroEstado = ($('#filtroEstado')?.value || 'ALL').toUpperCase(); // ALL | ACTIVE | INACTIVE
 
   const filtrados = clientes.filter(c => {
-    const dni  = String(c.dni ?? '').toLowerCase();
+    const dni    = String(c.dni ?? '').toLowerCase();
     const nomApe = `${c.name ?? ''} ${c.surname ?? ''}`.toLowerCase();
-    return (!filtroDni || dni.includes(filtroDni)) &&
-           (!filtroNombre || nomApe.includes(filtroNombre));
+    const activo = esActivo(c.status);
+
+    const matchTexto =
+      (!filtroDni || dni.includes(filtroDni)) &&
+      (!filtroNombre || nomApe.includes(filtroNombre));
+
+    const matchEstado =
+      filtroEstado === 'ALL' ||
+      (filtroEstado === 'ACTIVE'   && activo) ||
+      (filtroEstado === 'INACTIVE' && !activo);
+
+    return matchTexto && matchEstado;
   });
 
   mostrarClientes(filtrados);
@@ -247,6 +278,7 @@ function filtrarClientes() {
 
 function toggleFormulario() {
   const formulario = $('#formularioNuevo');
+  if (!formulario) return;
   const isHidden = (formulario.style.display === 'none' || formulario.style.display === '');
   formulario.style.display = isHidden ? 'flex' : 'none';
 }
@@ -274,9 +306,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const debouncedFilter = debounce(filtrarClientes, 250);
   $('#filtroDni')?.addEventListener('input', debouncedFilter);
   $('#filtroNombre')?.addEventListener('input', debouncedFilter);
-  // (opcional) mantener Enter:
-  // $('#filtroDni')?.addEventListener('keydown', e => { if (e.key === 'Enter') filtrarClientes(); });
-  // $('#filtroNombre')?.addEventListener('keydown', e => { if (e.key === 'Enter') filtrarClientes(); });
+  $('#filtroEstado')?.addEventListener('change', filtrarClientes); // NUEVO: estado
 
   cargarClientes();
 });
