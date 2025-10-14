@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public interface IDeliveryItemRepository extends JpaRepository<DeliveryItem, Long> {
 
@@ -21,5 +22,14 @@ public interface IDeliveryItemRepository extends JpaRepository<DeliveryItem, Lon
       where di.orderDetail.idOrderDetail = :orderDetailId
     """)
     BigDecimal sumDeliveredByOrderDetail(@Param("orderDetailId") Long orderDetailId);
+
+    // mapa (orderDetailId -> entregado) para un pedido completo
+    @Query("""
+      select di.orderDetail.idOrderDetail, coalesce(sum(di.quantityDelivered), 0)
+      from DeliveryItem di
+      where di.orderDetail.orders.idOrders = :orderId
+      group by di.orderDetail.idOrderDetail
+    """)
+    List<Object[]> deliveredByOrderDetail(@Param("orderId") Long orderId);
 }
 

@@ -1,108 +1,320 @@
-/* ====== Layout base del dashboard ====== */
+/* =======================
+   Dashboard – Design tokens
+   ======================= */
 :root{
+  /* spacing & radii */
   --gap: 16px;
   --radius: 12px;
   --card-pad: 14px 16px;
-  --chart-height: 260px;     /* alto por defecto del gráfico */
-  --chart-max-w: 560px;      /* ancho máximo del gráfico (400–600 recomendado) */
+
+  /* charts */
+  --chart-height: 260px;
+  --chart-max-w: 560px;
+
+  /* palette (light) */
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --text: #111827;         /* gray-900 */
+  --text-weak:#6b7280;     /* gray-500 */
+  --muted:#9ca3af;         /* gray-400 */
+  --grid:#e5e7eb;          /* gray-200 */
+  --accent:#1d4ed8;        /* blue-700 */
+
+  /* status */
+  --ok:#16a34a;            /* green-600 */
+  --warn:#f59e0b;          /* amber-500 */
+  --bad:#ef4444;           /* red-500 */
+
+  /* shadows */
+  --shadow-1: 0 1px 2px rgba(0,0,0,.06);
+  --shadow-2: 0 6px 16px rgba(0,0,0,.08);
+
+  /* ...ya tenés los demás tokens... */
+  --series-1: #3b82f6;        /* blue-500 */
+  --series-1-fill: rgba(59,130,246,.15);
+  --series-2: #ef4444;        /* red-500  */
+  --series-2-fill: rgba(239,68,68,.15);
+  --series-3: #f59e0b;        /* amber-500*/
+  --series-3-fill: rgba(245,158,11,.15);
+  --bar-fill: rgba(59,130,246,.25);
 }
 
-.page{ 
-  padding: 24px; 
-  max-width: 1400px; /* centrado y ancho legible */
-  margin: 0 auto;
-}
-.page-head h1{
-    margin-bottom: 20px;
+/* Dark theme overrides */
+:root[data-theme="dark"]{
+  --bg:#0f172a;           /* slate-900 */
+  --card:#111827;         /* gray-900 */
+  --text:#e5e7eb;         /* gray-200 */
+  --text-weak:#9ca3af;    /* gray-400 */
+  --muted:#94a3b8;        /* slate-400 */
+  --grid:#1f2937;         /* gray-800 */
+  --accent:#60a5fa;       /* sky-400 */
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,.25);
+  --shadow-2: 0 6px 18px rgba(0,0,0,.35);
+
+  --series-1: #60a5fa;        /* sky-400 */
+  --series-1-fill: rgba(96,165,250,.25);
+  --series-2: #fca5a5;        /* red-300 */
+  --series-2-fill: rgba(252,165,165,.25);
+  --series-3: #fcd34d;        /* amber-300 */
+  --series-3-fill: rgba(252,211,77,.25);
+  --bar-fill: rgba(96,165,250,.35);
 }
 
-/* KPIs arriba */
+/* Smooth theme switch */
+html, body, .card, .tabla .fila, .section-nav, .to-top {
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+
+/* =======================
+   Layout básicos
+   ======================= */
+.page{ padding:24px; max-width:1600px; margin:0 auto; background:var(--bg); color:var(--text); }
+.page-head h1{ margin-bottom:20px; color:var(--text); }
+
 .kpi-grid{
-  display: grid;
+  display:grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: var(--gap);
   margin-bottom: var(--gap);
 }
 .card{
-  background:#fff; border-radius: var(--radius);
+  background:var(--card);
+  border-radius: var(--radius);
   padding: var(--card-pad);
-  box-shadow: 0 1px 2px rgba(0,0,0,.6);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+  display: flex;
+  justify-content: flex-start;
+  flex-direction: column;
+  gap: 12px;
 }
-.card-head {
-    display: flex;
-    justify-content: space-between;
-    
-}
+.card-head{ display:flex; justify-content:space-between; align-items:center; }
 
-.kpi .kpi-title{ font-size:.95rem; color:#666; margin-bottom:6px; }
-.kpi .kpi-value{ font-size:1.8rem; font-weight:700; line-height:1.1; }
-.kpi .kpi-sub{ font-size:.9rem; color:#777; }
+/* =======================
+   KPIs
+   ======================= */
+.kpi .kpi-title{ font-size:.95rem; color:var(--text-weak); margin-bottom:6px; }
+.kpi .kpi-value{ font-size:1.8rem; font-weight:700; line-height:1.1; color:var(--text); }
+.kpi .kpi-sub{ font-size:.9rem; color:var(--muted); }
+.kpi.clickable{ cursor:pointer; transition: transform .08s ease, box-shadow .12s ease; }
+.kpi.clickable:hover{ transform: translateY(-1px); box-shadow: var(--shadow-2); }
 
-/* Contenedor para múltiples charts y widgets */
-.cards-section{ margin-top: 8px; }
-.cards-grid{
-  display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-  gap: var(--gap);
-  align-items: start;
-}
+#kpi-crm .card.kpi { transition: transform .08s ease; }
+#kpi-crm .card.kpi:hover { transform: translateY(-2px); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
 
-/* Tarjetas de gráfico compactas */
-.chart-card .card-head{
-  display:flex; align-items:center; justify-content:space-between;
-  margin-bottom: 6px;
-}
-.chart-card .chart-wrap{
-  /* El truco: el canvas toma este tamaño */
-  position: relative;
-  width: 100%;
-  height: var(--chart-height);
-  max-width: var(--chart-max-w);
-  margin: 0 auto;  /* centra el canvas en la card */
-}
-.chart-card .chart-wrap canvas{
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
-}
+/* Delta pill y spark */
+.kpi-delta{ display:inline-block; padding:.15rem .5rem; border-radius:12px; background:#eef1f4; color:#223; font-weight:600; font-size:.85rem; margin-bottom:.35rem; }
+.kpi-delta.up   { background:#e8f7ee; color:#147a3b; }
+.kpi-delta.down { background:#fdecef; color:#b51d3a; }
+.kpi-delta.flat { background:#eef1f4; color:#223; }
 
-/* Tabla compacta (reusa tu grid) */
+:root[data-theme="dark"] .kpi-delta{ background:#1f2937; color:var(--text); }
+:root[data-theme="dark"] .kpi-delta.up{ background:rgba(16,185,129,.18); color:#34d399; }
+:root[data-theme="dark"] .kpi-delta.down{ background:rgba(239,68,68,.18); color:#fca5a5; }
+
+.spark-wrap{ position:relative; height:40px; margin-top:.25rem; }
+.spark-wrap canvas{ width: 100% !important; height: 100% !important; display:block; }
+
+/* =======================
+   Charts
+   ======================= */
+.chart-card .card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.chart-card .chart-wrap{ position:relative; width:100%; height:var(--chart-height); max-width:var(--chart-max-w); margin:0 auto; background:transparent; }
+.chart-card .chart-wrap canvas{ width:100%!important; height:100%!important; display:block; }
+
+/* =======================
+   Tablas compactas
+   ======================= */
 .tabla{ display:grid; gap:8px; }
 .tabla .fila{
   display:grid;
-  grid-template-columns: 2fr .7fr;
+  grid-template-columns: 1.4fr 2fr 1fr;
   gap:10px; align-items:center;
-  background:#fff; border-radius:10px; padding:10px 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  background:var(--card); border-radius:10px; padding:10px 12px;
+  box-shadow: var(--shadow-1);
+  border: 1px solid transparent;
+  color: var(--text);
 }
 .fila.encabezado{
-  background:#eaeaea; font-weight:700; box-shadow:none;
+  background:#eaeaea; font-weight:700; box-shadow:none; color:#111;
+  border: 1px solid var(--grid);
+}
+.tabla .filaCli{
+  display:grid;
+  grid-template-columns: 1.5fr .8fr;
+  gap:10px; align-items:center;
+  background:var(--card); border-radius:10px; padding:10px 12px;
+  box-shadow: var(--shadow-1);
+  border: 1px solid transparent;
 }
 
-/* Si la lista de alertas crece, scrollea sin desarmar el layout */
-#tablaLowStock{
-  max-height: 260px;
-  overflow:auto;
-  padding-right: 4px; /* margen para que no tape el scrollbar */
+.filaCli.encabezado{
+  background:#eaeaea; font-weight:700; box-shadow:none; color:#111;
+  border: 1px solid var(--grid);
 }
 
-/* Botones utilitarios (match con tu estilo base) */
-.btn{ padding:8px 12px; border-radius:8px; border:none; cursor:pointer; }
-.btn.outline{ background:#eaeaea; color:#212529; text-decoration:none; }
-.btn.outline:hover {
-    background: #f9eeee;
+:root[data-theme="dark"] .tabla .fila.encabezado,
+:root[data-theme="dark"] .tabla .filaCli.encabezado{
+  background:#1f2937; color:var(--text);
+}
+:root[data-theme="dark"] .tabla .fila,
+:root[data-theme="dark"] .tabla .filaCli{
+  background: var(--card);
+  border-color: #111827;
 }
 
-/* Responsivo fino */
-@media (max-width: 1200px){
-  :root{ --chart-max-w: 520px; --chart-height: 240px; }
-}
-@media (max-width: 992px){
-  :root{ --chart-max-w: 460px; --chart-height: 220px; }
-}
-@media (max-width: 640px){
-  :root{ --chart-max-w: 420px; --chart-height: 200px; }
+/* Tabla de stock con scroll */
+#tablaLowStock{ max-height:260px; overflow:auto; padding-right:4px; }
+
+/* =======================
+   Cards resumen en grilla
+   ======================= */
+section#cards-resumen.cards.cards-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--gap);
+  margin-bottom: var(--gap);
 }
 
-.tag { display:inline-block; padding:.2rem .5rem; border-radius:999px; font-size:.8rem; }
-.tag-ice { background:#e8f1fd; color:#1e63d5; } /* “stock reservado” */
+/* =======================
+   Botones y links
+   ======================= */
+a, .btn{ color: var(--text); text-decoration:none; }
+.btn{ padding:8px 12px; border-radius:8px; border:none; cursor:pointer; background:var(--accent); color:#fff; }
+.btn:hover{ filter:brightness(1.03); }
+.btn.outline{
+  background: transparent; border:1px solid var(--grid); color: var(--text-weak);
+}
+.btn.outline:hover{ background: rgba(0,0,0,.03); }
+:root[data-theme="dark"] .btn.outline:hover{ background: rgba(255,255,255,.06); }
+
+#order-purchase{ font-size:.9rem; padding:6px 10px; border-radius:8px; }
+
+/* Tags & pills de estado */
+.tag, .pill{ 
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.18rem .5rem; border-radius:999px; font-size:.8rem; line-height:1;
+  border: 1px solid var(--grid);
+}
+.pill.pending   { background: rgba(96,165,250,.12); color:#2563eb; }
+.pill.partial   { background: rgba(249,115,22,.12); color:#f59e0b; }
+.pill.completed { background: rgba(34,197,94,.12); color:#16a34a; }
+
+/* =======================
+   Índice de secciones (sticky pills)
+   ======================= */
+.section-nav{
+  position: sticky;
+  top: 64px; z-index: 20;
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin: 8px 0 20px; padding: 8px;
+  background: var(--card);
+  border: 1px solid var(--grid);
+  border-radius: 12px;
+}
+.section-nav a{
+  display:inline-block; padding:.4rem .75rem; border-radius:999px;
+  font-size:.9rem; color:var(--text-weak);
+  background:var(--bg); border:1px solid var(--grid);
+}
+.section-nav a:hover{ background:#f3f4f6; }
+.section-nav a.active{
+  background:#e8f1fd; color:#1e63d5; border-color:#cfe3ff;
+}
+:root[data-theme="dark"] .section-nav a:hover{ background:#0f172a; }
+:root[data-theme="dark"] .section-nav a.active{
+  background:#0b1220; color: var(--text);
+  border-color:#223245;
+}
+
+/* Deja aire al final para scrollspy */
+.area:last-of-type { padding-bottom: 160px; }
+#sec-clientes { min-height: 40vh; }
+
+/* Secciones */
+.area{ margin: 28px 0; scroll-margin-top: 84px; }
+.area-head{ display:flex; align-items:center; justify-content:space-between; margin: 6px 0 14px; }
+.area-head h2{ font-size: 1.25rem; font-weight: 700; margin: 0; }
+
+/* Textos auxiliares */
+.muted{ color: var(--muted); }
+
+/* =======================
+   Header / navbar
+   ======================= */
+.header{ background:#fff; border-bottom:1px solid var(--grid); }
+:root[data-theme="dark"] .header{ background:#0b1220; border-bottom:1px solid var(--grid); }
+.ul-header a{ color: var(--text-weak); }
+.ul-header a.active{ color: var(--text); }
+
+/* =======================
+   Divider
+   ======================= */
+hr{ border: none; border-top: 1px solid var(--grid); margin: 24px 0; }
+
+/* =======================
+   Skeletons
+   ======================= */
+.skeleton{ background:linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%); background-size:400% 100%; animation:shimmer 1.2s infinite; border-radius:6px; }
+@keyframes shimmer{ 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+
+/* =======================
+   Back to top
+   ======================= */
+.to-top{
+  position: fixed; right: 74px; bottom: 74px;
+  width: 44px; height: 44px; border: none; border-radius: 999px;
+  background: var(--accent); color:#fff; font-size: 20px; line-height: 44px;
+  box-shadow: 0 6px 18px rgba(13,110,253,.35);
+  cursor: pointer; z-index: 1200;
+  opacity: 0; transform: translateY(10px) scale(.96);
+  transition: opacity .2s ease, transform .2s ease, box-shadow .2s ease;
+  pointer-events: none;
+}
+.to-top.show{ opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.to-top:hover{ box-shadow: 0 8px 22px rgba(13,110,253,.45); }
+.to-top:focus{ outline: 3px solid rgba(13,110,253,.3); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce){ .to-top{ transition:none; } }
+
+/* =======================
+   Responsive fine-tuning
+   ======================= */
+@media (max-width:1200px){ :root{ --chart-max-w:520px; --chart-height:240px; } }
+@media (max-width:992px){  :root{ --chart-max-w:460px; --chart-height:220px; } }
+@media (max-width:640px){  :root{ --chart-max-w:420px; --chart-height:200px; } }
+
+
+/* ===== Header pulido (claro/oscuro coherente) ===== */
+.header{
+  position: sticky; top: 0; z-index: 1000;
+  backdrop-filter: saturate(1.2) blur(6px);
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  border-bottom: 1px solid var(--grid);
+}
+.nav-header{
+  max-width: 1600px; margin: 0 auto; padding: 10px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.ul-header{ display:flex; gap:10px; flex-wrap:wrap; margin:0; padding:0; list-style:none; }
+.ul-header a{
+  display:inline-block; padding:.45rem .8rem; border-radius:999px;
+  text-decoration:none; font-weight:500;
+  color: var(--text-weak);
+  border: 1px solid transparent;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.ul-header a:hover{ background: color-mix(in oklab, var(--bg) 70%, transparent); }
+.ul-header a.active{
+  color: var(--text); background: color-mix(in oklab, var(--bg) 85%, transparent);
+  border-color: var(--grid);
+}
+
+/* Botón de tema en la barra */
+.theme-toggle{
+  margin-left:auto;
+  border:none; background:transparent; cursor:pointer;
+  font-size:18px; padding:6px 8px; border-radius:8px;
+  color:var(--text); opacity:.85;
+}
+.theme-toggle:hover{ background: color-mix(in oklab, var(--bg) 75%, transparent); opacity:1; }

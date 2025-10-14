@@ -34,8 +34,6 @@ public class Delivery {
     @OneToMany(mappedBy = "delivery", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeliveryItem> items = new ArrayList<>();
 
-    @Version
-    private Long version;
 
     public Delivery() {}
 

@@ -1,0 +1,99 @@
+:root{
+  --gap:16px;
+  --radius:12px;
+  --grid:#e5e7eb;         /* coincide con dashboard */
+  --ink:#111827;
+  --muted:#6b7280;
+  --card:#ffffff;
+  --accent:#1d4ed8;
+  --shadow:0 6px 16px rgba(0,0,0,.08);
+}
+
+.page{ padding: 24px; }
+
+.card.stock-card{
+  background: var(--card);
+  border: 1px solid var(--grid);
+  border-radius: var(--radius);
+  padding: 20px;
+  max-width: 680px;
+  margin: 24px auto 0;
+  box-shadow: var(--shadow);
+}
+
+.title{
+  margin: 0 0 14px;
+  text-align: center;
+  font-size: 1.6rem;
+  color: var(--ink);
+}
+
+.search-row{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+
+.search-box{ position: relative; }
+.suggestions{
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid var(--grid);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  max-height: 280px;
+  overflow: auto;
+  z-index: 20;
+}
+.sug-item{
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 140px 1fr 110px;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+  border-bottom: 1px solid #f2f2f2;
+}
+.sug-item:last-child{ border-bottom: none; }
+.sug-item:hover{ background: #f9fafb; }
+.sug-code{ font-weight: 600; color: #374151; }
+.sug-name{ color: #111827; }
+.sug-brand{ color: #6b7280; text-align: right; }
+
+.form{ display: grid; gap: 12px; }
+.lbl{ font-weight: 600; margin-bottom: 4px; }
+.in{
+  width: 100%;
+  border: 1px solid var(--grid);
+  border-radius: 10px;
+  padding: .6rem .75rem;
+}
+.in:focus{ outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(29,78,216,.12); }
+
+.muted{ color: var(--muted); }
+.warehouse{ margin-top: 2px; }
+
+.actions{ display: flex; justify-content: flex-end; }
+
+.btn{
+  padding: .55rem .9rem; border-radius: 10px; border: 1px solid transparent;
+  cursor: pointer;
+}
+.btn.primary{ background: var(--accent); color: #fff; }
+.btn.primary:hover{ filter: brightness(1.02); }
+
+/* estados deshabilitado / cargando */
+.btn[disabled], .in[disabled]{ opacity:.7; cursor:not-allowed; }
+.loading::after{
+  content: '…'; display:inline-block; animation: ell 1s steps(4,end) infinite;
+  margin-left: 4px;
+}
+@keyframes ell{ 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
+
+@media (max-width:600px){
+  .sug-item{ grid-template-columns: 110px 1fr 80px; }
+}

@@ -128,30 +128,6 @@
 }
 .btn.info:hover { filter:brightness(.95); }
 
-/* dialog */
-dialog.card{
-  border:none; background: #fff; color: #0d0d0e;
-  border-radius: 12px; padding: 0;
-  width:500px;
-  display: flex;
-  flex-direction: column;
-  max-width: 90%;
-  box-shadow: 0 6px 16px rgba(0,0,0,.35);
-  margin-top: 12.5rem;
-  margin-left: 40rem;
-}
-dialog.card::backdrop{ background: rgba(0,0,0,.6); }
-dialog.card .card-head{ padding: 1rem 1rem .25rem; }
-dialog.card .grid{ padding: 20px; 
-  display:grid; gap:.75rem;
-  grid-template-columns: 1fr 1fr;
-}
-dialog.card .grid label {
-    font-weight: 600;
-}
-dialog.card .grid .in{ margin-top:.25rem; }
-dialog.card .card-foot{ padding: .75rem 1rem 1rem; }
-dialog:not([open]){ display:none; }
 
 /* notifications */
 .notification{
@@ -208,4 +184,36 @@ a {
 .badge-yellow { background:#fef3c7; color:#92400e; border-color:#fde68a; }
 .badge-red    { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
 
+/* --- reemplazar sólo este bloque si lo necesitás --- */
+.grid-filtros {
+  display:grid; gap:.75rem;
+  /* fam | código | nombre | min | max | stock | acciones */
+  grid-template-columns: 1.1fr 1fr 1.4fr 0.8fr 0.8fr 1fr auto;
+}
+.acciones-filtros { display:flex; gap:.5rem; justify-content:flex-end; }
+.in.invalid { border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,.12); }
+.row-card .acciones {
+  display:flex; gap:.4rem; justify-content:center; align-items:center;
+}
 
+/* Filtros: inputs y selects con fondo blanco */
+.filtros .in,
+.filtros select,
+.filtros input,
+#frmNuevoMat .in,
+#frmNuevoMat select,
+#frmNuevoMat input,
+#frmNuevoMat textarea {
+  background: #fff !important;
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+/* Opcional: para los <option> también */
+.filtros select option {
+  background: #fff;
+  color: var(--text);
+}
+
+
+.field-err { color:#b42318; font-size:.85rem; min-height:1em; }

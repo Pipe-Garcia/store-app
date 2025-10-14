@@ -29,5 +29,20 @@ public interface IStockRepository extends JpaRepository<Stock, Long> {
     """)
     List<StockByWarehouseDTO> findByMaterialId(@Param("materialId") Long materialId);
 
+    @Query("""
+      select s.material.idMaterial, coalesce(sum(s.quantityAvailable),0)
+      from Stock s
+      group by s.material.idMaterial
+    """)
+    List<Object[]> sumAvailableByMaterial();
+
+
+    @Query("""
+      select s.material.idMaterial, coalesce(sum(s.quantityAvailable), 0)
+      from Stock s
+      group by s.material.idMaterial
+    """)
+    List<Object[]> availableByMaterial();
+
 }
 

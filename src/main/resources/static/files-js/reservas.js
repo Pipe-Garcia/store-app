@@ -10,19 +10,39 @@ function notify(msg,type='info'){
   let root=$('#toasts'); if(!root){ root=document.createElement('div'); root.id='toasts'; root.style.cssText='position:fixed;top:76px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:9999'; document.body.appendChild(root); }
   const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; root.appendChild(n); setTimeout(()=>n.remove(),4000);
 }
-function fmtDate(iso){ if(!iso) return '—'; const [y,m,d]=String(iso).split('-'); return (y&&m&&d)? `${d}/${m}/${y}` : '—'; }
+function fmtDate(iso){
+  if(!iso) return '—';
+  const [y,m,d]=String(iso).split('-');
+  return (y&&m&&d)? `${d}/${m}/${y}` : '—';
+}
 function debounce(fn,delay=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; }
+
+/* === traducciones y colores de estado === */
+const STATUS_LABEL = {
+  ACTIVE:'Activa',
+  CANCELLED:'Cancelada',
+  EXPIRED:'Vencida',
+  CONSUMED:'Consumida'
+};
+const STATUS_CLASS = {
+  ACTIVE:'green',
+  CANCELLED:'gray',
+  EXPIRED:'red',
+  CONSUMED:'blue'
+};
 function statusBadge(s){
-  const cls = s==='ACTIVE'?'tag green' : s==='EXPIRED'?'tag warning' : s==='CANCELLED'?'tag gray' : 'tag';
-  return `<span class="${cls}">${s}</span>`;
+  const key=String(s||'').toUpperCase();
+  const lbl=STATUS_LABEL[key]||key||'—';
+  const cls=STATUS_CLASS[key]||'gray';
+  return `<span class="pill ${cls}">${lbl}</span>`;
 }
 
 window.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ location.href='../files-html/login.html'; return; }
-  await cargarClientes();   // llena <select id="f_client">
-  initFromQuery();          // lee ?orderId=
+  await cargarClientes();
+  initFromQuery();
   bindEventos();
-  buscar();                 // primera carga
+  buscar();
 });
 
 async function cargarClientes(){
@@ -54,9 +74,9 @@ function bindEventos(){
   $('#f_order') ?.addEventListener('input',  deb);
   $('#btnBuscar')?.addEventListener('click', buscar);
   $('#btnLimpiar')?.addEventListener('click', ()=>{
-    if($('#f_client')) $('#f_client').value='';
-    if($('#f_status')) $('#f_status').value='';
-    if($('#f_order'))  $('#f_order').value='';
+    $('#f_client').value='';
+    $('#f_status').value='';
+    $('#f_order').value='';
     buscar();
   });
 }
@@ -77,8 +97,22 @@ async function buscar(){
 
     const tb=$('#tbl'); if(!tb){ console.warn('Falta <tbody id="tbl">'); return; }
     tb.innerHTML='';
+
+    if (!Array.isArray(list) || list.length===0){
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td colspan="10" style="text-align:center;color:#64748b;padding:18px 8px;">Sin resultados</td>`;
+      tb.appendChild(tr);
+      return;
+    }
+
     (list||[]).forEach(x=>{
       const tr=document.createElement('tr');
+
+      const vence = fmtDate(x.expiresAt);         // muestra "—" si viene null
+      const canBtn = (String(x.status).toUpperCase()==='ACTIVE')
+        ? `<button class="btn danger" data-cancel="${x.idReservation}">Cancelar</button>`
+        : `<span class="pill gray">Sin acción</span>`;
+
       tr.innerHTML = `
         <td>${x.idReservation}</td>
         <td>${x.materialName}</td>
@@ -87,13 +121,9 @@ async function buscar(){
         <td>${x.orderId ?? '—'}</td>
         <td>${x.quantity}</td>
         <td>${fmtDate(x.reservedAt)}</td>
-        <td>${fmtDate(x.expiresAt)}</td>
+        <td>${vence}</td>
         <td>${statusBadge(x.status)}</td>
-        <td style="text-align:right;">
-          ${x.status==='ACTIVE'
-            ? `<button class="btn danger" data-cancel="${x.idReservation}">Cancelar</button>`
-            : ''}
-        </td>`;
+        <td class="actions">${canBtn}</td>`;
       tb.appendChild(tr);
     });
 

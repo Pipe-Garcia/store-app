@@ -1,0 +1,77 @@
+:root{
+  --gap:16px;
+  --radius:12px;
+  --grid:#e5e7eb;
+  --card:#ffffff;
+  --ink:#111827;
+  --muted:#6b7280;
+  --accent:#1d4ed8;
+  --shadow:0 6px 16px rgba(0,0,0,.08);
+}
+
+.page{ padding:24px; max-width:980px; margin:0 auto; }
+.head{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.head h1{ margin:0; }
+.muted{ color:var(--muted); }
+
+.card{
+  background:var(--card);
+  border:1px solid var(--grid);
+  border-radius:var(--radius);
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow: var(--shadow);
+}
+.card-title{ margin:0 0 10px; font-size:1.1rem; color:var(--ink); }
+
+.in{
+  width:100%;
+  border:1px solid var(--grid);
+  border-radius:10px;
+  padding:.6rem .75rem;
+}
+.in.sm{ padding:.45rem .65rem; max-width:260px; }
+.in:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(29,78,216,.12); }
+
+.btn{
+  padding:.56rem .9rem; border-radius:10px; border:1px solid transparent;
+  cursor:pointer;
+}
+.btn.primary{ background:var(--accent); color:#fff; }
+.btn.primary:hover{ filter:brightness(1.02); }
+.btn.outline{ background:transparent; border:1px solid var(--grid); color:#111; }
+.btn.outline:hover{ background:#f9fafb; }
+
+.new-row{ display:grid; grid-template-columns:1fr auto; gap:10px; }
+
+.list-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
+
+.empty{ padding:10px 2px; }
+
+.tabla{ display:grid; gap:8px; }
+.fila{
+  display:grid; grid-template-columns:110px 1fr 120px;
+  align-items:center; gap:10px;
+  background:#fff; border:1px solid #e7eaf0; border-radius:12px;
+  padding:.65rem .8rem;
+}
+.fila.encabezado{
+  background:#f5f7fb; border:1px solid #e7eaf0; font-weight:700; color:#0d0d0e;
+}
+.row-actions{ display:flex; justify-content:flex-end; gap:6px; }
+.badge-id{
+  display:inline-block; min-width:64px; text-align:center;
+  background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px;
+  padding:.18rem .5rem; font-weight:600;
+}
+
+.icon-btn{
+  border:1px solid var(--grid);
+  background:#fff; border-radius:8px; padding:.35rem .55rem; cursor:pointer;
+}
+.icon-btn:hover{ background:#f9fafb; }
+.icon-destroy{ color:#b91c1c; }
+.loading::after{
+  content:'…'; margin-left:4px; animation: ell 1s steps(4,end) infinite;
+}
+@keyframes ell{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}

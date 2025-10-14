@@ -123,6 +123,26 @@
 			<version>0.11.5</version>
 			<scope>runtime</scope>
 		</dependency>
+
+		<!-- Habilita @Cacheable/@CacheEvict y trae org.springframework.cache.caffeine.* -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
+
+		<!-- Caffeine (Spring Boot ya gestiona la versión; podés SIN versión) -->
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
+
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+
+
 	</dependencies>
 
 	<build>

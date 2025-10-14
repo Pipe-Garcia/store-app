@@ -1,169 +1,283 @@
-* {
-box-sizing: border-box;
-margin: 0;
-padding: 0;
+/* =================== Variables base (alineado con pedidos.css) =================== */
+:root{
+  --gap: 14px;
+  --radius: 12px;
+  --card-pad: 14px 16px;
+  --shadow: 0 1px 2px rgba(0,0,0,.06);
+
+  --c-text:#212529;
+  --c-muted:#6b7280;
+  --c-border:#e9ecef;
+
+  --c-primary:#1c7ed6;
+  --c-primary-600:#1864ab;
+  --c-green:#3ac654;
+  --c-red:#dc3545;
+  --c-bg:#ffffff;
+  --c-bg-soft:#f8f9fa;
 }
 
-body {
-  font-family: 'Segoe UI', sans-serif;
- 
+*{ box-sizing:border-box; }
+
+.page{ max-width:1900px; margin:0 auto; padding:24px; }
+.page-head{ display:flex; align-items:center; gap:44px; margin-bottom:12px; }
+.page-head h1{ margin:0 0 0 6px; }
+
+/* =================== Cards =================== */
+.card{
+  background:#fff; border-radius:var(--radius);
+  padding:var(--card-pad);
+  box-shadow:var(--shadow);
+  border:1px solid var(--c-border);
 }
 
-/* contenedor general */
-.page {
-  padding: 24px; 
+/* =================== Botones =================== */
+.btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 12px; border-radius:8px; border:1px solid transparent;
+  font-weight:500; cursor:pointer; text-decoration:none; line-height:1;
+  transition: background .15s, border-color .15s, transform .02s, filter .15s;
 }
-.page-edit { 
-  padding: 24px; 
-  max-width: 1200px; margin: 20px auto 40px;
-  background: #f9f9f9;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-.page-head {
-  display:flex; align-items:center;
-  gap:36px; margin-bottom:16px;
-}
-.page-head h1 { 
-  margin: 0;
-}
-.actions .btn { text-decoration:none; }
+.btn:active{ transform: translateY(1px); }
+.btn.primary { background:var(--c-primary); color:#fff; }
+.btn.primary:hover{ background:var(--c-primary-600); }
+.btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
+.btn.outline:hover{ background:#f1f3f5; }
+.btn.green   { background: rgba(34, 117, 11, 0.92); color:#fff; }
+.btn.green:hover{ filter:brightness(.95); }
+.btn.danger  { background:var(--c-red); color:#fff; }
+.btn.danger:hover{ filter:brightness(.95); }
+.btn.danger.ghost{ background:#fff; color:var(--c-red); border-color:var(--c-red); }
+.btn.blue    { background:#2291f2; color:#fff; }
+.btn.blue:hover{ filter:brightness(.96); }
+.btn.view{ background:var(--c-primary); color:#fff; border-color:transparent; }
+.btn.view:hover{ background:var(--c-primary-600); }
+.btn.back{ background:#fff; color:#212529; border:1px solid #ced4da; }
+.btn.back:hover{ background:#f1f3f5; }
 
-.filters .row { 
-  display:flex; gap:12px; align-items:center; margin-bottom:18px; 
+/* =================== Filtros (listar) =================== */
+.filters .row{
+  display:flex; flex-wrap:wrap; align-items:flex-end; gap:28px; margin-bottom: 10px;
 }
-
-.filters .row select {
-  padding:6px 10px; border:1px solid gray; border-radius:8px; background:rgb(254, 245, 245);
+.filters label{
+  display:flex; flex-direction:column; gap:6px; font-size:.9rem; color:#555; min-width:160px;
+  font-weight:600; text-align:center;
 }
-
-.filters label { 
-  font-size: 18px; color:#555; 
-  letter-spacing: .8px;
+.filters .in{
+  padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
 }
+.stack{ display:flex; flex-direction:column; gap:6px; }
+.range-2{ display:flex; align-items:center; gap:8px; }
+.subcol{ display:flex; flex-direction:column; gap:4px; }
+.sub{ color:#6b7280; font-size:.8rem; line-height:1; }
+.dash{ color:#191919; }
 
-.filters label:nth-child(n+2) {
-  margin-left: 20px;
+/* ----- Doble slider de precio ----- */
+.filters label.wide{ min-width:320px; max-width:320px; }
+.price-range{
+  width:100%; height:32px; margin-top:6px; position:relative; display:flex; align-items:center;
 }
-
-.filters input[type="text"] {
-  padding:6px 10px; border:1px solid gray; border-radius:8px; background:rgb(254, 245, 245);
-  width:200px;
-  color: black;
-  font-weight: 500;
+.price-range input[type="range"]{
+  position:absolute; left:0; right:0; width:100%;
+  pointer-events:none; background:none; height:28px; -webkit-appearance:none; appearance:none;
+  margin:0; padding:0;
 }
+.price-range input[type="range"]::-webkit-slider-thumb{
+  pointer-events:all; -webkit-appearance:none; appearance:none;
+  height:18px; width:18px; border-radius:50%; background:#1c7ed6; border:2px solid #fff;
+  box-shadow:0 0 0 3px rgba(28,126,214,.2);
+}
+.price-range input[type="range"]::-webkit-slider-runnable-track{ background:transparent; height:6px; }
+.price-range input[type="range"]::-moz-range-thumb{
+  pointer-events:all; height:18px; width:18px; border-radius:50%; background:#1c7ed6; border:2px solid #fff;
+}
+.price-range input[type="range"]::-moz-range-track{ background:transparent; height:6px; }
+.price-range::before{
+  content:""; position:absolute; left:0; right:0; height:6px; border-radius:999px;
+  background:linear-gradient(to right,
+    #dfe3e6 var(--a,0%), #1c7ed6 var(--a,0%),
+    #1c7ed6 var(--b,100%), #dfe3e6 var(--b,100%)
+  );
+}
+.price-legend{ position:absolute; top:24px; left:0; right:0; display:flex; justify-content:space-between; font-size:.85rem; color:#000; }
 
-.tabla { display: grid; gap:8px; }
-.tabla .fila {
+/* =================== Tabla / listado =================== */
+.tabla{ display:grid; gap:8px; min-width:980px; }
+.tabla .fila{
   display:grid;
-  grid-template-columns: 1.2fr .9fr 1.6fr .7fr .8fr 1.2fr;
-  gap:10px; align-items:center;
-  background:#fff; border-radius:10px; padding:10px 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  grid-template-columns: 1.1fr 2.6fr 2.6fr 1.7fr 1.9fr 1.9fr;
+  align-items:center; gap:10px;
+  background:#fff; border-radius:10px; padding:12px 14px;
+  box-shadow:var(--shadow);
+  border:1px solid #f1f3f5;
 }
-.tabla.compact .fila { grid-template-columns: 2fr .8fr .8fr .9fr .9fr; }
-.fila.encabezado {
-  background:#eaeaea; font-weight:700; box-shadow:none;
+.tabla .fila.encabezado{
+  background:#f1f3f5; font-weight:700; position:sticky; top:0; z-index:1;
+  border:1px solid var(--c-border);
+}
+.tabla .fila:not(.encabezado):nth-child(odd){ background:#fcfcfd; }
+.tabla .fila:not(.encabezado):hover{ box-shadow:0 6px 16px rgba(0,0,0,.06); }
+
+/* Alineación numérica */
+.tabla .fila > div:nth-child(1),
+.tabla .fila > div:nth-child(4),
+.tabla .fila > div:nth-child(5){ text-align:right; }
+
+/* =================== Pills de estado =================== */
+.pill{
+  padding: 4px 10px; border-radius: 999px; font-size:.85rem; font-weight:700; display:inline-block;
+  border:1px solid transparent;
+}
+.pill.pending   { background:#fff4d6; color:#7a5600; border-color:#ffe8a1; }
+.pill.partial   { background:#e7f1ff; color:#1b4fa3; border-color:#cfe2ff; }
+.pill.completed { background:#e8f7ee; color:#146c2e; border-color:#a7f3d0; }
+
+/* Acciones */
+.acciones{ display:flex; flex-wrap:wrap; gap:8px; }
+
+/* =================== RESPONSIVO lista =================== */
+@media (max-width:1100px){
+  .tabla .fila{
+    grid-template-columns: 1.1fr .9fr 1.5fr .7fr .9fr 1.2fr;
+  }
+}
+@media (max-width:900px){
+  .page{ padding:16px; }
+  .card{ overflow-x:auto; }
 }
 
-.pill {
-  padding: 2px 10px; border-radius: 999px; font-size: .85rem; font-weight: 600;
-  display:inline-block;
-}
-.pill.pending   { background:#fff4d6; color:#7a5600; }
-.pill.partial   { background:#e7f1ff; color:#1b4fa3; }
-.pill.completed { background:#e8f7ee; color:#146c2e; }
+/* ========================================================================== */
+/* ========================== FORM PAGES (crear/editar) ===================== */
+/* ========================================================================== */
 
-/* botones */
-.btn { padding:8px 12px; border-radius:8px; border:none; cursor:pointer; }
-.btn.primary { background:#2291f2; color:white; }
-.btn.green   { background:#40c258; color:white; }
-.btn.outline { background:#e9ecef; color:#212529; }
-.btn.back    { background:#2291f2; color:white; }
-.btn.view    { background:#9eabb7; color:white; }
-.btn.danger  { background:#dc3545; color:white; }
-.btn.ghost   { background:transparent; border:1px solid #dc3545; color:#dc3545; }
+.form-page{ max-width:1100px; margin:0 auto; padding:24px; }
+.form-page h1{ margin:0 0 10px 2px; }
 
-/* card/form */
-.form-page .card {
-  background:#fff; padding:16px; border-radius:12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+/* Grid simple de 2 columnas (colapsa en mobile) */
+.form-page .grid{
+  display:grid; grid-template-columns: 1fr 1fr; gap:18px;
 }
-.form-page .grid {
-  display:grid; gap:12px;
+@media (max-width:900px){
+  .form-page .grid{ grid-template-columns: 1fr; }
 }
-.form-page label { display:block; font-size:.9rem; color:#444; margin-bottom:6px; }
-.form-page input[type="date"], .form-page select, .form-page input[type="number"] {
-  width:100%; padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
-}
-.subhead { margin:14px 0 8px; }
-.form-actions { margin-top:16px; display:flex; gap:70px; justify-content:center;}
 
-.notification { margin: 10px auto; max-width: 700px; }
+/* Campos de formulario */
+.form-page label{ display:block; font-weight:600; color:#444; margin-bottom:6px; }
+.form-page input[type="date"],
+.form-page input[type="number"],
+.form-page input[type="text"],
+.form-page select{
+  width:100%; padding:10px 12px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
+}
+.form-page .hint{ color:var(--c-muted); font-size:.85rem; display:block; margin-top:6px; }
+
+/* Subtítulo dentro de formularios */
+.subhead{ display:flex; align-items:flex-end; gap:12px; margin:18px 2px 10px; }
+.subhead h3{ margin:0; }
+.subhead small{ color:var(--c-muted); }
+
+/* Tabla compacta para renglones de materiales */
+.tabla.compact{ gap:6px; }
+.tabla.compact .fila{ padding:10px 12px; }
+.tabla.compact .fila.encabezado{
+  background:#f1f3f5; border:1px solid var(--c-border);
+}
+
+/* Acciones del formulario */
+.form-actions{
+  display:flex; align-items:center; gap:10px; margin-top:16px;
+}
+
+/* =================== Page Edit (ver/editar) =================== */
+.page-edit{ max-width:1100px; margin:0 auto; padding:24px; }
+
+.view-delivery{
+  display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;
+  font-size:1rem; color:#333;
+}
+.view-delivery > div strong{ color:#111; }
+@media (max-width:900px){
+  .view-delivery{ grid-template-columns: 1fr; }
+}
+
+/* =================== Toasts / Notifications =================== */
+.notification{
+  position:fixed; right:18px; top:18px; z-index:9999;
+  background:#fff; color:#111;
+  border:1px solid var(--c-border);
+  border-left:4px solid var(--c-primary);
+  border-radius:10px; padding:10px 14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.10);
+  min-width:260px; max-width:420px;
+}
+.notification.info{ border-left-color: var(--c-primary); }
+.notification.success{ border-left-color: #2fab4a; }
+.notification.error{ border-left-color: var(--c-red); }
+
+/* =================== Pequeños helpers =================== */
+.hr{ height:1px; background:#e9ecef; border:0; margin:12px 0; }
+
+/* Corrige inputs dentro de la tabla de edición */
+.tabla input.qty{ width:100%; padding:6px 8px; border:1px solid #dfe3e6; border-radius:8px; }
+
+/* Estado “apretado” general en filas de tabla */
+.tabla .fila{ gap:8px; }
+.fila.encabezado{ background:#f1f3f5; border:1px solid #e9ecef; }
+
+/* Evitar que inputs/select se agranden por herencia */
+input, select, button{ font: inherit; }
 
 
-.seccion-crearEntrega {
-  max-width: 800px;
-  margin: 60px auto;
-  padding: 30px;
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* ======== PATCH view/edit (ver-entrega / editar-entrega) ======== */
+
+/* El wrapper #items no debe romper la grilla de .tabla */
+.page-edit .tabla #items { display: contents; }
+
+/* Tabla más compacta en ver/editar */
+.page-edit .tabla { min-width: 0; gap: 8px; }
+.page-edit .tabla .fila { padding: 10px 12px; }
+
+/* En vistas de detalle, alineación por defecto a la izquierda */
+.page-edit .tabla .fila > div { text-align: left; }
+/* Alinear números a la derecha solo en columnas de precio/subtotal (4 y 5) */
+.page-edit .tabla .fila > div:nth-child(4),
+.page-edit .tabla .fila > div:nth-child(5) { text-align: right; }
+
+/* Título tipo subtítulo usado como h3.subhead (tolerante) */
+h3.subhead { 
+  margin: 18px 2px 10px; 
+  font-size: 1.05rem; 
+  font-weight: 700; 
+  color: #333;
 }
-.seccion-crearEntrega h1 {
-  margin-bottom: 20px;
-  text-align: center;
-}
-.seccion-crearEntrega .card{
-  background-color: #f9f9f9;
-}
-.seccion-crearEntrega .card .grid {
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-.seccion-crearEntrega .tabla.compact .fila {
-  grid-template-columns: 2fr 2fr 2fr;
-}
+
+/* Caja de detalle superior en ver-entrega */
 .view-delivery {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom:25px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  font-size: 0.98rem;
+  color: #333;
+}
+.view-delivery > div strong { color:#111; }
+@media (max-width: 900px){
+  .view-delivery { grid-template-columns: 1fr; }
 }
 
-.header {
-  background-color: #1e2a38;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+/* Inputs dentro de celdas (editar) */
+.tabla input.qty{
+  width:100%;
+  padding:6px 8px;
+  border:1px solid #dfe3e6;
+  border-radius:8px;
+  background:#fff;
 }
 
-.ul-header{
-    display: flex;
-    justify-content: space-evenly;
-    list-style: none;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
+/* Pill de estado en ver-entrega (ya estaban, reforzamos por si el orden de css cambia) */
+.pill.pending   { background:#fff4d6; color:#7a5600; border-color:#ffe8a1; }
+.pill.partial   { background:#e7f1ff; color:#1b4fa3; border-color:#cfe2ff; }
+.pill.completed { background:#e8f7ee; color:#146c2e; border-color:#a7f3d0; }
 
-.ul-header a{
-    text-decoration: none;
-    color: #f1f1f1;
-    padding: 8px 12px;
-    border-radius: 6px;
-}
 
-.nav-header {
-  max-width: 1200px;
-  margin: auto;
-  padding: 1rem 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
 
-.ul-header li a:hover {
-  background-color: #31475e;
-}
+/* =================== Fin entregas.css =================== */

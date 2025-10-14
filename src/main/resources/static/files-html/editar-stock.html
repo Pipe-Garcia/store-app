@@ -3,50 +3,66 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <link rel="stylesheet" href="../files-css/style.css">
   <title>📦 - Editar Stock</title>
+  <link rel="stylesheet" href="../files-css/style.css">
+  <link rel="stylesheet" href="../files-css/editar-stock.css"><!-- NUEVO -->
 </head>
 <body>
   <header class="header">
     <nav class="nav-header">
       <ul class="ul-header">
         <li><a href="../files-html/index.html">Inicio</a></li>
-        <li><a href="../files-html/materiales.html">Materiales</a></li>
-        <li><a href="">Ventas</a></li>
+        <li><a class="active" href="../files-html/materiales.html">Materiales</a></li>
+        <li><a href="../files-html/ventas.html">Ventas</a></li>
         <li><a href="../files-html/clientes.html">Clientes</a></li>
-        <li><a href="">Compras</a></li>
+        <li><a href="../files-html/compras.html">Compras</a></li>
         <li><a href="../files-html/pedidos.html">Pedidos</a></li>
         <li><a href="../files-html/entregas.html">Entregas</a></li>
-        <li><a href="">Proveedores</a></li>
+        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
         <li><a href="../files-html/almacen.html">Almacenes</a></li>
       </ul>
     </nav>
   </header>
 
-  <section class="form-editar" style="max-width:600px;">
-    <h2>Editar stock de material</h2>
-    <div class="busqueda">
-      <input type="text" id="buscar" placeholder="Código o nombre">
-      <button onclick="buscarMaterial()">Buscar</button>
-    </div>
+  <main class="page">
+    <section class="card stock-card">
+      <h2 class="title">Editar stock de material</h2>
 
-    <form id="formStock" style="display:none;">
-  <label for="infoMaterial">Material:</label>
-  <input type="text" id="infoMaterial" disabled>
+      <!-- Buscador -->
+      <div class="search-row">
+        <div class="search-box">
+          <input type="text" id="buscar" class="in" placeholder="Código o nombre">
+          <div id="sug" class="suggestions" hidden></div>
+        </div>
+        <button id="btnBuscar" class="btn primary">Buscar</button>
+      </div>
 
-  <label for="cantidad">Cantidad (+/-):</label>
-  <input type="number" id="cantidad" required>
+      <!-- Formulario -->
+      <form id="formStock" class="form" hidden>
+        <div>
+          <label class="lbl">Material</label>
+          <input type="text" id="infoMaterial" class="in" disabled>
+        </div>
 
-  <label for="stockNuevo">Stock Nuevo:</label>
-  <input type="text" id="stockNuevo" disabled>
+        <div>
+          <label class="lbl">Cantidad (+/-)</label>
+          <input type="number" id="cantidad" class="in" inputmode="numeric" step="1">
+          <small class="muted">Ej.: 10 para sumar, -3 para restar</small>
+        </div>
 
-  <p id="almacenActual"></p> 
+        <div>
+          <label class="lbl">Stock nuevo</label>
+          <input type="text" id="stockNuevo" class="in" disabled>
+        </div>
 
-  <button type="submit">Actualizar stock</button>
-</form>
+        <div class="warehouse muted" id="almacenActual"></div>
 
-
-  </section>
+        <div class="actions">
+          <button type="submit" class="btn primary">Actualizar stock</button>
+        </div>
+      </form>
+    </section>
+  </main>
 
   <script type="module" src="../files-js/editar-stock.js"></script>
 </body>

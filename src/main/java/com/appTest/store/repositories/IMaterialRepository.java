@@ -15,7 +15,7 @@ import java.util.List;
 public interface IMaterialRepository extends JpaRepository <Material, Long> {
 
         @Query("SELECT new com.appTest.store.dto.material.MaterialStockAlertDTO(s.material.name, s.quantityAvailable) " +
-                "FROM Stock s WHERE s.quantityAvailable < 10")
+                "FROM Stock s WHERE s.quantityAvailable < 11")
         List<MaterialStockAlertDTO> getMaterialsWithLowStock();
 
 

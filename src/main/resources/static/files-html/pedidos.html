@@ -6,25 +6,12 @@
   <title>📄 - Listado de Pedidos</title>
   <link rel="stylesheet" href="../files-css/style.css">
   <link rel="stylesheet" href="../files-css/pedidos.css">
+  <!-- NAV fijo -->
+  <link rel="stylesheet" href="../files-css/nav.css">
 </head>
 <body>
-  <header class="header">
-   <nav class="nav-header">
-    <img src="" alt="logo">
-    <ul class="ul-header">
-        <li><a href="../files-html/index.html">Inicio</a></li>
-        <li><a href="../files-html/materiales.html">Materiales</a></li>
-        <li><a href="../files-html/ventas.html">Ventas</a></li>
-        <li><a href="../files-html/clientes.html">Clientes</a></li>
-        <li><a href="">Compras</a></li>
-        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-        <li><a href="../files-html/reservas.html">Reservas</a></li>
-        <li><a href="../files-html/entregas.html">Entregas</a></li>
-        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
-        <li><a href="../files-html/almacen.html">Almacenes</a></li>
-    </ul>
-    </nav>
-</header>
+  <!-- NAV -->
+  <div id="app-header"></div>
 
   <main class="page">
     <div class="page-head">
@@ -98,11 +85,12 @@
       </label>
 
       <label>
-        <span>Reserva</span>
-        <select id="f_resv" class="in">
+        <span>Estado</span>
+        <select id="f_status" class="in">
           <option value="">Todos</option>
-          <option value="con">Con reserva</option>
-          <option value="sin">Sin reserva</option>
+          <option value="pend_con">Pendiente (con reserva)</option>
+          <option value="pend_sin">Pendiente (sin reserva)</option>
+          <option value="vendido">Vendido</option>
         </select>
       </label>
 
@@ -118,8 +106,7 @@
 
   </main>
 
-
-
+  <script src="../files-js/header.js"></script>
   <script src="../files-js/pedidos.js"></script>
 </body>
 </html>

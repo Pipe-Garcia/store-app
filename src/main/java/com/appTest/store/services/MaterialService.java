@@ -1,5 +1,6 @@
 package com.appTest.store.services;
 
+import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.material.*;
 import com.appTest.store.models.Family;
 import com.appTest.store.models.Material;
@@ -92,6 +93,7 @@ public class MaterialService implements IMaterialService{
 
     @Override
     @Transactional
+    @Auditable(entity="Material", action="CREATE")
     public MaterialDTO createMaterial(MaterialCreateDTO dto) {
 
         Material material = new Material();
@@ -136,19 +138,28 @@ public class MaterialService implements IMaterialService{
         return convertMaterialToDto(savedMaterial);
     }
 
+    private String norm(String s){
+        return s==null? null : s.trim();
+    }
+
+    private boolean hasText(String s){
+        return s!=null && !s.trim().isEmpty();
+    }
+
     @Override
     @Transactional
+    @Auditable(entity="Material", action="UPDATE", idParam="dto.idMaterial")
     public void updateMaterial(MaterialUpdateDTO dto) {
         Material material = repoMat.findById(dto.getIdMaterial())
                 .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + dto.getIdMaterial()));
 
-        if (dto.getName() != null) material.setName(dto.getName());
-        if (dto.getBrand() != null) material.setBrand(dto.getBrand());
+        if (hasText(dto.getName())) material.setName(norm(dto.getName()));
+        if (hasText(dto.getBrand())) material.setBrand(norm(dto.getBrand()));
         if (dto.getPriceArs() != null) material.setPriceArs(dto.getPriceArs());
         if (dto.getPriceUsd() != null) material.setPriceUsd(dto.getPriceUsd());
-        if (dto.getMeasurementUnit() != null) material.setMeasurementUnit(dto.getMeasurementUnit());
-        if (dto.getDescription() != null) material.setDescription(dto.getDescription());
-        if (dto.getInternalNumber() != null) material.setInternalNumber(dto.getInternalNumber());
+        if (hasText(dto.getInternalNumber())) material.setInternalNumber(norm(dto.getInternalNumber()));
+        if (hasText(dto.getMeasurementUnit())) material.setMeasurementUnit(norm(dto.getMeasurementUnit()));
+        if (dto.getDescription()!=null) material.setDescription(norm(dto.getDescription()));
 
         if (dto.getFamilyId() != null) {
             Family family = repoFam.findById(dto.getFamilyId())
@@ -162,6 +173,7 @@ public class MaterialService implements IMaterialService{
 
     @Override
     @Transactional
+    @Auditable(entity="Material", action="DELETE", idParam="id")
     public boolean deleteMaterialById(Long idMaterial) {
         Material material = repoMat.findById(idMaterial).orElse(null);
         if (material != null) {

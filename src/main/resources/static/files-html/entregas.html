@@ -6,25 +6,12 @@
   <title>🚚 - Entregas</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/entregas.css"/>
+  <!-- NAV fijo -->
+  <link rel="stylesheet" href="../files-css/nav.css">
 </head>
 <body>
-<header class="header">
-  <nav class="nav-header">
-    <img src="" alt="logo">
-    <ul class="ul-header">
-      <li><a href="../files-html/index.html">Inicio</a></li>
-      <li><a href="../files-html/materiales.html">Materiales</a></li>
-      <li><a href="../files-html/ventas.html">Ventas</a></li>
-      <li><a href="../files-html/clientes.html">Clientes</a></li>
-      <li><a href="">Compras</a></li>
-      <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-      <li><a href="../files-html/reservas.html">Reservas</a></li>
-      <li><a href="../files-html/entregas.html" class="active">Entregas</a></li>
-      <li><a href="../files-html/proveedores.html">Proveedores</a></li>
-      <li><a href="../files-html/almacen.html">Almacenes</a></li>
-    </ul>
-  </nav>
-</header>
+  <!-- NAV -->
+  <div id="app-header"></div>
 
 <main class="page">
   <div class="page-head">
@@ -37,28 +24,39 @@
   <hr><br>
 
   <!-- Filtros estilo "Pedidos" -->
-  <section class="filters card" style="padding:12px">
-    <div class="row" style="flex-wrap:wrap; gap:12px">
-      <label>Pedido #
-        <input type="number" id="fOrderId" placeholder="ID" style="width:120px"/>
+  <section class="card filters" style="margin-bottom:12px;">
+    <div class="row">
+      <label>
+        <span>Pedido #</span>
+        <input id="fOrderId" type="number" class="in" placeholder="ID" min="1">
       </label>
 
-      <label>Cliente
-        <select id="fClient">
+      <label>
+        <span>Cliente</span>
+        <select id="fClient" class="in">
           <option value="">Todos</option>
         </select>
       </label>
 
-      <label>Fecha Entrega — Desde
-        <input type="date" id="fFrom"/>
+      <!-- Fecha Entrega -->
+      <label class="stack">
+        <span>Fecha Entrega</span>
+        <div class="range-2">
+          <div class="subcol">
+            <small class="sub">Desde</small>
+            <input id="fFrom" type="date" class="in" aria-label="Fecha de entrega desde">
+          </div>
+          <span class="dash">—</span>
+          <div class="subcol">
+            <small class="sub">Hasta</small>
+            <input id="fTo" type="date" class="in" aria-label="Fecha de entrega hasta">
+          </div>
+        </div>
       </label>
 
-      <label>Hasta
-        <input type="date" id="fTo"/>
-      </label>
-
-      <label>Estado
-        <select id="fStatus">
+      <label>
+        <span>Estado</span>
+        <select id="fStatus" class="in">
           <option value="">Todos</option>
           <option value="PENDING">Pendiente</option>
           <option value="PARTIAL">Parcial</option>
@@ -66,21 +64,33 @@
         </select>
       </label>
 
-      <label>Buscar
-        <input id="fText" type="text" placeholder="Cliente o #Pedido"/>
+      <label>
+        <span>Buscar</span>
+        <input id="fText" type="text" class="in" placeholder="Cliente o #Pedido">
       </label>
 
-      <label>Total Pedido — Min
-        <input type="number" id="fMinTotal" step="1" min="0" style="width:120px"/>
+      <!-- Doble slider de Total (igual que Pedidos) -->
+      <label class="stack wide">
+        <span>Total Pedido</span>
+        <div id="priceRange" class="price-range">
+          <input id="f_t_slider_min" type="range" min="0" max="1000" step="100">
+          <input id="f_t_slider_max" type="range" min="0" max="1000" step="100">
+          <div class="price-legend">
+            <span id="priceFrom">$ 0</span>
+            <span></span>
+            <span id="priceTo">$ 0</span>
+          </div>
+        </div>
+        <!-- valores efectivos (ocultos) -->
+        <input id="fMinTotal" type="number" hidden>
+        <input id="fMaxTotal" type="number" hidden>
       </label>
 
-      <label>Max
-        <input type="number" id="fMaxTotal" step="1" min="0" style="width:120px"/>
-      </label>
-
-      <button id="btnClear" class="btn outline">Limpiar</button>
+      <button id="btnClear" class="btn outline" style="align-self:flex-end;">Limpiar</button>
     </div>
   </section>
+
+
 
   <section class="list">
     <div id="lista-entregas" class="tabla">
@@ -97,6 +107,7 @@
   </section>
 </main>
 
+<script src="../files-js/header.js"></script>
 <script src="../files-js/entregas.js"></script>
 </body>
 </html>

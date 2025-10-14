@@ -7,6 +7,8 @@ const API_URL_PAYMENTS = 'http://localhost:8080/payments'; // fallback: sólo si
 // ========= Helpers =========
 const $  = (s,r=document)=>r.querySelector(s);
 const fmtARS = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' });
+// --- Drill-down Ventas ---
+const DRILL = { statuses: null }; // e.g., ['PENDING','PARTIAL']
 
 function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
 function authHeaders(json=true){
@@ -21,6 +23,24 @@ function notify(msg,type='info'){
 function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
 function debounce(fn, d=250){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); }; }
 
+// Si venís de dashboard con ?status=..., aplicá ese filtro inicial
+function applyDrilldownVentas(){
+  const qs = new URLSearchParams(location.search);
+  const raw = qs.get('status'); // "PENDING,PARTIAL"
+  if (!raw) return;
+
+  const list = raw.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
+  if (!list.length) return;
+  
+  // Pedimos ambos (o varios) estados vía filtro de FRONT, no en el back:
+  DRILL.statuses = list;
+
+  // Dejar el select de estado en "Todos" para no enviar paymentStatus al back.
+  const sel = document.getElementById('fEstadoPago');
+  if (sel) sel.value = ''; // ⬅️ clave
+}
+
+
 // ========= Estado =========
 let CLIENTS = [];                 // catálogo
 let PAYMENTS = [];                // fallback
@@ -30,6 +50,10 @@ let LAST_SALES = [];              // último resultado del /search
 // ========= Bootstrap =========
 window.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ go('login.html'); return; }
+
+  // si viene el drill-down, lo aplicamos ya (antes de cargar)
+  applyDrilldownVentas();
+  renderDrillBanner();
 
   // flash (si venís de “crear/editar/registrar pago”)
   const flash = localStorage.getItem('flash');
@@ -105,6 +129,13 @@ function buildQueryFromFilters(){
   const to   = $('#fHasta').value; if(to)   q.set('to',   to);
   const cid  = $('#filtroCliente').value; if(cid) q.set('clientId', cid);
   const st   = $('#fEstadoPago').value;   if(st)  q.set('paymentStatus', st); // PENDING | PARTIAL | PAID
+
+  // ⬇️ Nuevo: si el drill-down trae múltiples estados (PENDING+PARTIAL),
+  // no mandamos paymentStatus al back; filtramos en FRONT.
+  const hasMultiDrill = DRILL.statuses && DRILL.statuses.length > 1;
+  if (st && !hasMultiDrill) {
+    q.set('paymentStatus', st); // solo si el usuario eligió algo y no hay multi-drill
+  }
   return q.toString();
 }
 
@@ -129,6 +160,15 @@ async function reloadFromFilters(){
       );
     }
 
+    // 2.5) filtro extra desde drill-down si el select no puede representar múltiples
+    if (DRILL.statuses && DRILL.statuses.length){
+      view = view.filter(v => {
+        const st = String(v.paymentStatus || calcEstadoPago(v) || '').toUpperCase();
+        return DRILL.statuses.includes(st);
+      });
+    }
+
+
     // 3) ordenar por fecha desc / id desc, mantener consistente
     view.sort((a,b)=>{
       const da = a.dateSale || ''; const db = b.dateSale || '';
@@ -137,6 +177,7 @@ async function reloadFromFilters(){
     });
 
     renderLista(view);
+    renderDrillBanner(); 
   }catch(e){
     console.error(e);
     notify('No se pudieron cargar las ventas','error');
@@ -179,6 +220,51 @@ function renderListSkeleton(){
     <div class="fila"><div style="grid-column:1/-1;color:#777;">Cargando…</div></div>
   `;
 }
+
+// ===== Banner "Filtro rápido" (drill-down) =====
+function renderDrillBanner(){
+  // Si no hay multi-drill activo (PENDING+PARTIAL), ocultar/limpiar
+  const host = getDrillBannerHost();
+  if (!DRILL.statuses || DRILL.statuses.length <= 1){
+    if (host) host.remove();
+    return;
+  }
+
+  // Crear/recuperar host justo antes de la lista
+  const list = document.getElementById('lista-ventas');
+  let banner = getDrillBannerHost();
+  if (!banner){
+    banner = document.createElement('div');
+    banner.id = 'drillBannerHost';
+    list?.parentNode?.insertBefore(banner, list);
+  }
+
+  // Render simple
+  banner.className = 'info-banner';
+  banner.innerHTML = `
+    <span class="tag tag-ice">Filtro rápido</span>
+    <strong>Ventas con saldo:</strong>
+    <span>PENDIENTE + PARCIAL</span>
+    <button class="close" title="Quitar filtro rápido">✕</button>
+  `;
+
+  // Quitar filtro rápido → limpiamos DRILL y sacamos ?status=... de la URL
+  banner.querySelector('.close')?.addEventListener('click', ()=>{
+    DRILL.statuses = null;
+    const sel = document.getElementById('fEstadoPago');
+    if (sel) sel.value = '';         // mantener "Todos"
+    // limpiar parámetro de la URL visualmente
+    if (location.search.includes('status=')){
+      history.replaceState({}, '', location.pathname);
+    }
+    reloadFromFilters();
+  });
+}
+
+function getDrillBannerHost(){
+  return document.getElementById('drillBannerHost');
+}
+
 
 function renderLista(lista){
   const cont = $('#lista-ventas');

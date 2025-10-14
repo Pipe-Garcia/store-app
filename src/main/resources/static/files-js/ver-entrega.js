@@ -56,7 +56,6 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
       const fila = document.createElement('div');
       fila.className='fila';
-      fila.style.gridTemplateColumns='2fr .8fr .8fr .9fr .9fr';
       fila.innerHTML = `
         <div>${name}</div>
         <div>${qOrder}</div>

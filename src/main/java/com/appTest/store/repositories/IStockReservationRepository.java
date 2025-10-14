@@ -148,5 +148,24 @@ public interface IStockReservationRepository extends JpaRepository<StockReservat
       group by r.material.idMaterial
     """)
     List<Object[]> allocatedByMaterialForOrder(@Param("orderId") Long orderId);
+
+
+    @Query("""
+      select r.material.idMaterial, coalesce(sum(r.quantity), 0)
+      from StockReservation r
+      where r.status = com.appTest.store.models.enums.ReservationStatus.ACTIVE
+      group by r.material.idMaterial
+    """)
+    List<Object[]> sumActiveByMaterial();
+
+
+    @Query("""
+      select r.material.idMaterial, coalesce(sum(r.quantity), 0)
+      from StockReservation r
+      where r.status = com.appTest.store.models.enums.ReservationStatus.ALLOCATED
+      group by r.material.idMaterial
+    """)
+    List<Object[]> allocatedByMaterialGlobal();
+
 }
 

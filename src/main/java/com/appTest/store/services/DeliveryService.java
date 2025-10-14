@@ -1,5 +1,6 @@
 package com.appTest.store.services;
 
+import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.delivery.*;
 import com.appTest.store.models.*;
 import com.appTest.store.models.enums.DeliveryStatus;
@@ -203,9 +204,9 @@ public class DeliveryService implements IDeliveryService {
 
     /* ==================== Create ==================== */
 
-    // src/main/java/com/appTest/store/services/DeliveryService.java
     @Override
     @Transactional
+    @Auditable(entity="Delivery", action="CREATE")
     public DeliveryDTO createDelivery(DeliveryCreateDTO dto) {
         Orders orders = repoOrders.findById(dto.getOrdersId())
                 .orElseThrow(() -> new EntityNotFoundException("Orders not found with ID: " + dto.getOrdersId()));
@@ -322,6 +323,7 @@ public class DeliveryService implements IDeliveryService {
 
     @Override
     @Transactional
+    @Auditable(entity="Delivery", action="UPDATE", idParam="dto.idDelivery")
     public void updateDelivery(DeliveryUpdateDTO dto) {
         Delivery delivery = repoDelivery.findByIdWithGraph(dto.getIdDelivery())
                 .orElseThrow(() -> new EntityNotFoundException("Delivery not found with id: " + dto.getIdDelivery()));
@@ -494,6 +496,7 @@ public class DeliveryService implements IDeliveryService {
 
     @Override
     @Transactional
+    @Auditable(entity="Delivery", action="DELETE", idParam="id")
     public void deleteDeliveryById(Long id) {
         Delivery delivery = repoDelivery.findByIdWithGraph(id)
                 .orElseThrow(() -> new EntityNotFoundException("Delivery not found with id: " + id));

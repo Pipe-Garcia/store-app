@@ -24,7 +24,9 @@ public class OrdersViewDTO implements Serializable {
 
     private BigDecimal total;          // suma de priceUni * quantityOrdered
     private Boolean soldOut;           // true si remainingTotal == 0
-    private BigDecimal remainingUnits; // suma de remainingUnits de todas las líneas
+    private BigDecimal remainingUnits; // suma(pedidas - entregadas)
+    private BigDecimal deliveredUnits; // suma(entregadas)
+    private BigDecimal committedUnits; // suma(ALLOCATED visible, acotado por lo pendiente)
 
     private List<OrderDetailViewDTO> details;
 }
