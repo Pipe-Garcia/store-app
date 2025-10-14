@@ -10,6 +10,9 @@ const fmtShort    = (n)=> new Intl.NumberFormat('es-AR',{maximumFractionDigits:0
 const fmtDate     = (s)=> s ? new Date(s).toLocaleDateString('es-AR') : '—';
 const parseISO    = (s)=> s? new Date(s+'T00:00:00') : null;
 const debounce    = (fn,d=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); }; };
+// --- DRILL-DOWN flags ---
+const DRILL = { onlyPending: false };
+
 
 function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
 function authHeaders(json=true){
@@ -29,6 +32,17 @@ function notify(msg, type='info'){
   setTimeout(()=>n.remove(),4000);
 }
 
+// Si venís de dashboard con ?estado=pendiente, aplicá filtro
+function applyDrilldownPedidos(){
+  const qs = new URLSearchParams(location.search);
+  if ((qs.get('estado')||'').toLowerCase() === 'pendiente'){
+    DRILL.onlyPending = true;
+    // (opcional) marcar algún control visual si más adelante agregás un switch
+  }
+}
+
+
+
 // ===== Estado =====
 let ORDERS   = [];
 let RESV_SET = new Set();
@@ -44,6 +58,10 @@ function getListHost(){
 // ===== Bootstrap =====
 document.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ go('login.html'); return; }
+
+  // si viene el drill-down, lo aplicamos ya (antes de cargar)
+  applyDrilldownPedidos();
+  
 
   await Promise.all([loadClients(), loadOrdersAndReservations()]);
   bindFilters();
@@ -149,11 +167,11 @@ function paintSlider(){
 // Se elimina el texto libre (si existe en HTML, se ignora).
 function bindFilters(){
   const deb = debounce(renderFiltered, 220);
-  ['f_orderId','f_client','f_c_from','f_c_to','f_d_from','f_d_to','f_resv']
+  ['f_orderId','f_client','f_c_from','f_c_to','f_d_from','f_d_to','f_status']
     .forEach(id => { const el=$('#'+id); if(!el) return; el.addEventListener(id==='f_client'||id==='f_resv'?'change':'input', deb); });
 
   $('#btnLimpiar')?.addEventListener('click', ()=>{
-    ['f_orderId','f_client','f_c_from','f_c_to','f_d_from','f_d_to','f_resv']
+    ['f_orderId','f_client','f_c_from','f_c_to','f_d_from','f_d_to','f_status']
       .forEach(id=>{ const el=$('#'+id); if(el) el.value=''; });
 
     // Reset slider
@@ -179,7 +197,7 @@ function renderFiltered(){
   const dTo     = parseISO($('#f_d_to')?.value);
   const tMin    = Number($('#f_t_min')?.value ?? SL_ABS_MIN);
   const tMax    = Number($('#f_t_max')?.value ?? SL_ABS_MAX);
-  const resv    = $('#f_resv')?.value || ''; // '', 'con', 'sin'
+  const status  = $('#f_status')?.value || ''; // '', 'pend_con', 'pend_sin', 'vendido'
 
   const filtered = (ORDERS||[]).filter(o=>{
     if (idEq && o.idOrders !== idEq) return false;
@@ -198,8 +216,15 @@ function renderFiltered(){
     if (total < tMin || total > tMax) return false;
 
     const hasResv = RESV_SET.has(o.idOrders);
-    if (resv==='con' && !hasResv) return false;
-    if (resv==='sin' && hasResv)  return false;
+    const isSold  = o.soldOut === true;                 // backend debe mandarlo
+
+    // Filtro “Estado”
+    if (status === 'vendido'   && !isSold)              return false;
+    if (status === 'pend_con'  && (isSold || !hasResv)) return false;
+    if (status === 'pend_sin'  && (isSold ||  hasResv)) return false;
+
+    // Drill-down desde dashboard: mostrar sólo pendientes
+    if (DRILL.onlyPending && isSold) return false;
 
     return true;
   });
@@ -228,9 +253,14 @@ function renderTable(lista){
     row.className='fila';
     row.setAttribute('data-order', String(p.idOrders));
     const hasRes = RESV_SET.has(p.idOrders);
-    const soldTag = (p.soldOut===true)
-      ? `<span class="tag vendido" title="Vendido (sin pendiente)">✔️ Vendido</span>`
-      : `<span class="tag pendiente" title="Con pendiente">⏳ Pendiente</span>`;
+    let soldTag;
+    if (p.soldOut === true) {
+      soldTag = `<span class="tag vendido" title="Vendido (sin pendiente)">✔️ Vendido</span>`;
+    } else if (RESV_SET.has(p.idOrders)) {
+      soldTag = `<span class="tag pendiente" title="Pendiente con reserva">⏳ Pendiente (con reserva)</span>`;
+    } else {
+      soldTag = `<span class="tag pendiente" title="Pendiente sin reserva">⏳ Pendiente (sin reserva)</span>`;
+    }
 
     row.innerHTML = `
       <div>${p.idOrders ?? '-'}</div>

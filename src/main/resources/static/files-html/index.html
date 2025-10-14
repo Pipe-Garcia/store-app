@@ -6,131 +6,231 @@
   <title>📊 | Inicio</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/dashboard.css"/>
+  
+  <!-- NAV fijo -->
+  <link rel="stylesheet" href="../files-css/nav.css">
 </head>
 <body>
-  <!-- NAV (tu mismo header/nav que ya usás) -->
-  <header class="header">
-    <nav class="nav-header">
-      <img src="" alt="logo">
-      <ul class="ul-header">
-        <li><a class="active" href="../files-html/index.html">Inicio</a></li>
-        <li><a href="../files-html/materiales.html">Materiales</a></li>
-        <li><a href="../files-html/ventas.html">Ventas</a></li>
-        <li><a href="../files-html/clientes.html">Clientes</a></li>
-        <li><a href="../files-html/compras.html">Compras</a></li>
-        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-        <li><a href="../files-html/reservas.html">Reservas</a></li>
-        <li><a href="../files-html/entregas.html">Entregas</a></li>
-        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
-        <li><a href="../files-html/almacen.html">Almacenes</a></li>
-      </ul>
-    </nav>
-  </header>
+  <!-- NAV -->
+  <div id="app-header"></div>
 
   <main class="page">
     <div class="page-head">
       <h1>Panel de Control</h1>
     </div>
 
-    <hr><br>
+    <!-- Índice de secciones (sticky) -->
+    <nav class="section-nav" aria-label="Atajos de secciones">
+      <a href="#sec-ventas" class="active">Ventas</a>
+      <a href="#sec-pedidos">Pedidos & Entregas</a>
+      <a href="#sec-stock">Stock & Materiales</a>
+      <a href="#sec-clientes">Clientes</a>
+    </nav>
+    <hr>
+    <!-- ============== VENTAS ============== -->
+    <section class="area" id="sec-ventas">
+      <header class="area-head"><h2>Ventas</h2></header>
 
-    <section class="kpi-grid">
-    <!-- Ventas de hoy -->
-    <div class="card kpi">
-        <div class="kpi-title">Ventas de hoy</div>
-        <div class="kpi-value" id="kpiTodayAmount">$ 0,00</div>
-        <div class="kpi-sub"><span id="kpiTodayCount">0</span> ventas</div>
-    </div>
+      <!-- KPIs arriba -->
+      <section class="kpi-grid">
+        <!-- Ventas de hoy -->
+        <div class="card kpi clickable" id="kpiHoyCard">
+          <div class="kpi-title">Ventas de hoy</div>
+          <div class="kpi-delta" id="kpiTodayDelta">—</div>
+          <div class="spark-wrap"><canvas id="sparkSales7d"></canvas></div>
+          <div class="kpi-value" id="kpiTodayAmount">$ 0,00</div>
+          <div class="kpi-sub"><span id="kpiTodayCount">0</span> ventas</div>
+        </div>
 
-    <!-- Venta más alta -->
-    <div class="card kpi">
-        <div class="kpi-title">Venta más alta</div>
-        <div class="kpi-value" id="kpiHighestSaleTotal">$ 0,00</div>
-        <div class="kpi-sub">Cliente: <span id="kpiHighestSaleClient">—</span></div>
-    </div>
+        <!-- Venta más alta -->
+        <div class="card kpi clickable" id="kpiMaxCard">
+          <div class="kpi-title">Venta más alta</div>
+          <div class="kpi-value" id="kpiHighestSaleTotal">$ 0,00</div>
+          <div class="kpi-sub">Cliente: <span id="kpiHighestSaleClient">—</span></div>
+        </div>
 
-    <!-- Material más vendido -->
-    <div class="card kpi">
-        <div class="kpi-title">Material más vendido</div>
-        <div class="kpi-value" id="kpiMostSoldName">—</div>
-        <div class="kpi-sub"><span id="kpiMostSoldUnits">0</span> uds.</div>
-    </div>
+        <!-- Material más vendido -->
+        <div class="card kpi clickable" id="kpiMasVendidoCard">
+          <div class="kpi-title">Material más vendido</div>
+          <div class="kpi-value" id="kpiMostSoldName">—</div>
+          <div class="kpi-sub"><span id="kpiMostSoldUnits">0</span> uds.</div>
+        </div>
 
-    <!-- Material más caro -->
-    <div class="card kpi">
-        <div class="kpi-title">Material más caro</div>
-        <div class="kpi-value" id="kpiMostExpName">—</div>
-        <div class="kpi-sub">Precio: <span id="kpiMostExpPrice">$ 0,00</span></div>
-    </div>
-    </section>
+        <!-- Material más caro -->
+        <div class="card kpi clickable" id="kpiMasCaroCard">
+          <div class="kpi-title">Material más caro</div>
+          <div class="kpi-value" id="kpiMostExpName">—</div>
+          <div class="kpi-sub">Precio: <span id="kpiMostExpPrice">$ 0,00</span></div>
+        </div>
+      </section>
 
-    <br>
+      <!-- KPIs CRM -->
+      <section class="kpi-grid" id="kpi-crm">
+        <div class="card kpi" id="kpiReceivables" data-drill="ventas.html?status=PENDING,PARTIAL">
+          <div class="kpi-title">Cuentas por cobrar</div>
+          <div class="kpi-value" id="kpiRecvTotal">$ 0</div>
+          <div class="kpi-sub"><span id="kpiRecvCount">0</span> ventas con saldo</div>
+        </div>
 
-    <section class="cards cards-3" id="cards-resumen">
-      <div class="card">
-        <div class="card-head"><h3>Reservas activas</h3></div>
-        <div class="kpi" id="kpiReservas">—</div>
-        <small class="muted">Stock separado para pedidos/clientes</small>
-        <div><a class="btn" href="../files-html/reservas.html" style="margin-top:.5rem;">Ver reservas</a></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h3>Pedidos con reserva</h3></div>
-        <div class="kpi" id="kpiPedidosReservados">—</div>
-        <small class="muted">Pedidos que ya tienen stock reservado</small>
-      </div>
-      <div class="card">
-        <div class="card-head"><h3>Entregas próximas (7 días)</h3></div>
-        <div class="kpi" id="kpiEntregas">—</div>
-        <small class="muted">Pendientes o parciales</small>
-      </div>
-    </section>
-    <br>
+        <div class="card kpi">
+          <div class="kpi-title">Ticket promedio por venta (hoy)</div>
+          <div class="kpi-delta" id="kpiAOVDelta">—</div>
+          <div class="kpi-value" id="kpiAOV">$ 0,00</div>
+          <div class="spark-wrap"><canvas id="sparkAOV7d"></canvas></div>
+        </div>
 
-    <!-- KPIs de resumen -->
-    <section class="kpi-grid">
-      <div class="card kpi">
-        <div class="kpi-title">Alertas de stock</div>
-        <div class="kpi-value" id="kpiLowStockCount">0</div>
-        <div class="kpi-sub">material(es) por debajo del umbral</div>
-      </div>
-    </section>
+        <div class="card kpi">
+          <div class="kpi-title">Ingresos 7 días</div>
+          <div class="kpi-delta" id="kpi7dDelta">—</div>
+          <div class="kpi-value" id="kpi7dAmount">$ 0,00</div>
+          <div class="spark-wrap"><canvas id="sparkRev7d"></canvas></div>
+        </div>
+      </section>
 
-    <section class="cards-section">
+      <section class="card chart-card" id="sec-ventas">
+        <div class="card-head">
+          <h2>Ventas últimos 30 días</h2>
+          <div class="kpi-delta" id="kpi30dDelta">—</div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chartSales30d"></canvas>
+        </div>
+      </section>
+
+      <br>
+
+      <!-- Gráfico ventas 7 días -->
+      <section class="cards-section">
         <div class="cards-grid">
-            <!-- Ventas últimos 7 días -->
-            <section class="card chart-card">
-                <div class="card-head">
-                    <h2>Ventas últimos 7 días</h2>
-                </div>
-                <div class="chart-wrap">
-                    <canvas id="chartSales7d"></canvas>
-                </div>
-            </section>
+          <section class="card chart-card">
+            <div class="card-head"><h3>Ventas últimos 7 días</h3></div>
+            <div class="chart-wrap"><canvas id="chartSales7d"></canvas></div>
+          </section>
         </div>
+      </section>
     </section>
-    <br>
+    <hr>
+    <!-- ============== PEDIDOS & ENTREGAS ============== -->
+    <section class="area" id="sec-pedidos">
+      <header class="area-head"><h2>Pedidos & Entregas</h2></header>
 
-    <!-- Alertas de stock: gráfico + tabla -->
-    <section class="card">
-      <div class="card-head">
-        <h2>Materiales con stock bajo</h2>
-        <a class="btn outline" href="../files-html/materiales.html">Ver materiales ↗️</a>
-      </div>
-      <div class="chart-wrap">
-        <canvas id="chartStock"></canvas>
-      </div>
-      <div class="tabla compact" id="tablaLowStock">
-        <div class="fila encabezado">
-          <div>Material</div>
-          <div>Cantidad disponible</div>
+      <section class="kpi-grid">
+        <div class="card kpi" id="kpiBacklog" data-drill="pedidos.html?estado=pendiente">
+          <div class="kpi-title">Pedidos sin convertir</div>
+          <div class="kpi-value" id="kpiOpenValue">$ 0</div>
+          <div class="kpi-sub"><span id="kpiOpenCount">0</span> pedidos</div>
         </div>
-        <!-- filas dinámicas -->
-      </div>
+
+        <div class="card kpi" id="kpiEntregasHoyMan" data-drill="entregas.html?when=today-tomorrow">
+          <div class="kpi-title">Entregas hoy / mañana</div>
+          <div class="kpi-value"><span id="kpiDelToday">0</span> / <span id="kpiDelTomorrow">0</span></div>
+          <div class="kpi-sub">no completadas</div>
+        </div>
+
+        <div class="card kpi" id="kpiStockout" data-drill="materiales.html?risk=stockout">
+          <div class="kpi-title">Riesgo de stockout</div>
+          <div class="kpi-value" id="kpiStockoutCount">0</div>
+          <div class="kpi-sub">materiales comprometidos</div>
+        </div>
+      </section>
+
+      <section class="cards cards-3" id="cards-resumen">
+        <div class="card">
+          <div class="card-head"><h3>Reservas activas</h3></div>
+          <div class="kpi" id="kpiReservas">—</div>
+          <small class="muted">Stock separado para pedidos/clientes</small>
+          <div><a class="btn" href="../files-html/reservas.html" style="margin-top:.5rem;">Ver reservas</a></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Pedidos con reserva</h3></div>
+          <div class="kpi" id="kpiPedidosReservados">—</div>
+          <small class="muted">Pedidos que ya tienen stock reservado</small>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Entregas próximas (7 días)</h3></div>
+          <div class="kpi" id="kpiEntregas">—</div>
+          <small class="muted">Pendientes o parciales</small>
+        </div>
+      </section>
+
+      <section class="cards-section" id="sec-entregas">
+        <div class="cards-grid">
+          <section class="card chart-card">
+            <div class="card-head">
+              <h2>Entregas · 30 días</h2>
+              <a class="btn outline" href="../files-html/entregas.html?scope=30d">Ver detalle ↗️</a>
+            </div>
+            <div class="chart-wrap" style="max-width: 420px;">
+              <canvas id="chartDel30"></canvas>
+            </div>
+          </section>
+        </div>
+      </section>
+
+    </section>
+
+    <hr>
+
+    <!-- ============== STOCK & MATERIALES ============== -->
+    <section class="area" id="sec-stock">
+      <header class="area-head"><h2>Stock & Materiales</h2></header>
+
+      <section class="kpi-grid">
+        <div class="card kpi">
+          <div class="kpi-title">Alertas de stock</div>
+          <div class="kpi-value" id="kpiLowStockCount">0</div>
+          <div class="kpi-sub">material(es) por debajo del umbral</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h3>Materiales con stock bajo</h3>
+          <a class="btn outline" href="../files-html/materiales.html">Ver materiales ↗️</a>
+        </div>
+        <div class="chart-wrap"><canvas id="chartStock"></canvas></div>
+        <div class="tabla compact" id="tablaLowStock">
+          <div class="tabla compact" id="tablaLowStock">
+          <div class="fila encabezado">
+            <div>Material</div>
+            <div>Cantidad disponible</div>
+            <div>Acciones</div>
+          </div>
+          <!-- filas dinámicas -->
+        </div>
+      </section>
+    </section>
+    <hr>
+    <!-- ============== CLIENTES ============== -->
+    <section class="area" id="sec-clientes">
+      <header class="area-head"><h2>Clientes</h2></header>
+
+      <section class="card">
+        <div class="card-head">
+          <h3>Top clientes (mes)</h3>
+          <a class="btn outline" href="../files-html/ventas.html?scope=month&group=client">Ver detalle  ↗️</a>
+        </div>
+        <div class="tabla compact" id="tablaTopClients">
+          <div class="filaCli encabezado">
+            <div>Cliente</div>
+            <div>Importe</div>
+          </div>
+          <!-- filas dinámicas -->
+        </div>
+      </section>
     </section>
   </main>
+
+
+  <!-- Botón flotante: Volver arriba -->
+  <button id="btnTop" class="to-top" aria-label="Volver arriba" title="Volver arriba">↑</button>
+
+  <!-- scripts de la página -->
+  <script src="../files-js/header.js"></script>
 
   <!-- Chart.js (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
   <script src="../files-js/index.js"></script>
+
 </body>
 </html>

@@ -31,4 +31,3 @@ public class PaymentDTO implements Serializable {
         this.clientName = clientName;
     }
 }
-

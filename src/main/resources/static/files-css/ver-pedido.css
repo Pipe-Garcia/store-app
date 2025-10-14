@@ -1,0 +1,30 @@
+:root{
+  --card:#fff; --ink:#0f172a; --muted:#6b7280; --ring:0 0 0 3px rgba(37,99,235,.15);
+  --radius:16px; --surface:#f8fafc;
+}
+
+.seccion-detalle-pedido{
+  max-width:950px; margin:32px auto; padding: 16px;
+}
+.info-pedido{
+  background:#f8f8f9; border-radius:var(--radius);
+  box-shadow:0 10px 24px rgba(2,6,23,.06), 0 2px 6px rgba(2,6,23,.05);
+  padding:22px;
+}
+.info-pedido h3{ margin-top:18px; }
+.info-pedido p{ margin:8px 0; color:var(--ink); }
+#estado{
+  display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border-radius:999px; font-weight:700;
+  background:#eef2ff; color:#4338ca;
+}
+#estado.vendido{ background:#ecfdf5; color:#047857; }
+#lista-materiales{ margin:10px 0 0 18px; }
+#lista-materiales li{ margin:6px 0; color:#111827; }
+
+button{
+  margin-top:16px;
+  background:#111827; color:#fff; border:0; border-radius:12px; padding:10px 16px; cursor:pointer;
+}
+button:focus{ outline:none; box-shadow:var(--ring); }
+button:hover{ background:#1f2937; }
+button:active{ background:#374151; }

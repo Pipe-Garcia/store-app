@@ -29,13 +29,16 @@ public class PurchaseDetailService implements IPurchaseDetailService {
 
     @Override
     public PurchaseDetailDTO convertPurchaseDetailToDto(PurchaseDetail purchaseDetail) {
-        String materialName = (purchaseDetail.getMaterialSupplier() != null) ? purchaseDetail.getMaterialSupplier().getMaterial().getName() : "Material not found";
+        String materialName = (purchaseDetail.getMaterialSupplier() != null)
+                ? purchaseDetail.getMaterialSupplier().getMaterial().getName()
+                : "Material not found";
+
         return new PurchaseDetailDTO(
                 purchaseDetail.getIdPurchaseDetail(),
                 purchaseDetail.getPurchase().getIdPurchase(),
                 materialName,
-                purchaseDetail.getQuantity(),
-                purchaseDetail.getPurchasedPrice()
+                purchaseDetail.getPurchasedPrice(),
+                purchaseDetail.getQuantity()
         );
     }
 

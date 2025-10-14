@@ -1,41 +1,67 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>🗂️ - Gestión de Familias</title>
-  <link rel="stylesheet" href="../files-css/style.css">
+  <meta charset="UTF-8" />
+  <title>🗂️ - Familias</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="../files-css/style.css" />
+  <link rel="stylesheet" href="../files-css/familias.css" />
 </head>
 <body>
+  <!-- Header/nav de tu app -->
   <header class="header">
     <nav class="nav-header">
-      <img src="" alt="logo">
       <ul class="ul-header">
         <li><a href="../files-html/index.html">Inicio</a></li>
-        <li><a href="../files-html/materiales.html">Materiales</a></li>
+        <li><a class="active" href="../files-html/materiales.html">Materiales</a></li>
         <li><a href="../files-html/ventas.html">Ventas</a></li>
         <li><a href="../files-html/clientes.html">Clientes</a></li>
-        <li><a href="">Compras</a></li>
+        <li><a href="../files-html/compras.html">Compras</a></li>
         <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-        <li><a href="../files-html/reservas.html">Reservas</a></li>
         <li><a href="../files-html/entregas.html">Entregas</a></li>
         <li><a href="../files-html/proveedores.html">Proveedores</a></li>
         <li><a href="../files-html/almacen.html">Almacenes</a></li>
       </ul>
     </nav>
   </header>
- 
-  <main class="contenedor" style="padding: 30px;">
-    <h2 style="margin-bottom: 10px;">Crear Nueva Familia</h2>
-    <div class="formulario-nuevo" style="margin-bottom: 20px; display: flex; gap: 10px;">
-      <input type="text" id="tipoFamilia" placeholder="Nombre de la familia" style="padding: 6px; flex: 1;">
-      <button onclick="crearFamilia()" style="padding: 6px 15px;">Agregar Familia</button>
+
+  <main class="page">
+    <div class="head">
+      <h1>Familias</h1>
+      <div class="meta muted"><span id="count">0</span> registradas</div>
     </div>
 
-    <h3 style="margin-bottom: 10px;">Familias existentes</h3>
-    <ul id="listaFamilias" style="list-style: none; padding-left: 0;"></ul>
+    <!-- Alta rápida -->
+    <section class="card">
+      <h2 class="card-title">Crear nueva familia</h2>
+      <form id="frmNueva" class="new-row" autocomplete="off">
+        <input id="tipoFamilia" class="in" type="text" maxlength="60"
+               placeholder="Ej.: Sanitarios, Jardín, Herramientas…" required />
+        <button id="btnCrear" class="btn primary">Agregar</button>
+      </form>
+      <small class="muted">El nombre debe ser único.</small>
+    </section>
+
+    <!-- Listado -->
+    <section class="card">
+      <div class="list-head">
+        <h2 class="card-title">Familias existentes</h2>
+        <input id="filtro" class="in sm" placeholder="Filtrar por nombre…" />
+      </div>
+
+      <div id="empty" class="empty muted" hidden>No hay familias cargadas.</div>
+
+      <div class="tabla familias">
+        <div class="fila encabezado">
+          <div style="width:110px">ID</div>
+          <div>Nombre</div>
+          <div style="width:120px;text-align:right">Acciones</div>
+        </div>
+        <div id="listaFamilias"></div>
+      </div>
+    </section>
   </main>
 
   <script type="module" src="../files-js/familias.js"></script>
 </body>
 </html>
-  

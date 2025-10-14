@@ -1,12 +1,12 @@
 package com.appTest.store.services;
 
+import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.saleDetail.SaleDetailRequestDTO;
 import com.appTest.store.dto.sale.*;
 import com.appTest.store.models.*;
-import com.appTest.store.models.enums.ReservationStatus;
 import com.appTest.store.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -123,8 +123,9 @@ public class SaleService implements ISaleService{
 
     @Override
     @Transactional
+    @Auditable(entity="Sale", action="CREATE")
     public SaleDTO createSale(SaleCreateDTO dto) {
-        if (dto.getMaterials()==null || dto.getMaterials().isEmpty()) {
+        if (dto.getMaterials() == null || dto.getMaterials().isEmpty()) {
             throw new IllegalArgumentException("At least one item is required.");
         }
 
@@ -136,62 +137,80 @@ public class SaleService implements ISaleService{
                 .orElseThrow(() -> new EntityNotFoundException("Client not found with ID: " + dto.getClientId()));
         sale.setClient(client);
 
-        // (opcional) vincular entrega antes de persistir, si vino
         if (dto.getDeliveryId() != null) {
             Delivery delivery = repoDelivery.findById(dto.getDeliveryId())
                     .orElseThrow(() -> new EntityNotFoundException("Delivery not found with ID: " + dto.getDeliveryId()));
-            // si querés: validar que no esté ya ligada a otra venta
             sale.setDelivery(delivery);
         }
 
-        // ✅ Vincular PEDIDO si vino orderId
+        // Vincular PEDIDO si vino orderId (venta por pedido)
         if (dto.getOrderId() != null) {
             Orders order = repoOrders.findById(dto.getOrderId())
                     .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + dto.getOrderId()));
             sale.setOrders(order);
         }
 
-        // --- Detalle ---
+        // --- Detalle + lógica de stock ---
         List<SaleDetail> saleDetailList = new ArrayList<>();
 
+        final boolean isOrderSale = (dto.getOrderId() != null);
+
         for (SaleDetailRequestDTO item : dto.getMaterials()) {
-            if (item.getMaterialId()==null || item.getWarehouseId()==null)
+            if (item.getMaterialId() == null || item.getWarehouseId() == null)
                 throw new IllegalArgumentException("MaterialId and WarehouseId are required.");
-            if (item.getQuantity()==null || item.getQuantity().signum() <= 0)
+            if (item.getQuantity() == null || item.getQuantity().signum() <= 0)
                 throw new IllegalArgumentException("Quantity must be > 0.");
 
             Material material = repoMat.findById(item.getMaterialId())
                     .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + item.getMaterialId()));
 
-            // 1) ALLOCATE (comprometer) reservas del cliente (no descuenta on-hand)
-            BigDecimal toSell   = item.getQuantity();
-            BigDecimal allocated = reservationService.allocateForSale(
-                    dto.getClientId(), item.getMaterialId(), item.getWarehouseId(), toSell, dto.getOrderId()
-            );
-            BigDecimal remainder = toSell.subtract(allocated); // debería ser 0, salvo que quieras no “forzar” allocation total
+            var qty = item.getQuantity();
+            var matId = item.getMaterialId();
+            var whId  = item.getWarehouseId();
 
+            if (isOrderSale) {
+                // ===== Venta por pedido =====
+                // 1) Pasar reservas ACTIVE del cliente a ALLOCATED para este pedido
+                var allocated = reservationService.allocateForSale(
+                        dto.getClientId(), matId, whId, qty, dto.getOrderId()
+                );
+                var remainder = qty.subtract(allocated);
 
-            // 2) Si quedó remanente, validar ATP y crear ALLOCATED directo
-            if (remainder.signum() > 0) {
-                BigDecimal free = servStock.availableForReservation(item.getMaterialId(), item.getWarehouseId());
-                if (remainder.compareTo(free) > 0) {
-                    throw new IllegalStateException("Not enough free stock (reserved by others).");
+                // 2) Si faltó, crear ALLOCATED directo (bloquea disponibilidad; NO baja stock físico)
+                if (remainder.signum() > 0) {
+                    var free = servStock.availableForReservation(matId, whId);
+                    if (remainder.compareTo(free) > 0) {
+                        throw new IllegalStateException("Not enough free stock (reserved by others).");
+                    }
+                    reservationService.recordDirectAllocation(
+                            dto.getClientId(), matId, whId, remainder, dto.getOrderId()
+                    );
                 }
-                // 3) Crear ALLOCATED directo (venta compromete, no descuenta on-hand)
-                reservationService.recordDirectAllocation(
-                        dto.getClientId(), item.getMaterialId(), item.getWarehouseId(), remainder, dto.getOrderId()
+
+            } else {
+                // ===== Venta directa =====
+                // Descuenta stock físico YA. (Sin pasar por ALLOCATED)
+                var onHand = servStock.availability(matId, whId);
+                if (qty.compareTo(onHand) > 0) {
+                    throw new IllegalStateException("Not enough stock on hand.");
+                }
+                servStock.decreaseStock(matId, whId, qty);
+
+                // (Opcional) registrar traza como CONSUMED (no afecta stock; útil para reportes)
+                reservationService.recordDirectConsumption(
+                        dto.getClientId(), matId, whId, qty, null
                 );
             }
 
-            // 4) Registrar el detalle (snapshot de precio actual)
+            // Snapshot de precio y renglón de venta
             SaleDetail d = new SaleDetail();
             d.setMaterial(material);
             d.setSale(sale);
-            d.setQuantity(item.getQuantity());
-            d.setPriceUni(material.getPriceArs()!=null ? material.getPriceArs() : BigDecimal.ZERO);
-
+            d.setQuantity(qty);
+            d.setPriceUni(material.getPriceArs() != null ? material.getPriceArs() : BigDecimal.ZERO);
             saleDetailList.add(d);
         }
+
         sale.setSaleDetailList(saleDetailList);
 
         // --- Persistir venta ---
@@ -206,14 +225,13 @@ public class SaleService implements ISaleService{
             p.setSale(savedSale);
             repoPayment.save(p);
 
-            // mantener coherente el grafo en memoria para el DTO
-            if (savedSale.getPaymentList()==null) savedSale.setPaymentList(new ArrayList<>());
+            if (savedSale.getPaymentList() == null) savedSale.setPaymentList(new ArrayList<>());
             savedSale.getPaymentList().add(p);
         }
 
-        // --- DTO con total/paid/balance/status consistentes ---
         return convertSaleToDto(savedSale);
     }
+
 
     // ADD: helper de consumo
 
@@ -230,6 +248,7 @@ public class SaleService implements ISaleService{
 
     @Override
     @Transactional
+    @Auditable(entity="Sale", action="UPDATE", idParam="dto.idSale")
     public void updateSale(SaleUpdateDTO dto) {
         Sale sale = repoSale.findById(dto.getIdSale())
                 .orElseThrow(() -> new EntityNotFoundException("Sale not found"));
@@ -244,6 +263,7 @@ public class SaleService implements ISaleService{
 
     @Override
     @Transactional
+    @Auditable(entity="Sale", action="DELETE", idParam="id")
     public void deleteSaleById(Long idSale) {
         repoSale.deleteById(idSale);
     }

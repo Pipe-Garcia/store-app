@@ -1,184 +1,325 @@
-// ========= Endpoints =========
-const API_URL_DELIVERIES = 'http://localhost:8080/deliveries';
+// /static/files-js/entregas.js — híbrido: server search + fallback local
+
+const API_URL_DELIVERIES        = 'http://localhost:8080/deliveries';
 const API_URL_DELIVERIES_SEARCH = 'http://localhost:8080/deliveries/search';
-const API_URL_CLIENTS = 'http://localhost:8080/clients';
-const API_URL_ORDER   = id => `http://localhost:8080/orders/${id}`;
+const API_URL_CLIENTS           = 'http://localhost:8080/clients';
+const API_URL_ORDER             = (id) => `http://localhost:8080/orders/${id}`;
 
-const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
-const UI_STATUS = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', COMPLETED:'COMPLETADA' };
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+const fmtARS = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' });
 
-// ========= Helpers =========
-const $  = (s, r=document) => r.querySelector(s);
 function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
 function authHeaders(json=true){
-  const t=getToken();
-  return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
+  const t=getToken(); return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
 }
-function authFetch(url, opts={}){ return fetch(url, { ...opts, headers:{ ...authHeaders(!opts.bodyIsForm), ...(opts.headers||{}) }}); }
-function notify(msg,type='info'){
-  const div=document.createElement('div'); div.className=`notification ${type}`; div.textContent=msg;
-  document.body.appendChild(div); setTimeout(()=>div.remove(),4000);
+function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
+function debounce(fn,delay=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; }
+function norm(s){ 
+  return (s||'').toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 }
-function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
 
-// ========= Estado =========
-let ENTREGAS = [];        // crudo del back
-let TOTALS_BY_ORDER = new Map(); // orderId -> total
 
-// ========= Bootstrap =========
-window.addEventListener('DOMContentLoaded', async () => {
-  if (!getToken()) { go('login.html'); return; }
+// ===== getters robustos (tolerantes a cambios de claves) =====
+const getDeliveryId = x => x?.idDelivery ?? x?.id ?? x?.deliveryId ?? null;
+const getOrderId    = x => x?.ordersId ?? x?.orderId ?? x?.idOrder ?? x?.order?.id ?? null;
+const getClientId   = x => x?.clientId ?? x?.client?.idClient ?? x?.client?.id ?? null;
 
-  // clientes select
+const getClientName = x => {
+  const c = x?.client;
+  const joined = [c?.name, c?.surname].filter(Boolean).join(' ').trim();
+  return (x?.clientName ?? x?.customerName ?? joined ?? '').trim();
+};
+
+const getDateISO  = x => (x?.deliveryDate ?? x?.date ?? '').toString().slice(0,10) || '';
+const getStatus   = x => (x?.status ?? '').toString().toUpperCase();
+const getTotalFallback = x => Number(x?.total ?? x?.totalOrder ?? x?.orderTotal ?? 0);
+
+function pill(status){
+  const map = { PENDING:'pending', PARTIAL:'partial', COMPLETED:'completed' };
+  const txt = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', COMPLETADA:'COMPLETADA', COMPLETED:'COMPLETADA' }[status] || status;
+  const cls = map[status] || 'gray';
+  return `<span class="pill ${cls}">${txt}</span>`;
+}
+
+// ===== estado =====
+let ENTREGAS = [];
+let TOTALS_BY_ORDER = new Map();
+let MAX_TOTAL = 1000;
+
+// ===== boot =====
+window.addEventListener('DOMContentLoaded', async ()=>{
+  if(!getToken()){ location.href='../files-html/login.html'; return; }
   await loadClients();
-
-  // listeners filtros
-  ['fOrderId','fClient','fFrom','fTo','fStatus','fText','fMinTotal','fMaxTotal']
-    .forEach(id => $(id)?.addEventListener(id==='fText'?'input':'change', applyFilters));
-
-  $('#btnClear')?.addEventListener('click', ()=>{
-    ['fOrderId','fClient','fFrom','fTo','fStatus','fText','fMinTotal','fMaxTotal']
-      .forEach(id => { const el=$(id); if (el) el.value=''; });
-    applyFilters();
-  });
-
-  await loadDeliveries();
+  wireFilters();
+  await loadDeliveries(); // primer dataset
 });
 
-async function loadClients(){
-  try{
-    const r = await authFetch(API_URL_CLIENTS);
-    const data = r.ok ? await r.json() : [];
-    const sel = $('#fClient');
-    sel.innerHTML = `<option value="">Todos</option>`;
-    data.sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
-        .forEach(c=>{
-          const opt = document.createElement('option');
-          opt.value = String(c.idClient || c.id);
-          opt.textContent = `${c.name||''} ${c.surname||''}`.trim() || `#${c.idClient||c.id}`;
-          sel.appendChild(opt);
-        });
-  }catch(e){ console.warn('clients', e); }
+// ===== UI: listeners y slider =====
+function wireFilters(){
+  const debSearch = debounce(loadDeliveries, 250); // re-carga dataset (server)
+  const debLocal  = debounce(applyFilters, 120);   // aplica filtros en front
+
+  // Estos 5 antes dependían solo del back. Ahora: back + SIEMPRE local.
+  $('#fOrderId')?.addEventListener('input',  ()=>{ debSearch(); debLocal(); });
+  $('#fClient') ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
+  $('#fFrom')   ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
+  $('#fTo')     ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
+  $('#fStatus') ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
+
+  // Texto → local
+  $('#fText')   ?.addEventListener('input',  debLocal);
+
+  // Limpiar → resetea todo + dataset del back + filtros locales
+  $('#btnClear')?.addEventListener('click', ()=>{
+    $('#fOrderId').value='';
+    $('#fClient').value='';
+    $('#fFrom').value='';
+    $('#fTo').value='';
+    $('#fStatus').value='';
+    $('#fText').value='';
+    setSliderBounds(MAX_TOTAL);
+    applyFilters();
+    loadDeliveries();
+  });
+
+  // Slider
+  $('#f_t_slider_min')?.addEventListener('input', onSliderChange);
+  $('#f_t_slider_max')?.addEventListener('input', onSliderChange);
 }
 
-function buildQuery(){
+// ===== slider =====
+function setSliderBounds(max){
+  MAX_TOTAL = Math.max(1000, Number(max||0));
+  const sMin = $('#f_t_slider_min');
+  const sMax = $('#f_t_slider_max');
+  const vMin = $('#fMinTotal');
+  const vMax = $('#fMaxTotal');
+
+  const STEPS = 100;
+  sMin.min = 0; sMax.min = 0;
+  sMin.max = STEPS; sMax.max = STEPS;
+  sMin.step = 1;    sMax.step = 1;
+
+  sMin.dataset.stepmap = String(MAX_TOTAL / STEPS);
+  sMax.dataset.stepmap = String(MAX_TOTAL / STEPS);
+
+  sMin.value = 0;       sMax.value = STEPS;
+  vMin.value = 0;       vMax.value = MAX_TOTAL;
+
+  paintSlider();
+}
+
+function sliderToAmount(sliderEl){
+  const step = Number(sliderEl.dataset.stepmap || (MAX_TOTAL/100));
+  return Math.round(Number(sliderEl.value) * step);
+}
+
+function paintSlider(){
+  const sMin = $('#f_t_slider_min');
+  const sMax = $('#f_t_slider_max');
+  const vMin = $('#fMinTotal');
+  const vMax = $('#fMaxTotal');
+
+  if (+sMin.value > +sMax.value) [sMin.value, sMax.value] = [sMax.value, sMin.value];
+
+  vMin.value = sliderToAmount(sMin);
+  vMax.value = sliderToAmount(sMax);
+
+  const a = (+sMin.value / +sMin.max) * 100;
+  const b = (+sMax.value / +sMax.max) * 100;
+  const pr = $('#priceRange');
+  if (pr){ pr.style.setProperty('--a',`${a}%`); pr.style.setProperty('--b',`${b}%`); }
+
+  $('#priceFrom').textContent = fmtARS.format(Number(vMin.value||0));
+  $('#priceTo').textContent   = fmtARS.format(Number(vMax.value||0));
+}
+
+function onSliderChange(){ paintSlider(); applyFilters(); }
+
+// ===== loaders =====
+async function loadClients(){
+  try{
+    const r=await authFetch(API_URL_CLIENTS);
+    let data = r.ok ? await r.json() : [];
+    if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
+
+    const sel=$('#fClient');
+    sel.innerHTML = `<option value="">Todos</option>`;
+    (data||[])
+      .sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
+      .forEach(c=>{
+        const id  = c.idClient ?? c.id;
+        const nm  = `${c.name||''} ${c.surname||''}`.trim() || `#${id}`;
+        const opt = document.createElement('option');
+        opt.value = String(id ?? '');
+        opt.textContent = nm;
+        sel.appendChild(opt);
+      });
+  }catch(e){ console.warn('clients',e); }
+}
+
+function readFilterValues(){
+  const sel = $('#fClient');
+  return {
+    status : $('#fStatus')?.value || '',
+    orderId: $('#fOrderId')?.value || '',
+    clientId: sel?.value || '',
+    clientNameSel: sel?.selectedOptions?.[0]?.textContent || '',
+    from   : $('#fFrom')?.value || '',
+    to     : $('#fTo')?.value || '',
+    text   : ($('#fText')?.value || '').trim().toLowerCase(),
+    minT   : Number($('#fMinTotal')?.value || 0),
+    maxT   : Number($('#fMaxTotal')?.value || MAX_TOTAL)
+  };
+}
+
+ 
+
+function buildSearchQuery(){
+  const {status,orderId,clientId,from,to} = readFilterValues();
   const q = new URLSearchParams();
-  const st = $('#fStatus')?.value; if (st) q.set('status', st);
-  const oid = $('#fOrderId')?.value; if (oid) q.set('orderId', oid);
-  const cid = $('#fClient')?.value; if (cid) q.set('clientId', cid);
-  const from = $('#fFrom')?.value; if (from) q.set('from', from);
-  const to   = $('#fTo')?.value;   if (to)   q.set('to', to);
+  if (status)  q.set('status', status);
+  if (orderId) q.set('orderId', orderId);
+  if (clientId)q.set('clientId', clientId);
+  if (from)    q.set('from', from);
+  if (to)      q.set('to', to);
   return q.toString();
 }
 
 async function loadDeliveries(){
   try{
-    const qs = buildQuery();
+    const qs = buildSearchQuery();
     const url = qs ? `${API_URL_DELIVERIES_SEARCH}?${qs}` : API_URL_DELIVERIES;
-    const r = await authFetch(url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    ENTREGAS = await r.json() || [];
 
-    // traer totales de cada pedido para filtro y render
+    let data = [];
+    try {
+      const r = await authFetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      data = await r.json();
+      if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
+      if (!Array.isArray(data)) data = [];
+    } catch (err) {
+      // Fallback: si el search falla, traemos todo y filtramos local
+      const rAll = await authFetch(API_URL_DELIVERIES);
+      data = rAll.ok ? await rAll.json() : [];
+      if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
+      if (!Array.isArray(data)) data = [];
+    }
+
+    ENTREGAS = data;
+
+    // hidratar totales y setear slider con max real
     await hydrateOrderTotals(ENTREGAS);
+    const allTotals = ENTREGAS.map(e =>
+      TOTALS_BY_ORDER.get(getOrderId(e)) ?? getTotalFallback(e) ?? 0
+    );
+    const max = Math.max(1000, ...allTotals, 0);
+    setSliderBounds(max);
 
-    // si no hay min/max, precargo desde dataset
-    const totals = ENTREGAS.map(e => TOTALS_BY_ORDER.get(e.ordersId)||0);
-    const min = totals.length ? Math.min(...totals) : 0;
-    const max = totals.length ? Math.max(...totals) : 0;
-    const minEl = $('#fMinTotal'), maxEl = $('#fMaxTotal');
-    if (minEl && !minEl.value) minEl.value = String(min);
-    if (maxEl && !maxEl.value) maxEl.value = String(max);
-
+    // SIEMPRE aplicar filtros locales (aunque el server haya filtrado)
     applyFilters();
   }catch(e){
-    console.error('deliveries', e);
-    notify('No se pudieron cargar las entregas','error');
+    console.error('deliveries',e);
+    ENTREGAS = [];
+    TOTALS_BY_ORDER.clear();
+    setSliderBounds(1000);
+    applyFilters();
   }
 }
 
 async function hydrateOrderTotals(list){
-  const ids = [...new Set(list.map(e => e.ordersId).filter(Boolean))];
-  const pairs = await Promise.all(ids.map(async id=>{
+  const ids = [...new Set(list.map(getOrderId).filter(Boolean))];
+  if (!ids.length){ TOTALS_BY_ORDER = new Map(); return; }
+
+  const pairs = await Promise.all(ids.map(async (id)=>{
     try{
       const r = await authFetch(API_URL_ORDER(id));
       if (!r.ok) return [id, 0];
       const dto = await r.json();
-      return [id, Number(dto.total||0)];
-    }catch(_){ return [id,0]; }
+      const total = Number(dto?.total ?? dto?.totalArs ?? dto?.grandTotal ?? 0);
+      return [id, total || 0];
+    }catch(_){ return [id, 0]; }
   }));
+
   TOTALS_BY_ORDER = new Map(pairs);
 }
 
+// ===== filtros locales + render =====
 function applyFilters(){
-  const text = ($('#fText')?.value || '').toLowerCase();
-  const minT = Number($('#fMinTotal')?.value || '0');
-  const maxT = Number($('#fMaxTotal')?.value || Number.MAX_SAFE_INTEGER);
-
+  const { status, orderId, clientId, clientNameSel, from, to, text, minT, maxT } = readFilterValues();
   let list = ENTREGAS.slice();
 
-  // texto
-  if (text) {
-    list = list.filter(e =>
-      (e.clientName||'').toLowerCase().includes(text) ||
-      String(e.ordersId||'').includes(text)
-    );
+  if (orderId) {
+    list = list.filter(e => String(getOrderId(e) ?? '') === String(orderId));
   }
-  // total range
-  list = list.filter(e => {
-    const tot = TOTALS_BY_ORDER.get(e.ordersId) || 0;
+
+  if (clientId) {
+    const targetName = norm(clientNameSel);
+    list = list.filter(e => {
+      const idMatch   = String(getClientId(e) ?? '') === String(clientId);
+      const nameMatch = norm(getClientName(e)) === targetName;
+      return idMatch || nameMatch;
+    });
+  }
+
+  if (status) {
+    list = list.filter(e => getStatus(e) === status.toUpperCase());
+  }
+
+  if (from) list = list.filter(e => (getDateISO(e) || '0000-00-00') >= from);
+  if (to)   list = list.filter(e => (getDateISO(e) || '9999-12-31') <= to);
+
+  if (text){
+    list = list.filter(e=>{
+      const name = getClientName(e).toLowerCase();
+      const oid  = String(getOrderId(e)||'');
+      return name.includes(text) || oid.includes(text);
+    });
+  }
+
+  list = list.filter(e=>{
+    const tot = TOTALS_BY_ORDER.get(getOrderId(e)) ?? getTotalFallback(e) ?? 0;
     return tot >= minT && tot <= maxT;
   });
 
-  renderLista(list);
+  render(list);
 }
 
-function renderLista(lista){
+
+function render(lista){
   const cont = $('#lista-entregas');
-  cont.innerHTML = `
-    <div class="fila encabezado">
-      <div>Fecha</div>
-      <div>Estado</div>
-      <div>Cliente</div>
-      <div>Pedido</div>
-      <div>Total Pedido</div>
-      <div>Acciones</div>
-    </div>
-  `;
+  cont.querySelectorAll('.fila.row').forEach(n=>n.remove());
 
   if (!lista.length){
     const row = document.createElement('div');
-    row.className='fila';
+    row.className='fila row';
     row.innerHTML = `<div style="grid-column:1/-1;color:#666;">Sin resultados.</div>`;
     cont.appendChild(row);
     return;
   }
 
   for (const e of lista){
-    const pillCls = (e.status==='COMPLETED')?'completed':(e.status==='PARTIAL')?'partial':'pending';
-    const total = TOTALS_BY_ORDER.get(e.ordersId) || 0;
+    const idDel  = getDeliveryId(e);
+    const fecha  = getDateISO(e) || '—';
+    const st     = getStatus(e);
+    const oid    = getOrderId(e);
+    const total  = TOTALS_BY_ORDER.get(oid) ?? getTotalFallback(e) ?? 0;
 
     const row = document.createElement('div');
-    row.className='fila';
+    row.className='fila row';
     row.innerHTML = `
-      <div>${e.deliveryDate ?? '-'}</div>
-      <div><span class="pill ${pillCls}">${UI_STATUS[e.status] || e.status || '-'}</span></div>
-      <div>${e.clientName ?? '-'}</div>
-      <div>#${e.ordersId ?? '-'}</div>
+      <div>${fecha}</div>
+      <div>${pill(st)}</div>
+      <div>${getClientName(e) || '—'}</div>
+      <div>${oid ? `#${oid}` : '—'}</div>
       <div>${fmtARS.format(total)}</div>
-      <div class="acciones" style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn view" data-view="${e.idDelivery}">👁 Ver</button>
-        <button class="btn primary" data-edit="${e.idDelivery}">✏️ Editar</button>
+      <div class="acciones">
+        <a class="btn view" href="../files-html/ver-entrega.html?id=${idDel}">👁️ Ver</a>
+        <a class="btn outline" href="../files-html/editar-entrega.html?id=${idDel}">✏️ Editar</a>
       </div>
     `;
     cont.appendChild(row);
   }
-
-  cont.onclick = (ev)=>{
-    const btn = ev.target.closest('button'); if (!btn) return;
-    const vid = btn.getAttribute('data-view');
-    const eid = btn.getAttribute('data-edit');
-    if (vid) go(`ver-entrega.html?id=${vid}`);
-    if (eid) go(`editar-entrega.html?id=${eid}`);
-  };
 }

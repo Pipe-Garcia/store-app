@@ -36,6 +36,4 @@ public class DeliveryItem {
     @Column(nullable = true) // snapshot opcional
     private BigDecimal unitPriceSnapshot;
 
-    @Version
-    private Long version;
 }

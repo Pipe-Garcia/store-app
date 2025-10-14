@@ -42,8 +42,14 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     $('#fecha-creacion').textContent = fdate(view.dateCreate);
     $('#fecha-entrega').textContent  = fdate(view.dateDelivery);
     $('#total').textContent          = fmt.format(Number(view.total||0));
-    $('#pendiente').textContent      = String(view.remainingUnits ?? '-');
-    $('#estado').textContent         = view.soldOut ? 'VENDIDO (sin pendiente)' : 'CON PENDIENTE';
+    $('#entregadas').textContent     = String(view.deliveredUnits ?? 0);
+    $('#comprometidas').textContent  = String(view.committedUnits ?? 0);
+    $('#pendiente').textContent      = String(view.remainingUnits ?? 0);
+    const sold = !!view.soldOut;
+    const est = $('#estado');
+    est.textContent = sold ? 'VENDIDO (sin pendiente)' : 'CON PENDIENTE';
+    est.classList.toggle('vendido', sold);   // activa el estilo verde del CSS nuevo
+
 
     const lista = $('#lista-materiales');
     lista.innerHTML = '';
@@ -55,17 +61,17 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     }
 
     rows.forEach(det=>{
-      const ordered   = Number(det.quantityOrdered || 0);
-      const allocated = Number(det.quantityConsumed || 0); // 👈
-      const remaining = Number(det.remainingUnits  || 0);
-      const delivered = 0; // o bórralo del texto si no querés mostrarlo
+      const ordered    = Number(det.quantityOrdered    || 0);
+      const committed  = Number(det.quantityCommitted  || 0);  // ALLOCATED visible
+      const delivered  = Number(det.quantityDelivered  || 0);  // sum DeliveryItem
+      const remaining  = Number(det.remainingUnits     || 0);  // ordered - delivered
       const name = det.materialName || `Material #${det.materialId ?? ''}`;
       const pu   = Number(det.priceUni || 0);
 
       const li = document.createElement('li');
       li.textContent =
-        `${name} — Pedidas: ${ordered} | Comprometidas: ${allocated} | ` +
-        `Entregadas: ${delivered} | Pendientes: ${remaining} | Precio: ${fmt.format(pu)}`;
+        `${name} — Pedidas: ${ordered} | Comprometidas: ${committed} | ` +
+        `Entregadas: ${delivered} | Pendientes: ${remaining} | Precio: ${fmt.format(pu)}`
       lista.appendChild(li);
     });
   }catch(e){

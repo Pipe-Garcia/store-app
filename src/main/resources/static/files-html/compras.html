@@ -6,25 +6,12 @@
   <title>🛒 - Compras</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/compras.css"/>
+  <!-- NAV fijo -->
+  <link rel="stylesheet" href="../files-css/nav.css">
 </head>
 <body>
   <!-- NAV -->
-  <header class="header">
-    <nav class="nav-header">
-      <img src="" alt="logo">
-      <ul class="ul-header">
-        <li><a href="../files-html/index.html">Inicio</a></li>
-        <li><a href="../files-html/materiales.html">Materiales</a></li>
-        <li><a href="../files-html/ventas.html">Ventas</a></li>
-        <li><a href="../files-html/clientes.html">Clientes</a></li>
-        <li><a class="active" href="../files-html/compras.html">Compras</a></li>
-        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-        <li><a href="../files-html/entregas.html">Entregas</a></li>
-        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
-        <li><a href="../files-html/almacen.html">Almacenes</a></li>
-      </ul>
-    </nav>
-  </header>
+  <div id="app-header"></div>
 
   <main class="page">
     <div class="page-head">
@@ -38,8 +25,9 @@
     <!-- Filtros -->
     <section class="filters card">
       <div class="row">
-        <label>Proveedor
-          <input type="text" id="buscarProveedor" placeholder="Nombre proveedor...">
+        <!-- Reemplazamos el de 'Proveedor' por el de 'Buscar ID o proveedor' -->
+        <label>Buscar
+          <input type="text" id="buscarTexto" placeholder="ID o proveedor..."/>
         </label>
 
         <label>Desde
@@ -50,10 +38,7 @@
           <input type="date" id="buscarHasta"/>
         </label>
 
-        <label>Buscar
-          <input type="text" id="buscarTexto" placeholder="ID o proveedor..."/>
-        </label>
-
+        <!-- Eliminado el segundo input de 'Buscar' -->
         <button id="btnLimpiar" class="btn outline">Limpiar</button>
       </div>
     </section>
@@ -73,6 +58,7 @@
     </section>
   </main>
 
+  <script src="../files-js/header.js"></script>
   <script src="../files-js/compras.js"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 package com.appTest.store.services;
 
+import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.reservation.BulkReservationItem;
 import com.appTest.store.dto.reservation.BulkReservationRequest;
 import com.appTest.store.dto.reservation.StockReservationCreateDTO;
@@ -62,6 +63,7 @@ public class StockReservationService implements IStockReservationService {
 
     @Override
     @Transactional
+    @Auditable(entity="StockReservation", action="BULK_CREATE")
     public List<StockReservationDTO> bulkCreate(BulkReservationRequest req) {
         Orders order = repoOrders.findById(req.orderId())
                 .orElseThrow(() -> new EntityNotFoundException("Order not found: " + req.orderId()));
@@ -94,6 +96,7 @@ public class StockReservationService implements IStockReservationService {
 
     @Override
     @Transactional
+    @Auditable(entity="StockReservation", action="CREATE")
     public StockReservationDTO create(StockReservationCreateDTO dto) {
         Material mat = repoMaterial.findById(dto.getMaterialId())
                 .orElseThrow(() -> new EntityNotFoundException("Material not found: "+dto.getMaterialId()));
@@ -140,6 +143,7 @@ public class StockReservationService implements IStockReservationService {
 
     @Override
     @Transactional
+    @Auditable(entity="StockReservation", action="CANCEL", idParam="id")
     public void cancel(Long idReservation) {
         StockReservation r = repoReservation.findById(idReservation)
                 .orElseThrow(() -> new EntityNotFoundException("Reservation not found: "+idReservation));
@@ -152,6 +156,7 @@ public class StockReservationService implements IStockReservationService {
 
     @Override
     @Transactional
+    @Auditable(entity="StockReservation", action="EXPIRE_NOW")
     public int expireNow() {
         int count = 0;
         LocalDate today = LocalDate.now();

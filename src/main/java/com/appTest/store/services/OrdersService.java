@@ -1,8 +1,9 @@
 // src/main/java/com/appTest/store/services/OrdersService.java
 package com.appTest.store.services;
 
+import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.orderDetail.OrderDetailRequestDTO; // (create)
-import com.appTest.store.dto.orderDetail.OrderDetailUpsertDTO;  // (update)
+
 import com.appTest.store.dto.orders.*;
 import com.appTest.store.models.Client;
 import com.appTest.store.models.Material;
@@ -11,9 +12,6 @@ import com.appTest.store.models.Orders;
 import com.appTest.store.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +20,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.HashSet;
+
+import static java.math.BigDecimal.ZERO;
 
 
 @Service
@@ -47,7 +47,7 @@ public class OrdersService implements IOrdersService {
     private BigDecimal calculateTotal(Orders orders) {
         return orders.getOrderDetails().stream()
                 .map(od -> od.getQuantity().multiply(od.getPriceUni()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(ZERO, BigDecimal::add);
     }
 
     @Override
@@ -97,33 +97,51 @@ public class OrdersService implements IOrdersService {
         // 2) Totales de pedido (si tu entidad Orders no tiene getTotal())
         java.math.BigDecimal orderTotal = lines.stream()
                 .map(d -> d.getPriceUni().multiply(d.getQuantity()))
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+                .reduce(ZERO, java.math.BigDecimal::add);
 
-        // 3) Cantidades “vendidas” = ALLOCATED (según el repositorio de reservas que ya tenés)
-        //    Devuelve pares (materialId, qtyAllocated)
+        // 3) "Comprometidas" = ALLOCATED (reservas comprometidas)
         java.util.Map<Long, java.math.BigDecimal> allocatedByMat = new java.util.HashMap<>();
         for (Object[] row : repoReservation.allocatedByMaterialForOrder(o.getIdOrders())) {
             Long matId = (Long) row[0];
             java.math.BigDecimal qty = (java.math.BigDecimal) row[1];
-            allocatedByMat.put(matId, qty != null ? qty : java.math.BigDecimal.ZERO);
+            allocatedByMat.put(matId, qty != null ? qty : ZERO);
         }
+
+        // 3b) “Entregadas” = DeliveryItem sumadas por renglón (orderDetailId)
+                java.util.Map<Long, java.math.BigDecimal> deliveredByDetail = new java.util.HashMap<>();
+                for (Object[] row : repoDeliveryItem.deliveredByOrderDetail(o.getIdOrders())) {
+                        Long odId = (Long) row[0];
+                        java.math.BigDecimal qty = (java.math.BigDecimal) row[1];
+                        deliveredByDetail.put(odId, qty != null ? qty : ZERO);
+                    }
 
         // 4) Armar detalle de la vista
         java.util.List<OrderDetailViewDTO> details = new java.util.ArrayList<>();
-        java.math.BigDecimal totalRemainingUnits = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal totalRemainingUnits = ZERO;
+        java.math.BigDecimal totalDeliveredUnits = ZERO;
+        java.math.BigDecimal totalCommittedUnits = ZERO;
 
         for (OrderDetail d : lines) {
             Long matId = d.getMaterial().getIdMaterial();
             String matName = d.getMaterial().getName();
 
-            java.math.BigDecimal ordered   = d.getQuantity();                                   // pedidas
-            java.math.BigDecimal allocated = allocatedByMat.getOrDefault(matId, java.math.BigDecimal.ZERO); // “vendidas”
-            if (allocated.compareTo(ordered) > 0) allocated = ordered; // por seguridad
+            java.math.BigDecimal ordered   = d.getQuantity(); // pedidas
+            java.math.BigDecimal allocated = allocatedByMat.getOrDefault(matId, ZERO);
+            java.math.BigDecimal delivered = deliveredByDetail.getOrDefault(d.getIdOrderDetail(), ZERO);
 
-            java.math.BigDecimal remaining = ordered.subtract(allocated);
-            if (remaining.signum() < 0) remaining = java.math.BigDecimal.ZERO;
+            if (allocated.compareTo(ZERO) < 0) allocated = ZERO;
+            if (delivered.compareTo(ordered) > 0) delivered = ordered; // sanity
+
+            // Pendiente SIEMPRE respecto de lo entregado (no de lo comprometido)
+            java.math.BigDecimal remaining = ordered.subtract(delivered);
+            if (remaining.signum() < 0) remaining = ZERO;
+
+            // Lo “comprometido visible” no debe exceder lo que queda pendiente por entregar
+            java.math.BigDecimal committedToShow = allocated.min(remaining);
 
             totalRemainingUnits = totalRemainingUnits.add(remaining);
+            totalDeliveredUnits = totalDeliveredUnits.add(delivered);
+            totalCommittedUnits = totalCommittedUnits.add(committedToShow);
 
             Long orderDetailId = d.getIdOrderDetail();
             details.add(new OrderDetailViewDTO(
@@ -132,8 +150,10 @@ public class OrdersService implements IOrdersService {
                     matName,                             // materialName
                     d.getPriceUni(),                     // priceUni
                     ordered,                             // quantityOrdered
-                    allocated,                           // quantityConsumed  <- usamos este campo para “ALLOCATED”
-                    remaining                            // remainingUnits
+                    committedToShow,                     // quantityCommitted (ALLOCATED acotado)
+                    delivered,                           // quantityDelivered
+                    remaining                            // remainingUnits (pedidas - entregadas)
+
             ));
         }
 
@@ -148,6 +168,8 @@ public class OrdersService implements IOrdersService {
                 orderTotal,
                 soldOut,
                 totalRemainingUnits,
+                totalDeliveredUnits,
+                totalCommittedUnits,
                 details
         );
     }
@@ -163,7 +185,7 @@ public class OrdersService implements IOrdersService {
             BigDecimal ordered = od.getQuantity();
             BigDecimal delivered = repoDeliveryItem.sumDeliveredByOrderDetail(od.getIdOrderDetail());
             BigDecimal pending = ordered.subtract(delivered);
-            if (pending.signum() < 0) pending = BigDecimal.ZERO; // sanity
+            if (pending.signum() < 0) pending = ZERO; // sanity
             return new OrderDeliveryPendingDTO(
                     od.getIdOrderDetail(),
                     od.getMaterial().getIdMaterial(),
@@ -181,7 +203,7 @@ public class OrdersService implements IOrdersService {
         for (Object[] r : rows) {
             Long matId = ((Number) r[0]).longValue();
             BigDecimal qty = (BigDecimal) r[1];
-            map.put(matId, qty == null ? BigDecimal.ZERO : qty);
+            map.put(matId, qty == null ? ZERO : qty);
         }
         return map;
     }
@@ -189,29 +211,38 @@ public class OrdersService implements IOrdersService {
     // pending = ordered - allocated
     private BigDecimal pendingForLine(OrderDetail det, Map<Long, BigDecimal> allocatedByMat) {
         BigDecimal ordered = det.getQuantity();
-        BigDecimal allocated = allocatedByMat.getOrDefault(det.getMaterial().getIdMaterial(), BigDecimal.ZERO);
+        BigDecimal allocated = allocatedByMat.getOrDefault(det.getMaterial().getIdMaterial(), ZERO);
         BigDecimal pending = ordered.subtract(allocated);
-        return pending.max(BigDecimal.ZERO);
+        return pending.max(ZERO);
     }
 
-    private boolean isSoldOut(Orders order) {
-        var map = loadAllocatedMap(order.getIdOrders());
-        for (OrderDetail det : order.getOrderDetails()) {
-            if (pendingForLine(det, map).compareTo(BigDecimal.ZERO) > 0) return false;
-        }
-        return true;
+    private static BigDecimal nz(BigDecimal v){ return v==null ? ZERO : v; }
+
+    private boolean isSoldOut(Orders o){
+        // total pedido
+        BigDecimal totalOrdered = o.getOrderDetails().stream()
+                .map(OrderDetail::getQuantity)
+                .reduce(ZERO, BigDecimal::add);
+
+        // total entregado (puede venir null si no hay entregas)
+        BigDecimal totalDelivered = nz(repoDeliveryItem.sumDeliveredByOrder(o.getIdOrders()));
+
+        // vendido = no quedan pendientes
+        return totalDelivered.compareTo(totalOrdered) >= 0;
     }
+
 
     private BigDecimal remainingUnits(Orders order) {
         var map = loadAllocatedMap(order.getIdOrders());
         return order.getOrderDetails().stream()
                 .map(det -> pendingForLine(det, map))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(ZERO, BigDecimal::add);
     }
 
 
     @Override
     @Transactional
+    @Auditable(action="ORDER_CREATE", entity="Orders")
     public OrdersDTO createOrder(OrdersCreateDTO dto) {
         Orders orders = new Orders();
         orders.setDateCreate(dto.getDateCreate());
@@ -240,6 +271,7 @@ public class OrdersService implements IOrdersService {
 
     @Override
     @Transactional
+    @Auditable(entity="Orders", action="UPDATE", idParam="dto.idOrders")
     public void updateOrders(OrdersUpdateDTO dto) {
         // Cargar cabecera + renglones en una sola query (evita N+1)
         Orders orders = repoOrders.findByIdWithDetails(dto.getIdOrders())
@@ -317,6 +349,7 @@ public class OrdersService implements IOrdersService {
 
     @Override
     @Transactional
+    @Auditable(entity="Orders", action="DELETE", idParam="id")
     public void deleteOrdersById(Long id) {
         repoOrders.deleteById(id);
     }

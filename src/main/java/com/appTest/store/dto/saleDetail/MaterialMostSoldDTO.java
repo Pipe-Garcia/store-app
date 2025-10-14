@@ -18,5 +18,3 @@ public class MaterialMostSoldDTO implements Serializable {
         this.totalUnitsSold = totalUnitsSold;
     }
 }
-
-

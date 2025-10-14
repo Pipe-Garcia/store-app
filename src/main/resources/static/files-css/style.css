@@ -570,6 +570,18 @@ body {
   background-color: rgb(0, 99, 255);
 }
 
+.info-banner{
+  display:flex; align-items:center; gap:8px;
+  background:#e8f1fd; border:1px solid #cfe0ff;
+  border-radius:8px; padding:8px 12px; margin:8px 0;
+  color:#1e63d5;
+}
+.info-banner .close{
+  margin-left:auto; background:transparent; border:none; cursor:pointer;
+  font-size:16px; line-height:1; color:#1e63d5;
+}
+
+
 .seccion-editar-pedido button:nth-child(3) {
   padding: 8px 15px;
   background-color: rgb(200, 28, 28);

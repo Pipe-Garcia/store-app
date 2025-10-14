@@ -52,5 +52,4 @@ public class Material {
         this.priceUsd = priceUsd;
         this.description = description;
     }
-
 }

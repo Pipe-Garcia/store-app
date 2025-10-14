@@ -18,7 +18,8 @@ public class OrderDetailViewDTO implements Serializable {
     private BigDecimal priceUni;
 
     private BigDecimal quantityOrdered;   // pedidas
-    private BigDecimal quantityConsumed;  // = ALLOCATED (vendidas/comprometidas)
+    private BigDecimal quantityCommitted; // = ALLOCATED (vendidas/comprometidas)
+    private BigDecimal quantityDelivered; // = sum(DeliveryItem)
     private BigDecimal remainingUnits;    // pedidas - consumidas
 
 }

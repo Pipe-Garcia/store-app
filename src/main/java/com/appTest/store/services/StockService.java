@@ -1,5 +1,6 @@
 package com.appTest.store.services;
 
+import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.stock.StockByWarehouseDTO;
 import com.appTest.store.dto.stock.StockCreateDTO;
 import com.appTest.store.dto.stock.StockDTO;
@@ -12,9 +13,8 @@ import com.appTest.store.repositories.IStockRepository;
 import com.appTest.store.repositories.IStockReservationRepository;
 import com.appTest.store.repositories.IWarehouseRepository;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -74,18 +74,21 @@ public class StockService implements IStockService{
 
     @Override
     public BigDecimal reserved(Long materialId, Long warehouseId) {
+        // Conservamos por compat: solo ACTIVE
         return repoReservation.sumActiveByMaterialWarehouse(materialId, warehouseId);
     }
 
     @Override
     public BigDecimal availableForReservation(Long materialId, Long warehouseId) {
-        BigDecimal onHand = availability(materialId, warehouseId); // ya lo tenías
-        BigDecimal resv   = reserved(materialId, warehouseId);
-        return onHand.subtract(resv);
+        BigDecimal onHand    = availability(materialId, warehouseId);
+        BigDecimal active    = repoReservation.sumActiveByMaterialWarehouse(materialId, warehouseId);
+        BigDecimal allocated = repoReservation.sumAllocatedByMaterialWarehouse(materialId, warehouseId);
+        return onHand.subtract(active).subtract(allocated);
     }
 
     @Override
     @Transactional
+    @Auditable(entity="Stock", action="CREATE")
     public StockDTO createStock(StockCreateDTO dto) {
         Material material = repoMat.findById(dto.getMaterialId())
                 .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + dto.getMaterialId()));
@@ -104,6 +107,7 @@ public class StockService implements IStockService{
 
     @Override
     @Transactional
+    @Auditable(entity="Stock", action="UPDATE", idParam = "dto.idStock")
     public void updateStock(StockUpdateDTO dto) {
         Stock stock = repoStock.findById(dto.getIdStock())
                 .orElseThrow(() -> new EntityNotFoundException("Stock not found with ID: " + dto.getIdStock()));
@@ -118,6 +122,7 @@ public class StockService implements IStockService{
 
     @Override
     @Transactional
+    @Auditable(entity="Stock", action="DELETE", idParam="id")
     public void deleteStockById(Long id) {
         repoStock.deleteById(id);
     }

@@ -49,4 +49,8 @@ public interface IDeliveryRepository extends JpaRepository<Delivery, Long> {
     })
     @Query("select d from Delivery d where d.orders.idOrders = :orderId")
     List<Delivery> findByOrderIdWithGraph(@Param("orderId") Long orderId);
+
+    @Query("select count(d) from Delivery d where d.deliveryDate = :date and d.status <> com.appTest.store.models.enums.DeliveryStatus.COMPLETED")
+    Long countOpenByDate(java.time.LocalDate date);
+
 }

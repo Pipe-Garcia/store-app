@@ -1,0 +1,17 @@
+/* static/files-css/nav.css  — NAV FIJO (no depende del tema) */
+.site-header{position:sticky;top:0;z-index:1000;background:#0d1320;
+  border-bottom:1px solid #1b283b}
+.site-nav{max-width:1600px;margin:0 auto;height:56px;display:flex;
+  align-items:center;gap:18px;padding:0 20px;color:#d2d9e5}
+.site-nav .brand{font-weight:700;color:#e8edf6;white-space:nowrap}
+
+.site-nav .menu{display:flex;gap:12px;list-style:none;margin:0;padding:0;
+  overflow:auto}
+.site-nav .menu a{display:inline-block;padding:6px 12px;border-radius:999px;
+  color:#c7d0e0;text-decoration:none;transition:background .15s,color .15s}
+.site-nav .menu a:hover{background:#121b2b;color:#e9eef8}
+.site-nav .menu a.is-active{background:#13223a;color:#ffffff;border:1px solid #27466f}
+
+.theme-toggle{margin-left:auto;background:transparent;border:none;cursor:pointer;
+  font-size:18px;padding:6px 8px;border-radius:8px;color:#d2d9e5}
+.theme-toggle:hover{background:rgba(255,255,255,.06)}

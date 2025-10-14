@@ -14,4 +14,6 @@ public interface IMaterialSupplierService {
     MaterialSupplierDTO createMaterialSupplier(MaterialSupplierCreateDTO dto);
     void updateMaterialSupplier(MaterialSupplierUpdateDTO dto);
     void deleteMaterialSupplierById(Long id);
+
+    List<MaterialSupplier> getBySupplierId(Long supplierId);
 }

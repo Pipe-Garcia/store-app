@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🧾 - Detalle de compra</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/compras.css"/>
+</head>
+<body>
+
+  <header class="header">
+    <nav class="nav-header">
+      <img src="" alt="logo">
+      <ul class="ul-header">
+        <li><a href="../files-html/index.html">Inicio</a></li>
+        <li><a href="../files-html/materiales.html">Materiales</a></li>
+        <li><a href="../files-html/ventas.html">Ventas</a></li>
+        <li><a href="../files-html/clientes.html">Clientes</a></li>
+        <li><a class="active" href="../files-html/compras.html">Compras</a></li>
+        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+        <li><a href="../files-html/entregas.html">Entregas</a></li>
+        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
+        <li><a href="../files-html/almacen.html">Almacenes</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="page">
+    <div class="page-head">
+      <h1>Detalle de compra</h1>
+      <div class="actions">
+        <a class="btn outline" href="../files-html/compras.html">← Volver</a>
+      </div>
+    </div>
+
+   
+    <section class="card" id="cabecera">
+      <div class="row">
+        <div><strong>ID:</strong> <span id="c_id">-</span></div>
+        <div><strong>Fecha:</strong> <span id="c_fecha">-</span></div>
+        <div><strong>Proveedor:</strong> <span id="c_proveedor">-</span></div>
+        <div><strong>Total:</strong> <span id="c_total">$0,00</span></div>
+      </div>
+    </section>
+
+  
+    <section class="card">
+      <div class="tabla" id="tabla-detalles">
+        <div class="fila encabezado">
+          <div>Material</div>
+          <div>Precio unit.</div>
+          <div>Cantidad</div>
+          <div>Subtotal</div>
+        </div>
+       
+      </div>
+    </section>
+  </main>
+
+  <script src="../files-js/detalle-compra.js"></script>
+</body>
+</html>

@@ -33,8 +33,7 @@ window.addEventListener("DOMContentLoaded", async ()=>{
   await cargarDatosBase();
   applyFilters();
 
-  // Eventos filtros
-  $("#buscarProveedor").addEventListener("input", applyFilters);
+  // Eventos filtros (solo queda buscarTexto; sacamos buscarProveedor)
   $("#buscarDesde").addEventListener("change", applyFilters);
   $("#buscarHasta").addEventListener("change", applyFilters);
   $("#buscarTexto").addEventListener("input", applyFilters);
@@ -76,7 +75,6 @@ async function cargarDatosBase(){
 
 // ========= Filtros =========
 function limpiarFiltros(){
-  $("#buscarProveedor").value = "";
   $("#buscarDesde").value     = "";
   $("#buscarHasta").value     = "";
   $("#buscarTexto").value     = "";
@@ -84,19 +82,14 @@ function limpiarFiltros(){
 }
 
 function applyFilters(){
-  const filtroProv = ($("#buscarProveedor").value || "").toLowerCase();
-  const desde      = $("#buscarDesde").value || "";
-  const hasta      = $("#buscarHasta").value || "";
-  const q          = ($("#buscarTexto").value || "").toLowerCase();
+  const desde = $("#buscarDesde").value || "";
+  const hasta = $("#buscarHasta").value || "";
+  const q     = ($("#buscarTexto").value || "").toLowerCase();
 
   let list = compras.slice();
 
   if (desde) list = list.filter(c => !c.datePurchase || c.datePurchase >= desde);
   if (hasta) list = list.filter(c => !c.datePurchase || c.datePurchase <= hasta);
-
-  if (filtroProv){
-    list = list.filter(c => (c.supplierName||"").toLowerCase().includes(filtroProv));
-  }
 
   if (q){
     list = list.filter(c =>
