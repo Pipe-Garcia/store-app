@@ -18,7 +18,7 @@
   box-shadow: var(--shadow);
 }
 
-/* ===== Botones (igual compras.css) ===== */
+/* ===== Botones (base) ===== */
 .btn{
   display:inline-flex; align-items:center; gap:6px;
   padding:8px 12px; border-radius:8px; border:1px solid transparent;
@@ -29,7 +29,7 @@
 .btn:active{ transform: translateY(1px); }
 .btn.primary { background:#1c7ed6; color:#fff; }
 .btn.green   { background:#3ac654; color:#fff; }
-.btn.danger  { background:#f84052; color:#fff; }
+.btn.danger  { background:#f84052; color:#fff; }  /* base general (se sobreescribe en acciones) */
 .btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
 .btn.primary:hover{ background:#1864ab; }
 .btn.green:hover  { background:#2b8a2e; }
@@ -44,33 +44,43 @@
 .filters input[type="text"]{
   padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff; min-width:220px;
 }
-/* NUEVO: select con mismo look que input */
+/* Select con mismo look que input */
 .filters select{
   padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
   min-width:160px;
 }
 
-.tabla{ display:grid; gap:8px; min-width:900px; }
+/* --- GRID ÚNICO para encabezado y filas --- */
+.tabla{
+  /* ID | Cliente | DNI | Teléfono | Estado | Acciones */
+  --cols-6: minmax(60px,.5fr) minmax(0,1fr) minmax(120px,1fr) minmax(140px,1.1fr) minmax(110px,.9fr) minmax(120px,1fr);
+  display:grid; gap:8px; min-width:900px;
+}
 
-/* 6 columnas: ID | Cliente | DNI | Teléfono | Estado | Acciones */
 .fila{
   display:grid;
-  grid-template-columns: 0.5fr 1fr 1fr 1.1fr 0.9fr 1fr;
+  grid-template-columns: var(--cols-6);
   align-items:center; gap:10px;
   background:#fff; border-radius:10px; padding:12px 14px; box-shadow:var(--shadow);
 }
-/* CENTRAR encabezados */
 .fila.encabezado{
   background:#f1f3f5; font-weight:800; box-shadow:none; position:sticky; top:0; z-index:1;
   border:1px solid #e9ecef;
 }
-.fila.encabezado > div{ text-align:center; }
+.fila.encabezado > div{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+}
+
+/* Las filas quedan como hijas de .tabla para compartir el grid */
+#lista-clientes{ display: contents; }
 
 /* filas dinámicas creadas por clientes.js */
-#lista-clientes{ display:grid; gap:8px; }
 #lista-clientes .cliente-cont{
   display:grid;
-  grid-template-columns: 0.5fr 1fr 1fr 1.1fr 0.9fr 1fr;
+  grid-template-columns: var(--cols-6);
   align-items:center; gap:10px;
   background:#fff; border-radius:10px; padding:12px 14px; box-shadow:var(--shadow);
   border:1px solid #eef1f3;
@@ -78,9 +88,39 @@
 #lista-clientes .cliente-cont:hover{ box-shadow:0 6px 16px rgba(0,0,0,.06); }
 #lista-clientes .cliente-cont:nth-child(odd){ background:#fcfcfd; }
 
+/* CENTRAR celdas para alinear con encabezado (flex en TODAS las celdas) */
+#lista-clientes .cliente-cont > div{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+}
 
-#lista-clientes .cliente-cont > div{ justify-content:center; } 
-#lista-clientes .cliente-cont .acciones{ justify-content:center; }
+/* ===== Botones de Acciones con estilo "Materiales" ===== */
+#lista-clientes .cliente-cont .acciones{
+  display:flex; gap:.4rem; justify-content:center; align-items:center;
+}
+#lista-clientes .cliente-cont .acciones .btn{
+  border-radius:10px;
+  padding:.5rem .8rem;
+  border:1px solid rgba(16,24,40,.12);
+}
+#lista-clientes .cliente-cont .acciones .btn.info{
+  background:#2291f2;
+  border-color:#2291f2;
+  color:#fff;
+}
+#lista-clientes .cliente-cont .acciones .btn.info:hover{
+  filter:brightness(.95);
+}
+#lista-clientes .cliente-cont .acciones .btn.danger{
+  background:#ef4444;
+  border-color: rgba(239,68,68,.3);
+  color:#fff;
+}
+#lista-clientes .cliente-cont .acciones .btn.danger:hover{
+  filter:brightness(.95);
+}
 
 /* ====== FORMULARIO CREAR/EDITAR CLIENTE (IGUAL A PROVEEDORES) ====== */
 .form-page.narrow { max-width: 900px; margin: 0 auto; }
@@ -106,10 +146,28 @@
 .form-actions { margin-top:16px; display:flex; gap:10px; }
 .form-msg { margin-bottom:8px; color:#c92a2a; }
 
+/* ===== Detalle cliente (datos) ===== */
+.detail-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 16px;
+}
+.detail-grid .muted{ color:#6c757d; font-size:.9rem; }
+
+/* ===== Tabla de ventas en detalle-cliente (4 columnas centradas) ===== */
+#tabla-ventas-cliente{ --cols-sales: 0.7fr 1.2fr 1fr 1fr; }
+#tabla-ventas-cliente .fila{
+  grid-template-columns: var(--cols-sales);
+}
+#tabla-ventas-cliente .fila.encabezado > div,
+#tabla-ventas-cliente .fila > div{
+  display:flex; justify-content:center; align-items:center; text-align:center;
+}
+
 /* ====== Responsive ====== */
 @media (max-width: 1100px){
-  .fila, #lista-clientes .cliente-cont{
-    grid-template-columns: 0.5fr 1.7fr 0.9fr 1fr 0.8fr 1fr;
+  .tabla{
+    --cols-6: minmax(60px,.5fr) minmax(0,1.7fr) minmax(100px,.9fr) minmax(120px,1fr) minmax(100px,.8fr) minmax(110px,1fr);
   }
 }
 @media (max-width: 900px){
@@ -126,5 +184,10 @@
   /* Acciones ahora es la columna #6 */
   #lista-clientes .cliente-cont > div:nth-child(6){
     grid-column: 1 / -1; display:flex; justify-content:center;
+  }
+
+  /* ventas del cliente en mobile: 2 columnas */
+  #tabla-ventas-cliente .fila{
+    grid-template-columns: 1fr 1fr;
   }
 }

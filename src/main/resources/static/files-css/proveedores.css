@@ -89,10 +89,18 @@ a.btn{ text-decoration:none; }
 }
 
 /* ====== FORMULARIO CREAR/EDITAR/ASIGNAR PROVEEDOR ====== */
+#form-proveedor h2 {
+      margin-bottom: 20px;
+    text-align: center;
+}
 .form-page.narrow { max-width: 900px; margin: 0 auto; }
 .form-page .card {
-  background:#fff; padding:16px; border-radius:12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  max-width: 600px;
+    margin: 60px auto;
+    padding: 30px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 .form-page .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
 /* Para posicionar el autocomplete debajo del input */

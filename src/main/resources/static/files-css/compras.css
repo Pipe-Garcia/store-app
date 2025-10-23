@@ -6,9 +6,27 @@
   --shadow: 0 1px 2px rgba(0,0,0,.06);
 }
 
-.page{ max-width: 1900px; margin:0 auto; padding:24px; }
-.page-head{ display:flex; align-items:center; margin-bottom:12px; gap: 35px;}
-.page-head h1{ margin-left: 15px; }
+.page{ 
+  max-width:
+  1900px;
+  margin:0 auto; 
+  padding:24px; 
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 35px;
+}
+.page-head h1 {
+  margin-left: 15px;
+}
+ .page-head-editar{ 
+    max-width: 850px;
+    margin: 0 auto;
+   
+}
 
 
 .card{

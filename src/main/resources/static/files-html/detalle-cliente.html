@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>👤 Detalle de cliente</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/clientes.css"/>
+</head>
+<body>
+<header class="header">
+  <nav class="nav-header">
+    <ul class="ul-header">
+      <li><a href="../files-html/clientes.html" class="active">Clientes</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>Detalle de cliente</h1>
+    <div class="actions">
+      
+      <a class="btn outline" href="clientes.html">Volver</a>
+    </div>
+  </div>
+
+  <!-- Datos del cliente -->
+  <section class="card">
+    <div class="detail-grid">
+      <div>
+        <div class="muted">Nombre</div>
+        <div id="dNombre">—</div>
+      </div>
+      <div>
+        <div class="muted">Apellido</div>
+        <div id="dApellido">—</div>
+      </div>
+
+      <div>
+        <div class="muted">DNI</div>
+        <div id="dDni">—</div>
+      </div>
+      <div>
+        <div class="muted">Email</div>
+        <div id="dEmail">—</div>
+      </div>
+
+      <div>
+        <div class="muted">Teléfono</div>
+        <div id="dTelefono">—</div>
+      </div>
+      <div>
+        <div class="muted">Localidad</div>
+        <div id="dLocalidad">—</div>
+      </div>
+
+      <div style="grid-column:1 / -1;">
+        <div class="muted">Dirección</div>
+        <div id="dDireccion">—</div>
+      </div>
+
+      <div>
+        <div class="muted">Estado</div>
+        <div id="dEstado">—</div>
+      </div>
+      <div>
+        <div class="muted">ID</div>
+        <div id="dId">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Compras (ventas) del cliente -->
+  <section class="card" style="margin-top:14px;">
+    <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
+      <h2 style="margin:0;">Compras realizadas</h2>
+    </div>
+<br>
+    <div class="tabla" id="tabla-ventas-cliente">
+      <div class="fila encabezado">
+        <div>ID</div>
+        <div>Fecha</div>
+        <div>Total</div>
+        <div>Estado</div>
+      </div>
+      <div id="lista-ventas-cliente"></div>
+    </div>
+  </section>
+</main>
+
+<script src="../files-js/detalle-cliente.js"></script>
+</body>
+</html>

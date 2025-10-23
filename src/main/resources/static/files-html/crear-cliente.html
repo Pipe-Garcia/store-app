@@ -3,84 +3,54 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>➕ Crear cliente</title>
+  <title>✏️ Editar cliente</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/clientes.css"/>
 </head>
 <body>
-  <header class="header">
-    <nav class="nav-header">
-      <img src="" alt="logo">
-      <ul class="ul-header">
-        <li><a href="../files-html/index.html">Inicio</a></li>
-        <li><a href="../files-html/materiales.html">Materiales</a></li>
-        <li><a href="../files-html/ventas.html">Ventas</a></li>
-        <li><a class="active" href="../files-html/clientes.html">Clientes</a></li>
-        <li><a href="../files-html/compras.html">Compras</a></li>
-        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-        <li><a href="../files-html/entregas.html">Entregas</a></li>
-        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
-        <li><a href="../files-html/almacen.html">Almacenes</a></li>
-      </ul>
-    </nav>
-  </header>
+<header class="header">
+  <nav class="nav-header">
+    <ul class="ul-header">
+      <li><a href="../files-html/clientes.html" class="active">Clientes</a></li>
+    </ul>
+  </nav>
+</header>
 
-  <main class="page form-page narrow">
-    <div class="page-head">
-      <h1>Nuevo cliente</h1>
-    </div>
+<main class="page form-page narrow">
+  <div class="page-head">
+    <h1>Editar cliente</h1>
+  </div>
 
-    <section class="card">
-      <div id="msg" class="form-msg" aria-live="polite"></div>
-
+  <section class="card">
+    <form id="form-cliente">
       <div class="grid">
-        <div>
-          <label for="name">Nombre</label>
-          <input type="text" id="name"/>
-        </div>
-        <div>
-          <label for="surname">Apellido</label>
-          <input type="text" id="surname"/>
-        </div>
+        <div><label for="nombre">Nombre</label><input id="nombre" type="text" required></div>
+        <div><label for="apellido">Apellido</label><input id="apellido" type="text"></div>
 
-        <div>
-          <label for="dni">DNI</label>
-          <input type="text" id="dni"/>
-        </div>
-        <div>
-          <label for="email">Email</label>
-          <input type="email" id="email"/>
-        </div>
+        <div><label for="dni">DNI</label><input id="dni" type="text" required></div>
+        <div><label for="email">Email</label><input id="email" type="email"></div>
 
-        <div>
-          <label for="phoneNumber">Teléfono</label>
-          <input type="text" id="phoneNumber"/>
-        </div>
-        <div>
-          <label for="locality">Localidad</label>
-          <input type="text" id="locality"/>
-        </div>
+        <div><label for="telefono">Teléfono</label><input id="telefono" type="text"></div>
+        <div><label for="localidad">Localidad</label><input id="localidad" type="text"></div>
 
+        <div><label for="direccion">Dirección</label><input id="direccion" type="text" required></div>
         <div>
-          <label for="address">Dirección</label>
-          <input type="text" id="address"/>
-        </div>
-        <div>
-          <label for="status">Estado</label>
-          <select id="status">
-            <option value="ACTIVE" selected>Activo</option>
+          <label for="estado">Estado</label>
+          <select id="estado">
+            <option value="ACTIVE">Activo</option>
             <option value="INACTIVE">Inactivo</option>
           </select>
         </div>
       </div>
 
       <div class="form-actions">
-        <button id="btnGuardar" class="btn primary">Guardar cliente</button>
-        <a class="btn outline" href="../files-html/clientes.html">Cancelar</a>
+        <button class="btn primary" type="submit">Guardar cambios</button>
+        <a class="btn outline" href="clientes.html">Cancelar</a>
       </div>
-    </section>
-  </main>
+    </form>
+  </section>
+</main>
 
-  <script src="../files-js/crear-cliente.js"></script>
+<script src="../files-js/editar-cliente.js"></script>
 </body>
 </html>

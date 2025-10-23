@@ -134,7 +134,6 @@ function mostrarClientes(lista) {
     const dni  = escapeHtml(String(c.dni ?? ''));
     const tel  = escapeHtml(c.phoneNumber || '');
 
-    // render local: activo si status === 'ACTIVE' (texto) o truthy/1
     const estUpper = String(c.status ?? '').toUpperCase();
     const isActive = (estUpper === 'ACTIVE') || c.status === true || c.status === 1;
     const est  = isActive ? 'Activo' : 'Inactivo';
@@ -146,13 +145,16 @@ function mostrarClientes(lista) {
       <div>${tel || '-'}</div>
       <div>${est}</div>
       <div class="acciones">
-        <button data-edit="${id}" title="Editar">✏️</button>
-        <button data-del="${id}" title="Eliminar">🗑️</button>
+        <a class="btn outline" href="detalle-cliente.html?id=${id}" title="Ver">👁️ Ver</a>
+        <button class="btn info"   data-edit="${id}" title="Editar">✏️ Editar</button>
+        <button class="btn danger" data-del="${id}"  title="Eliminar">🗑️ Eliminar</button>
       </div>
     `;
     contenedor.appendChild(fila);
   });
 }
+
+
 
 /* ================== ACCIONES ================== */
 

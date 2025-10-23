@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>✏️ Editar compra</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/compras.css"/>
+</head>
+<body>
+  <!-- NAV -->
+  <header class="header">
+    <nav class="nav-header">
+      <img src="" alt="logo">
+      <ul class="ul-header">
+        <li><a href="../files-html/index.html">Inicio</a></li>
+        <li><a href="../files-html/materiales.html">Materiales</a></li>
+        <li><a href="../files-html/ventas.html">Ventas</a></li>
+        <li><a href="../files-html/clientes.html">Clientes</a></li>
+        <li><a class="active" href="../files-html/compras.html">Compras</a></li>
+        <li><a href="../files-html/pedidos.html">Pedidos</a></li>
+        <li><a href="../files-html/entregas.html">Entregas</a></li>
+        <li><a href="../files-html/proveedores.html">Proveedores</a></li>
+        <li><a href="../files-html/almacen.html">Almacenes</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="page">
+    <div class="page-head-editar">
+      <h1>Editar compra</h1>  
+    </div>
+
+    <section class="form-page narrow">
+      <div class="card">
+        <div class="grid">
+          <div>
+            <label for="datePurchase">Fecha de compra</label>
+            <input type="date" id="datePurchase" required>
+          </div>
+          <div>
+            <label>Proveedor</label>
+            <input type="text" id="supplierName" disabled>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="subhead"><strong>Detalles</strong></div>
+        <div id="lista-detalles" class="tabla">
+          <div class="fila encabezado" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+            <div>Material</div>
+            <div>Cantidad</div>
+            <div>Precio Unit.</div>
+            <div>Subtotal</div>
+          </div>
+          <!-- filas dinámicas -->
+        </div>
+
+        <div class="subtotales">
+          <div><strong>Total:&nbsp;</strong><span id="totalCompra">$0,00</span></div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button id="btnGuardar" class="btn green">Guardar cambios</button>
+        <a class="btn outline" href="../files-html/compras.html">Cancelar</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="../files-js/editar-compra.js"></script>
+</body>
+</html>
