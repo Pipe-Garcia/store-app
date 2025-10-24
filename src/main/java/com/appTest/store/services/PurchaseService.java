@@ -1,5 +1,6 @@
 package com.appTest.store.services;
 
+import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.purchase.PurchaseCreateDTO;
 import com.appTest.store.dto.purchase.PurchaseDTO;
 import com.appTest.store.dto.purchase.PurchaseUpdateDTO;
@@ -67,6 +68,7 @@ public class PurchaseService implements IPurchaseService{
 
     @Override
     @Transactional
+    @Auditable(action="PURCHASE_CREATE", entity="Purchase")
     public PurchaseDTO createPurchase(PurchaseCreateDTO dto) {
         Purchase purchase = new Purchase();
         purchase.setDatePurchase(dto.getDatePurchase());
@@ -114,6 +116,7 @@ public class PurchaseService implements IPurchaseService{
 
     @Override
     @Transactional
+    @Auditable(entity="Purchase", action="UPDATE", idParam="dto.idPurchase")
     public void updatePurchase(PurchaseUpdateDTO dto) {
         Purchase purchase = repoPurch.findById(dto.getIdPurchase())
                 .orElseThrow(() -> new EntityNotFoundException("Purchase not found with ID: " + dto.getIdPurchase()));
@@ -129,6 +132,7 @@ public class PurchaseService implements IPurchaseService{
 
     @Override
     @Transactional
+    @Auditable(entity="Purchase", action="DELETE", idParam="id")
     public void deletePurchaseById(Long id) {
         repoPurch.deleteById(id);
     }

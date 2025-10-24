@@ -1,10 +1,8 @@
+// src/main/java/com/appTest/store/services/StockService.java
 package com.appTest.store.services;
 
 import com.appTest.store.audit.Auditable;
-import com.appTest.store.dto.stock.StockByWarehouseDTO;
-import com.appTest.store.dto.stock.StockCreateDTO;
-import com.appTest.store.dto.stock.StockDTO;
-import com.appTest.store.dto.stock.StockUpdateDTO;
+import com.appTest.store.dto.stock.*;
 import com.appTest.store.models.Material;
 import com.appTest.store.models.Stock;
 import com.appTest.store.models.Warehouse;
@@ -22,24 +20,20 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Service
-public class StockService implements IStockService{
+public class StockService implements IStockService {
 
-    @Autowired
-    private IStockRepository repoStock;
+    @Autowired private IStockRepository repoStock;
+    @Autowired private IMaterialRepository repoMat;
+    @Autowired private IWarehouseRepository repoWare;
+    @Autowired private IStockReservationRepository repoReservation;
 
-    @Autowired
-    private IMaterialRepository repoMat;
-
-    @Autowired
-    private IWarehouseRepository repoWare;
+    // NUEVO: logger de histórico
+    @Autowired private StockMovementService movement;
 
     @Override
     public List<Stock> getAllStocks() {
         return repoStock.findAll();
     }
-
-    @Autowired
-    private IStockReservationRepository repoReservation;
 
     @Override
     public Stock getStockById(Long id) {
@@ -57,7 +51,6 @@ public class StockService implements IStockService{
                 stock.getQuantityAvailable(),
                 stock.getLastUpdate()
         );
-
     }
 
     @Override
@@ -74,7 +67,6 @@ public class StockService implements IStockService{
 
     @Override
     public BigDecimal reserved(Long materialId, Long warehouseId) {
-        // Conservamos por compat: solo ACTIVE
         return repoReservation.sumActiveByMaterialWarehouse(materialId, warehouseId);
     }
 
@@ -102,6 +94,16 @@ public class StockService implements IStockService{
         stock.setQuantityAvailable(dto.getQuantityAvailable());
         stock.setLastUpdate(LocalDate.now());
         repoStock.save(stock);
+
+        // LOG: alta/ajuste inicial
+        movement.logChange(
+                material.getIdMaterial(), material.getName(),
+                warehouse.getIdWarehouse(), warehouse.getName(),
+                BigDecimal.ZERO, stock.getQuantityAvailable(),
+                "ADJUST", "STOCK", stock.getIdStock(),
+                "Alta de stock"
+        );
+
         return convertStockToDto(stock);
     }
 
@@ -113,41 +115,94 @@ public class StockService implements IStockService{
                 .orElseThrow(() -> new EntityNotFoundException("Stock not found with ID: " + dto.getIdStock()));
 
         if (dto.getQuantityAvailable() != null) {
+            var before = stock.getQuantityAvailable();
             stock.setQuantityAvailable(dto.getQuantityAvailable());
             stock.setLastUpdate(LocalDate.now());
-        }
+            repoStock.save(stock);
 
-        repoStock.save(stock);
+            // Registrar movimiento (motivo ADJUST, origen STOCK)
+            try {
+                movement.logChange(
+                        stock.getMaterial().getIdMaterial(),
+                        stock.getMaterial().getName(),
+                        stock.getWarehouse().getIdWarehouse(),
+                        stock.getWarehouse().getName(),
+                        before,
+                        stock.getQuantityAvailable(),
+                        "ADJUST", "STOCK", stock.getIdStock(),
+                        "Actualización manual"
+                );
+            } catch (Exception ignored) { /* best-effort */ }
+        }
     }
 
     @Override
     @Transactional
     @Auditable(entity="Stock", action="DELETE", idParam="id")
     public void deleteStockById(Long id) {
+        Stock stock = repoStock.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Stock not found with ID: " + id));
+
+        BigDecimal from = stock.getQuantityAvailable();
+
         repoStock.deleteById(id);
+
+        // LOG: baja
+        movement.logChange(
+                stock.getMaterial().getIdMaterial(), stock.getMaterial().getName(),
+                stock.getWarehouse().getIdWarehouse(), stock.getWarehouse().getName(),
+                from, BigDecimal.ZERO,
+                "ADJUST", "STOCK", id,
+                "Eliminación de registro de stock"
+        );
     }
 
     @Override
+    @Transactional
     public void decreaseStock(Long materialId, Long warehouseId, BigDecimal quantity) {
         Stock stock = repoStock.findByMaterial_IdMaterialAndWarehouse_IdWarehouse(materialId, warehouseId)
                 .orElseThrow(() -> new EntityNotFoundException("Stock not found"));
-        if (stock.getQuantityAvailable().compareTo(quantity) < 0) {
-            throw new IllegalStateException("Not enough stock available.");
-        }
-        stock.setQuantityAvailable(stock.getQuantityAvailable().subtract(quantity));
+        BigDecimal from = stock.getQuantityAvailable();
+        if (from.compareTo(quantity) < 0) throw new IllegalStateException("Not enough stock available.");
+
+        stock.setQuantityAvailable(from.subtract(quantity));
+        stock.setLastUpdate(LocalDate.now());
         repoStock.save(stock);
+
+        // LOG: salida
+        movement.logChange(
+                stock.getMaterial().getIdMaterial(), stock.getMaterial().getName(),
+                stock.getWarehouse().getIdWarehouse(), stock.getWarehouse().getName(),
+                from, stock.getQuantityAvailable(),
+                "SALE", "STOCK", stock.getIdStock(),
+                "Disminución de stock"
+        );
     }
+
     @Override
     public List<Stock> getStocksByMaterial(Long materialId) {
         return repoStock.findByMaterial_IdMaterial(materialId);
     }
 
     @Override
+    @Transactional
     public void increaseStock(Long materialId, Long warehouseId, BigDecimal quantity) {
         Stock stock = repoStock.findByMaterial_IdMaterialAndWarehouse_IdWarehouse(materialId, warehouseId)
                 .orElseThrow(() -> new EntityNotFoundException("Stock not found"));
-        stock.setQuantityAvailable(stock.getQuantityAvailable().add(quantity));
-        repoStock.save(stock);
-    }
 
+        BigDecimal from = stock.getQuantityAvailable();
+        stock.setQuantityAvailable(from.add(quantity));
+        stock.setLastUpdate(LocalDate.now());
+        repoStock.save(stock);
+
+        // LOG: ingreso
+        movement.logChange(
+                stock.getMaterial().getIdMaterial(), stock.getMaterial().getName(),
+                stock.getWarehouse().getIdWarehouse(), stock.getWarehouse().getName(),
+                from, stock.getQuantityAvailable(),
+                "DELIVERY", "STOCK", stock.getIdStock(),
+                "Aumento de stock"
+        );
+    }
 }
+

@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.appTest.store.dto.saleDetail.SaleDetailLiteDTO;
+import com.appTest.store.repositories.ISaleDetailRepository;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,6 +24,9 @@ public class SaleController {
 
     @Autowired
     private ISaleService servSale;
+
+    @Autowired
+    private ISaleDetailRepository saleDetailRepo;
 
     @Autowired
     private ISaleRepository repoSale;
@@ -75,6 +80,23 @@ public class SaleController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(saleHighestDTO);
+    }
+
+    // endpoint NUEVO: detalles compactos de la venta
+    @GetMapping("/{id}/details")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    public ResponseEntity<List<SaleDetailLiteDTO>> getSaleDetails(@PathVariable Long id) {
+        // trae detalles con material (query ya optimizada en el repo)
+        var list = saleDetailRepo.findBySaleIdWithMaterial(id);
+        var dto = list.stream()
+                .map(sd -> new SaleDetailLiteDTO(
+                        sd.getMaterial().getIdMaterial(),
+                        sd.getMaterial().getName(),
+                        sd.getQuantity(),
+                        sd.getPriceUni()
+                ))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dto);
     }
 
     @PostMapping

@@ -1,5 +1,6 @@
 package com.appTest.store.services;
 
+import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.materialSupplier.MaterialSupplierCreateDTO;
 import com.appTest.store.dto.materialSupplier.MaterialSupplierDTO;
 import com.appTest.store.dto.supplier.SupplierCreateDTO;
@@ -69,6 +70,7 @@ public class SupplierService implements ISupplierService {
 
     @Override
     @Transactional
+    @Auditable(action="SUPPLIER_CREATE", entity="Supplier")
     public SupplierDTO createSupplier(SupplierCreateDTO dto) {
         Supplier supplier = new Supplier(
                 dto.getName(), dto.getSurname(), dto.getDni(), dto.getEmail(),
@@ -96,6 +98,7 @@ public class SupplierService implements ISupplierService {
 
     @Override
     @Transactional
+    @Auditable(entity="Supplier", action="UPDATE", idParam="dto.idSupplier")
     public SupplierDTO updateSupplier(Long id, SupplierCreateDTO dto) {
         Supplier supplier = getSupplierById(id);
 
@@ -132,6 +135,7 @@ public class SupplierService implements ISupplierService {
 
     @Override
     @Transactional
+    @Auditable(entity="Supplier", action="DELETE", idParam="id")
     public void deleteSupplierById(Long id) {
         Supplier supplier = getSupplierById(id);
         matSupRepo.deleteBySupplier(supplier);

@@ -213,6 +213,32 @@ public class SaleService implements ISaleService{
 
         sale.setSaleDetailList(saleDetailList);
 
+        // ...luego de setear sale.setSaleDetailList(saleDetailList);
+
+        // Total calculado de la venta (para validar pagos)
+                BigDecimal totalAmount = saleDetailList.stream()
+                        .map(d -> d.getQuantity().multiply(d.getPriceUni()))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Validación extra defensiva del pago opcional
+                if (dto.getPayment() != null) {
+                    var p = dto.getPayment();
+
+                    if (p.getAmount() == null || p.getAmount().signum() <= 0
+                            || p.getDatePayment() == null
+                            || p.getMethodPayment() == null || p.getMethodPayment().isBlank()) {
+                        throw new IllegalArgumentException(
+                                "If 'payment' is sent, amount (> 0), date and method are required."
+                        );
+                    }
+
+                    // (opcional, recomendado) impedir pagar más que el total en el alta
+                    if (p.getAmount().compareTo(totalAmount) > 0) {
+                        throw new IllegalArgumentException("Payment amount cannot exceed sale total.");
+                    }
+                }
+
+
         // --- Persistir venta ---
         Sale savedSale = repoSale.save(sale);
 

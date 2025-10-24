@@ -1,5 +1,6 @@
 package com.appTest.store.services;
 
+import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.warehouse.WarehouseCreateDTO;
 import com.appTest.store.dto.warehouse.WarehouseDTO;
 import com.appTest.store.dto.warehouse.WarehouseUpdateDTO;
@@ -49,6 +50,7 @@ public class WarehouseService implements IWarehouseService{
 
     @Override
     @Transactional
+    @Auditable(action="WAREHOUSE_CREATE", entity="Supplier")
     public WarehouseDTO createWarehouse(WarehouseCreateDTO dto) {
         Warehouse warehouse = new Warehouse();
         warehouse.setAddress(dto.getAddress());
@@ -60,6 +62,7 @@ public class WarehouseService implements IWarehouseService{
 
     @Override
     @Transactional
+    @Auditable(entity="Warehouse", action="UPDATE", idParam="dto.idWarehouse")
     public void updateWarehouse(WarehouseUpdateDTO dto) {
         Warehouse warehouse = repoWare.findById(dto.getIdWarehouse())
                 .orElseThrow(() -> new EntityNotFoundException("Warehouse not found with ID: " + dto.getIdWarehouse()));
@@ -73,6 +76,7 @@ public class WarehouseService implements IWarehouseService{
 
     @Override
     @Transactional
+    @Auditable(entity="Warehouse", action="DELETE", idParam="id")
     public void deleteWarehouseById(Long id) {
         repoWare.deleteById(id);
     }

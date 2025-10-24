@@ -1,0 +1,87 @@
+/* ===== Usuarios – Polishing para TU estructura actual ===== */
+/* Reutiliza los tokens de dashboard.css y style.css */
+
+.wrap{ max-width: 1180px; margin: 24px auto 120px; padding: 0 16px; }
+.wrap h1{ font-size: 1.6rem; margin:0 0 6px; color: var(--text); }
+.wrap .muted{ color: var(--muted); }
+
+.grid{
+  display:grid; gap: var(--gap);
+  grid-template-columns: 1.05fr .95fr;
+}
+@media (max-width: 960px){ .grid{ grid-template-columns: 1fr; } }
+
+/* Cards superiores (Nuevo / Reset) */
+.card form{
+  display:grid; gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.card form input,
+.card form select{
+  width:100%; padding:10px 12px; border-radius:10px;
+  border:1px solid var(--grid); background:var(--card); color: var(--text);
+}
+.card form input:focus,
+.card form select:focus{
+  outline: 2px solid color-mix(in oklab, var(--accent) 45%, transparent);
+}
+.card form .full{ grid-column: 1 / -1; }
+.card form .btn{ justify-self: start; }
+
+/* Tabla de usuarios (tu .tabla .fila) */
+#tbl{ width:100%; }
+#tbl .fila{
+  display:grid; align-items:center; gap: 10px;
+  /* 6 columnas: Usuario | Nombre | Email | Rol | Activo | Acciones */
+  grid-template-columns: 1.1fr 1fr 1.4fr .8fr .6fr 1.2fr;
+  padding: 12px; border: 1px solid transparent; border-radius: 10px;
+}
+#tbl .fila:not(.encabezado){ border-color: var(--grid); background: var(--card); box-shadow: var(--shadow-1); margin-top: 8px; }
+#tbl .fila:hover{ background: color-mix(in oklab, var(--bg) 80%, transparent); }
+#tbl .fila.encabezado{
+  background: color-mix(in oklab, var(--bg) 85%, transparent);
+  border-color: var(--grid);
+  font-weight: 700; color: var(--text);
+}
+#tbl .fila > div{ overflow:hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Rol / Activo como badges */
+.pill.role{
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.15rem .55rem; border-radius: 999px; font-size:.78rem; line-height:1;
+  border:1px solid var(--grid);
+  text-transform: uppercase;
+}
+.pill.role::before{
+  content:""; width:.5rem; height:.5rem; border-radius:999px;
+  background: currentColor;
+}
+.pill.role:where(:not(.owner)){ color:#64748b; background: rgba(148,163,184,.18); } /* EMPLOYEE */
+.pill.role.owner{ color:#2563eb; background: rgba(37,99,235,.14); }              /* OWNER */
+
+/* Activo ✔️ alineado y con color */
+#tbl .fila > div:nth-child(5){ display:flex; align-items:center; gap:6px; color:#16a34a; }
+
+/* Columna Acciones (botonera) */
+#tbl .fila > div:last-child{
+  display:flex; justify-content:flex-end; flex-wrap:wrap; gap:6px;
+}
+#tbl .btn{ padding:6px 9px; font-size:.9rem; border-radius:10px; }
+#tbl .btn.outline{ color: var(--text-weak); border:1px solid var(--grid); background: transparent; }
+#tbl .btn.outline:hover{ background: color-mix(in oklab, var(--bg) 75%, transparent); }
+
+/* Responsivo: apretar la tabla en pantallas angostas */
+@media (max-width: 1000px){
+  #tbl .fila{ grid-template-columns: 1fr 1fr 1.3fr .8fr .6fr 1.1fr; }
+}
+@media (max-width: 820px){
+  /* Hacemos que Email y Acciones ocupen más y el resto se compacte */
+  #tbl .fila{ grid-template-columns: .9fr .8fr 1.2fr .7fr .5fr 1.2fr; }
+}
+@media (max-width: 680px){
+  /* Último recurso: permitimos salto de línea sólo en Email y Nombre */
+  #tbl .fila > div:nth-child(2),
+  #tbl .fila > div:nth-child(3){
+    white-space: normal;
+  }
+}

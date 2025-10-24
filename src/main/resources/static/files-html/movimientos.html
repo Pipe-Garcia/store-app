@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>🔄 | Movimientos (Auditoría)</title>
+  <link rel="stylesheet" href="../files-css/style.css">
+  <link rel="stylesheet" href="../files-css/auditoria.css">
+  <link rel="stylesheet" href="../files-css/nav.css">
+</head>
+<body>
+
+  <div id="app-header"></div>
+
+  <div class="page">
+    <h1>Movimientos</h1>
+    <div class="filters card">
+      <label>Desde
+        <input type="date" id="f-desde">
+      </label>
+      <label>Hasta
+        <input type="date" id="f-hasta">
+      </label>
+      <label>Usuario
+        <input type="text" id="f-actor" placeholder="Ej: juan">
+      </label>
+      <label>Acción
+        <select id="f-action">
+          <option value="">(todas)</option>
+          <option>CREATE</option><option>UPDATE</option><option>DELETE</option>
+          <option>SALE_CREATE</option><option>ORDER_UPDATE</option><option>DELIVERY_CREATE</option><option>ORDER_CREATE</option>
+        </select>
+      </label>
+      <label>Entidad
+        <select id="f-entity">
+          <option value="">(todas)</option>
+          <option>Sale</option><option>Orders</option><option>Delivery</option>
+          <option>Stock</option><option>Material</option><option>Client</option>
+        </select>
+      </label>
+      <label>Estado
+        <select id="f-status">
+          <option value="">(todos)</option>
+          <option value="SUCCESS">SUCCESS</option>
+          <option value="FAIL">FAIL</option>
+        </select>
+      </label>
+      <label>Tamaño pág.
+        <select id="f-size">
+          <option>20</option><option>50</option><option>100</option>
+        </select>
+      </label>
+      <button class="btn primary" id="btn-aplicar">Aplicar</button>
+      <button class="btn" id="btn-limpiar">Limpiar</button>
+    </div>
+
+    <div class="card">
+      <table class="table" id="tbl">
+        <thead>
+          <tr>
+            <th>Fecha/Hora</th>
+            <th>Usuario</th>
+            <th>Acción</th>
+            <th>Entidad</th>
+            <th class="text-right">ID</th>
+            <th>Estado</th>
+            <th>Mensaje</th>
+            <th class="text-right">Ver</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <div class="pager">
+        <div class="info" id="pg-info"></div>
+        <button class="btn" id="pg-prev">« Anterior</button>
+        <button class="btn" id="pg-next">Siguiente »</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- header + lógica -->
+  <script src="../files-js/header.js" type="module"></script>
+  <script src="../files-js/movimientos.js" type="module"></script>
+</body>
+</html>

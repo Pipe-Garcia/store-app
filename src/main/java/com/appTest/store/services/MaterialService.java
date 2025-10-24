@@ -45,15 +45,22 @@ public class MaterialService implements IMaterialService{
 
     @Override
     public MaterialDTO convertMaterialToDto(Material material) {
+        // cantidades disponibles sumadas en todos los depósitos
         BigDecimal totalQuantityAvailable = material.getStockList().stream()
                 .map(Stock::getQuantityAvailable)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // ventas totales (por si las mostrás)
         int totalSales = material.getSaleDetailList().stream()
                 .mapToInt(sd -> sd.getQuantity().intValue())
                 .sum();
 
-        String category = material.getFamily().getTypeFamily();
+        // 🔸 Null-safe: puede haber materiales sin familia
+        Long   famId   = (material.getFamily() != null) ? material.getFamily().getIdFamily()   : null;
+        String famName = (material.getFamily() != null) ? material.getFamily().getTypeFamily() : null;
+
+        // mantenemos "category" por compatibilidad (es el typeFamily)
+        String category = famName;
 
         return new MaterialDTO(
                 material.getIdMaterial(),
@@ -64,7 +71,13 @@ public class MaterialService implements IMaterialService{
                 material.getMeasurementUnit(),
                 material.getInternalNumber(),
                 material.getDescription(),
+
+                // familia
+                famId,
+                famName,
                 category,
+
+                // agregados/calculados
                 totalQuantityAvailable,
                 totalSales,
                 material.getStockList().size(),
@@ -73,6 +86,7 @@ public class MaterialService implements IMaterialService{
                 material.getOrderDetails().size()
         );
     }
+
 
 
     @Override

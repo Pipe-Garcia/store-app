@@ -294,8 +294,9 @@ function renderLista(lista){
       <div class="acciones">
         <a class="btn outline" href="ver-venta.html?id=${v.idSale}">👁️ Ver</a>
         <a class="btn outline" href="editar-venta.html?id=${v.idSale}">✏️ Editar</a>
+        <button class="btn outline" data-pdf="${v.idSale}">🧾 PDF</button>
         ${canPay ? `<button class="btn green" data-pay="${v.idSale}">💵 Registrar pago</button>`
-         : `<button class="btn green" disabled title="Venta saldada">💵 Registrar pago</button>`}
+        : `<button class="btn green" disabled title="Venta saldada">💵 Registrar pago</button>`}
         <button class="btn danger" data-del="${v.idSale}">🗑️ Eliminar</button>
       </div>
     `;
@@ -305,9 +306,12 @@ function renderLista(lista){
   cont.onclick = (ev)=>{
     const delId = ev.target.getAttribute('data-del');
     const payId = ev.target.getAttribute('data-pay');
+    const pdfId = ev.target.getAttribute('data-pdf');
     if (delId) borrarVenta(Number(delId));
     if (payId) registrarPago(Number(payId));
+    if (pdfId) downloadSalePdf(Number(pdfId));
   };
+
 }
 
 
@@ -333,4 +337,38 @@ async function borrarVenta(id){
 
 function registrarPago(id){
   go(`registrar-pago.html?saleId=${id}`);
+}
+
+
+// ---------- Descargar PDF de la venta ----------
+async function downloadSalePdf(id){
+  const t = getToken();
+  if (!t){ go('login.html'); return; }
+
+  try{
+    // mini feedback visual: deshabilitar botón mientras descarga
+    const btn = document.querySelector(`button[data-pdf="${id}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+
+    const r = await fetch(`${API_URL_SALES}/${id}/pdf`, {
+      headers: { 'Authorization': `Bearer ${t}` }
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `factura-${id}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    console.error(e);
+    notify('No se pudo generar el PDF','error');
+  }finally{
+    const btn = document.querySelector(`button[data-pdf="${id}"]`);
+    if (btn) { btn.disabled = false; btn.textContent = 'PDF'; }
+  }
 }

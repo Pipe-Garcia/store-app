@@ -2,7 +2,8 @@
 const API_URL_SALES = 'http://localhost:8080/sales';
 const API_URL_DELIVERIES = 'http://localhost:8080/deliveries';
 const API_URL_DELIVERY_PENDING = (orderId) => `http://localhost:8080/orders/${orderId}/delivery-pending`;
-const API_URL_STOCKS_BY_MAT  = (matId)=> `http://localhost:8080/stocks/by-material/${matId}`;
+const API_URL_SALE_DETAILS    = (saleId) => `http://localhost:8080/sales/${saleId}/details`;
+const API_URL_STOCKS_BY_MAT   = (matId)=> `http://localhost:8080/stocks/by-material/${matId}`;
 
 const $  = (s, r=document) => r.querySelector(s);
 
@@ -11,9 +12,7 @@ function authHeaders(json=true){
   const t=getToken();
   return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
 }
-function authFetch(url, opts={}){
-  return fetch(url, { ...opts, headers:{ ...authHeaders(!opts.bodyIsForm), ...(opts.headers||{}) }});
-}
+function authFetch(url, opts={}){ return fetch(url, { ...opts, headers:{ ...authHeaders(!opts.bodyIsForm), ...(opts.headers||{}) }}); }
 function notify(msg,type='info',anchorSelector){
   const anchor = anchorSelector ? $(anchorSelector) : document.body;
   const div = document.createElement('div');
@@ -34,23 +33,19 @@ function go(page){
 
 let currentSale = null;
 let currentOrderId = null;
-// 👇 nuevo: si venís desde "ver-venta" -> ?sale=ID
 let paramSaleId = null;
 
 window.addEventListener('DOMContentLoaded', async () => {
   if (!getToken()) { go('login.html'); return; }
 
-  // fecha default (local)
   const d = new Date();
   $('#fecha').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
-  // leer query params
   const qs = new URLSearchParams(location.search);
   paramSaleId = Number(qs.get('sale') || qs.get('saleId') || 0) || null;
 
   await cargarVentasPagadas();
 
-  // si llegás con ?sale= preselecciono y cargo
   if (paramSaleId) {
     const sel = $('#venta');
     let opt = [...sel.options].find(o => Number(o.value) === paramSaleId);
@@ -83,9 +78,9 @@ async function cargarVentasPagadas(){
   sel.innerHTML = `<option value="">Seleccionar venta (pagada)</option>`;
 
   const candidates = [
-    `${API_URL_SALES}?paymentStatus=PAID`, // por si tu API soporta esto
-    `${API_URL_SALES}?status=PAID`,        // fallback
-    `${API_URL_SALES}`                     // último recurso
+    `${API_URL_SALES}?paymentStatus=PAID`,
+    `${API_URL_SALES}?status=PAID`,
+    `${API_URL_SALES}`
   ];
 
   let raw = null;
@@ -101,7 +96,6 @@ async function cargarVentasPagadas(){
             : (raw && Array.isArray(raw.content)) ? raw.content
             : [];
 
-  // normalizo campos
   const norm = list.map(s => {
     const id = s.idSale ?? s.id ?? s.saleId;
     const clientName = s.clientName ?? s.client ?? `${s.clientFirstName??''} ${s.clientLastName??''}`.trim();
@@ -114,7 +108,6 @@ async function cargarVentasPagadas(){
     return { id, clientName, total, paid, status, dateSale, orderId, deliveryId };
   }).filter(x=>x.id);
 
-  // sólo ventas pagadas, con pedido, y SIN entrega asociada
   const onlyPaid = norm.filter(s =>
     (s.status === 'PAID' || (s.total && s.paid >= s.total)) &&
     s.orderId && !s.deliveryId
@@ -171,6 +164,7 @@ async function onChangeVenta(){
   if (!saleId) return;
 
   try{
+    // 1) Traemos la venta (para orderId)
     const res = await authFetch(`${API_URL_SALES}/${saleId}`);
     if (res.ok) currentSale = await res.json();
 
@@ -184,18 +178,43 @@ async function onChangeVenta(){
     }
     $('#pedidoAsociado').value = `#${currentOrderId}`;
 
+    // 2) Detalles vendidos de ESTA venta
+    const rDet = await authFetch(API_URL_SALE_DETAILS(saleId));
+    if (!rDet.ok) throw new Error(`HTTP ${rDet.status}`);
+    const saleDetails = await rDet.json(); // [{materialId, materialName, quantity, unitPrice}]
+
+    // map material -> qtySold
+    const soldByMat = new Map(saleDetails.map(d => [Number(d.materialId), Number(d.quantity||0)]));
+
+    // 3) Pendientes del pedido
     const rp = await authFetch(API_URL_DELIVERY_PENDING(currentOrderId));
     if (!rp.ok) throw new Error(`HTTP ${rp.status}`);
-    const pendientes = (await rp.json() || []).filter(p => Number(p.pendingToDeliver||0) > 0);
-    renderPendientes(pendientes);
+    let pendientes = await rp.json(); // [{orderDetailId, materialId, materialName, pendingToDeliver, ...}]
+
+    // 4) Cruzar: sólo materiales vendidos en esta venta y cap = min(vendida, pendiente)
+    const merged = [];
+    for (const p of (pendientes||[])) {
+      const matId = Number(p.materialId);
+      const pend = Number(p.pendingToDeliver || 0);
+      const sold = Number(soldByMat.get(matId) || 0);
+      if (sold <= 0 || pend <= 0) continue;
+      const cap = Math.min(sold, pend);
+      merged.push({...p, cap});
+    }
+
+    if (!merged.length){
+      notify('No hay ítems pendientes para esta venta (ya entregados o no coinciden materiales).','info');
+    }
+
+    renderPendientes(merged, /*useCap*/true);
   }catch(e){
     console.error(e);
-    notify('No se pudieron cargar pendientes del pedido','error');
+    notify('No se pudieron cargar los datos de la venta/pedido','error');
   }
 }
 
 /* ====== Render de filas con selección de depósito ====== */
-async function renderPendientes(rows){
+async function renderPendientes(rows, useCap=false){
   const cont = $('#items');
   cont.innerHTML = `
     <div class="fila encabezado" style="grid-template-columns: 2fr 1.3fr .8fr .8fr;">
@@ -216,7 +235,9 @@ async function renderPendientes(rows){
   }
 
   for (const r of rows){
-    const max = Number(r.pendingToDeliver||0);
+    const pendiente = Number(r.pendingToDeliver||0);
+    const max = useCap ? Number(r.cap||0) : pendiente;
+
     const row = document.createElement('div');
     row.className = 'fila';
     row.style.gridTemplateColumns = '2fr 1.3fr .8fr .8fr';
@@ -228,7 +249,6 @@ async function renderPendientes(rows){
     whSel.className = 'wh';
     whSel.innerHTML = `<option value="">Seleccionar depósito…</option>`;
 
-    // Traer stocks del material para sugerir
     try{
       const rs = await authFetch(API_URL_STOCKS_BY_MAT(r.materialId));
       const list = rs.ok ? await rs.json() : [];
@@ -239,7 +259,6 @@ async function renderPendientes(rows){
         o.textContent = `${w.warehouseName} — disp: ${Number(w.quantityAvailable||0)}`;
         whSel.appendChild(o);
       });
-      // Sugerir el que más stock tenga
       const best = [...whSel.options].slice(1)
         .map(o=>({o,free:Number(o.dataset.available||0)}))
         .sort((a,b)=> b.free - a.free)[0];
@@ -252,20 +271,20 @@ async function renderPendientes(rows){
 
     const capQty = ()=>{
       const avail = Number(whSel.selectedOptions?.[0]?.dataset?.available || 0);
-      const cap = Math.max(0, Math.min(avail, max));
+      const capSrc = max; // cap por min(vendida, pendiente)
+      const cap = Math.max(0, Math.min(avail, capSrc));
       const n = Number(qty.value||0);
       qty.value = String(Math.min(n, cap));
       qty.max = String(cap);
     };
     whSel.addEventListener('change', capQty);
     qty.addEventListener('input', capQty);
-    // set cap inicial
     capQty();
 
     row.innerHTML = `
       <div>${r.materialName}</div>
       <div></div>
-      <div>${max}</div>
+      <div>${pendiente}</div>
       <div></div>
     `;
     row.children[1].appendChild(whSel);
@@ -300,7 +319,6 @@ async function guardarEntrega(ev){
     return;
   }
 
-  // 👇 CLAVE: incluir saleId para linkear venta ↔ entrega
   const saleId = Number($('#venta').value || 0) || paramSaleId || null;
 
   const payload = { ordersId: currentOrderId, deliveryDate, items, saleId };

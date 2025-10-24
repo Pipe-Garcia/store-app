@@ -114,10 +114,13 @@ function extractFamilyFromMaterial(m){
     m.family?.name ??
     m.familyName ??
     m.family_type ??
+    // ⬇️ fallback final por compatibilidad
+    m.category ??
     null;
 
   return { id, text };
 }
+
 
 /* ================== combos ================== */
 async function cargarFamilias(){

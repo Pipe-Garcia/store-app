@@ -2,6 +2,7 @@ package com.appTest.store.dto.sale;
 
 import com.appTest.store.dto.payment.PaymentCreateDTO;
 import com.appTest.store.dto.saleDetail.SaleDetailRequestDTO;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,6 +13,7 @@ import java.util.List;
 
 @Getter @Setter
 public class SaleCreateDTO implements Serializable {
+
     @NotNull(message = "Date sale is required")
     private LocalDate dateSale;
 
@@ -22,8 +24,9 @@ public class SaleCreateDTO implements Serializable {
     private List<SaleDetailRequestDTO> materials;
 
     private Long deliveryId;
-
     private Long orderId;
 
+    // ⬇️ si 'payment' viene en el JSON, ahora se validan sus campos
+    @Valid
     private PaymentCreateDTO payment;
 }

@@ -1,5 +1,6 @@
 package com.appTest.store.services;
 
+import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.client.ClientCreateDTO;
 import com.appTest.store.dto.client.ClientDTO;
 import com.appTest.store.dto.client.ClientUpdateDTO;
@@ -78,6 +79,7 @@ public class ClientService implements IClientService{
 
     @Override
     @Transactional
+    @Auditable(action="CLIENT_CREATE", entity="Client")
     public ClientDTO createClient(ClientCreateDTO dto) {
         Client client = new Client();
         client.setName(dto.getName());
@@ -96,6 +98,7 @@ public class ClientService implements IClientService{
 
     @Override
     @Transactional
+    @Auditable(entity="Client", action="UPDATE", idParam="dto.idClient")
     public void updateClient(ClientUpdateDTO dto) {
         Client client = repoClient.findById(dto.getIdClient()).orElse(null);
 
@@ -115,6 +118,7 @@ public class ClientService implements IClientService{
 
     @Override
     @Transactional
+    @Auditable(entity="Client", action="DELETE", idParam="id")
     public void deleteClientById(Long idClient) {
         repoClient.deleteById(idClient);
     }

@@ -832,3 +832,225 @@ function renderDel30Donut(deliveries){
   }));
 }
 
+// ======== AUDITORÍA – Dashboard ========
+const API_URL_AUDIT_EVENTS = 'http://localhost:8080/audits/events';
+const API_URL_AUDIT_DASH   = 'http://localhost:8080/audit-dashboard';
+
+function isoDaysAgo(n){
+  const d = new Date(); d.setDate(d.getDate()-n);
+  const tz = d.getTimezoneOffset()*60000;
+  return new Date(d.getTime()-tz).toISOString().slice(0,10);
+}
+function range7d(){
+  return { from: isoDaysAgo(6), to: isoDaysAgo(0) };
+}
+
+async function fetchJson(url, opts={}){
+  const r = await authFetch(url, opts);
+  if(!r.ok) return null;
+  return safeJson(r);
+}
+
+async function fetchAuditOverview7d(){
+  // 1) Intento endpoint resumido
+  const o = await fetchJson(`${API_URL_AUDIT_DASH}/overview`);
+  if (o) return o;
+
+  // 2) Fallback: consumo /audits/events últimos 7 días (hasta 5000)
+  const {from, to} = range7d();
+  const url = `${API_URL_AUDIT_EVENTS}?from=${from}&to=${to}&size=5000&page=0`;
+  const page = await fetchJson(url) || { content:[] };
+  const rows = Array.isArray(page.content) ? page.content : [];
+
+  const today = isoDaysAgo(0);
+  const eventsToday = rows.filter(r => String(r.timestamp||'').slice(0,10) === today).length;
+  const fails7d     = rows.filter(r => (r.status||'') === 'FAIL').length;
+  const users7d     = new Set(rows.map(r => r.actorName||'')).size;
+
+  // Stock movements aproximamos por entity='Stock' (sirve para overview)
+  const stock7d = rows.filter(r => (r.entity||'') === 'Stock').length;
+
+  return {
+    eventsToday,
+    failures7d: fails7d,
+    stockMoves7d: stock7d,
+    uniqueActors7d: users7d
+  };
+}
+
+async function fetchAuditActionsSeries7d(){
+  // 1) Intento endpoint específico
+  const s = await fetchJson(`${API_URL_AUDIT_DASH}/actions-7d`);
+  if (s && s.labels && s.datasets) return s;
+
+  // 2) Fallback: armo series desde /audits/events
+  const {from, to} = range7d();
+  const url = `${API_URL_AUDIT_EVENTS}?from=${from}&to=${to}&size=5000&page=0`;
+  const page = await fetchJson(url) || { content:[] };
+  const rows = Array.isArray(page.content) ? page.content : [];
+
+  const days = [];
+  for(let i=6;i>=0;i--){ days.push(isoDaysAgo(i)); }
+
+  // acciones encontradas
+  const actions = Array.from(new Set(rows.map(r=>r.action||'').filter(Boolean)));
+  // base por día/acción
+  const base = {}; days.forEach(d=>{
+    base[d] = {};
+    actions.forEach(a=> base[d][a] = 0);
+  });
+  rows.forEach(r=>{
+    const d = String(r.timestamp||'').slice(0,10);
+    const a = r.action||'';
+    if (base[d] && a in base[d]) base[d][a] += 1;
+  });
+
+  const labels = days.map(d => d.slice(5));
+  const datasets = actions.map((a, i) => ({
+    label: a,
+    data: days.map(d => base[d][a]),
+  }));
+
+  return { labels, datasets };
+}
+
+async function fetchAuditTopActors7d(limit=8){
+  // 1) Intento endpoint específico
+  const list = await fetchJson(`${API_URL_AUDIT_DASH}/top-actors-7d`);
+  if (Array.isArray(list) && list.length) return list.slice(0, limit);
+
+  // 2) Fallback: agrego desde /audits/events
+  const {from, to} = range7d();
+  const url = `${API_URL_AUDIT_EVENTS}?from=${from}&to=${to}&size=5000&page=0`;
+  const page = await fetchJson(url) || { content:[] };
+  const rows = Array.isArray(page.content) ? page.content : [];
+
+  const agg = new Map();
+  rows.forEach(r=>{
+    const k = r.actorName || '—';
+    agg.set(k, (agg.get(k)||0) + 1);
+  });
+  return Array.from(agg.entries())
+    .map(([actorName,count])=>({actorName,count}))
+    .sort((a,b)=>b.count-a.count)
+    .slice(0, limit);
+}
+
+function colorCycle(i){
+  // rota tus 3 series base; Chart.js adapta el stacking
+  const s1  = getCss('--series-1');
+  const s1f = getCss('--series-1-fill');
+  const s2  = getCss('--series-2');
+  const s2f = getCss('--series-2-fill');
+  const s3  = getCss('--series-3');
+  const s3f = getCss('--series-3-fill');
+  const cols = [
+    [s1, s1f],[s2,s2f],[s3,s3f],
+    [s1, s1f],[s2,s2f],[s3,s3f],
+  ];
+  return cols[i % cols.length];
+}
+
+let chartAuditActions = null;
+let chartAuditActors  = null;
+
+function renderAuditKPIs(o){
+  $('#audEventsToday').textContent = Number(o?.eventsToday||0);
+  $('#audFails7d').textContent     = Number(o?.failures7d||0);
+  $('#audStock7d').textContent     = Number(o?.stockMoves7d||0);
+  $('#audUsers7d').textContent     = Number(o?.uniqueActors7d||0);
+
+  // drill básico
+  ['kpiAudHoy','kpiAudFails','kpiAudStock'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', ()=>{
+      const to = el.dataset.drill;
+      if (to) location.href = to;
+    });
+  });
+}
+
+function renderAuditActionsChart(series){
+  const ctx = $('#chartAuditActions7d')?.getContext('2d'); if(!ctx) return;
+  destroyChart(ctx);
+
+  const datasets = series.datasets.map((ds, i)=>{
+    const [stroke, fill] = colorCycle(i);
+    return {
+      type: 'bar',
+      label: ds.label,
+      data: ds.data,
+      borderColor: stroke,
+      backgroundColor: fill,
+      borderWidth: 1,
+      barThickness: 18,
+      stack: 'actions'
+    };
+  });
+
+  chartAuditActions = registerChart(new Chart(ctx, {
+    type: 'bar',
+    data: { labels: series.labels, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'bottom', labels:{ color:getCss('--text'), font:{ weight:'bold' } } },
+        tooltip:{ enabled:true }
+      },
+      scales:{
+        x:{ stacked:true, ticks:{ color:getCss('--text-weak'), maxRotation:0 }, grid:{ color:getCss('--grid') } },
+        y:{ stacked:true, beginAtZero:true, ticks:{ color:getCss('--text-weak') }, grid:{ color:getCss('--grid') } }
+      }
+    }
+  }));
+}
+
+function renderAuditActorsChart(list){
+  const ctx = $('#chartAuditActors7d')?.getContext('2d'); if(!ctx) return;
+  destroyChart(ctx);
+
+  const labels = list.map(x=>x.actorName || '—');
+  const data   = list.map(x=>Number(x.count||0));
+  const bar    = getCss('--bar-fill');
+  const line   = getCss('--series-1');
+
+  chartAuditActors = registerChart(new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'Eventos', data, backgroundColor:bar, borderColor:line }] },
+    options:{
+      indexAxis: 'y',
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ enabled:true }
+      },
+      scales:{
+        x:{ beginAtZero:true, ticks:{ color:getCss('--text-weak') }, grid:{ color:getCss('--grid') } },
+        y:{ ticks:{ color:getCss('--text-weak') }, grid:{ color:getCss('--grid') } }
+      }
+    }
+  }));
+}
+
+async function cargarAuditoria(){
+  try{
+    const [ov, series, topActors] = await Promise.all([
+      fetchAuditOverview7d(),
+      fetchAuditActionsSeries7d(),
+      fetchAuditTopActors7d(8)
+    ]);
+    if (ov)      renderAuditKPIs(ov);
+    if (series)  renderAuditActionsChart(series);
+    if (topActors?.length) renderAuditActorsChart(topActors);
+  }catch(e){
+    console.warn('Audit dashboard error:', e);
+  }
+}
+
+// Hook: ya cargás el resto del dashboard; acá sumamos auditoría
+window.addEventListener('DOMContentLoaded', ()=>{
+  // si no hay token, tu flujo ya redirige en otro lado
+  cargarAuditoria();
+});

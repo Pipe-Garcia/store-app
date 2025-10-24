@@ -1,3 +1,4 @@
+// src/main/java/com/appTest/store/services/StockReservationService.java
 package com.appTest.store.services;
 
 import com.appTest.store.audit.Auditable;
@@ -23,27 +24,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StockReservationService implements IStockReservationService {
 
-    @Autowired
-    private final IStockReservationRepository repoReservation;
+    @Autowired private final IStockReservationRepository repoReservation;
+    @Autowired private final IMaterialRepository         repoMaterial;
+    @Autowired private final IWarehouseRepository        repoWarehouse;
+    @Autowired private final IClientRepository           repoClient;
+    @Autowired private final IOrdersRepository           repoOrders;
+    @Autowired private final IStockService               stockService;
 
-    @Autowired
-    private final IMaterialRepository repoMaterial;
-
-    @Autowired
-    private final IWarehouseRepository repoWarehouse;
-
-    @Autowired
-    private final IClientRepository repoClient;
-
-    @Autowired
-    private final IOrdersRepository repoOrders;
-
-    @Autowired
-    private final IStockService stockService;
+    /* ===================== mappers ===================== */
 
     private StockReservationDTO toDto(StockReservation r){
-        Long orderId = (r.getOrders()!=null) ? r.getOrders().getIdOrders() : null; // ✅
-
+        Long orderId = (r.getOrders()!=null) ? r.getOrders().getIdOrders() : null;
         return new StockReservationDTO(
                 r.getIdReservation(),
                 r.getMaterial().getIdMaterial(),
@@ -52,7 +43,7 @@ public class StockReservationService implements IStockReservationService {
                 r.getWarehouse().getName(),
                 r.getClient()!=null ? r.getClient().getIdClient() : null,
                 r.getClient()!=null ? (r.getClient().getName()+" "+r.getClient().getSurname()) : null,
-                orderId,                                 // ✅ ahora sale en la respuesta
+                orderId,
                 r.getQuantity(),
                 r.getReservedAt(),
                 r.getExpiresAt(),
@@ -60,6 +51,7 @@ public class StockReservationService implements IStockReservationService {
         );
     }
 
+    /* ===================== create (bulk) ===================== */
 
     @Override
     @Transactional
@@ -76,16 +68,19 @@ public class StockReservationService implements IStockReservationService {
             Warehouse w  = repoWarehouse.findById(it.warehouseId())
                     .orElseThrow(() -> new EntityNotFoundException("Warehouse not found: " + it.warehouseId()));
 
-            // (opcional) validaciones de stock disponible…
-
             StockReservation r = new StockReservation();
-            r.setOrders(order);                      // ✅ CLAVE: vincular al pedido
-            r.setClient(order.getClient());          // útil para reportes
+            r.setOrders(order);                      // vincular al pedido
+            r.setClient(order.getClient());
             r.setMaterial(m);
             r.setWarehouse(w);
             r.setQuantity(it.quantity());
             r.setReservedAt(LocalDate.now());
             r.setStatus(ReservationStatus.ACTIVE);
+
+            // **NUEVO**: si el pedido tiene fecha estimada, usarla como vencimiento
+            if (order.getDateDelivery() != null) {
+                r.setExpiresAt(order.getDateDelivery());
+            }
 
             repoReservation.save(r);
             out.add(toDto(r));
@@ -93,6 +88,7 @@ public class StockReservationService implements IStockReservationService {
         return out;
     }
 
+    /* ===================== create (single) ===================== */
 
     @Override
     @Transactional
@@ -106,7 +102,7 @@ public class StockReservationService implements IStockReservationService {
         if (dto.getQuantity().compareTo(BigDecimal.ZERO) <= 0)
             throw new IllegalArgumentException("Quantity must be > 0");
 
-        // validar que haya stock "reservable" suficiente
+        // validar stock libre reservable
         BigDecimal free = stockService.availableForReservation(mat.getIdMaterial(), wh.getIdWarehouse());
         if (dto.getQuantity().compareTo(free) > 0)
             throw new IllegalStateException("Not enough free stock to reserve");
@@ -119,19 +115,28 @@ public class StockReservationService implements IStockReservationService {
                     .orElseThrow(() -> new EntityNotFoundException("Client not found: "+dto.getClientId()));
             r.setClient(c);
         }
+
         Orders order = null;
         if (dto.getOrderId() != null) {
             order = repoOrders.findById(dto.getOrderId())
                     .orElseThrow(() -> new EntityNotFoundException("Order not found: " + dto.getOrderId()));
         }
         r.setOrders(order);
+
         r.setQuantity(dto.getQuantity());
         r.setReservedAt(LocalDate.now());
-        r.setExpiresAt(dto.getExpiresAt());
+        r.setExpiresAt(dto.getExpiresAt()); // puede venir null
         r.setStatus(ReservationStatus.ACTIVE);
+
+        // **NUEVO**: si no vino expiresAt, heredar del pedido (si lo hay)
+        if (r.getExpiresAt() == null && order != null && order.getDateDelivery() != null) {
+            r.setExpiresAt(order.getDateDelivery());
+        }
 
         return toDto(repoReservation.save(r));
     }
+
+    /* ===================== search ===================== */
 
     @Override
     @Transactional(readOnly = true)
@@ -140,6 +145,8 @@ public class StockReservationService implements IStockReservationService {
         for (var r : repoReservation.search(clientId, orderId, status)) out.add(toDto(r));
         return out;
     }
+
+    /* ===================== cancel / expire ===================== */
 
     @Override
     @Transactional
@@ -170,16 +177,20 @@ public class StockReservationService implements IStockReservationService {
         return count;
     }
 
+    /* ===================== consume / allocate / ship ===================== */
+
     @Override
-@Transactional
-public BigDecimal consumeForSale(Long clientId, Long materialId, Long warehouseId, BigDecimal qty, Long orderId) {
+    @Transactional
+    public BigDecimal consumeForSale(Long clientId, Long materialId, Long warehouseId, BigDecimal qty, Long orderId) {
         if (qty == null || qty.signum() <= 0) return BigDecimal.ZERO;
         if (orderId == null) {
-            // fallback a la versión existente
+            // delega en la versión sin pedido
             return consumeForSale(clientId, materialId, warehouseId, qty);
         }
 
-        var bag = repoReservation.pickActiveForConsume(clientId, materialId, orderId, warehouseId);
+        // **FIX**: respetar orden de parámetros de la query (clientId, orderId, materialId, warehouseId)
+        var bag = repoReservation.pickActiveForConsume(clientId, orderId, materialId, warehouseId);
+
         BigDecimal remaining = qty;
         for (var r : bag) {
             if (remaining.signum() == 0) break;
@@ -190,7 +201,7 @@ public BigDecimal consumeForSale(Long clientId, Long materialId, Long warehouseI
                 repoReservation.save(r);
                 remaining = remaining.subtract(avail);
             } else {
-                // consumo parcial: reducción + registro CONSUMED por la parte usada
+                // consumo parcial: queda saldo ACTIVE y se registra CONSUMED por la parte utilizada
                 r.setQuantity(avail.subtract(remaining));
                 repoReservation.save(r);
 
@@ -201,36 +212,38 @@ public BigDecimal consumeForSale(Long clientId, Long materialId, Long warehouseI
                 consumed.setOrders(r.getOrders());
                 consumed.setQuantity(remaining);
                 consumed.setStatus(ReservationStatus.CONSUMED);
-                consumed.setReservedAt(java.time.LocalDate.now());
+                consumed.setReservedAt(LocalDate.now());
+                // expiresAt no corresponde en CONSUMED
                 repoReservation.save(consumed);
                 remaining = BigDecimal.ZERO;
                 break;
             }
         }
-        return qty.subtract(remaining); // lo efectivamente consumido de reservas
-}
+        return qty.subtract(remaining);
+    }
 
-@Override
-@Transactional
-public BigDecimal consumeForSale(Long clientId, Long materialId, Long warehouseId, BigDecimal qty) {
-     // delega en la otra versión (orderId = null)
-     return consumeForSale(clientId, materialId, warehouseId, qty, null);
-}
+    @Override
+    @Transactional
+    public BigDecimal consumeForSale(Long clientId, Long materialId, Long warehouseId, BigDecimal qty) {
+        // delega en la otra versión (orderId = null)
+        return consumeForSale(clientId, materialId, warehouseId, qty, null);
+    }
 
-@Override
-@Transactional
-public void recordDirectConsumption(Long clientId, Long materialId, Long warehouseId, BigDecimal qty, Long orderId){
-       if (qty==null || qty.signum()<=0) return;
-       var r = new StockReservation();
-       var c = new Client(); c.setIdClient(clientId); r.setClient(c);
-       var m = new Material(); m.setIdMaterial(materialId); r.setMaterial(m);
+    @Override
+    @Transactional
+    public void recordDirectConsumption(Long clientId, Long materialId, Long warehouseId, BigDecimal qty, Long orderId){
+        if (qty==null || qty.signum()<=0) return;
+        var r = new StockReservation();
+        var c = new Client(); c.setIdClient(clientId); r.setClient(c);
+        var m = new Material(); m.setIdMaterial(materialId); r.setMaterial(m);
         if (warehouseId != null){ var w = new Warehouse(); w.setIdWarehouse(warehouseId); r.setWarehouse(w); }
         if (orderId != null){ var o = new Orders(); o.setIdOrders(orderId); r.setOrders(o); }
-            r.setQuantity(qty);
-            r.setStatus(ReservationStatus.CONSUMED);
-            r.setReservedAt(java.time.LocalDate.now());
-            repoReservation.save(r);
-        }
+        r.setQuantity(qty);
+        r.setStatus(ReservationStatus.CONSUMED);
+        r.setReservedAt(LocalDate.now());
+        // expiresAt no aplica a CONSUMED
+        repoReservation.save(r);
+    }
 
     @Override
     @Transactional
@@ -254,7 +267,7 @@ public void recordDirectConsumption(Long clientId, Long materialId, Long warehou
                 repoReservation.save(r);
                 remaining = remaining.subtract(avail);
             } else {
-                // split: queda saldo ACTIVE y creo uno ALLOCATED por la parte usada
+                // **NUEVO** split: conservar expiresAt en el nuevo ALLOCATED
                 r.setQuantity(avail.subtract(remaining));
                 repoReservation.save(r);
 
@@ -266,6 +279,8 @@ public void recordDirectConsumption(Long clientId, Long materialId, Long warehou
                 alloc.setQuantity(remaining);
                 alloc.setReservedAt(LocalDate.now());
                 alloc.setStatus(ReservationStatus.ALLOCATED);
+                alloc.setExpiresAt(r.getExpiresAt()); // conservar vencimiento
+
                 repoReservation.save(alloc);
 
                 remaining = BigDecimal.ZERO;
@@ -290,7 +305,16 @@ public void recordDirectConsumption(Long clientId, Long materialId, Long warehou
         Client c = new Client(); c.setIdClient(clientId); r.setClient(c);
         Material m = new Material(); m.setIdMaterial(materialId); r.setMaterial(m);
         if (warehouseId != null) { Warehouse w = new Warehouse(); w.setIdWarehouse(warehouseId); r.setWarehouse(w); }
-        if (orderId != null) { Orders o = new Orders(); o.setIdOrders(orderId); r.setOrders(o); }
+
+        if (orderId != null) {
+            Orders o = repoOrders.findById(orderId)
+                    .orElseThrow(() -> new EntityNotFoundException("Order not found: " + orderId));
+            r.setOrders(o);
+            // **NUEVO**: heredar vencimiento del pedido si existe
+            if (o.getDateDelivery() != null) {
+                r.setExpiresAt(o.getDateDelivery());
+            }
+        }
 
         r.setQuantity(qty);
         r.setReservedAt(LocalDate.now());
@@ -330,15 +354,13 @@ public void recordDirectConsumption(Long clientId, Long materialId, Long warehou
                 consumed.setQuantity(remaining);
                 consumed.setReservedAt(LocalDate.now());
                 consumed.setStatus(ReservationStatus.CONSUMED);
+                // expiresAt no corresponde en CONSUMED
                 repoReservation.save(consumed);
 
                 remaining = BigDecimal.ZERO;
                 break;
             }
         }
-        return qty.subtract(remaining); // efectivamente pasado a CONSUMED
+        return qty.subtract(remaining);
     }
-
 }
-
-

@@ -135,8 +135,10 @@ function renderLista(lista){
       <div class="acciones">
         <a class="btn outline" href="detalle-compra.html?id=${c.idPurchase}">👁️ Ver</a>
         <a class="btn outline" href="editar-compra.html?id=${c.idPurchase}">✏️ Editar</a>
+        <button class="btn green" data-pdf="${c.idPurchase}">📄 PDF</button>
         <button class="btn danger" data-del="${c.idPurchase}">🗑️ Eliminar</button>
       </div>
+
     `;
     cont.appendChild(row);
   }
@@ -144,8 +146,12 @@ function renderLista(lista){
   // Delegación de eventos
   cont.onclick = (ev)=>{
     const delId = ev.target.getAttribute("data-del");
-    if (delId) borrarCompra(Number(delId));
+    if (delId) { borrarCompra(Number(delId)); return; }
+
+    const pdfId = ev.target.getAttribute("data-pdf");
+    if (pdfId) { downloadPurchasePdf(Number(pdfId)); return; }
   };
+
 }
 
 // ========= Acciones =========
@@ -163,5 +169,30 @@ async function borrarCompra(id){
   }catch(e){
     console.error(e);
     notify("No se pudo eliminar la compra","error");
+  }
+}
+
+
+async function downloadPurchasePdf(id){
+  try{
+    const r = await authFetch(`${API_URL_PURCHASES}/${id}/pdf`, { method:"GET" });
+    if(!r.ok){
+      if (r.status===401 || r.status===403){
+        notify("Sesión inválida o sin permisos.","error"); return;
+      }
+      throw new Error(`HTTP ${r.status}`);
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `compra-${id}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    console.error(e);
+    notify("No se pudo descargar el PDF","error");
   }
 }

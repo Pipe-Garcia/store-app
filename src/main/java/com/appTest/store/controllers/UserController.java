@@ -36,4 +36,29 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasRole('ROLE_OWNER')")
+    @PostMapping
+    public ResponseEntity<User> create(@RequestBody User user){
+        return ResponseEntity.ok(servUser.save(user));
+    }
+
+    @PreAuthorize("hasRole('ROLE_OWNER')")
+    @PatchMapping("/{id}")
+    public ResponseEntity<User> update(@PathVariable Long id, @RequestBody User partial){
+        var opt = servUser.getById(id);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+        var u = opt.get();
+        if (partial.getRole()!=null) u.setRole(partial.getRole());
+        if (partial.getName()!=null) u.setName(partial.getName());
+        if (partial.getLastName()!=null) u.setLastName(partial.getLastName());
+        if (partial.getEmail()!=null) u.setEmail(partial.getEmail());
+        if (partial.getPhone()!=null) u.setPhone(partial.getPhone());
+        // reset pass si viene no vacío
+        if (partial.getPassword()!=null && !partial.getPassword().isBlank()){
+            u.setPassword(partial.getPassword());
+        }
+        u.setEnabled(partial.isEnabled());
+        return ResponseEntity.ok(servUser.save(u));
+    }
+
 }

@@ -1,45 +1,131 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Login - Store App</title>
-    <link rel="stylesheet" href="../files-css/login.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ingresar | Store</title>
+  <link rel="stylesheet" href="../files-css/login.css"/>
 </head>
-<body>
-<div class="login-container">
-    <h2>Login</h2>
-    <div>
-        <p>Username:</p>
-        <input type="text" id="username" placeholder="Username" required>
-    </div>
-    <div>
-        <p>Password:</p>
-        <input type="password" id="password" placeholder = "Password" required>
-    </div>
-    <button onclick="login()">Ingresar</button>
-    <p id="message"></p>
-</div>
+<body class="login-body">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <header class="auth-head">
+        <div class="brand">
+          <div class="logo">🛒</div>
+          <h1>Store</h1>
+        </div>
+        <h2>Bienvenido</h2>
+        <p class="muted">Ingresá con tu usuario y contraseña</p>
+      </header>
 
-<script>
-    async function login() {
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        const message = document.getElementById('message');
+      <form class="auth-form" id="loginForm" novalidate>
+        <label class="field">
+          <span>Usuario</span>
+          <input id="username" name="username" type="text" autocomplete="username" required autofocus />
+        </label>
 
-        const response = await fetch('http://localhost:8080/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+        <label class="field">
+          <span>Contraseña</span>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+        </label>
+
+        <div class="row between">
+          <label class="check">
+            <input id="remember" type="checkbox" checked />
+            <span>Recordarme</span>
+          </label>
+        </div>
+
+        <button id="btnLogin" type="submit" class="btn primary">
+          <span class="btn-text">Ingresar</span>
+          <span class="spinner" aria-hidden="true"></span>
+        </button>
+
+        <p id="message" class="msg" role="alert" aria-live="polite"></p>
+      </form>
+
+      <footer class="auth-foot muted">
+        <small>© <span id="y"></span> Store — Todos los derechos reservados</small>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    const API_LOGIN = 'http://localhost:8080/auth/login';
+    const API_ME    = 'http://localhost:8080/auth/me'; // si no existe, igual funcionamos (no redirigimos)
+
+    const $ = s => document.querySelector(s);
+    const msg = $('#message');
+    const btn = $('#btnLogin');
+
+    function setLoading(on){
+      btn.disabled = on;
+      btn.classList.toggle('loading', on);
+    }
+
+    function clearAllTokens(){
+      ['token','accessToken'].forEach(k=>{
+        localStorage.removeItem(k); sessionStorage.removeItem(k);
+      });
+    }
+    function saveToken(token, remember){
+      (remember ? localStorage : sessionStorage).setItem('token', token);
+      // compat: guardo también accessToken
+      if (remember) localStorage.setItem('accessToken', token);
+      else sessionStorage.setItem('accessToken', token);
+    }
+    function getAnyToken(){
+      return localStorage.getItem('token') || sessionStorage.getItem('token') ||
+             localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    }
+
+    // Redirigí sólo si el backend confirma el token
+    (async function maybeRedirect(){
+      const t = getAnyToken();
+      if (!t) return;
+      try{
+        const r = await fetch(API_ME, { headers:{ 'Authorization': `Bearer ${t}` }});
+        if (r.ok) {
+          location.href = 'index.html';
+        } else {
+          clearAllTokens(); // token colgado/expirado/404 -> me quedo en login
+        }
+      }catch(_){
+        clearAllTokens();
+      }
+    })();
+
+    $('#y').textContent = new Date().getFullYear();
+
+    $('#loginForm').addEventListener('submit', async (ev)=>{
+      ev.preventDefault();
+      msg.textContent = '';
+      setLoading(true);
+      try{
+        const username = $('#username').value.trim();
+        const password = $('#password').value;
+        const remember = $('#remember').checked;
+
+        const r = await fetch(API_LOGIN, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ username, password })
         });
 
-        if (response.ok) {
-            const data = await response.json();
-            localStorage.setItem('token', data.token); // Guardar token
-            window.location.href = 'index.html'; // Redirigir a la página principal
+        const data = await r.json().catch(()=>null);
+        if (r.ok && data?.token){
+          saveToken(data.token, remember);
+          location.href = 'index.html';
         } else {
-            message.textContent = 'Invalid credentials';
+          const txt = (data?.token === 'Invalid credentials') ? 'Usuario o contraseña inválidos.' : 'No se pudo iniciar sesión.';
+          msg.textContent = txt;
         }
-    }
-</script>
+      } catch(e){
+        msg.textContent = 'Error de red. Intentá nuevamente.';
+      } finally{
+        setLoading(false);
+      }
+    });
+  </script>
 </body>
 </html>

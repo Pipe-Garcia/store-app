@@ -37,6 +37,9 @@ public class SecurityConfig {
                         // ⟵ habilitar reservas
                         .requestMatchers("/stock-reservations/**").hasAnyRole("EMPLOYEE","OWNER")
                         .requestMatchers("/reservations/**").hasAnyRole("EMPLOYEE","OWNER")
+                        .requestMatchers("/audits/**").hasAnyRole("EMPLOYEE","OWNER")
+                        .requestMatchers("/stock-movements/**").hasAnyRole("EMPLOYEE","OWNER")
+
 
                         .anyRequest().authenticated()
                 )

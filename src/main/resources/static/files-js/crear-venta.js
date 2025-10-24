@@ -22,6 +22,11 @@ function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); locatio
 function todayStr(){ const d=new Date(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${d.getFullYear()}-${m}-${day}`; }
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 const sleep = (ms)=> new Promise(r=>setTimeout(r,ms));
+function maybeSetDefaultPaymentDate(){
+  const pf = $('#pagoFecha');
+  if (pf && !pf.value) pf.value = todayStr();
+}
+
 
 /* ===== Estado ===== */
 let materials=[], warehouses=[], clients=[];
@@ -36,7 +41,10 @@ window.addEventListener('DOMContentLoaded', init);
 async function init(){
   if(!getToken()){ go('login.html'); return; }
   $('#fecha').value = todayStr();
-  $('#pagoFecha').value = todayStr();
+  // autocompletar la fecha de pago SOLO si el usuario interactúa
+  $('#pagoImporte')?.addEventListener('input',  maybeSetDefaultPaymentDate);
+  $('#pagoMetodo') ?.addEventListener('change', maybeSetDefaultPaymentDate);
+  $('#pagoFecha')  ?.addEventListener('focus',  maybeSetDefaultPaymentDate);
 
   const [rM, rW, rC] = await Promise.all([
     authFetch(API_URL_MATERIALS),
@@ -423,9 +431,10 @@ async function guardar(e){
   e.preventDefault();
 
   const date = $('#fecha').value;
-  const clientId = lockedClientId ?? Number($('#cliente').value || 0); // 👈 usa el lock si existe
+  const clientId = lockedClientId ?? Number($('#cliente').value || 0);
   if (!date || !clientId) { notify('Fecha y cliente son obligatorios','error'); return; }
 
+  // ===== Items =====
   const rows = Array.from(document.querySelectorAll('#items .fila')).filter(r=>!r.classList.contains('encabezado'));
   rows.forEach(r=> r.classList.remove('row-error'));
 
@@ -440,31 +449,64 @@ async function guardar(e){
     const warehouseId = Number(whEl.value  || 0);
     const quantity    = Number(qtyEl.value || 0);
 
-    if (materialId && warehouseId && quantity>0) items.push({ materialId, warehouseId, quantity });
-    else row.classList.add('row-error');
+    if (materialId && warehouseId && quantity>0) {
+      items.push({ materialId, warehouseId, quantity });
+    } else {
+      row.classList.add('row-error');
+    }
   }
-  if(!items.length){ notify('Agregá al menos un ítem válido (material, depósito y cantidad > 0)','error'); return; }
+  if(!items.length){
+    notify('Agregá al menos un ítem válido (material, depósito y cantidad > 0)','error');
+    return;
+  }
 
-  const payment = (() => {
-    const amount = Number($('#pagoImporte').value || 0);
-    const method = $('#pagoMetodo').value;
-    const f      = $('#pagoFecha').value || date;
-    if (amount>0 && method) return { amount, methodPayment: method, datePayment: f };
-    return null;
-  })();
+  // ===== Pago opcional: todo o nada =====
+  const $imp = $('#pagoImporte');
+  const $fec = $('#pagoFecha');
+  const $met = $('#pagoMetodo');
 
+  const amount = Number($imp.value || 0);
+  const method = ($met.value || '').trim();
+  const pdate  = $fec.value;
+
+  const anyFilled = (amount > 0) || !!method || !!pdate;
+
+  let payment = null;
+  // limpiamos estados previos
+  [$imp,$fec,$met].forEach(n => n.classList.remove('field-error'));
+
+  if (anyFilled){
+    // exigir los 3 campos
+    let ok = true;
+    if (!(amount > 0)) { ok = false; $imp.classList.add('field-error'); }
+    if (!method)       { ok = false; $met.classList.add('field-error'); }
+    if (!pdate)        { ok = false; $fec.classList.add('field-error'); }
+
+    if (!ok){
+      notify('Si cargás un pago inicial: importe (>0), fecha y método son obligatorios.','error');
+      return;
+    }
+    payment = { amount, methodPayment: method, datePayment: pdate };
+  }
+
+  // ===== Armar payload y enviar =====
   const orderIdSel = Number(($('#orderSelect')?.value)||0) || null;
   const payload = { dateSale: date, clientId, materials: items, payment, orderId: orderIdSel };
 
   try{
     const res = await authFetch(API_URL_SALES, { method:'POST', body: JSON.stringify(payload) });
-    if(!res.ok){ const t=await res.text().catch(()=> ''); console.warn('POST /sales', res.status, t); throw new Error(`HTTP ${res.status}`); }
+    if(!res.ok){
+      const t = await res.text().catch(()=> '');
+      console.warn('POST /sales', res.status, t);
+      throw new Error(`HTTP ${res.status}`);
+    }
     const dto = await res.json();
     notify('Venta creada','success');
     setTimeout(()=> go(`ver-venta.html?id=${dto.idSale}`), 350);
   }catch(err){
     console.error(err);
-    notify('No se pudo crear la venta','error');
+    notify('No se pudo crear la venta (revisá los campos resaltados o el pago).','error');
   }
 }
+
 /* ===== Fin ===== */

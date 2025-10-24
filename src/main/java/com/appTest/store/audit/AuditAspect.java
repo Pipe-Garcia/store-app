@@ -1,3 +1,4 @@
+// com/appTest/store/audit/AuditAspect.java
 package com.appTest.store.audit;
 
 import com.appTest.store.services.AuditService;
@@ -12,13 +13,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.List;
 
-/**
- * Aspecto de auditoría:
- * - Lee @Auditable(action, entity, idParam)
- * - Soporta idParam con "ruta" (p.ej. "dto.idStock" o "cmd.order.id")
- * - Registra SUCCESS al commit y FAIL inmediato en excepción
- */
 @Aspect
 @Component
 @RequiredArgsConstructor
@@ -32,26 +28,34 @@ public class AuditAspect {
         Method method = sig.getMethod();
         Auditable meta = method.getAnnotation(Auditable.class);
 
-        // Resolver entityId si se especificó un parámetro por nombre/ruta
+        // 1) Intentar sacar el ID desde los parámetros
         Long entityId = extractId(sig, pjp.getArgs(), meta.idParam());
 
-        final Long   eid    = entityId;
         final String action = meta.action();
         final String entity = meta.entity();
 
         try {
             Object ret = pjp.proceed();
-            // SUCCESS: al commit (no impacta la transacción del caso de uso)
+
+            // 2) Si no lo teníamos, intentar leer el ID del valor devuelto por el método (para CREATE)
+            if (entityId == null && ret != null) {
+                entityId = tryReadIdFromReturn(ret);
+            }
+
+            final Long eid = entityId; // capturar variable efectivamente final
+
+            // Registrar SUCCESS al commit
             onTxCommit(() -> audit.success(action, entity, eid, "OK"));
             return ret;
+
         } catch (Throwable ex) {
-            // FAIL: registrar ya (si hay rollback, afterCommit no corre)
-            audit.fail(action, entity, eid, ex.getMessage());
+            // Registrar FAIL inmediato (por si hay rollback)
+            audit.fail(action, entity, entityId, ex.getMessage());
             throw ex;
         }
     }
 
-    /* ===================== helpers ===================== */
+    /* ================= helpers ================= */
 
     private void onTxCommit(Runnable r){
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -59,17 +63,10 @@ public class AuditAspect {
                 @Override public void afterCommit() { r.run(); }
             });
         } else {
-            // fuera de TX
             r.run();
         }
     }
 
-    /**
-     * Extrae el ID según idParam:
-     *  - ""  -> null (no se especificó)
-     *  - "id" -> busca parámetro llamado "id"
-     *  - "dto.idStock" -> toma el parámetro "dto" y navega "idStock"
-     */
     private Long extractId(MethodSignature sig, Object[] args, String idParam){
         if (idParam == null || idParam.isBlank()) return null;
 
@@ -83,10 +80,8 @@ public class AuditAspect {
             if (!paramName.equals(paramNames[i])) continue;
 
             Object value = args[i];
-            // si no hay ruta (solo "id"), convertí directo
             if (parts.length == 1) return toLong(value);
 
-            // hay ruta: navegar propiedades
             Object current = value;
             for (int p = 1; p < parts.length && current != null; p++) {
                 current = readPath(current, parts[p]);
@@ -96,29 +91,42 @@ public class AuditAspect {
         return null;
     }
 
-    /**
-     * Lee una propiedad por nombre tratando getters primero y luego campo.
-     * Soporta "idStock" => getIdStock() / isIdStock() / campo "idStock".
-     */
+    /** Intenta leer un ID de un retorno típico de servicio/repositorio tras el save() */
+    private Long tryReadIdFromReturn(Object ret){
+        // candidatos comunes (agregá más si hace falta)
+        List<String> names = List.of(
+                "id",
+                "idOrder","orderId",
+                "idSale","saleId",
+                "idDelivery","deliveryId",
+                "idStock","stockId",
+                "idReservation","idStockReservation","stockReservationId"
+        );
+        for (String n : names) {
+            Object v = readPath(ret, n);
+            Long l = toLong(v);
+            if (l != null) return l;
+        }
+        return null;
+    }
+
+    /** Lee una propiedad por nombre probando getter y luego campo */
     private Object readPath(Object target, String prop){
         if (target == null || prop == null) return null;
         Class<?> c = target.getClass();
         String cap = prop.substring(0,1).toUpperCase() + prop.substring(1);
 
-        // getter getXxx()
-        try {
+        try { // getXxx()
             Method m = c.getMethod("get" + cap);
             return m.invoke(target);
         } catch (Exception ignored) {}
 
-        // getter boolean isXxx()
-        try {
+        try { // isXxx()
             Method m = c.getMethod("is" + cap);
             return m.invoke(target);
         } catch (Exception ignored) {}
 
-        // acceso directo a campo
-        try {
+        try { // campo
             Field f = c.getDeclaredField(prop);
             f.setAccessible(true);
             return f.get(target);
@@ -138,5 +146,3 @@ public class AuditAspect {
         return null;
     }
 }
-
-

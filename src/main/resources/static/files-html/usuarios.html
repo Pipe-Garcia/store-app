@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>👤 Usuarios | Store</title>
+
+  <!-- Evitar parpadeo mientras decidimos -->
+  <style>html{visibility:hidden}</style>
+
+  <!-- Guard temprano, ahora con fallback a /auth/me -->
+  <script>
+  (function(){
+    const API_ME = 'http://localhost:8080/auth/me';
+
+    // tokens
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token') ||
+                  localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+
+    const show = ()=>{ document.documentElement.style.visibility='visible'; };
+    const go = (p)=>{ location.replace(p); };
+
+    if (!token) { go('login.html'); return; }
+
+    // helpers JWT
+    function b64u(s){ try { return atob(s.replace(/-/g,'+').replace(/_/g,'/')); } catch(_) { return ''; } }
+    function parseJwt(tok){
+      try{
+        const p = tok.split('.')[1] || '';
+        const json = decodeURIComponent(Array.prototype.map.call(b64u(p), c =>
+          '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)
+        ).join(''));
+        return JSON.parse(json);
+      }catch(_){ return {}; }
+    }
+    function hasOwnerRole(obj){
+      const set = new Set();
+      const add = v => v && set.add(String(v).toUpperCase());
+      const many = a => Array.isArray(a) && a.forEach(x => add(typeof x==='string'?x:(x&&x.authority)));
+      many(obj.roles); many(obj.role); many(obj.authorities);
+      if (typeof obj.scope==='string') obj.scope.split(/\s+/).forEach(add);
+      return set.has('ROLE_OWNER') || set.has('OWNER');
+    }
+
+    // 1) si el JWT ya trae OWNER, dejar pasar
+    const payload = parseJwt(token);
+    if (hasOwnerRole(payload)) { show(); return; }
+
+    // 2) si el JWT no trae rol, consultar /auth/me
+    fetch(API_ME, { headers:{ 'Authorization':'Bearer '+token }})
+      .then(r => r.ok ? r.json() : null)
+      .then(me => {
+        const role = ((me && me.role) || '').toString().toUpperCase();
+        if (role === 'ROLE_OWNER' || role === 'OWNER') { show(); }
+        else { go('index.html'); }
+      })
+      .catch(() => {
+        // Si no pudimos verificar, por seguridad no dejamos entrar
+        go('index.html');
+      });
+  })();
+  </script>
+
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/dashboard.css"/>
+  <link rel="stylesheet" href="../files-css/usuarios.css"/>
+  <link rel="stylesheet" href="../files-css/nav.css"/>
+</head>
+<body>
+  <div id="app-header"></div>
+  <main class="wrap">
+    <h1>Administración de usuarios</h1>
+    <p class="muted">Sólo disponible para <b>OWNER</b>.</p>
+
+    <section class="grid">
+      <section class="card">
+        <div class="card-head"><h3>Nuevo usuario</h3></div>
+        <form id="fNew">
+          <input name="username" placeholder="Usuario" required />
+          <input name="email" placeholder="Email" type="email" />
+          <input name="name" placeholder="Nombre" />
+          <input name="lastName" placeholder="Apellido" />
+          <input name="phone" placeholder="Teléfono" />
+          <select name="role" required>
+            <option value="ROLE_EMPLOYEE">Empleado</option>
+            <option value="ROLE_OWNER">Owner</option>
+          </select>
+          <input class="full" name="password" type="password" placeholder="Contraseña" required />
+          <button class="btn">Crear</button>
+        </form>
+        <p id="nMsg" class="muted"></p>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h3>Reset de contraseña</h3></div>
+        <form id="fReset">
+          <input name="userId" placeholder="ID de usuario" required />
+          <input name="password" type="password" placeholder="Nueva contraseña" required />
+          <button class="btn">Actualizar</button>
+        </form>
+        <p id="rMsg" class="muted"></p>
+      </section>
+    </section>
+
+    <section class="card" style="margin-top:16px;">
+      <div class="card-head">
+        <h3>Usuarios</h3>
+        <button id="btnReload" class="btn outline">Recargar</button>
+      </div>
+      <div class="tabla compact" id="tbl">
+        <div class="fila encabezado">
+          <div>Usuario</div><div>Nombre</div><div>Email</div><div>Rol</div><div>Activo</div><div>Acciones</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../files-js/header.js"></script>
+  <script>
+    const API_USERS = 'http://localhost:8080/users';
+    const token = localStorage.getItem('token')||sessionStorage.getItem('token')||
+                  localStorage.getItem('accessToken')||sessionStorage.getItem('accessToken');
+    if(!token){ location.href='login.html'; }
+    function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{ 'Authorization':`Bearer ${token}`,'Content-Type':'application/json', ...(opts.headers||{}) }}); }
+    const $ = s=>document.querySelector(s);
+
+    async function load(){
+      const r = await authFetch(API_USERS);
+      if(!r.ok){ alert('No autorizado'); location.href='index.html'; return; }
+      const list = await r.json();
+      render(list);
+    }
+
+    function render(list){
+      const host = $('#tbl');
+      host.querySelectorAll('.filaUsr').forEach(n=>n.remove());
+      list.forEach(u=>{
+        const row=document.createElement('div');
+        row.className='fila filaUsr';
+        row.innerHTML=`
+          <div>${u.username}</div>
+          <div>${(u.name||'')+' '+(u.lastName||'')}</div>
+          <div>${u.email||''}</div>
+          <div>
+            <span class="pill role ${u.role==='ROLE_OWNER' ? 'owner' : ''}">
+                ${(u.role||'').replace('ROLE_','')}
+            </span>
+          </div>
+          <div>${u.enabled? '✔️' : '❌'}</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn outline" data-act="role" data-id="${u.id}" data-role="${u.role==='ROLE_OWNER'?'ROLE_EMPLOYEE':'ROLE_OWNER'}">${u.role==='ROLE_OWNER'?'Hacer Empleado':'Hacer Owner'}</button>
+            <button class="btn outline" data-act="toggle" data-id="${u.id}">${u.enabled?'Desactivar':'Activar'}</button>
+            <button class="btn outline" data-act="reset" data-id="${u.id}">Reset pass</button>
+            <button class="btn outline" data-act="del" data-id="${u.id}">Eliminar</button>
+          </div>
+        `;
+        host.appendChild(row);
+      });
+
+      host.onclick = async (ev)=>{
+        const btn = ev.target.closest('button[data-act]'); if(!btn) return;
+        const id = btn.dataset.id;
+        const act= btn.dataset.act;
+        if (act==='del'){
+          if(!confirm('¿Eliminar usuario?')) return;
+          const r = await authFetch(`${API_USERS}/${id}`,{ method:'DELETE' });
+          if (r.ok) load(); else alert('Error al eliminar');
+        } else if (act==='toggle'){
+          const enabled = btn.textContent==='Activar';
+          const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ enabled }) });
+          if (r.ok) load(); else alert('Error al actualizar');
+        } else if (act==='role'){
+          const role = btn.dataset.role;
+          const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ role }) });
+          if (r.ok) load(); else alert('Error al actualizar rol');
+        } else if (act==='reset'){
+          const pwd = prompt('Nueva contraseña:'); if(!pwd) return;
+          const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ password: pwd }) });
+          if (r.ok) alert('Contraseña actualizada'); else alert('Error al actualizar');
+        }
+      };
+    }
+
+    $('#fNew').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const body = JSON.stringify(Object.fromEntries(fd.entries()));
+      const r = await authFetch(API_USERS,{ method:'POST', body });
+      $('#nMsg').textContent = r.ok ? 'Usuario creado' : 'No se pudo crear';
+      if (r.ok) { e.target.reset(); load(); }
+    });
+
+    $('#fReset').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const id = fd.get('userId');
+      const pwd= fd.get('password');
+      const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ password: pwd }) });
+      $('#rMsg').textContent = r.ok ? 'Contraseña actualizada' : 'No se pudo actualizar';
+      if (r.ok) e.target.reset();
+    });
+
+    $('#btnReload').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

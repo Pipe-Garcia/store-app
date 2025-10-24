@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>📦 | Histórico de Stock</title>
+  <link rel="stylesheet" href="../files-css/style.css">
+  <link rel="stylesheet" href="../files-css/nav.css">
+  <link rel="stylesheet" href="../files-css/auditoria.css">
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <div class="page">
+    <h1>Histórico de Stock</h1>
+
+    <div class="filters card">
+      <label>Desde
+        <input type="date" id="f-desde">
+      </label>
+      <label>Hasta
+        <input type="date" id="f-hasta">
+      </label>
+      <label>Material ID
+        <input type="number" id="f-mat" min="1" step="1">
+      </label>
+      <label>Depósito ID
+        <input type="number" id="f-wh" min="1" step="1">
+      </label>
+      <label>Motivo
+        <select id="f-reason">
+          <option value="">(todos)</option>
+          <option>SALE</option>
+          <option>DELIVERY</option>
+          <option>RESERVATION</option>
+          <option>ADJUST</option>
+        </select>
+      </label>
+      <label>Usuario
+        <input type="text" id="f-user" placeholder="Ej: admin">
+      </label>
+      <label>Tamaño pág.
+        <select id="f-size"><option>50</option><option>100</option></select>
+      </label>
+      <button class="btn primary" id="btn-aplicar">Aplicar</button>
+      <button class="btn" id="btn-limpiar">Limpiar</button>
+    </div>
+
+    <div class="card">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Fecha/Hora</th>
+            <th>Material</th>
+            <th>Depósito</th>
+            <th class="text-right">De</th>
+            <th class="text-right">A</th>
+            <th>Cambio</th>
+            <th>Motivo</th>
+            <th>Origen</th>
+            <th>Usuario</th>
+            <th>Nota</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <div class="pager">
+        <div class="info" id="pg-info"></div>
+        <button class="btn" id="pg-prev">« Anterior</button>
+        <button class="btn" id="pg-next">Siguiente »</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../files-js/header.js" type="module"></script>
+  <script src="../files-js/stock-movimientos.js" type="module"></script>
+</body>
+</html>
