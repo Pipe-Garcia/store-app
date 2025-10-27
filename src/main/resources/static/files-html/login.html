@@ -29,13 +29,13 @@
           <input id="password" name="password" type="password" autocomplete="current-password" required />
         </label>
 
-        <div class="row between">
+        
+        <div class="row between" style="display:none">
           <label class="check">
-            <input id="remember" type="checkbox" checked />
-            <span>Recordarme</span>
+            <input id="remember" type="checkbox" checked disabled aria-hidden="true" tabindex="-1" />
           </label>
         </div>
-
+ 
         <button id="btnLogin" type="submit" class="btn primary">
           <span class="btn-text">Ingresar</span>
           <span class="spinner" aria-hidden="true"></span>
@@ -104,7 +104,7 @@
       try{
         const username = $('#username').value.trim();
         const password = $('#password').value;
-        const remember = $('#remember').checked;
+        const remember = true; // fuerza persistencia del token
 
         const r = await fetch(API_LOGIN, {
           method:'POST',

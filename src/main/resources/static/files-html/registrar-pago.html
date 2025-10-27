@@ -3,67 +3,85 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>📈 - Registrar pago</title>
+  <title>📈 Registrar pago</title>
+
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/ventas.css"/>
+  <link rel="stylesheet" href="../files-css/nav.css"/>
+  <link rel="stylesheet" href="../files-css/registrar-pago2.css"/>
 </head>
 <body>
-<header class="header">
-  <nav class="nav-header">
-    <img src="" alt="logo"/>
-    <ul class="ul-header">
-      <li><a href="../files-html/index.html">Inicio</a></li>
-      <li><a href="../files-html/materiales.html">Materiales</a></li>
-      <li><a class="active" href="../files-html/ventas.html">Ventas</a></li>
-      <li><a href="../files-html/clientes.html">Clientes</a></li>
-      <li><a href="../files-html/pedidos.html">Pedidos</a></li>
-      <li><a href="../files-html/entregas.html">Entregas</a></li>
-    </ul>
-  </nav>
-</header>
+  <div id="app-header"></div>
 
-<main class="page form-page">
-  <div class="page-head">
-    <h1>Registrar pago</h1>
-    <a id="btnVolver" class="btn outline">Volver</a>
-  </div>
+  <main class="page">
+    <div class="page-head">
+      <h1>Registrar pago</h1>
+      <a id="btnVolver" class="btn outline">Volver</a>
+    </div>
 
-  <section class="card pago">
-    <form id="form-pago" class="grid pago" autocomplete="off">
-      <div class="col-span-2">
-        <label>Venta</label>
-        <input id="saleInfo" type="text" disabled value="—"/>
-      </div>
+    <div class="grid-2">
+      <!-- Resumen -->
+      <section class="card">
+        <div class="card-head"><h3>Resumen de la venta</h3></div>
+        <div class="summary">
+          <div class="pill-kpi">
+            <small>Total</small>
+            <strong id="kpiTotal">—</strong>
+          </div>
+          <div class="pill-kpi">
+            <small>Pagado</small>
+            <strong id="kpiPaid">—</strong>
+          </div>
+          <div class="pill-kpi">
+            <small>Saldo</small>
+            <strong id="kpiBalance">—</strong>
+          </div>
+        </div>
+        <p class="hint" id="saleInfo">—</p>
+      </section>
 
-      <div>
-        <label>Fecha</label>
-        <input id="fecha" type="date" required/>
-      </div>
+      <!-- Formulario -->
+      <section class="card">
+        <div class="card-head"><h3>Nuevo pago</h3></div>
 
-      <div>
-        <label>Importe</label>
-        <input id="importe" type="number" step="0.01" min="0.01" placeholder="0.00" required/>
-      </div>
+        <form id="form-pago" class="form-grid" autocomplete="off">
+          <label>
+            <span>Fecha</span>
+            <input id="fecha" type="date" required/>
+          </label>
 
-      <div class="col-span-2">
-        <label>Método de pago</label>
-        <select id="metodo" required>
-          <option value="">Seleccionar…</option>
-          <option value="CASH">Efectivo</option>
-          <option value="TRANSFER">Transferencia</option>
-          <option value="CARD">Tarjeta</option>
-          <option value="OTHER">Otro</option>
-        </select>
-      </div>
+          <label>
+            <span>Método de pago</span>
+            <select id="metodo" required>
+              <option value="">Seleccionar…</option>
+              <option value="CASH">Efectivo</option>
+              <option value="TRANSFER">Transferencia</option>
+              <option value="CARD">Tarjeta</option>
+              <option value="OTHER">Otro</option>
+            </select>
+          </label>
 
-      <div class="form-actions col-span-2">
-        <button class="btn green" type="submit">Guardar pago</button>
-        <button class="btn outline" type="button" id="btnCancelar">Cancelar</button>
-      </div>
-    </form>
-  </section>
-</main>
+          <div class="full">
+            <label>
+              <span>Importe</span>
+              <div class="input-addon">
+                <input id="importe" type="number" step="0.01" min="0.01" placeholder="0.00" required/>
+              </div>
+            </label>
+          </div>
 
-<script src="../files-js/registrar-pago.js"></script>
+          <div class="full actions" style="margin-top:6px;">
+            <button class="btn green" type="submit" id="btnGuardar">Guardar pago</button>
+            <button class="btn outline" type="button" id="btnCancelar">Cancelar</button>
+          </div>
+
+          <p id="msg" class="hint full"></p>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <script src="../files-js/header.js"></script>
+  <script src="../files-js/registrar-pago.js"></script>
 </body>
 </html>

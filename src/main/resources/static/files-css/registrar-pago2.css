@@ -1,0 +1,75 @@
+/* registrar-pago.css — estilos específicos de esta pantalla */
+
+.page { max-width: 1200px; }
+
+.grid-2 {
+  display: grid;
+  gap: var(--gap,16px);
+}
+@media (max-width: 900px){
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.pill-kpi{
+  display:flex; flex-direction:column; gap:4px;
+  border:1px solid var(--grid); border-radius:12px;
+  padding:10px; background:var(--card);
+}
+.pill-kpi small{ color:var(--text-weak); }
+.pill-kpi strong{ font-size:1.05rem; }
+
+.form-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+.form-grid .full{ grid-column: 1 / -1; }
+
+
+.actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; }
+.hint{ color:var(--muted); font-size:.9rem; }
+
+section.card {
+    background: color-mix(in oklab, var(--card) 96%, transparent);
+    border: 1px solid var(--grid);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+}
+section.card h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+section.card label {
+    font-weight: 600;
+} 
+section.card input,
+section.card select {
+    border: 1px solid var(--grid);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    outline: none;
+    font-size: 1rem;
+}
+.input-addon {
+    border-radius: 10px;
+    border: none;
+    outline: none;
+}
+section.card label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
