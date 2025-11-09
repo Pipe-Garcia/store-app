@@ -1,13 +1,11 @@
-const API_URL_DELIVERIES = 'http://localhost:8080/deliveries';
+// /static/files-js/editar-entrega.js
+// Edición tolerante de entrega. Trae /deliveries/{id}/detail y permite ajustar cantidades entregadas, fecha y estado.
+const { authFetch, safeJson, getToken } = window.api;
+const API_URL_DELIVERIES = '/deliveries';
 
 const $ = (s,r=document)=>r.querySelector(s);
+const money = (n)=> (Number(n||0)).toLocaleString('es-AR',{minimumFractionDigits:2, maximumFractionDigits:2});
 
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t=getToken();
-  return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
-}
-function authFetch(url, opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 function notify(msg,type='info'){
   const div=document.createElement('div');
   div.className=`notification ${type}`;
@@ -21,7 +19,6 @@ function todayStr(){
 }
 
 let deliveryId = null;
-let orderId    = null;
 
 window.addEventListener('DOMContentLoaded', init);
 
@@ -32,28 +29,27 @@ async function init(){
   if(!deliveryId){ notify('ID de entrega no especificado','error'); location.href='entregas.html'; return; }
 
   try{
-    // Traer detalle completo de la entrega
+    // Detalle enriquecido
     const res = await authFetch(`${API_URL_DELIVERIES}/${deliveryId}/detail`);
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const d = await res.json();
+    const d = await safeJson(res);
 
-    orderId = d.ordersId;
-    $('#pedidoLabel').textContent = `#${d.idDelivery} — Pedido #${orderId} — ${d.clientName ?? ''}`;
+    const orderId = d.ordersId ?? d.orderId;
+    $('#pedidoLabel').textContent = `#${d.idDelivery} — Pedido #${orderId ?? '—'} — ${d.clientName ?? ''}`;
     $('#fecha').value = (d.deliveryDate ?? todayStr());
-    $('#estado').value = d.status ?? 'PENDING';
+    $('#estado').value = (d.status ?? 'PENDING').toUpperCase();
 
     // Render filas usando d.items
     const cont = $('#items'); cont.innerHTML='';
-    
     (d.items || []).forEach(it=>{
       const name = it.materialName || '—';
-      const qOrd = Number(it.quantityOrdered || 0);
-      const qDel = Number(it.quantityDelivered || 0);
+      const qOrd = Number(it.quantityOrdered || it.orderedQty || 0);
+      const qDel = Number(it.quantityDelivered || it.deliveredQty || 0);
 
       const row = document.createElement('div');
       row.className='fila';
       row.style.gridTemplateColumns='2fr .8fr .8fr';
-      row.dataset.deliveryItemId = it.idDeliveryItem || '';
+      row.dataset.deliveryItemId = it.idDeliveryItem || it.id || '';
       row.dataset.orderDetailId  = it.orderDetailId || '';
       row.dataset.materialId     = it.materialId || '';
       row.dataset.warehouseId    = it.warehouseId || '';
@@ -61,12 +57,11 @@ async function init(){
       row.innerHTML = `
         <div>${name}</div>
         <div>${qOrd}</div>
-        <div><input class="qty" type="number" min="0" step="1" value="${Number(qDel)}" style="width:100%; padding:6px 8px;"/></div>
+        <div><input class="qty" type="number" min="0" step="1" value="${qDel}" style="width:100%; padding:6px 8px;"/></div>
       `;
       cont.appendChild(row);
     });
 
-    // Submit
     $('#form-editar').addEventListener('submit', guardarCambios);
   }catch(err){
     console.error(err);
@@ -79,7 +74,7 @@ async function guardarCambios(ev){
   ev.preventDefault();
 
   const fecha  = $('#fecha').value;
-  const estado = $('#estado').value || 'PENDING';
+  const estado = ($('#estado').value || 'PENDING').toUpperCase();
 
   // tomar ítems de la UI → DeliveryItemUpsertDTO
   const items = Array.from(document.querySelectorAll('#items .fila')).map(row=>{

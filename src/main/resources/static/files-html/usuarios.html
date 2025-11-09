@@ -5,17 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>👤 Usuarios | Store</title>
 
-  <!-- Evitar parpadeo mientras decidimos -->
+  <!-- Evita parpadeo hasta verificar rol -->
   <style>html{visibility:hidden}</style>
 
-  <!-- Guard temprano, ahora con fallback a /auth/me -->
+  <!-- Guard OWNER: JWT -> /auth/me (8088) -->
   <script>
   (function(){
-    const API_ME = 'http://localhost:8080/auth/me';
+    const API_ME = 'http://localhost:8088/auth/me';
 
-    // tokens
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token') ||
-                  localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('token') ||
+                  sessionStorage.getItem('accessToken') || sessionStorage.getItem('token');
 
     const show = ()=>{ document.documentElement.style.visibility='visible'; };
     const go = (p)=>{ location.replace(p); };
@@ -50,14 +49,11 @@
     fetch(API_ME, { headers:{ 'Authorization':'Bearer '+token }})
       .then(r => r.ok ? r.json() : null)
       .then(me => {
-        const role = ((me && me.role) || '').toString().toUpperCase();
-        if (role === 'ROLE_OWNER' || role === 'OWNER') { show(); }
-        else { go('index.html'); }
+        const role = ((me && (me.role||me.roles))||'').toString().toUpperCase();
+        const ok = role.includes('ROLE_OWNER') || role.includes('OWNER');
+        ok ? show() : go('index.html');
       })
-      .catch(() => {
-        // Si no pudimos verificar, por seguridad no dejamos entrar
-        go('index.html');
-      });
+      .catch(() => go('index.html'));
   })();
   </script>
 
@@ -68,6 +64,7 @@
 </head>
 <body>
   <div id="app-header"></div>
+
   <main class="wrap">
     <h1>Administración de usuarios</h1>
     <p class="muted">Sólo disponible para <b>OWNER</b>.</p>
@@ -117,14 +114,40 @@
 
   <script src="../files-js/header.js"></script>
   <script>
-    const API_USERS = 'http://localhost:8080/users';
-    const token = localStorage.getItem('token')||sessionStorage.getItem('token')||
-                  localStorage.getItem('accessToken')||sessionStorage.getItem('accessToken');
+    const API_USERS = 'http://localhost:8088/users';
+    const API_ME    = 'http://localhost:8088/auth/me';
+    const token = localStorage.getItem('accessToken')||localStorage.getItem('token')||
+                  sessionStorage.getItem('accessToken')||sessionStorage.getItem('token');
     if(!token){ location.href='login.html'; }
-    function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{ 'Authorization':`Bearer ${token}`,'Content-Type':'application/json', ...(opts.headers||{}) }}); }
     const $ = s=>document.querySelector(s);
 
+    function authFetch(url,opts={}){
+      const hasBody = !!opts.body;
+      return fetch(url,{
+        ...opts,
+        headers:{
+          'Authorization':`Bearer ${token}`,
+          ...(hasBody?{'Content-Type':'application/json'}:{}),
+          ...(opts.headers||{})
+        }
+      });
+    }
+
+    let selfId = null;
+
+    async function whoAmI(){
+      try{
+        const r = await authFetch(API_ME);
+        if(!r.ok) return null;
+        return await r.json();
+      }catch{ return null; }
+    }
+
     async function load(){
+      // saber mi id para bloquear acciones sobre mí mismo
+      const me = await whoAmI();
+      selfId = me && (me.id || me.userId || me.sub) || null;
+
       const r = await authFetch(API_USERS);
       if(!r.ok){ alert('No autorizado'); location.href='index.html'; return; }
       const list = await r.json();
@@ -135,6 +158,9 @@
       const host = $('#tbl');
       host.querySelectorAll('.filaUsr').forEach(n=>n.remove());
       list.forEach(u=>{
+        const isSelf = selfId && String(u.id) === String(selfId);
+        const nextRole = u.role==='ROLE_OWNER'?'ROLE_EMPLOYEE':'ROLE_OWNER';
+
         const row=document.createElement('div');
         row.className='fila filaUsr';
         row.innerHTML=`
@@ -143,40 +169,45 @@
           <div>${u.email||''}</div>
           <div>
             <span class="pill role ${u.role==='ROLE_OWNER' ? 'owner' : ''}">
-                ${(u.role||'').replace('ROLE_','')}
+              ${(u.role||'').replace('ROLE_','')}
             </span>
           </div>
           <div>${u.enabled? '✔️' : '❌'}</div>
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button class="btn outline" data-act="role" data-id="${u.id}" data-role="${u.role==='ROLE_OWNER'?'ROLE_EMPLOYEE':'ROLE_OWNER'}">${u.role==='ROLE_OWNER'?'Hacer Empleado':'Hacer Owner'}</button>
-            <button class="btn outline" data-act="toggle" data-id="${u.id}">${u.enabled?'Desactivar':'Activar'}</button>
+            <button class="btn outline" data-act="role" data-id="${u.id}" data-role="${nextRole}" ${isSelf?'disabled':''}>
+              ${u.role==='ROLE_OWNER'?'Hacer Empleado':'Hacer Owner'}
+            </button>
+            <button class="btn outline" data-act="toggle" data-id="${u.id}" ${isSelf?'disabled':''}>
+              ${u.enabled?'Desactivar':'Activar'}
+            </button>
             <button class="btn outline" data-act="reset" data-id="${u.id}">Reset pass</button>
-            <button class="btn outline" data-act="del" data-id="${u.id}">Eliminar</button>
+            <button class="btn outline" data-act="del" data-id="${u.id}" ${isSelf?'disabled':''}>Eliminar</button>
           </div>
         `;
         host.appendChild(row);
       });
 
       host.onclick = async (ev)=>{
-        const btn = ev.target.closest('button[data-act]'); if(!btn) return;
+        const btn = ev.target.closest('button[data-act]'); if(!btn || btn.disabled) return;
         const id = btn.dataset.id;
         const act= btn.dataset.act;
+
         if (act==='del'){
           if(!confirm('¿Eliminar usuario?')) return;
           const r = await authFetch(`${API_USERS}/${id}`,{ method:'DELETE' });
-          if (r.ok) load(); else alert('Error al eliminar');
+          r.ok ? load() : alert('Error al eliminar');
         } else if (act==='toggle'){
-          const enabled = btn.textContent==='Activar';
-          const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ enabled }) });
-          if (r.ok) load(); else alert('Error al actualizar');
+          const enable = btn.textContent==='Activar';
+          const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ enabled: enable }) });
+          r.ok ? load() : alert('Error al actualizar');
         } else if (act==='role'){
           const role = btn.dataset.role;
           const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ role }) });
-          if (r.ok) load(); else alert('Error al actualizar rol');
+          r.ok ? load() : alert('Error al actualizar rol');
         } else if (act==='reset'){
           const pwd = prompt('Nueva contraseña:'); if(!pwd) return;
           const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ password: pwd }) });
-          if (r.ok) alert('Contraseña actualizada'); else alert('Error al actualizar');
+          r.ok ? alert('Contraseña actualizada') : alert('Error al actualizar');
         }
       };
     }

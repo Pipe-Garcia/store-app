@@ -1,0 +1,48 @@
+services:
+  db:
+    image: mariadb:10.11
+    container_name: store-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: store
+      MARIADB_USER: store
+      MARIADB_PASSWORD: store
+    ports:
+      - "3310:3306"        # Externo:3307 para no chocar con tu XAMPP:3306
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build: .
+    container_name: store-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Estas variables pisan lo que tengas en application.properties
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/store?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: store
+      SPRING_DATASOURCE_PASSWORD: store
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "false"
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_DETECT_ENCODING: "true"
+      SPRING_FLYWAY_ENCODING: "UTF-8"
+
+    ports:
+      - "8088:8080"        # La API quedará en http://localhost:8080
+
+volumes:
+  dbdata:

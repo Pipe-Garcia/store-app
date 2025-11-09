@@ -1,54 +1,40 @@
-// /static/files-js/entregas.js — híbrido: server search + fallback local
+// /static/files-js/entregas.js
+// Búsqueda híbrida: intenta /deliveries/search y, si falla, trae /deliveries y filtra local.
+// Slider de total “tipo Pedidos”. Campos tolerantes a cambios (id, orderId, client, status).
 
-const API_URL_DELIVERIES        = 'http://localhost:8080/deliveries';
-const API_URL_DELIVERIES_SEARCH = 'http://localhost:8080/deliveries/search';
-const API_URL_CLIENTS           = 'http://localhost:8080/clients';
-const API_URL_ORDER             = (id) => `http://localhost:8080/orders/${id}`;
+const { authFetch, safeJson, getToken } = window.api;
+
+const API_URL_DELIVERIES        = '/deliveries';
+const API_URL_DELIVERIES_SEARCH = '/deliveries/search';
+const API_URL_CLIENTS           = '/clients';
+const API_URL_ORDER             = (id) => `/orders/${id}`;
 
 const $  = (s,r=document)=>r.querySelector(s);
-const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 const fmtARS = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' });
+const norm = (s)=> (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
 
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t=getToken(); return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
-}
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
-function debounce(fn,delay=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; }
-function norm(s){ 
-  return (s||'').toString().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-}
-
-
-// ===== getters robustos (tolerantes a cambios de claves) =====
+// getters tolerantes
 const getDeliveryId = x => x?.idDelivery ?? x?.id ?? x?.deliveryId ?? null;
 const getOrderId    = x => x?.ordersId ?? x?.orderId ?? x?.idOrder ?? x?.order?.id ?? null;
 const getClientId   = x => x?.clientId ?? x?.client?.idClient ?? x?.client?.id ?? null;
-
-const getClientName = x => {
-  const c = x?.client;
-  const joined = [c?.name, c?.surname].filter(Boolean).join(' ').trim();
-  return (x?.clientName ?? x?.customerName ?? joined ?? '').trim();
-};
-
-const getDateISO  = x => (x?.deliveryDate ?? x?.date ?? '').toString().slice(0,10) || '';
-const getStatus   = x => (x?.status ?? '').toString().toUpperCase();
+const getClientName = x => (x?.clientName ?? x?.customerName ?? [x?.client?.name, x?.client?.surname].filter(Boolean).join(' ')).trim();
+const getDateISO    = x => (x?.deliveryDate ?? x?.date ?? '').toString().slice(0,10) || '';
+const getStatus     = x => (x?.status ?? '').toString().toUpperCase();
 const getTotalFallback = x => Number(x?.total ?? x?.totalOrder ?? x?.orderTotal ?? 0);
 
 function pill(status){
-  const map = { PENDING:'pending', PARTIAL:'partial', COMPLETED:'completed' };
-  const txt = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', COMPLETADA:'COMPLETADA', COMPLETED:'COMPLETADA' }[status] || status;
-  const cls = map[status] || 'gray';
+  const txt = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', COMPLETED:'COMPLETADA' }[status] || status || 'PENDIENTE';
+  const cls = { PENDING:'pending',   PARTIAL:'partial', COMPLETED:'completed' }[status] || 'pending';
   return `<span class="pill ${cls}">${txt}</span>`;
 }
 
-// ===== estado =====
+// estado
 let ENTREGAS = [];
 let TOTALS_BY_ORDER = new Map();
 let MAX_TOTAL = 1000;
 
-// ===== boot =====
+// bootstrap
 window.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ location.href='../files-html/login.html'; return; }
   await loadClients();
@@ -56,22 +42,18 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   await loadDeliveries(); // primer dataset
 });
 
-// ===== UI: listeners y slider =====
+// filtros y slider
 function wireFilters(){
   const debSearch = debounce(loadDeliveries, 250); // re-carga dataset (server)
   const debLocal  = debounce(applyFilters, 120);   // aplica filtros en front
 
-  // Estos 5 antes dependían solo del back. Ahora: back + SIEMPRE local.
   $('#fOrderId')?.addEventListener('input',  ()=>{ debSearch(); debLocal(); });
   $('#fClient') ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
   $('#fFrom')   ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
   $('#fTo')     ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
   $('#fStatus') ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
-
-  // Texto → local
   $('#fText')   ?.addEventListener('input',  debLocal);
 
-  // Limpiar → resetea todo + dataset del back + filtros locales
   $('#btnClear')?.addEventListener('click', ()=>{
     $('#fOrderId').value='';
     $('#fClient').value='';
@@ -84,65 +66,14 @@ function wireFilters(){
     loadDeliveries();
   });
 
-  // Slider
   $('#f_t_slider_min')?.addEventListener('input', onSliderChange);
   $('#f_t_slider_max')?.addEventListener('input', onSliderChange);
 }
 
-// ===== slider =====
-function setSliderBounds(max){
-  MAX_TOTAL = Math.max(1000, Number(max||0));
-  const sMin = $('#f_t_slider_min');
-  const sMax = $('#f_t_slider_max');
-  const vMin = $('#fMinTotal');
-  const vMax = $('#fMaxTotal');
-
-  const STEPS = 100;
-  sMin.min = 0; sMax.min = 0;
-  sMin.max = STEPS; sMax.max = STEPS;
-  sMin.step = 1;    sMax.step = 1;
-
-  sMin.dataset.stepmap = String(MAX_TOTAL / STEPS);
-  sMax.dataset.stepmap = String(MAX_TOTAL / STEPS);
-
-  sMin.value = 0;       sMax.value = STEPS;
-  vMin.value = 0;       vMax.value = MAX_TOTAL;
-
-  paintSlider();
-}
-
-function sliderToAmount(sliderEl){
-  const step = Number(sliderEl.dataset.stepmap || (MAX_TOTAL/100));
-  return Math.round(Number(sliderEl.value) * step);
-}
-
-function paintSlider(){
-  const sMin = $('#f_t_slider_min');
-  const sMax = $('#f_t_slider_max');
-  const vMin = $('#fMinTotal');
-  const vMax = $('#fMaxTotal');
-
-  if (+sMin.value > +sMax.value) [sMin.value, sMax.value] = [sMax.value, sMin.value];
-
-  vMin.value = sliderToAmount(sMin);
-  vMax.value = sliderToAmount(sMax);
-
-  const a = (+sMin.value / +sMin.max) * 100;
-  const b = (+sMax.value / +sMax.max) * 100;
-  const pr = $('#priceRange');
-  if (pr){ pr.style.setProperty('--a',`${a}%`); pr.style.setProperty('--b',`${b}%`); }
-
-  $('#priceFrom').textContent = fmtARS.format(Number(vMin.value||0));
-  $('#priceTo').textContent   = fmtARS.format(Number(vMax.value||0));
-}
-
-function onSliderChange(){ paintSlider(); applyFilters(); }
-
-// ===== loaders =====
 async function loadClients(){
   try{
-    const r=await authFetch(API_URL_CLIENTS);
-    let data = r.ok ? await r.json() : [];
+    const r = await authFetch(API_URL_CLIENTS);
+    let data = r.ok ? await safeJson(r) : [];
     if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
 
     const sel=$('#fClient');
@@ -150,9 +81,9 @@ async function loadClients(){
     (data||[])
       .sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
       .forEach(c=>{
-        const id  = c.idClient ?? c.id;
-        const nm  = `${c.name||''} ${c.surname||''}`.trim() || `#${id}`;
-        const opt = document.createElement('option');
+        const id = c.idClient ?? c.id;
+        const nm = `${c.name||''} ${c.surname||''}`.trim() || `#${id}`;
+        const opt=document.createElement('option');
         opt.value = String(id ?? '');
         opt.textContent = nm;
         sel.appendChild(opt);
@@ -175,8 +106,6 @@ function readFilterValues(){
   };
 }
 
- 
-
 function buildSearchQuery(){
   const {status,orderId,clientId,from,to} = readFilterValues();
   const q = new URLSearchParams();
@@ -197,35 +126,28 @@ async function loadDeliveries(){
     try {
       const r = await authFetch(url);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      data = await r.json();
+      data = await safeJson(r);
       if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
       if (!Array.isArray(data)) data = [];
-    } catch (err) {
-      // Fallback: si el search falla, traemos todo y filtramos local
+    } catch {
       const rAll = await authFetch(API_URL_DELIVERIES);
-      data = rAll.ok ? await rAll.json() : [];
+      data = rAll.ok ? await safeJson(rAll) : [];
       if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
       if (!Array.isArray(data)) data = [];
     }
 
     ENTREGAS = data;
-
-    // hidratar totales y setear slider con max real
     await hydrateOrderTotals(ENTREGAS);
-    const allTotals = ENTREGAS.map(e =>
-      TOTALS_BY_ORDER.get(getOrderId(e)) ?? getTotalFallback(e) ?? 0
-    );
+
+    const allTotals = ENTREGAS.map(e => TOTALS_BY_ORDER.get(getOrderId(e)) ?? getTotalFallback(e) ?? 0);
     const max = Math.max(1000, ...allTotals, 0);
     setSliderBounds(max);
 
-    // SIEMPRE aplicar filtros locales (aunque el server haya filtrado)
     applyFilters();
   }catch(e){
     console.error('deliveries',e);
-    ENTREGAS = [];
-    TOTALS_BY_ORDER.clear();
-    setSliderBounds(1000);
-    applyFilters();
+    ENTREGAS = []; TOTALS_BY_ORDER.clear();
+    setSliderBounds(1000); applyFilters();
   }
 }
 
@@ -237,39 +159,65 @@ async function hydrateOrderTotals(list){
     try{
       const r = await authFetch(API_URL_ORDER(id));
       if (!r.ok) return [id, 0];
-      const dto = await r.json();
+      const dto = await safeJson(r);
       const total = Number(dto?.total ?? dto?.totalArs ?? dto?.grandTotal ?? 0);
       return [id, total || 0];
-    }catch(_){ return [id, 0]; }
+    }catch{ return [id, 0]; }
   }));
-
   TOTALS_BY_ORDER = new Map(pairs);
 }
 
-// ===== filtros locales + render =====
+// slider
+function setSliderBounds(max){
+  MAX_TOTAL = Math.max(1000, Number(max||0));
+  const sMin = $('#f_t_slider_min');
+  const sMax = $('#f_t_slider_max');
+  const vMin = $('#fMinTotal');
+  const vMax = $('#fMaxTotal');
+
+  const STEPS = 100;
+  sMin.min = 0; sMax.min = 0; sMin.max = STEPS; sMax.max = STEPS; sMin.step = 1; sMax.step = 1;
+
+  sMin.dataset.stepmap = String(MAX_TOTAL / STEPS);
+  sMax.dataset.stepmap = String(MAX_TOTAL / STEPS);
+
+  sMin.value = 0; sMax.value = STEPS;
+  vMin.value = 0; vMax.value = MAX_TOTAL;
+
+  paintSlider();
+}
+function sliderToAmount(sliderEl){ const step = Number(sliderEl.dataset.stepmap || (MAX_TOTAL/100)); return Math.round(Number(sliderEl.value) * step); }
+function paintSlider(){
+  const sMin = $('#f_t_slider_min'), sMax = $('#f_t_slider_max');
+  const vMin = $('#fMinTotal'), vMax = $('#fMaxTotal');
+
+  if (+sMin.value > +sMax.value) [sMin.value, sMax.value] = [sMax.value, sMin.value];
+  vMin.value = sliderToAmount(sMin);
+  vMax.value = sliderToAmount(sMax);
+
+  const a = (+sMin.value / +sMin.max) * 100, b = (+sMax.value / +sMax.max) * 100;
+  const pr = $('#priceRange'); if (pr){ pr.style.setProperty('--a',`${a}%`); pr.style.setProperty('--b',`${b}%`); }
+
+  $('#priceFrom').textContent = fmtARS.format(Number(vMin.value||0));
+  $('#priceTo').textContent   = fmtARS.format(Number(vMax.value||0));
+}
+function onSliderChange(){ paintSlider(); applyFilters(); }
+
+// aplicar filtros locales + render
 function applyFilters(){
   const { status, orderId, clientId, clientNameSel, from, to, text, minT, maxT } = readFilterValues();
   let list = ENTREGAS.slice();
 
-  if (orderId) {
-    list = list.filter(e => String(getOrderId(e) ?? '') === String(orderId));
-  }
+  if (orderId) list = list.filter(e => String(getOrderId(e) ?? '') === String(orderId));
 
-  if (clientId) {
+  if (clientId){
     const targetName = norm(clientNameSel);
-    list = list.filter(e => {
-      const idMatch   = String(getClientId(e) ?? '') === String(clientId);
-      const nameMatch = norm(getClientName(e)) === targetName;
-      return idMatch || nameMatch;
-    });
+    list = list.filter(e => String(getClientId(e) ?? '') === String(clientId) || norm(getClientName(e)) === targetName);
   }
 
-  if (status) {
-    list = list.filter(e => getStatus(e) === status.toUpperCase());
-  }
-
-  if (from) list = list.filter(e => (getDateISO(e) || '0000-00-00') >= from);
-  if (to)   list = list.filter(e => (getDateISO(e) || '9999-12-31') <= to);
+  if (status) list = list.filter(e => getStatus(e) === status.toUpperCase());
+  if (from)   list = list.filter(e => (getDateISO(e) || '0000-00-00') >= from);
+  if (to)     list = list.filter(e => (getDateISO(e) || '9999-12-31') <= to);
 
   if (text){
     list = list.filter(e=>{
@@ -286,7 +234,6 @@ function applyFilters(){
 
   render(list);
 }
-
 
 function render(lista){
   const cont = $('#lista-entregas');

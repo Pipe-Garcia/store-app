@@ -1,35 +1,26 @@
-const API_URL_WAREHOUSES = 'http://localhost:8080/warehouses';
+const API_URL_WAREHOUSES = 'http://localhost:8088/warehouses';
 const $ = (s, r = document) => r.querySelector(s);
+
+function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
 
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    alert('Debes iniciar sesión para acceder');
-    window.location.href = '../files-html/login.html';
-    return;
-  }
+  if (!getToken()) { window.location.href = '../files-html/login.html'; return; }
 
   const id = new URLSearchParams(location.search).get('id');
-  if (!id) {
-    alert('Falta ?id= en la URL');
-    return;
-  }
+  if (!id) { alert('Falta ?id= en la URL'); return; }
 
-  // Deshabilito guardar hasta cargar
   const btnGuardar = $('#btnGuardar');
   if (btnGuardar) btnGuardar.disabled = true;
 
   try {
     const res = await fetch(`${API_URL_WAREHOUSES}/${id}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${getToken()}` }
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const a = await res.json();
-    console.log('Almacén cargado:', a); // <-- para verificar en consola
 
-    // ✅ ESTO PONE VALORES EN LOS INPUTS (no placeholders)
     $('#idWarehouse').value = a.idWarehouse ?? '';
     $('#name').value       = a.name       ?? '';
     $('#address').value    = a.address    ?? '';
@@ -42,7 +33,6 @@ async function init() {
     return;
   }
 
-  // Guardar cambios (PUT con DTO)
   $('#formEditarAlmacen').addEventListener('submit', async (e) => {
     e.preventDefault();
     const payload = {
@@ -57,10 +47,10 @@ async function init() {
     }
 
     try {
-      const res = await fetch(`${API_URL_WAREHOUSES}`, {
+      const res = await fetch(API_URL_WAREHOUSES, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${getToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)

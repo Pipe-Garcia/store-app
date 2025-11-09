@@ -1,8 +1,9 @@
 // ========= Endpoints =========
-const API_URL_PURCHASES  = "http://localhost:8080/purchases";
-const API_URL_SUPPLIERS  = "http://localhost:8080/suppliers";
-const API_URL_WAREHOUSES = "http://localhost:8080/warehouses";
-const API_URL_MAT_SUP_BY_SUPPLIER = "http://localhost:8080/material-suppliers/by-supplier";
+const API_BASE                        = "http://localhost:8088";
+const API_URL_PURCHASES               = `${API_BASE}/purchases`;
+const API_URL_SUPPLIERS               = `${API_BASE}/suppliers`;
+const API_URL_WAREHOUSES              = `${API_BASE}/warehouses`;
+const API_URL_MAT_SUP_BY_SUPPLIER     = `${API_BASE}/material-suppliers/by-supplier`;
 
 // ========= Helpers =========
 const $  = (s,r=document)=>r.querySelector(s);

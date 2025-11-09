@@ -1,6 +1,7 @@
 // ========= Constantes =========
-const API_URL_PURCHASES = "http://localhost:8080/purchases";
-const API_URL_SUPPLIERS = "http://localhost:8080/suppliers";
+const API_BASE           = "http://localhost:8088";
+const API_URL_PURCHASES  = `${API_BASE}/purchases`;
+const API_URL_SUPPLIERS  = `${API_BASE}/suppliers`;
 
 // ========= Helpers =========
 const $  = (s,r=document)=>r.querySelector(s);
@@ -25,6 +26,7 @@ function go(page){
 // ========= Estado =========
 let compras = [];     // [PurchaseDTO]
 let proveedores = []; // [{idSupplier, nameCompany,...}]
+let provById = new Map();
 
 // ========= Init =========
 window.addEventListener("DOMContentLoaded", async ()=>{
@@ -33,7 +35,6 @@ window.addEventListener("DOMContentLoaded", async ()=>{
   await cargarDatosBase();
   applyFilters();
 
-  // Eventos filtros (solo queda buscarTexto; sacamos buscarProveedor)
   $("#buscarDesde").addEventListener("change", applyFilters);
   $("#buscarHasta").addEventListener("change", applyFilters);
   $("#buscarTexto").addEventListener("input", applyFilters);
@@ -60,6 +61,10 @@ async function cargarDatosBase(){
 
     compras     = (await rPurchases.json()) || [];
     proveedores = (await rSuppliers.json()) || [];
+    provById    = new Map(proveedores.map(p => [
+      Number(p.idSupplier),
+      (p.nameCompany || `${p.name??''} ${p.surname??''}`.trim() || `#${p.idSupplier}`)
+    ]));
 
     // ordenar por fecha desc
     compras.sort((a,b)=>{
@@ -94,11 +99,15 @@ function applyFilters(){
   if (q){
     list = list.filter(c =>
       String(c.idPurchase||"").includes(q) ||
-      (c.supplierName||"").toLowerCase().includes(q)
+      (displaySupplier(c)||"").toLowerCase().includes(q)
     );
   }
 
   renderLista(list);
+}
+
+function displaySupplier(c){
+  return c.supplierName || provById.get(Number(c.supplierId)) || "—";
 }
 
 // ========= Render =========
@@ -130,7 +139,7 @@ function renderLista(lista){
     row.innerHTML = `
       <div>${c.idPurchase || "-"}</div>
       <div>${c.datePurchase || "-"}</div>
-      <div>${c.supplierName || "—"}</div>
+      <div>${displaySupplier(c)}</div>
       <div>${fmtARS.format(total)}</div>
       <div class="acciones">
         <a class="btn outline" href="detalle-compra.html?id=${c.idPurchase}">👁️ Ver</a>
@@ -138,7 +147,6 @@ function renderLista(lista){
         <button class="btn green" data-pdf="${c.idPurchase}">📄 PDF</button>
         <button class="btn danger" data-del="${c.idPurchase}">🗑️ Eliminar</button>
       </div>
-
     `;
     cont.appendChild(row);
   }
@@ -151,7 +159,6 @@ function renderLista(lista){
     const pdfId = ev.target.getAttribute("data-pdf");
     if (pdfId) { downloadPurchasePdf(Number(pdfId)); return; }
   };
-
 }
 
 // ========= Acciones =========
@@ -171,7 +178,6 @@ async function borrarCompra(id){
     notify("No se pudo eliminar la compra","error");
   }
 }
-
 
 async function downloadPurchasePdf(id){
   try{

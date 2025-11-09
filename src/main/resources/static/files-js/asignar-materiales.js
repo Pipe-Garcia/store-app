@@ -1,6 +1,7 @@
-const API_URL_SUPPLIERS = 'http://localhost:8080/suppliers';
-const API_URL_MAT = 'http://localhost:8080/materials';
-const API_URL_MAT_SUP = 'http://localhost:8080/material-suppliers';
+// /static/files-js/asignar-materiales.js
+const API_URL_SUPPLIERS = 'http://localhost:8088/suppliers';
+const API_URL_MAT       = 'http://localhost:8088/materials';
+const API_URL_MAT_SUP   = 'http://localhost:8088/material-suppliers';
 
 const token = localStorage.getItem('token');
 const supplierId = new URLSearchParams(window.location.search).get('id');
@@ -9,7 +10,7 @@ let materiales = [];
 
 if (!token) {
   alert('Debes iniciar sesión para acceder');
-  window.location.href = 'login.html';
+  window.location.href = '../files-html/login.html';
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -37,29 +38,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   const resMat = await fetch(API_URL_MAT, { headers: { 'Authorization': `Bearer ${token}` } });
   materiales = resMat.ok ? await resMat.json() : [];
 
-  // ===== Autocompletado (oculto por defecto y solo visible con resultados) =====
+  // Autocomplete
   const inputMaterial = document.getElementById('material-input');
   const contenedorSugerencias = document.getElementById('suggestions');
 
   function closeSuggestions(){
     contenedorSugerencias.innerHTML = '';
-    contenedorSugerencias.classList.remove('open'); // .open se usa en CSS para mostrar/bordear
+    contenedorSugerencias.classList.remove('open');
   }
 
   inputMaterial.addEventListener('input', () => {
     const texto = inputMaterial.value.trim().toLowerCase();
     contenedorSugerencias.innerHTML = '';
-
-    if (!texto){
-      closeSuggestions();
-      return;
-    }
+    if (!texto){ closeSuggestions(); return; }
 
     const sugerencias = materiales.filter(m => (m.name || '').toLowerCase().includes(texto));
-    if (!sugerencias.length){
-      closeSuggestions();
-      return;
-    }
+    if (!sugerencias.length){ closeSuggestions(); return; }
 
     sugerencias.forEach(m => {
       const div = document.createElement('div');
@@ -70,11 +64,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       contenedorSugerencias.appendChild(div);
     });
-
-    contenedorSugerencias.classList.add('open'); // mostrar
+    contenedorSugerencias.classList.add('open');
   });
 
-  // Cerrar al click fuera o al presionar ESC
   document.addEventListener('click', (e)=>{
     if (!contenedorSugerencias.contains(e.target) && e.target !== inputMaterial){
       closeSuggestions();
@@ -84,7 +76,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.key === 'Escape') closeSuggestions();
   });
 
-  // Evento agregar material
   document.getElementById('btnAddMat').addEventListener('click', agregarMaterialProveedor);
 });
 
@@ -169,7 +160,7 @@ async function agregarMaterialProveedor(e) {
       },
       body: JSON.stringify({
         materialId: material.idMaterial,
-        supplierId,
+        supplierId: Number(supplierId),
         priceUnit: precio,
         deliveryTimeDays: tiempo
       })
@@ -189,7 +180,6 @@ async function agregarMaterialProveedor(e) {
     document.getElementById('material-input').value = '';
     document.getElementById('precio-unitario').value = '';
     document.getElementById('tiempo-entrega').value = '';
-
   } catch (err) {
     console.error(err);
     alert('No se pudo asignar el material');

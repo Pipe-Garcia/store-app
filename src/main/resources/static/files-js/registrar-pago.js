@@ -1,27 +1,19 @@
 // /static/files-js/registrar-pago.js
-const API_URL_SALES    = 'http://localhost:8080/sales';
-const API_URL_PAYMENTS = 'http://localhost:8080/payments';
+const { authFetch, safeJson, getToken } = window.api;
+const API_SALES    = '/sales';
+const API_PAYMENTS = '/payments';
 
 const $  = (s,r=document)=>r.querySelector(s);
 const fmt = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' });
-
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){ const t=getToken(); return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) }; }
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 function notify(msg,type='info'){ const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; document.body.appendChild(n); setTimeout(()=>n.remove(),3500); }
 
-let saleId    = null;
-let saleTotal = 0;
-let salePaid  = 0;
-let balance   = 0;
-let sending   = false;
+let saleId=null, saleTotal=0, salePaid=0, balance=0, sending=false;
 
 function setKPIs(){
   $('#kpiTotal').textContent   = fmt.format(saleTotal||0);
   $('#kpiPaid').textContent    = fmt.format(salePaid||0);
   $('#kpiBalance').textContent = fmt.format(balance||0);
 }
-
 function capToBalance(){
   const inp = $('#importe');
   const val = Math.max(0, parseFloat(inp.value || '0'));
@@ -36,21 +28,18 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   saleId = qp.get('saleId');
   if(!saleId){ notify('Falta saleId','error'); location.href='ventas.html'; return; }
 
-  // volver / cancelar
   const goBack = ()=> location.href=`ver-venta.html?id=${saleId}`;
   $('#btnVolver').onclick = goBack;
   $('#btnCancelar').onclick = goBack;
 
-  // hoy
   const d = new Date(); const m=String(d.getMonth()+1).padStart(2,'0'); const dy=String(d.getDate()).padStart(2,'0');
   $('#fecha').value = `${d.getFullYear()}-${m}-${dy}`;
   $('#metodo').value = 'CASH';
 
-  // info venta
   try{
-    const r = await authFetch(`${API_URL_SALES}/${saleId}`);
+    const r = await authFetch(`${API_SALES}/${saleId}`);
     if(r.ok){
-      const s = await r.json();
+      const s = await safeJson(r);
       saleTotal = Number(s.total ?? s.amount ?? 0);
       salePaid  = Number(s.paid  ?? s.totalPaid ?? 0);
       balance   = Math.max(0, saleTotal - salePaid);
@@ -59,21 +48,12 @@ window.addEventListener('DOMContentLoaded', async ()=>{
       setKPIs();
 
       const inp = $('#importe');
-      if (balance > 0) {
-        inp.value = balance.toFixed(2);
-        inp.max   = String(balance);
-      } else {
-        inp.value = '';
-        inp.placeholder = 'Sin saldo pendiente';
-        $('#btnGuardar').disabled = true;
-      }
+      if (balance > 0) { inp.value = balance.toFixed(2); inp.max = String(balance); }
+      else { inp.value = ''; inp.placeholder = 'Sin saldo pendiente'; $('#btnGuardar').disabled = true; }
     }
   }catch(e){ console.warn(e); }
 
-  // capear importe al saldo
   $('#importe').addEventListener('input', capToBalance);
-
-  // submit
   $('#form-pago').addEventListener('submit', guardarPago);
 });
 
@@ -89,22 +69,20 @@ async function guardarPago(ev){
     notify('Completá todos los campos con valores válidos','error'); return;
   }
   if (balance && amount > balance + 0.0001){
-    notify('El importe no puede superar el saldo de la venta','error'); return;
+    notify('El importe no puede superar el saldo','error'); return;
   }
 
   const payload = { amount, datePayment, methodPayment, saleId: Number(saleId) };
 
   try{
-    sending = true;
-    $('#btnGuardar').disabled = true;
-    const res = await authFetch(API_URL_PAYMENTS, { method:'POST', body: JSON.stringify(payload) });
+    sending = true; $('#btnGuardar').disabled = true;
+    const res = await authFetch(API_PAYMENTS, { method:'POST', body: JSON.stringify(payload) });
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     localStorage.setItem('flash', JSON.stringify({ message:'Pago registrado', type:'success' }));
     location.href = `ver-venta.html?id=${saleId}`;
   }catch(e){
     console.error(e);
     notify('No se pudo registrar el pago','error');
-    $('#btnGuardar').disabled = false;
-    sending = false;
+    $('#btnGuardar').disabled = false; sending = false;
   }
 }

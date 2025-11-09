@@ -1,7 +1,7 @@
-// files-js/movimientos.js
+// /static/files-js/movimientos.js
 (function(){
-  const API_BASE = 'http://localhost:8080';
-  const API      = `${API_BASE}/audits/events`;
+  const { authFetch, safeJson, getToken } = window.api;
+  const API = '/audits/events';
 
   const tbody = document.getElementById('tbody');
   const info  = document.getElementById('pg-info');
@@ -9,17 +9,15 @@
   const next  = document.getElementById('pg-next');
   const $ = (id)=>document.getElementById(id);
 
+  // redirección si no hay sesión
+  if (!getToken()) { location.href = '../files-html/login.html'; return; }
+
   const qs = new URLSearchParams(window.location.search);
   let page = Number(qs.get('page')||0);
   let size = Number(qs.get('size')||20);
   $('f-size').value = String(size);
 
   const debounce = (fn, wait=450)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; };
-
-  function authHeaders(){
-    const t = localStorage.getItem('token') || localStorage.getItem('jwt');
-    return t ? { 'Authorization': 'Bearer ' + t } : {};
-  }
 
   function buildQuery(){
     const p = new URLSearchParams();
@@ -44,25 +42,28 @@
   async function load(){
     tbody.innerHTML = `<tr><td colspan="8">Cargando...</td></tr>`;
     try{
-      const res = await fetch(`${API}?${buildQuery()}`, {
-        headers: { 'Content-Type':'application/json', ...authHeaders() }
-      });
-      if (res.status === 401) throw new Error('No autorizado (401). Iniciá sesión.');
+      const res = await authFetch(`${API}?${buildQuery()}`, { method:'GET' });
+      if (res.status === 401 || res.status === 403) {
+        tbody.innerHTML = `<tr><td colspan="8">Sesión expirada. Redirigiendo…</td></tr>`;
+        setTimeout(()=>location.href='../files-html/login.html', 800);
+        return;
+      }
       if (!res.ok) throw new Error('HTTP '+res.status);
-      const data = await res.json();
-      renderRows(data.content || []);
-      renderPager(data);
+      const data = await safeJson(res);
+      renderRows(data?.content || []);
+      renderPager(data || {});
     }catch(e){
+      console.error(e);
       tbody.innerHTML = `<tr><td colspan="8">Error cargando datos: ${esc(e.message)}</td></tr>`;
       info.textContent=''; prev.disabled=true; next.disabled=true;
     }
   }
 
   function renderRows(rows){
-    if(rows.length===0){ tbody.innerHTML = `<tr><td colspan="8">Sin resultados.</td></tr>`; return; }
+    if(!rows.length){ tbody.innerHTML = `<tr><td colspan="8">Sin resultados.</td></tr>`; return; }
     tbody.innerHTML = rows.map(r=>{
       const ts = r.timestamp ? new Date(r.timestamp).toLocaleString() : '—';
-      const badge = r.status==='SUCCESS'
+      const badge = (r.status||'')==='SUCCESS'
         ? `<span class="badge success">SUCCESS</span>`
         : `<span class="badge fail">FAIL</span>`;
       return `<tr>
@@ -79,12 +80,15 @@
   }
 
   function renderPager(p){
-    info.textContent = `Página ${p.number+1} de ${p.totalPages || 1} · ${p.totalElements||0} registros`;
-    prev.disabled = p.first;
-    next.disabled = p.last || (p.totalPages||1)===0;
+    const totalPages = Number(p.totalPages||0);
+    const totalElems = Number(p.totalElements||0);
+    const number     = Number(p.number||0);
+    info.textContent = `Página ${totalPages? (number+1) : 0} de ${totalPages||0} · ${totalElems||0} registros`;
+    prev.disabled = p.first === true || number<=0;
+    next.disabled = p.last  === true || number >= (totalPages-1);
   }
 
-  const esc = (s)=>String(s).replace(/[&<>"'`]/g, (c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;' }[c]));
+  const esc = (s)=>String(s??'').replace(/[&<>"'`]/g, (c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;' }[c]));
 
   // Botones
   $('btn-aplicar').addEventListener('click', ()=>{ page=0; size=Number($('f-size').value||20); load(); });
@@ -95,7 +99,7 @@
   prev.addEventListener('click', ()=>{ if(page>0){ page--; load(); }});
   next.addEventListener('click', ()=>{ page++; load(); });
 
-  // Debounce auto-busca al escribir/cambiar filtros
+  // Debounce auto-busca
   const debouncedSearch = debounce(()=>{ page=0; size=Number($('f-size').value||20); load(); }, 500);
   ['f-desde','f-hasta','f-actor','f-action','f-entity','f-status','f-size'].forEach(id=>{
     const el = $(id);

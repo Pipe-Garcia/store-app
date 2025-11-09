@@ -228,8 +228,10 @@
     <section class="area" id="sec-auditoria">
       <header class="area-head"><h2>Auditoría</h2></header>
 
+      <div id="auditMsg" class="muted" style="display: none;"></div>
+
       <!-- KPIs -->
-      <section class="kpi-grid">
+      <section class="kpi-grid" id="audit-kpis">
         <div class="card kpi clickable" id="kpiAudHoy" data-drill="../files-html/movimientos.html?from=today&to=today">
           <div class="kpi-title">Eventos de hoy</div>
           <div class="kpi-value" id="audEventsToday">0</div>
@@ -258,12 +260,12 @@
       <!-- Charts -->
       <section class="cards-section">
         <div class="cards-grid">
-          <section class="card chart-card">
+          <section class="card chart-card" id="audit-actions-card">
             <div class="card-head"><h3>Acciones · últimos 7 días</h3></div>
             <div class="chart-wrap"><canvas id="chartAuditActions7d"></canvas></div>
           </section>
           <br>
-          <section class="card chart-card">
+          <section class="card chart-card" id="audit-actions-card">
             <div class="card-head"><h3>Top usuarios · 7 días</h3></div>
             <div class="chart-wrap"><canvas id="chartAuditActors7d"></canvas></div>
           </section>
@@ -276,6 +278,11 @@
 
   <!-- Botón flotante: Volver arriba -->
   <button id="btnTop" class="to-top" aria-label="Volver arriba" title="Volver arriba">↑</button>
+
+
+  <script src="../files-js/core/api.js"></script>
+
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
 
   <!-- scripts de la página -->
   <script src="../files-js/header.js"></script>

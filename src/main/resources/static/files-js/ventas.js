@@ -1,8 +1,9 @@
 // ========= Endpoints =========
-const API_URL_SALES    = 'http://localhost:8080/sales';
-const API_URL_SEARCH   = 'http://localhost:8080/sales/search';
-const API_URL_CLIENTS  = 'http://localhost:8080/clients';
-const API_URL_PAYMENTS = 'http://localhost:8080/payments'; // fallback: sólo si el DTO no trae paid/balance
+const { authFetch, getToken, url } = window.api;
+const API_URL_SALES    = '/sales';
+const API_URL_SEARCH   = '/sales/search';
+const API_URL_CLIENTS  = '/clients';
+const API_URL_PAYMENTS = '/payments'; // fallback: si el DTO no trae paid/balance
 
 // ========= Helpers =========
 const $  = (s,r=document)=>r.querySelector(s);
@@ -10,12 +11,6 @@ const fmtARS = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' 
 // --- Drill-down Ventas ---
 const DRILL = { statuses: null }; // e.g., ['PENDING','PARTIAL']
 
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t=getToken();
-  return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
-}
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 function notify(msg,type='info'){
   const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg;
   document.body.appendChild(n); setTimeout(()=>n.remove(),3500);
@@ -142,11 +137,11 @@ function buildQueryFromFilters(){
 async function reloadFromFilters(){
   // 1) pedir al back
   const qs = buildQueryFromFilters();
-  const url = qs ? `${API_URL_SEARCH}?${qs}` : API_URL_SEARCH;
+  const full = qs ? `${API_URL_SEARCH}?${qs}` : API_URL_SEARCH;
   try{
     // mini “loading”
     renderListSkeleton();
-    const r = await authFetch(url);
+    const r = await authFetch(full);
     if(!r.ok){ throw new Error(`HTTP ${r.status}`); }
     LAST_SALES = await r.json() || [];
 
@@ -350,9 +345,7 @@ async function downloadSalePdf(id){
     const btn = document.querySelector(`button[data-pdf="${id}"]`);
     if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
 
-    const r = await fetch(`${API_URL_SALES}/${id}/pdf`, {
-      headers: { 'Authorization': `Bearer ${t}` }
-    });
+    const r = await authFetch(`${API_URL_SALES}/${id}/pdf`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
 
     const blob = await r.blob();

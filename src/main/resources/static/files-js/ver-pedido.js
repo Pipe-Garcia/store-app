@@ -1,12 +1,13 @@
 // /static/files-js/ver-pedido.js
-const API_URL_ORDERS_VIEW = 'http://localhost:8080/orders'; // /{id}/view
+const { authFetch, safeJson, getToken } = window.api;
+
+// Endpoints relativos
+const API_URL_ORDERS = '/orders'; // /{id}/view
 
 /* Helpers */
 const $ = (s, r=document) => r.querySelector(s);
 const fmt  = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 const fdate = s => s ? new Date(s).toLocaleDateString('es-AR') : '—';
-
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
 function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
 
 let __toastRoot;
@@ -20,23 +21,19 @@ function notify(m,type='info'){
   setTimeout(()=>n.remove(),4200);
 }
 
-function authHeaders(json=true){
-  const t=getToken();
-  return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
-}
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
+document.addEventListener('DOMContentLoaded', init);
 
-document.addEventListener('DOMContentLoaded', async ()=>{
+async function init(){
   if(!getToken()){ notify('Iniciá sesión','error'); return go('login.html'); }
-
   const id = new URLSearchParams(location.search).get('id');
   if(!id){ notify('ID de pedido no especificado','error'); return go('pedidos.html'); }
 
   try{
-    const res = await authFetch(`${API_URL_ORDERS_VIEW}/${id}/view`);
+    const res = await authFetch(`${API_URL_ORDERS}/${id}/view`);
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const view = await res.json();
+    const view = await safeJson(res);
 
+    // Cabecera
     $('#id-pedido').textContent      = view.idOrders ?? '-';
     $('#cliente').textContent        = view.clientName ?? '-';
     $('#fecha-creacion').textContent = fdate(view.dateCreate);
@@ -45,37 +42,38 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     $('#entregadas').textContent     = String(view.deliveredUnits ?? 0);
     $('#comprometidas').textContent  = String(view.committedUnits ?? 0);
     $('#pendiente').textContent      = String(view.remainingUnits ?? 0);
+
     const sold = !!view.soldOut;
     const est = $('#estado');
     est.textContent = sold ? 'VENDIDO (sin pendiente)' : 'CON PENDIENTE';
-    est.classList.toggle('vendido', sold);   // activa el estilo verde del CSS nuevo
+    est.classList.toggle('vendido', sold);
 
-
+    // Materiales
     const lista = $('#lista-materiales');
     lista.innerHTML = '';
 
     const rows = Array.isArray(view.details) ? view.details : [];
     if(!rows.length){
       lista.innerHTML = '<li>No se encontraron materiales para este pedido.</li>';
-      return;
+    } else {
+      rows.forEach(det=>{
+        const ordered    = Number(det.quantityOrdered    || 0);
+        const committed  = Number(det.quantityCommitted  || 0);
+        const delivered  = Number(det.quantityDelivered  || 0);
+        const remaining  = Number(det.remainingUnits     || 0);
+        const name = det.materialName || `Material #${det.materialId ?? ''}`;
+        const pu   = Number(det.priceUni || 0);
+
+        const li = document.createElement('li');
+        li.textContent =
+          `${name} — Pedidas: ${ordered} | Comprometidas: ${committed} | ` +
+          `Entregadas: ${delivered} | Pendientes: ${remaining} | Precio: ${fmt.format(pu)}`;
+        lista.appendChild(li);
+      });
     }
 
-    rows.forEach(det=>{
-      const ordered    = Number(det.quantityOrdered    || 0);
-      const committed  = Number(det.quantityCommitted  || 0);  // ALLOCATED visible
-      const delivered  = Number(det.quantityDelivered  || 0);  // sum DeliveryItem
-      const remaining  = Number(det.remainingUnits     || 0);  // ordered - delivered
-      const name = det.materialName || `Material #${det.materialId ?? ''}`;
-      const pu   = Number(det.priceUni || 0);
-
-      const li = document.createElement('li');
-      li.textContent =
-        `${name} — Pedidas: ${ordered} | Comprometidas: ${committed} | ` +
-        `Entregadas: ${delivered} | Pendientes: ${remaining} | Precio: ${fmt.format(pu)}`
-      lista.appendChild(li);
-    });
   }catch(e){
     console.error(e);
     notify('Error al cargar el detalle del pedido','error');
   }
-});
+}

@@ -1,7 +1,9 @@
 // /static/files-js/editar-stock.js
-const API_MAT       = 'http://localhost:8080/materials';
-const API_MAT_SEARCH= 'http://localhost:8080/materials/search';
-const API_STOCK     = 'http://localhost:8080/stocks';
+const { authFetch, getToken } = window.api;
+
+const API_MAT        = '/materials';
+const API_MAT_SEARCH = '/materials/search';
+const API_STOCK      = '/stocks';
 
 let currentMaterial = null;
 let currentStock = null;
@@ -10,16 +12,14 @@ let lastQuery = '';
 const $  = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
-/* -------- util -------- */
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t=getToken(); return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
+function go(page){
+  const p = location.pathname, SEG='/files-html/';
+  const i = p.indexOf(SEG);
+  location.href = (i>=0 ? p.slice(0,i+SEG.length) : p.replace(/[^/]+$/,'') ) + page;
 }
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
-function go(page){ const base=location.pathname.replace(/[^/]+$/,''); location.href=`${base}${page}`; }
 function debounce(fn,ms=300){ let h; return (...a)=>{ clearTimeout(h); h=setTimeout(()=>fn(...a),ms); }; }
 
-/* toasts simples (reusa tus estilos) */
+/* toasts */
 let __toastRoot;
 function toastRoot(){
   if(!__toastRoot){
@@ -41,22 +41,15 @@ window.addEventListener('DOMContentLoaded', ()=>{
   $('#buscar').focus();
   $('#btnBuscar')?.addEventListener('click', () => buscarMaterial($('#buscar').value.trim()));
 
-  // Enter busca o selecciona el 1ro sugerido
   $('#buscar')?.addEventListener('keydown', (e)=>{
     if(e.key==='Enter'){ e.preventDefault(); useFirstSuggestionOrSearch(); }
     if(e.key==='ArrowDown'){ focusSuggestion(0); }
   });
 
-  // Búsqueda en vivo
   $('#buscar')?.addEventListener('input', debounce(onType, 250));
-
-  // Recalcular stock nuevo
   $('#cantidad')?.addEventListener('input', updatePreview);
-
-  // Submit
   $('#formStock')?.addEventListener('submit', onSubmit);
 
-  // Cerrar sugerencias al click fuera
   document.addEventListener('click', (e)=>{
     if (!e.target.closest('.search-box')) hideSuggestions();
   });
@@ -71,9 +64,7 @@ async function onType(){
   try{
     const url = `${API_MAT_SEARCH}?q=${encodeURIComponent(q)}`;
     let res = await authFetch(url);
-    if(res.status===404){ // si no existe endpoint /search en tu backend
-      res = await authFetch(API_MAT);
-    }
+    if(res.status===404){ res = await authFetch(API_MAT); }
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const list = await res.json();
 
@@ -137,9 +128,8 @@ async function buscarMaterial(filtro){
   if(!q){ notify('Ingresá código o nombre','error'); return; }
 
   try{
-    // Primero intento /search
     let res = await authFetch(`${API_MAT_SEARCH}?q=${encodeURIComponent(q)}`);
-    if(res.status===404){ res = await authFetch(API_MAT); } // fallback
+    if(res.status===404){ res = await authFetch(API_MAT); }
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const list = await res.json();
 
@@ -155,11 +145,7 @@ async function buscarMaterial(filtro){
     await selectMaterial(match);
   }catch(e){
     console.error(e);
-    if (String(e.message)==='401' || String(e.message)==='403'){
-      notify('Sesión inválida','error'); go('login.html');
-    } else {
-      notify('Error al buscar materiales','error');
-    }
+    notify('Error al buscar materiales','error');
   }
 }
 

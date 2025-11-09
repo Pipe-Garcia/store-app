@@ -1,4 +1,5 @@
-const API_URL_PROVEEDORES = 'http://localhost:8080/suppliers';
+// /static/files-js/editar-proveedor.js
+const API_URL_PROVEEDORES = 'http://localhost:8088/suppliers';
 const token = localStorage.getItem('token');
 const urlParams = new URLSearchParams(window.location.search);
 const id = urlParams.get('id');
@@ -15,7 +16,6 @@ window.addEventListener('DOMContentLoaded', () => {
   })
     .then(res => res.json())
     .then(data => {
-      // rellenamos los campos básicos
       document.getElementById('nombre').value     = data.name || '';
       document.getElementById('apellido').value   = data.surname || '';
       document.getElementById('dni').value        = data.dni || '';

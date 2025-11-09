@@ -1,13 +1,10 @@
-const API_URL_DELIVERIES = 'http://localhost:8080/deliveries';
+// /static/files-js/ver-entrega.js
+const { authFetch, safeJson, getToken } = window.api;
+const API_URL_DELIVERIES = '/deliveries';
 
 const $ = (s,r=document)=>r.querySelector(s);
+const money = (n)=> (Number(n||0)).toLocaleString('es-AR',{minimumFractionDigits:2, maximumFractionDigits:2});
 
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t=getToken();
-  return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
-}
-function authFetch(url, opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 function notify(msg,type='info'){
   const div=document.createElement('div');
   div.className=`notification ${type}`;
@@ -15,7 +12,6 @@ function notify(msg,type='info'){
   document.body.appendChild(div);
   setTimeout(()=>div.remove(),4000);
 }
-const fmtMoney = n => (Number(n||0)).toLocaleString('es-AR',{minimumFractionDigits:2, maximumFractionDigits:2});
 
 window.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ location.href='../files-html/login.html'; return; }
@@ -26,32 +22,40 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   $('#btnEditar').href = `editar-entrega.html?id=${id}`;
 
   try{
-    // 1) Traer TODO el detalle desde el nuevo endpoint
-    const res = await authFetch(`${API_URL_DELIVERIES}/${id}/detail`);
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const delivery = await res.json();
+    // Intento principal: detalle enriquecido
+    let r = await authFetch(`${API_URL_DELIVERIES}/${id}/detail`);
+    if(!r.ok){
+      // Fallback: GET /deliveries/{id} simple
+      r = await authFetch(`${API_URL_DELIVERIES}/${id}`);
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    }
+    const d = await safeJson(r);
 
-    $('#id').textContent      = delivery.idDelivery;
-    $('#orderId').textContent = delivery.ordersId ?? '-';
-    $('#cliente').textContent = delivery.clientName ?? '-';
-    $('#fecha').textContent   = delivery.deliveryDate ?? '-';
+    // Campos tolerantes
+    const idDelivery = d.idDelivery ?? d.id;
+    const orderId    = d.ordersId ?? d.orderId ?? d.order?.id;
+    const client     = (d.clientName ?? [d.client?.name, d.client?.surname].filter(Boolean).join(' ')) || '—';
+    const date       = (d.deliveryDate ?? d.date ?? '').toString().slice(0,10) || '—';
+    const status     = (d.status || 'PENDING').toUpperCase();
+
+    $('#id').textContent      = idDelivery ?? '-';
+    $('#orderId').textContent = orderId ?? '-';
+    $('#cliente').textContent = client;
+    $('#fecha').textContent   = date;
+
     const pill = $('#estado');
-    pill.textContent = delivery.status || 'PENDING';
-    pill.classList.add(
-      (delivery.status==='COMPLETED')?'completed':
-      (delivery.status==='PARTIAL')?'partial':'pending'
-    );
+    pill.textContent = {PENDING:'PENDIENTE',PARTIAL:'PARCIAL',COMPLETED:'COMPLETADA'}[status] || status;
+    pill.classList.add(status==='COMPLETED'?'completed':(status==='PARTIAL'?'partial':'pending'));
 
-    // 2) Render de ítems directo del detalle
     const cont = $('#items'); cont.innerHTML = '';
-    
-    let total = Number(delivery.total || 0);
+    let total = Number(d.total ?? 0);
 
-    (delivery.items || []).forEach(it=>{
-      const name   = it.materialName || '—';
-      const qOrder = Number(it.quantityOrdered || 0);
-      const qDeliv = Number(it.quantityDelivered || 0);
-      const price  = Number(it.unitPriceSnapshot || 0);
+    const items = d.items || d.details || [];
+    items.forEach(it=>{
+      const name   = it.materialName || it.material?.name || '—';
+      const qOrder = Number(it.quantityOrdered   ?? it.orderedQty   ?? it.orderQty   ?? 0);
+      const qDeliv = Number(it.quantityDelivered ?? it.deliveredQty ?? it.qty        ?? 0);
+      const price  = Number(it.unitPriceSnapshot ?? it.priceUni     ?? it.unitPrice  ?? 0);
       const sub    = qDeliv * price;
 
       const fila = document.createElement('div');
@@ -60,16 +64,24 @@ window.addEventListener('DOMContentLoaded', async ()=>{
         <div>${name}</div>
         <div>${qOrder}</div>
         <div>${qDeliv}</div>
-        <div>$ ${fmtMoney(price)}</div>
-        <div>$ ${fmtMoney(sub)}</div>
+        <div>$ ${money(price)}</div>
+        <div>$ ${money(sub)}</div>
       `;
       cont.appendChild(fila);
     });
 
-    $('#total').textContent = fmtMoney(total);
+    // si el backend no manda "total", lo recalculamos por las dudas
+    if (!total && items.length){
+      total = items.reduce((acc,it)=>{
+        const q = Number(it.quantityDelivered ?? it.deliveredQty ?? it.qty ?? 0);
+        const p = Number(it.unitPriceSnapshot ?? it.priceUni ?? it.unitPrice ?? 0);
+        return acc + (q*p);
+      },0);
+    }
+    $('#total').textContent = money(total);
   }catch(err){
     console.error(err);
     notify('No se pudo cargar la entrega','error');
-    location.href='entregas.html';
+    setTimeout(()=>location.href='entregas.html', 600);
   }
 });

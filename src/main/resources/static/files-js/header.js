@@ -1,5 +1,6 @@
 // /static/files-js/header.js
-// Monta el HTML del header
+// Monta el HTML del header y conecta con api.js
+
 (async function mountHeader(){
   const mount = document.getElementById('app-header');
   if(!mount) return;
@@ -29,7 +30,7 @@
     if (file === here) a.classList.add('is-active');
   });
 
-  // Toggle de tema
+  // Toggle de tema -> emite evento para que los charts se re-tinten
   const btn = mount.querySelector('#themeToggle');
   if (btn) btn.addEventListener('click', ()=>{
     const root = document.documentElement;
@@ -40,58 +41,18 @@
     window.dispatchEvent(new Event('themechange'));
   });
 
-  // Una vez montado el HTML, agrego el menú usuario
+  // Inserta y configura el menú de usuario
   initHeaderUser();
 })();
 
-// Agrega el menú de usuario (avatar, usuarios si OWNER, logout)
 function initHeaderUser(){
+  const api = window.api;              // <— única fuente de verdad
   const root = document.getElementById('app-header');
-  if (!root) return;
+  if (!root || !api) return;
 
   const nav = root.querySelector('.site-nav') || root;
 
-  // helpers token
-  function getToken(){
-    return localStorage.getItem('token') || sessionStorage.getItem('token') ||
-           localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken') || '';
-  }
-  function clearToken(){
-    ['token','accessToken'].forEach(k=>{
-      localStorage.removeItem(k); sessionStorage.removeItem(k);
-    });
-  }
-
-  // --- JWT helpers (fallback si /auth/me no responde) ---
-  function b64UrlDecode(str){
-    try{
-      const b64 = str.replace(/-/g,'+').replace(/_/g,'/');
-      return decodeURIComponent(Array.prototype.map.call(atob(b64), c =>
-        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-      ).join(''));
-    }catch(_){ return '{}'; }
-  }
-  function decodeJwtPayload(tok){
-    try{
-      const p = tok.split('.')[1] || '';
-      return JSON.parse(b64UrlDecode(p));
-    }catch(_){ return {}; }
-  }
-  function extractRoles(payload){
-    const set = new Set();
-    const push = v => v && set.add(String(v).toUpperCase());
-    const many = arr => Array.isArray(arr) && arr.forEach(x=>{
-      if (typeof x === 'string') push(x);
-      else if (x && x.authority) push(x.authority);
-    });
-    many(payload.roles);
-    many(payload.role);
-    many(payload.authorities);
-    if (typeof payload.scope === 'string') payload.scope.split(/\s+/).forEach(push);
-    return set;
-  }
-
-  // nodo UI (menú derecho)
+  // Construyo el bloque derecho (igual a tu versión)
   const right = document.createElement('div');
   right.className = 'header-user';
   right.innerHTML = `
@@ -110,17 +71,13 @@ function initHeaderUser(){
       <button id="logoutBtn" class="danger" role="menuitem">Cerrar sesión</button>
     </div>
   `;
-
-  // Insertar en el DOM
   const themeBtn = nav.querySelector('#themeToggle');
-  if (themeBtn) nav.insertBefore(right, themeBtn);
-  else nav.appendChild(right);
+  if (themeBtn) nav.insertBefore(right, themeBtn); else nav.appendChild(right);
 
-  // 🔧 IMPORTANTE: ocultar “Usuarios” DESPUÉS de insertar en el DOM
   const usersItem = document.getElementById('usersAdmin');
   if (usersItem) usersItem.hidden = true;
 
-  // Toggle menú
+  // Dropdown
   const btn = document.getElementById('userBtn');
   const menu = document.getElementById('userMenu');
   btn?.addEventListener('click', ()=>{
@@ -135,65 +92,63 @@ function initHeaderUser(){
     }
   });
 
-  // Logout
+  // Logout unificado
   document.getElementById('logoutBtn')?.addEventListener('click', ()=>{
-    clearToken();
-    location.href = '../files-html/login.html';
+    api.logout(); // limpia token
+    location.href = '../files-html/login.html'; // navegamos desde acá
   });
 
-  // --- aplicar políticas de visibilidad según rol ---
-  const token = getToken();
+  // —— Rol/visibilidad y nombre ——
   const pathIsUsers = /(^|\/)usuarios\.html(\?|$)/.test(location.pathname);
 
-  function applyRole(owner, nameFromMe){
-    // set nombre/rol
-    const name = nameFromMe || localStorage.getItem('username') || 'Usuario';
+  function applyRole({ owner, displayName }){
+    const name = displayName || 'Usuario';
     document.getElementById('userName').textContent = name;
-    document.getElementById('uName').textContent   = name;
-    document.getElementById('uRole').textContent   = owner ? 'OWNER' : 'EMPLOYEE';
-
-    // Dropdown
-    const n = document.getElementById('usersAdmin');
-    if (n) n.hidden = !owner;
-
-    // hint en <html> por si querés usar CSS condicional
+    document.getElementById('uName').textContent    = name;
+    document.getElementById('uRole').textContent    = owner ? 'OWNER' : 'EMPLOYEE';
+    if (usersItem) usersItem.hidden = !owner;
     document.documentElement.setAttribute('data-role', owner ? 'owner' : 'employee');
 
-    // Guard de ruta: si intenta entrar a usuarios.html sin OWNER, lo saco YA
+    // Guard sólo para usuarios.html
     if (pathIsUsers && !owner) {
       try { localStorage.setItem('flash', JSON.stringify({type:'error', message:'Acceso restringido a OWNER'})); } catch(_){}
       location.replace('../files-html/index.html');
     }
+
+    // ✅ Aviso global: el auth/rol ya está listo
+    document.dispatchEvent(new CustomEvent('app:auth-ready', { detail:{ owner } }));
   }
 
-  // 1) Intentar /auth/me
-  if (!token){
-    applyRole(false, 'Invitado');
+  // Si no hay token, pintamos invitado y salimos (no redirigimos)
+  if (!api.getToken()){
+    applyRole({ owner:false, displayName:'Invitado' });
     return;
   }
 
-  fetch('http://localhost:8080/auth/me', { headers:{ 'Authorization': `Bearer ${token}` }})
-    .then(r=>r.ok?r.json():null)
-    .then(me=>{
-      if (me){
-        const name = me.username || me.name || 'Usuario';
-        const roleStr = (me.role || '').toUpperCase();
-        const owner = roleStr === 'ROLE_OWNER' || roleStr === 'OWNER';
-        applyRole(owner, name);
-      }else{
-        // 2) Fallback: JWT
-        const payload = decodeJwtPayload(token);
-        const roles = extractRoles(payload);
-        const owner = roles.has('ROLE_OWNER') || roles.has('OWNER');
-        const name = payload.name || payload.preferred_username || payload.username || 'Usuario';
-        applyRole(owner, name);
-      }
-    })
-    .catch(()=>{
-      const payload = decodeJwtPayload(token);
-      const roles = extractRoles(payload);
-      const owner = roles.has('ROLE_OWNER') || roles.has('OWNER');
-      const name = payload.name || payload.preferred_username || payload.username || 'Usuario';
-      applyRole(owner, name);
-    });
+  // 1) Intentar /auth/me usando api.js (misma baseURL y headers)
+  (async ()=>{
+    const me = await api.me(); // { ok, data } o { ok:false }
+    if (me?.ok) {
+      const d = me.data || {};
+      const name = [d.name, d.surname].filter(Boolean).join(' ') || d.username || 'Usuario';
+      const role = String(d.role || d.authority || '').toUpperCase();
+      const owner = role === 'ROLE_OWNER' || role === 'OWNER';
+      applyRole({ owner, displayName:name });
+      return;
+    }
+
+    // 2) Fallback: decodificar JWT desde api.js
+    const payload = api.decodeJwtPayload(api.getToken()) || {};
+    const roles = new Set(
+      []
+        .concat(payload.roles || [], payload.role || [], payload.authorities || [])
+        .map(x => (typeof x === 'string' ? x : (x && x.authority) || ''))
+        .flat()
+        .map(x => String(x).toUpperCase())
+    );
+    const owner = roles.has('ROLE_OWNER') || roles.has('OWNER');
+    const name =
+      payload.name || payload.preferred_username || payload.username || 'Usuario';
+    applyRole({ owner, displayName:name });
+  })();
 }

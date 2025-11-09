@@ -1,7 +1,10 @@
-// ===== Endpoints =====
-const API_URL_ORDERS   = 'http://localhost:8080/orders';
-const API_URL_CLIENTS  = 'http://localhost:8080/clients';
-const API_URL_RESERVAS = 'http://localhost:8080/stock-reservations/search?status=ACTIVE';
+// files-js/pedidos.js
+const { authFetch, safeJson, getToken } = window.api;
+
+// ===== Endpoints (relativos a base 8088) =====
+const API_URL_ORDERS   = '/orders';
+const API_URL_CLIENTS  = '/clients';
+const API_URL_RESERVAS = '/stock-reservations/search?status=ACTIVE';
 
 // ===== Helpers =====
 const $ = (s, r=document)=>r.querySelector(s);
@@ -10,16 +13,6 @@ const fmtShort    = (n)=> new Intl.NumberFormat('es-AR',{maximumFractionDigits:0
 const fmtDate     = (s)=> s ? new Date(s).toLocaleDateString('es-AR') : '—';
 const parseISO    = (s)=> s? new Date(s+'T00:00:00') : null;
 const debounce    = (fn,d=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); }; };
-// --- DRILL-DOWN flags ---
-const DRILL = { onlyPending: false };
-
-
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t=getToken(); return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
-}
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
-function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
 
 let __toastRoot;
 function notify(msg, type='info'){
@@ -31,17 +24,16 @@ function notify(msg, type='info'){
   const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; __toastRoot.appendChild(n);
   setTimeout(()=>n.remove(),4000);
 }
+function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
 
-// Si venís de dashboard con ?estado=pendiente, aplicá filtro
+// --- DRILL-DOWN flags ---
+const DRILL = { onlyPending: false };
 function applyDrilldownPedidos(){
   const qs = new URLSearchParams(location.search);
   if ((qs.get('estado')||'').toLowerCase() === 'pendiente'){
     DRILL.onlyPending = true;
-    // (opcional) marcar algún control visual si más adelante agregás un switch
   }
 }
-
-
 
 // ===== Estado =====
 let ORDERS   = [];
@@ -50,7 +42,6 @@ let CLIENTS  = [];
 let SL_ABS_MIN = 0;
 let SL_ABS_MAX = 0;
 
-// host compatible (re-evalúa por si el HTML aún no estaba)
 function getListHost(){
   return document.querySelector('#lista-pedidos') || document.querySelector('#contenedor-pedidos');
 }
@@ -59,14 +50,12 @@ function getListHost(){
 document.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ go('login.html'); return; }
 
-  // si viene el drill-down, lo aplicamos ya (antes de cargar)
   applyDrilldownPedidos();
-  
 
   await Promise.all([loadClients(), loadOrdersAndReservations()]);
   bindFilters();
 
-  // Delegación de acciones sobre el host real
+  // Delegación de acciones
   const host = getListHost();
   host?.addEventListener('click', (e)=>{
     const btn = e.target.closest('button');
@@ -82,12 +71,14 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 async function loadClients(){
   try{
     const r=await authFetch(API_URL_CLIENTS);
-    CLIENTS = r.ok? await r.json() : [];
+    CLIENTS = r.ok? await safeJson(r) : [];
     const sel = $('#f_client');
     if (!sel) return;
     (CLIENTS||[]).forEach(c=>{
       const txt = `${c.name||''} ${c.surname||''}`.trim();
-      const o=document.createElement('option'); o.value=txt; o.textContent=txt || `ID ${c.idClient||c.id}`;
+      const o=document.createElement('option'); 
+      o.value=txt; 
+      o.textContent=txt || `ID ${c.idClient||c.id}`;
       sel.appendChild(o);
     });
   }catch(e){ console.warn(e); }
@@ -99,9 +90,9 @@ async function loadOrdersAndReservations(){
       authFetch(API_URL_ORDERS),
       authFetch(API_URL_RESERVAS)
     ]);
-    ORDERS = resOrders.ok? await resOrders.json() : [];
-    const resvList = resResv.ok? await resResv.json() : [];
-    RESV_SET = new Set(resvList.filter(x=>x.orderId!=null).map(x=>x.orderId));
+    ORDERS = resOrders.ok? await safeJson(resOrders) : [];
+    const resvList = resResv.ok? await safeJson(resResv) : [];
+    RESV_SET = new Set((resvList||[]).filter(x=>x.orderId!=null).map(x=>x.orderId));
 
     setupPriceSlider();
     renderFiltered();
@@ -162,19 +153,16 @@ function paintSlider(){
   host.style.setProperty('--b', `${b}%`);
 }
 
-// ===== Filtros (simplificados) =====
-// Dejamos: Pedido #, Cliente, Creación (desde–hasta), Entrega (desde–hasta), Total (slider), Reserva.
-// Se elimina el texto libre (si existe en HTML, se ignora).
+// ===== Filtros =====
 function bindFilters(){
   const deb = debounce(renderFiltered, 220);
   ['f_orderId','f_client','f_c_from','f_c_to','f_d_from','f_d_to','f_status']
-    .forEach(id => { const el=$('#'+id); if(!el) return; el.addEventListener(id==='f_client'||id==='f_resv'?'change':'input', deb); });
+    .forEach(id => { const el=$('#'+id); if(!el) return; el.addEventListener(id==='f_client'?'change':'input', deb); });
 
   $('#btnLimpiar')?.addEventListener('click', ()=>{
     ['f_orderId','f_client','f_c_from','f_c_to','f_d_from','f_d_to','f_status']
       .forEach(id=>{ const el=$('#'+id); if(el) el.value=''; });
 
-    // Reset slider
     if ($('#f_t_slider_min') && $('#f_t_slider_max')){
       $('#f_t_slider_min').value = SL_ABS_MIN;
       $('#f_t_slider_max').value = SL_ABS_MAX;
@@ -216,14 +204,12 @@ function renderFiltered(){
     if (total < tMin || total > tMax) return false;
 
     const hasResv = RESV_SET.has(o.idOrders);
-    const isSold  = o.soldOut === true;                 // backend debe mandarlo
+    const isSold  = o.soldOut === true;
 
-    // Filtro “Estado”
     if (status === 'vendido'   && !isSold)              return false;
     if (status === 'pend_con'  && (isSold || !hasResv)) return false;
     if (status === 'pend_sin'  && (isSold ||  hasResv)) return false;
 
-    // Drill-down desde dashboard: mostrar sólo pendientes
     if (DRILL.onlyPending && isSold) return false;
 
     return true;
@@ -235,7 +221,7 @@ function renderFiltered(){
 // ===== Render =====
 function renderTable(lista){
   const host = getListHost();
-  if(!host) return;  // si falta el contenedor, salimos silenciosamente
+  if(!host) return;
   host.innerHTML = `
     <div class="fila encabezado">
       <div>Pedido</div>
@@ -253,10 +239,11 @@ function renderTable(lista){
     row.className='fila';
     row.setAttribute('data-order', String(p.idOrders));
     const hasRes = RESV_SET.has(p.idOrders);
+
     let soldTag;
     if (p.soldOut === true) {
       soldTag = `<span class="tag vendido" title="Vendido (sin pendiente)">✔️ Vendido</span>`;
-    } else if (RESV_SET.has(p.idOrders)) {
+    } else if (hasRes) {
       soldTag = `<span class="tag pendiente" title="Pendiente con reserva">⏳ Pendiente (con reserva)</span>`;
     } else {
       soldTag = `<span class="tag pendiente" title="Pendiente sin reserva">⏳ Pendiente (sin reserva)</span>`;
@@ -281,7 +268,6 @@ function renderTable(lista){
     host.appendChild(row);
   });
 }
-
 
 // ===== Acciones =====
 async function eliminarPedido(id){

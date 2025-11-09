@@ -3,51 +3,50 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>✏️ Editar cliente</title>
+  <title>👤 - Nuevo cliente</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/clientes.css"/>
   <link rel="stylesheet" href="../files-css/nav.css">
 </head>
 <body>
-
   <div id="app-header"></div>
 
-<main class="page form-page narrow">
-  <div class="page-head">
-    <h1>Editar cliente</h1>
-  </div>
+  <main class="page form-page narrow">
+    <div class="page-head">
+      <h1>Nuevo cliente</h1>
+    </div>
 
-  <section class="card">
-    <form id="form-cliente">
-      <div class="grid">
-        <div><label for="nombre">Nombre</label><input id="nombre" type="text" required></div>
-        <div><label for="apellido">Apellido</label><input id="apellido" type="text"></div>
+    <section class="card">
+      <form id="form-nuevo-cliente">
+        <div class="grid">
+          <div><label for="name">Nombre</label><input id="name" type="text" required></div>
+          <div><label for="surname">Apellido</label><input id="surname" type="text" required></div>
 
-        <div><label for="dni">DNI</label><input id="dni" type="text" required></div>
-        <div><label for="email">Email</label><input id="email" type="email"></div>
+          <div><label for="dni">DNI</label><input id="dni" type="text" required></div>
+          <div><label for="email">Email</label><input id="email" type="email" required></div>
 
-        <div><label for="telefono">Teléfono</label><input id="telefono" type="text"></div>
-        <div><label for="localidad">Localidad</label><input id="localidad" type="text"></div>
+          <div><label for="phoneNumber">Teléfono</label><input id="phoneNumber" type="text" required></div>
+          <div><label for="locality">Localidad</label><input id="locality" type="text" required></div>
 
-        <div><label for="direccion">Dirección</label><input id="direccion" type="text" required></div>
-        <div>
-          <label for="estado">Estado</label>
-          <select id="estado">
-            <option value="ACTIVE">Activo</option>
-            <option value="INACTIVE">Inactivo</option>
-          </select>
+          <div style="grid-column:1/-1">
+            <label for="address">Dirección</label>
+            <input id="address" type="text" required>
+          </div>
         </div>
-      </div>
 
-      <div class="form-actions">
-        <button class="btn primary" type="submit">Guardar cambios</button>
-        <a class="btn outline" href="clientes.html">Cancelar</a>
-      </div>
-    </form>
-  </section>
-</main>
+        <div class="form-actions">
+          <button class="btn primary" type="submit">Crear cliente</button>
+          <a class="btn outline" href="clientes.html">Cancelar</a>
+        </div>
+      </form>
+    </section>
+  </main>
 
-<script src="../files-js/header.js"></script>
-<script src="../files-js/editar-cliente.js"></script>
+  <!-- núcleo + base URL + header -->
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+  <script src="../files-js/header.js"></script>
+  <!-- script de la página -->
+  <script type="module" src="../files-js/crear-cliente.js"></script>
 </body>
 </html>

@@ -27,22 +27,26 @@ public class UserService implements IUserService {
         return userRepository.findByUsername(username);
     }
 
+    @Autowired private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
     @Override
     @Transactional
     public User save(User user) {
-        Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
-        String hash = argon2.hash(1, 1024, 1, user.getPassword());
-        user.setPassword(hash);
+        if (user.getPassword() != null && !user.getPassword().isBlank()) {
+            String p = user.getPassword();
+            boolean looksLikeBcrypt = p.startsWith("$2a$") || p.startsWith("$2b$") || p.startsWith("$2y$");
+            if (!looksLikeBcrypt) {
+                user.setPassword(passwordEncoder.encode(p)); // BCrypt
+            }
+        }
         return userRepository.save(user);
     }
 
-    public User authenticate(String username, String password) {
-        return findByUsername(username)
+    // ← ESTE metodo es el que usa tu AuthController
+    public User authenticate(String username, String rawPassword) {
+        return userRepository.findByUsername(username)
                 .filter(User::isEnabled)
-                .filter(u -> {
-                    Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
-                    return argon2.verify(u.getPassword(), password);
-                })
+                .filter(u -> passwordEncoder.matches(rawPassword, u.getPassword())) // BCrypt
                 .orElse(null);
     }
 

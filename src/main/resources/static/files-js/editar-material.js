@@ -1,20 +1,15 @@
 // /static/files-js/editar-material.js
-const API_URL_MAT   = 'http://localhost:8080/materials';
-const API_URL_FAM   = 'http://localhost:8080/families';
-const API_URL_WHS   = 'http://localhost:8080/warehouses';
-const API_URL_STOCK = 'http://localhost:8080/stocks';
+const { authFetch, getToken } = window.api;
+
+const API_URL_MAT   = '/materials';
+const API_URL_FAM   = '/families';
+const API_URL_WHS   = '/warehouses';
+const API_URL_STOCK = '/stocks';
 
 const params = new URLSearchParams(window.location.search);
 const materialId = params.get('id');
 
 const $ = (s, r=document)=>r.querySelector(s);
-
-/* ================== auth ================== */
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t=getToken(); return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
-}
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 
 /* ================== toasts ================== */
 let __toastRoot;
@@ -39,7 +34,11 @@ function notify(msg,type='info'){
 }
 
 /* ================== nav/flash ================== */
-function go(page){ const base=location.pathname.replace(/[^/]+$/,''); window.location.href=`${base}${page}`; }
+function go(page){
+  const p = location.pathname, SEG='/files-html/';
+  const i = p.indexOf(SEG);
+  location.href = (i>=0 ? p.slice(0,i+SEG.length) : p.replace(/[^/]+$/,'') ) + page;
+}
 function flashAndGo(message,page){ localStorage.setItem('flash', JSON.stringify({message, type:'success'})); go(page); }
 
 /* ================== helpers UI ================== */
@@ -52,53 +51,35 @@ function updateCurrentHintsWithFallback(famTextFallback, whTextFallback){
   if(whHint)  whHint.textContent =`Actual: ${whText}`;
 }
 
-/* 
- * Preselección FUERTE: intenta por id → texto exacto → texto contains.
- * Si nada coincide y tenemos id+texto, inyecta un option “fantasma” para dejarlo visible.
- */
+/* Preselección robusta */
 function preselectRobusto(selectEl, {id, text}){
   if (!selectEl) return false;
   const idStr = (id!=null && id!=='') ? String(id) : null;
 
-  // 1) por ID
   if (idStr){
     const byId = [...selectEl.options].find(o => String(o.value) === idStr);
     if (byId){ selectEl.value = idStr; return true; }
   }
-
-  // 2) por texto exacto (case-insensitive)
   if (text){
     const norm = String(text).trim().toLowerCase();
     const byTxt = [...selectEl.options].find(o => o.textContent.trim().toLowerCase() === norm);
     if (byTxt){ selectEl.value = byTxt.value; return true; }
-  }
-
-  // 3) por texto contains (última red)
-  if (text){
-    const norm = String(text).trim().toLowerCase();
     const byContains = [...selectEl.options].find(o => o.textContent.trim().toLowerCase().includes(norm));
     if (byContains){ selectEl.value = byContains.value; return true; }
   }
-
-  // 4) nada coincidió: si tengo id + texto, agrego un option “fantasma” para reflejar estado actual
   if (idStr && text){
     const opt = document.createElement('option');
     opt.value = idStr;
     opt.textContent = text;
-    // lo marco como “data-phantom” para ubicarlo si querés debuggear
     opt.dataset.phantom = '1';
     selectEl.appendChild(opt);
     selectEl.value = idStr;
     return true;
   }
-
   return false;
 }
 
-/* 
- * Extrae familia desde el material aunque vengan claves distintas.
- * Devuelve {id, text} o {null, null}
- */
+/* Extraer familia del material con varias formas posibles */
 function extractFamilyFromMaterial(m){
   if (!m) return { id:null, text:null };
   const id =
@@ -114,13 +95,11 @@ function extractFamilyFromMaterial(m){
     m.family?.name ??
     m.familyName ??
     m.family_type ??
-    // ⬇️ fallback final por compatibilidad
     m.category ??
     null;
 
   return { id, text };
 }
-
 
 /* ================== combos ================== */
 async function cargarFamilias(){
@@ -130,7 +109,6 @@ async function cargarFamilias(){
   sel.innerHTML='<option value="">Seleccionar familia</option>';
   (list||[]).forEach(f=>{
     const o=document.createElement('option');
-    // MUY importante: asegurar string en value
     o.value=String(f.idFamily);
     o.textContent=f.typeFamily;
     sel.appendChild(o);
@@ -157,10 +135,8 @@ async function init(){
   if(!materialId){ notify('ID de material no especificado','error'); go('materiales.html'); return; }
   if(!getToken()){ notify('Debes iniciar sesión','error'); go('login.html'); return; }
 
-  // 1) cargar combos en paralelo
   await Promise.all([cargarFamilias(), cargarAlmacenes()]);
 
-  // 2) traer material
   let m;
   try{
     const r=await authFetch(`${API_URL_MAT}/${materialId}`);
@@ -170,39 +146,30 @@ async function init(){
     console.error(e); notify('Error al cargar material','error'); go('materiales.html'); return;
   }
 
-  console.log('[editar-material] Material GET:', m);
-
-  // 3) completar campos base
   $('#name').value       = m.name  || '';
   $('#brand').value      = m.brand || '';
   $('#priceArs').value   = (m.priceArs ?? '') === null ? '' : m.priceArs;
 
-  // 4) Familia (preselección robusta)
   const fam = extractFamilyFromMaterial(m);
-  console.log('[editar-material] Familia extraída:', fam);
   preselectRobusto($('#familyId'), fam);
 
-  // 5) Depósito actual desde /stocks?materialId=...
+  // Depósito actual (siempre tomamos el primero)
   let whId=null, whText=null;
   try{
     const rs=await authFetch(`${API_URL_STOCK}?materialId=${materialId}`);
     if(rs.ok){
       const stocks=await rs.json();
-      const s=Array.isArray(stocks)?stocks[0]:null; // usá el primero
+      const s=Array.isArray(stocks)?stocks[0]:null;
       whId  = s?.warehouseId ?? s?.warehouse?.idWarehouse ?? null;
       whText= s?.nameWarehouse ?? s?.warehouseName ?? s?.warehouse?.name ?? null;
       preselectRobusto($('#warehouseId'), {id:whId, text:whText});
     }
-  }catch{ /* no-op */ }
+  }catch{ /* ignore */ }
 
-  // 6) hints “Actual: …”
   updateCurrentHintsWithFallback(fam.text, whText);
-
-  // 7) reflejar hints si cambian selects
   $('#familyId')?.addEventListener('change', ()=> updateCurrentHintsWithFallback());
   $('#warehouseId')?.addEventListener('change', ()=> updateCurrentHintsWithFallback());
 
-  // 8) submit
   $('#formEditarMaterial')?.addEventListener('submit', onSave);
 }
 
@@ -213,7 +180,7 @@ async function onSave(e){
 
   const btn=$('#btnSave'); if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
 
-  // Tu DTO MaterialUpdateDTO admite: idMaterial, name, brand, priceArs, priceUsd, measurementUnit, internalNumber, description, familyId
+  // MaterialUpdateDTO del back (vía DTO al endpoint PUT /materials)
   const payload={
     idMaterial: parseInt(materialId,10),
     name:  $('#name').value.trim(),
@@ -222,7 +189,6 @@ async function onSave(e){
     familyId: ($('#familyId').value ? parseInt($('#familyId').value,10) : null)
   };
 
-  // limpiamos vacíos para update parcial
   Object.keys(payload).forEach(k=>{
     if(payload[k]===null || payload[k]==='' || Number.isNaN(payload[k])) delete payload[k];
   });

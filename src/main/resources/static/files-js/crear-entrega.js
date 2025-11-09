@@ -1,18 +1,17 @@
 // /static/files-js/crear-entrega.js
-const API_URL_SALES = 'http://localhost:8080/sales';
-const API_URL_DELIVERIES = 'http://localhost:8080/deliveries';
-const API_URL_DELIVERY_PENDING = (orderId) => `http://localhost:8080/orders/${orderId}/delivery-pending`;
-const API_URL_SALE_DETAILS    = (saleId) => `http://localhost:8080/sales/${saleId}/details`;
-const API_URL_STOCKS_BY_MAT   = (matId)=> `http://localhost:8080/stocks/by-material/${matId}`;
+// Crear entrega desde una venta PAGADA vinculada a un pedido.
+// Cap de cantidades = min(pendiente del pedido, vendido en esa venta, stock disponible en depósito).
+const { authFetch, safeJson, getToken } = window.api;
+
+const API_URL_SALES            = '/sales';
+const API_URL_DELIVERIES       = '/deliveries';
+const API_URL_DELIVERY_PENDING = (orderId) => `/orders/${orderId}/delivery-pending`;
+const API_URL_SALE_DETAILS     = (saleId)  => `/sales/${saleId}/details`;
+const API_URL_STOCKS_BY_MAT    = (matId)   => `/stocks/by-material/${matId}`;
 
 const $  = (s, r=document) => r.querySelector(s);
+const fmt = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t=getToken();
-  return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
-}
-function authFetch(url, opts={}){ return fetch(url, { ...opts, headers:{ ...authHeaders(!opts.bodyIsForm), ...(opts.headers||{}) }}); }
 function notify(msg,type='info',anchorSelector){
   const anchor = anchorSelector ? $(anchorSelector) : document.body;
   const div = document.createElement('div');
@@ -34,36 +33,21 @@ function go(page){
 let currentSale = null;
 let currentOrderId = null;
 let paramSaleId = null;
+let sending = false;
 
 window.addEventListener('DOMContentLoaded', async () => {
   if (!getToken()) { go('login.html'); return; }
 
+  // hoy por defecto
   const d = new Date();
   $('#fecha').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
   const qs = new URLSearchParams(location.search);
   paramSaleId = Number(qs.get('sale') || qs.get('saleId') || 0) || null;
 
-  await cargarVentasPagadas();
-
+  await cargarVentasPagadas();      // llena el <select> con ventas pagadas elegibles
   if (paramSaleId) {
-    const sel = $('#venta');
-    let opt = [...sel.options].find(o => Number(o.value) === paramSaleId);
-    if (!opt){
-      try{
-        const r = await authFetch(`${API_URL_SALES}/${paramSaleId}`);
-        if (r.ok){
-          const s = await r.json();
-          opt = document.createElement('option');
-          opt.value = String(paramSaleId);
-          opt.textContent = `#${s.idSale} — ${s.clientName||'—'} — ${s.dateSale||''}`;
-          opt.dataset.orderId = s.orderId ?? s.ordersId ?? '';
-          sel.appendChild(opt);
-        }
-      }catch(_){}
-    }
-    sel.value = String(paramSaleId);
-    await onChangeVenta();
+    await preselectVenta(paramSaleId);
   }
 
   $('#venta')?.addEventListener('change', onChangeVenta);
@@ -71,7 +55,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('#form-entrega')?.addEventListener('submit', guardarEntrega);
 });
 
-/* ================== Ventas ================== */
+/* ================== Ventas elegibles (pagadas y con pedido, sin entrega previa) ================== */
 async function cargarVentasPagadas(){
   const sel = $('#venta');
   if (!sel) return;
@@ -82,13 +66,12 @@ async function cargarVentasPagadas(){
     `${API_URL_SALES}?status=PAID`,
     `${API_URL_SALES}`
   ];
-
   let raw = null;
   for (const url of candidates){
     try{
       const res = await authFetch(url);
       if (!res.ok) continue;
-      raw = await res.json(); break;
+      raw = await safeJson(res); break;
     }catch(_){}
   }
 
@@ -113,7 +96,6 @@ async function cargarVentasPagadas(){
     s.orderId && !s.deliveryId
   );
 
-  const fmt = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
   onlyPaid.forEach(s => {
     const opt = document.createElement('option');
     opt.value = s.id;
@@ -121,6 +103,26 @@ async function cargarVentasPagadas(){
     opt.dataset.orderId = s.orderId ?? '';
     sel.appendChild(opt);
   });
+}
+
+async function preselectVenta(id){
+  const sel = $('#venta');
+  let opt = [...sel.options].find(o => Number(o.value) === id);
+  if (!opt){
+    try{
+      const r = await authFetch(`${API_URL_SALES}/${id}`);
+      if (r.ok){
+        const s = await safeJson(r);
+        opt = document.createElement('option');
+        opt.value = String(id);
+        opt.textContent = `#${s.idSale} — ${s.clientName||'—'} — ${s.dateSale||''} — Total ${fmt.format(Number(s.total||0))}`;
+        opt.dataset.orderId = s.orderId ?? s.ordersId ?? '';
+        sel.appendChild(opt);
+      }
+    }catch(_){}
+  }
+  sel.value = String(id);
+  await onChangeVenta();
 }
 
 async function lookupVentaPorId(){
@@ -131,7 +133,16 @@ async function lookupVentaPorId(){
   try{
     const res = await authFetch(`${API_URL_SALES}/${id}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const s = await res.json();
+    const s = await safeJson(res);
+
+    // validaciones mínimas: que esté pagada, tenga pedido y no tenga entrega
+    const total = Number(s.total ?? 0), paid = Number(s.paid ?? 0);
+    const isPaid = (s.paymentStatus ?? s.status ?? '').toString().toUpperCase() === 'PAID' || (total>0 && paid>=total);
+    const oid = s.orderId ?? s.ordersId ?? null;
+    const hasDelivery = !!(s.deliveryId ?? s.delivery?.idDelivery ?? null);
+    if(!isPaid || !oid || hasDelivery){
+      notify('La venta no es elegible (debe estar pagada, ligada a pedido y sin entrega).','error'); 
+    }
 
     const sel = $('#venta');
     let opt = Array.from(sel.options).find(o => Number(o.value) === id);
@@ -139,12 +150,10 @@ async function lookupVentaPorId(){
       opt = document.createElement('option');
       opt.value = id;
       const client = s.clientName ?? s.client ?? '';
-      const total  = Number(s.total ?? 0);
-      const fmt = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
+      opt.dataset.orderId = oid ?? '';
       opt.textContent = `#${id} — ${client} — ${s.dateSale||''} — Total ${fmt.format(total)}`;
       sel.appendChild(opt);
     }
-    opt.dataset.orderId = s.orderId ?? s.ordersId ?? '';
     sel.value = String(id);
     await onChangeVenta();
   }catch(e){
@@ -164,9 +173,9 @@ async function onChangeVenta(){
   if (!saleId) return;
 
   try{
-    // 1) Traemos la venta (para orderId)
+    // 1) Traer venta (para orderId)
     const res = await authFetch(`${API_URL_SALES}/${saleId}`);
-    if (res.ok) currentSale = await res.json();
+    if (res.ok) currentSale = await safeJson(res);
 
     const viaDto = currentSale?.orderId ?? currentSale?.ordersId ?? null;
     const viaOption = sel.selectedOptions?.[0]?.dataset?.orderId;
@@ -178,18 +187,17 @@ async function onChangeVenta(){
     }
     $('#pedidoAsociado').value = `#${currentOrderId}`;
 
-    // 2) Detalles vendidos de ESTA venta
+    // 2) Detalles de la venta (materiales y cantidades vendidas)
     const rDet = await authFetch(API_URL_SALE_DETAILS(saleId));
     if (!rDet.ok) throw new Error(`HTTP ${rDet.status}`);
-    const saleDetails = await rDet.json(); // [{materialId, materialName, quantity, unitPrice}]
+    const saleDetails = await safeJson(rDet); // [{materialId, materialName, quantity, unitPrice}]
 
-    // map material -> qtySold
     const soldByMat = new Map(saleDetails.map(d => [Number(d.materialId), Number(d.quantity||0)]));
 
     // 3) Pendientes del pedido
     const rp = await authFetch(API_URL_DELIVERY_PENDING(currentOrderId));
     if (!rp.ok) throw new Error(`HTTP ${rp.status}`);
-    let pendientes = await rp.json(); // [{orderDetailId, materialId, materialName, pendingToDeliver, ...}]
+    let pendientes = await safeJson(rp); // [{orderDetailId, materialId, materialName, pendingToDeliver}]
 
     // 4) Cruzar: sólo materiales vendidos en esta venta y cap = min(vendida, pendiente)
     const merged = [];
@@ -244,14 +252,14 @@ async function renderPendientes(rows, useCap=false){
     row.dataset.odid = r.orderDetailId;
     row.dataset.materialId = r.materialId;
 
-    // Select de depósitos
+    // Select de depósitos (con disponibilidad)
     const whSel = document.createElement('select');
     whSel.className = 'wh';
     whSel.innerHTML = `<option value="">Seleccionar depósito…</option>`;
 
     try{
       const rs = await authFetch(API_URL_STOCKS_BY_MAT(r.materialId));
-      const list = rs.ok ? await rs.json() : [];
+      const list = rs.ok ? await safeJson(rs) : [];
       list.forEach(w=>{
         const o = document.createElement('option');
         o.value = w.warehouseId;
@@ -297,9 +305,9 @@ async function renderPendientes(rows, useCap=false){
 /* ================= Guardar ================= */
 async function guardarEntrega(ev){
   ev.preventDefault();
+  if (sending) return;
 
   if (!currentOrderId){ notify('Seleccioná una venta válida','error'); return; }
-
   const deliveryDate = $('#fecha').value;
 
   const items = Array.from(document.querySelectorAll('#items .fila'))
@@ -320,14 +328,20 @@ async function guardarEntrega(ev){
   }
 
   const saleId = Number($('#venta').value || 0) || paramSaleId || null;
-
   const payload = { ordersId: currentOrderId, deliveryDate, items, saleId };
+
   try{
+    sending = true;
     const res = await authFetch(API_URL_DELIVERIES, { method:'POST', body: JSON.stringify(payload) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok){
+      const t = await res.text().catch(()=> '');
+      console.warn('POST /deliveries failed', res.status, t);
+      throw new Error(`HTTP ${res.status}`);
+    }
     flashAndGo('Entrega creada correctamente','entregas.html');
   }catch(err){
     console.error(err);
     notify('No se pudo crear la entrega','error');
+    sending = false;
   }
 }

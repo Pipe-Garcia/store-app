@@ -1,18 +1,12 @@
-// files-js/movimiento-detalle.js
+// /static/files-js/movimiento-detalle.js
 (function(){
-  // Base del backend: si estoy en 5500, pego a 8080
-  const ORIGIN = (location.port === '5500')
-    ? `${location.protocol}//localhost:8080`
-    : location.origin;
+  const { authFetch, safeJson, getToken } = window.api;
 
-  const API = ORIGIN + '/audits/events/';
+  if (!getToken()) { location.href = '../files-html/login.html'; return; }
+
+  const API = '/audits/events/';
   const params = new URLSearchParams(window.location.search);
   const id = params.get('id');
-
-  function authHeaders(){
-    const t = localStorage.getItem('token');
-    return t ? { 'Authorization': 'Bearer ' + t } : {};
-  }
 
   async function load(){
     const meta = document.getElementById('meta');
@@ -23,12 +17,13 @@
     meta.innerHTML = 'Cargando…';
     details.innerHTML = '';
     try{
-      const res = await fetch(API + id, { headers: { 'Content-Type':'application/json', ...authHeaders() }});
-      if(res.status === 404){ meta.innerHTML = row('Error','HTTP 404'); return; }
+      const res = await authFetch(API + id, { method:'GET' });
+      if (res.status === 401 || res.status === 403) { meta.innerHTML = row('Error','Sesión expirada'); return; }
+      if (res.status === 404){ meta.innerHTML = row('Error','HTTP 404'); return; }
       if(!res.ok) throw new Error('HTTP '+res.status);
-      const e = await res.json();
+      const e = await safeJson(res);
 
-      const ts = new Date(e.timestamp).toLocaleString();
+      const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : '—';
       meta.innerHTML = [
         row('ID evento', e.id),
         row('Fecha/Hora', ts),
@@ -44,7 +39,7 @@
       ].join('');
 
       const changes = e.changes || [];
-      if(changes.length===0){
+      if(!changes.length){
         details.innerHTML = `<div class="block">Sin diffs adjuntos.</div>`;
         return;
       }
@@ -57,6 +52,7 @@
         </div>
       `).join('');
     }catch(e){
+      console.error(e);
       meta.innerHTML = row('Error', esc(e.message));
     }
   }

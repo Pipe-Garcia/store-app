@@ -1,32 +1,30 @@
-// almacenes.js (limpio - listado)
-const API_URL_WAREHOUSES = 'http://localhost:8080/warehouses';
-const $  = (s,r=document)=>r.querySelector(s);
+// almacenes.js (listado)
+const API_URL_WAREHOUSES = 'http://localhost:8088/warehouses';
 
-// Token
-const token = localStorage.getItem('token');
-if (!token) {
-  alert('Debes iniciar sesión para acceder');
-  window.location.href = '../files-html/login.html';
+const $  = (s,r=document)=>r.querySelector(s);
+function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
+function authHeaders(json=true){
+  const t = getToken();
+  return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
 }
+async function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 
 let almacenes = [];
 
 document.addEventListener('DOMContentLoaded', async ()=>{
-  // Filtros (con guardas por si faltan elementos)
-  $('#filtroNombre')?.addEventListener('input', applyFilters);
+  if(!getToken()){ window.location.href = '../files-html/login.html'; return; }
+
+  $('#filtroNombre')   ?.addEventListener('input', applyFilters);
   $('#filtroLocalidad')?.addEventListener('input', applyFilters);
-  $('#btnLimpiar')?.addEventListener('click', limpiarFiltros);
+  $('#btnLimpiar')     ?.addEventListener('click', limpiarFiltros);
 
   await cargarAlmacenes();
   applyFilters();
 });
 
-// Cargar todos
 async function cargarAlmacenes(){
   try{
-    const res = await fetch(API_URL_WAREHOUSES, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const res = await authFetch(API_URL_WAREHOUSES);
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     almacenes = await res.json() || [];
   }catch(err){
@@ -35,7 +33,6 @@ async function cargarAlmacenes(){
   }
 }
 
-// Filtros
 function limpiarFiltros(){
   const n = $('#filtroNombre');
   const l = $('#filtroLocalidad');
@@ -55,7 +52,6 @@ function applyFilters(){
   renderLista(list);
 }
 
-// Render
 function renderLista(lista){
   const cont = $('#lista-almacenes');
   if (!cont) return;
@@ -80,34 +76,28 @@ function renderLista(lista){
   for (const a of lista){
     const row = document.createElement('div');
     row.className='fila';
-   row.innerHTML = `
-  <div>${a.name || '—'}</div>
-  <div>${a.address || '—'}</div>
-  <div>${a.location || '—'}</div>
-  <div class="acciones">
-    <a class="btn outline" href="../files-html/editar-almacen.html?id=${a.idWarehouse}">✏️ Editar</a>
-    <button class="btn danger" data-del="${a.idWarehouse}">🗑️ Eliminar</button>
-  </div>
-`;
-
+    row.innerHTML = `
+      <div>${a.name || '—'}</div>
+      <div>${a.address || '—'}</div>
+      <div>${a.location || '—'}</div>
+      <div class="acciones">
+        <a class="btn outline" href="../files-html/editar-almacen.html?id=${a.idWarehouse}">✏️ Editar</a>
+        <button class="btn danger" data-del="${a.idWarehouse}">🗑️ Eliminar</button>
+      </div>
+    `;
     cont.appendChild(row);
   }
 
-  // Delegación de eventos para eliminar
   cont.onclick = async (ev)=>{
     const id = ev.target.getAttribute('data-del');
     if(id) eliminarAlmacen(id);
   };
 }
 
-// Eliminar
 async function eliminarAlmacen(id){
   if (!confirm("¿Seguro que desea eliminar este almacén?")) return;
   try{
-    const res = await fetch(`${API_URL_WAREHOUSES}/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const res = await authFetch(`${API_URL_WAREHOUSES}/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error("No se pudo eliminar");
     alert("Almacén eliminado correctamente");
     almacenes = almacenes.filter(a=>a.idWarehouse!==Number(id));

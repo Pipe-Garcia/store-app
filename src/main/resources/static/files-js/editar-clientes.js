@@ -1,136 +1,115 @@
-// /static/files-js/editar-clientes.js
-const API_URL = 'http://localhost:8080/clients';
-const urlParams = new URLSearchParams(window.location.search);
-const clientId = urlParams.get('id');
+// /static/files-js/editar-cliente.js
+const { authFetch, getToken } = window.api;
+const API_BASE = '/clients';
 
-const $ = (s, r=document) => r.querySelector(s);
+const params   = new URLSearchParams(location.search);
+const clientId = params.get('id');
 
-function getToken() {
-  return localStorage.getItem('accessToken') || localStorage.getItem('token');
+const $ = (s, r=document)=>r.querySelector(s);
+
+function go(page){
+  const base = location.pathname.replace(/[^/]+$/,''); // deja .../files-html/
+  location.href = `${base}${page}`;
+}
+function notify(msg, type='success'){
+  const n = document.createElement('div');
+  n.className = `notification ${type}`;
+  n.textContent = msg;
+  document.body.appendChild(n);
+  setTimeout(()=>n.remove(), 4500);
+}
+function flash(message){
+  localStorage.setItem('flash', JSON.stringify({ message, type:'success' }));
 }
 
-function go(page) {
-  const base = location.pathname.replace(/[^/]+$/, ''); // deja .../files-html/
-  window.location.href = `${base}${page}`;
+document.addEventListener('DOMContentLoaded', init);
+
+async function init(){
+  // Guardas básicas
+  if (!clientId){
+    notify('ID de cliente no especificado','error');
+    go('clientes.html'); return;
+  }
+  if (!getToken()){
+    notify('Debes iniciar sesión','error');
+    go('login.html'); return;
+  }
+
+  // Cargar datos actuales: GET /clients/{id}
+  try{
+    const r = await authFetch(`${API_BASE}/${clientId}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const c = await r.json();
+
+    $('#name').value        = c.name        ?? '';
+    $('#surname').value     = c.surname     ?? '';
+    $('#dni').value         = c.dni         ?? '';
+    $('#email').value       = c.email       ?? '';
+    $('#address').value     = c.address     ?? '';
+    $('#locality').value    = c.locality    ?? '';
+    $('#phoneNumber').value = c.phoneNumber ?? '';
+    $('#status').value      = (String(c.status??'').toUpperCase()==='INACTIVE') ? 'INACTIVE' : 'ACTIVE';
+  }catch(err){
+    console.error(err);
+    notify('No se pudo cargar el cliente','error');
+    go('clientes.html'); return;
+  }
+
+  $('#formEditarCliente')?.addEventListener('submit', onSave);
 }
 
-function flashAndGo(message, page) {
-  localStorage.setItem('flash', JSON.stringify({ message, type: 'success' }));
-  go(page);
-}
+async function onSave(e){
+  e.preventDefault();
 
-function authHeaders(json = true) {
-  const t = getToken();
-  return {
-    ...(json ? { 'Content-Type': 'application/json' } : {}),
-    ...(t ? { 'Authorization': `Bearer ${t}` } : {})
+  if (!getToken()){
+    notify('Sesión vencida','error');
+    go('login.html'); return;
+  }
+
+  // Armamos el DTO de actualización
+  const dto = {
+    idClient   : Number(clientId),
+    name       : $('#name').value.trim(),
+    surname    : $('#surname').value.trim(),
+    dni        : $('#dni').value.trim(),
+    email      : $('#email').value.trim(),
+    address    : $('#address').value.trim(),
+    locality   : $('#locality').value.trim(),
+    phoneNumber: $('#phoneNumber').value.trim(),
+    status     : $('#status').value.trim()   // "ACTIVE" | "INACTIVE"
   };
-}
 
-// Toasts top-right
-let __toastRoot;
-function ensureToastRoot() {
-  if (!__toastRoot) {
-    __toastRoot = document.createElement('div');
-    Object.assign(__toastRoot.style, {
-      position: 'fixed', top: '36px', right: '16px', left: 'auto', bottom: 'auto',
-      display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 9999,
-      height: '50vh', overflowY: 'auto', pointerEvents: 'none', maxWidth: '400px', width: '400px'
+  // Validación mínima como en tu back
+  if (!dto.name || !dto.dni || !dto.address){
+    notify('Completá al menos Nombre, DNI y Dirección.','error');
+    return;
+  }
+
+  try{
+    // Tu back: @PutMapping SIN path variable → PUT /clients
+    const res = await authFetch(API_BASE, {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(dto)
     });
-    document.body.appendChild(__toastRoot);
-  }
-}
-function notify(message, type = 'success') {
-  ensureToastRoot();
-  const div = document.createElement('div');
-  div.className = `notification ${type}`;
-  div.textContent = message;
-  __toastRoot.appendChild(div);
-  setTimeout(() => div.remove(), 5000);
-}
-const showNotification = notify;
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (!clientId) {
-    showNotification('ID de cliente no especificado', 'error');
-    go('clientes.html');
-    return;
-  }
-
-  const token = getToken();
-  if (!token) {
-    showNotification('Debes iniciar sesión para editar un cliente', 'error');
-    go('login.html');
-    return;
-  }
-
-  // Cargar datos
-  fetch(`${API_URL}/${clientId}`, {
-    method: 'GET',
-    headers: authHeaders()
-  })
-    .then(res => {
-      if (res.status === 401 || res.status === 403) throw new Error(String(res.status));
-      if (!res.ok) throw new Error('Cliente no encontrado');
-      return res.json();
-    })
-    .then(cliente => {
-      $('#name').value        = cliente.name        ?? '';
-      $('#surname').value     = cliente.surname     ?? '';
-      $('#dni').value         = cliente.dni         ?? '';
-      $('#email').value       = cliente.email       ?? '';
-      $('#address').value     = cliente.address     ?? '';
-      $('#locality').value    = cliente.locality    ?? '';
-      $('#phoneNumber').value = cliente.phoneNumber ?? '';
-      $('#status').value      = cliente.status      ?? 'ACTIVE';
-    })
-    .catch(err => {
-      console.error(err);
-      if (['401','403'].includes(err.message)) {
-        showNotification('Sesión inválida, redirigiendo a login', 'error');
-        go('login.html');
-      } else {
-        showNotification('Error al cargar datos del cliente', 'error');
-        go('clientes.html');
+    if (!res.ok){
+      if (res.status === 401 || res.status === 403){
+        notify('Sesión inválida','error'); go('login.html'); return;
       }
-    });
-
-  // Guardar
-  $('#formEditarCliente').addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    const token2 = getToken();
-    if (!token2) {
-      showNotification('Debes iniciar sesión para actualizar un cliente', 'error');
-      window.location.href = '../files-html/login.html';
-      return;
+      // Intentá leer errores de validación si vienen como JSON
+      let msg = `Error (${res.status}) al actualizar`;
+      try{
+        const data = await res.json();
+        if (data?.message) msg = data.message;
+      }catch(_){}
+      throw new Error(msg);
     }
 
-    const clienteActualizado = {
-      idClient: Number(clientId),
-      name: $('#name').value.trim(),
-      surname: $('#surname').value.trim(),
-      dni: $('#dni').value.trim(),
-      email: $('#email').value.trim(),
-      address: $('#address').value.trim(),
-      locality: $('#locality').value.trim(),
-      phoneNumber: $('#phoneNumber').value.trim(),
-      status: $('#status').value.trim()
-    };
-
-    
-    fetch(API_URL, {
-      method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify(clienteActualizado)
-    })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        flashAndGo('✅ Cliente actualizado con éxito', 'clientes.html');
-      })
-      .catch(err => {
-        console.error(err);
-        showNotification('Error actualizando cliente', 'error');
-      });
-  });
-});
+    flash('✅ Cliente actualizado con éxito');
+    go('clientes.html');
+  }catch(err){
+    console.error(err);
+    notify(err.message || 'Error actualizando cliente','error');
+  }
+}

@@ -1,22 +1,18 @@
 // /static/files-js/crear-venta.js
 /* ===== Endpoints ===== */
-const API_URL_SALES          = 'http://localhost:8080/sales';
-const API_URL_CLIENTS        = 'http://localhost:8080/clients';
-const API_URL_MATERIALS      = 'http://localhost:8080/materials';
-const API_URL_WAREHOUSES     = 'http://localhost:8080/warehouses';
+const { authFetch, getToken, url } = window.api;
+const API_URL_SALES          = '/sales';
+const API_URL_CLIENTS        = '/clients';
+const API_URL_MATERIALS      = '/materials';
+const API_URL_WAREHOUSES     = '/warehouses';
 
-const API_URL_ORDERS_LIST    = 'http://localhost:8080/orders';
-const API_URL_ORDER          = (id)=> `http://localhost:8080/orders/${id}`;
-const API_URL_ORDER_ITEMS    = (id)=> `http://localhost:8080/order-details/order/${id}`;
-const API_URL_STOCKS_BY_MAT  = (id)=> `http://localhost:8080/stocks/by-material/${id}`;
+const API_URL_ORDERS_LIST    = '/orders';
+const API_URL_ORDER          = (id)=> `/orders/${id}`;
+const API_URL_ORDER_ITEMS    = (id)=> `/order-details/order/${id}`;
+const API_URL_STOCKS_BY_MAT  = (id)=> `/stocks/by-material/${id}`;
 
 /* ===== Helpers ===== */
 const $ = (s,r=document)=>r.querySelector(s);
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t=getToken(); return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
-}
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 function notify(msg,type='info'){ const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; document.body.appendChild(n); setTimeout(()=>n.remove(),3600); }
 function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
 function todayStr(){ const d=new Date(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${d.getFullYear()}-${m}-${day}`; }
@@ -162,7 +158,7 @@ async function onOrderChange(){
 
   try{
     // Traer vista del pedido (incluye clientId y remaining por renglón)
-    const rView = await authFetch(`http://localhost:8080/orders/${val}/view`);
+    const rView = await authFetch(`/orders/${val}/view`);
     if (!rView.ok) throw new Error(`HTTP ${rView.status}`);
     const view = await rView.json();
 
@@ -321,7 +317,7 @@ function recalc(){
 async function preloadFromOrder(orderId){
   try{
     // Preferimos la VIEW
-    const rView = await authFetch(`http://localhost:8080/orders/${orderId}/view`);
+    const rView = await authFetch(`/orders/${orderId}/view`);
     if (rView.ok){
       const view = await rView.json();
       if (view.clientId) setClientLocked(view.clientId);

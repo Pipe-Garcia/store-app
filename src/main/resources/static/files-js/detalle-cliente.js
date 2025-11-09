@@ -1,9 +1,9 @@
-const API_URL_CLI   = 'http://localhost:8080/clients';
-const API_URL_SALES = 'http://localhost:8080/sales';
-
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
+const { authFetch, getToken } = window.api;
+const API_URL_CLI   = '/clients';
+const API_URL_SALES = '/sales';
 
 const token  = getToken();
+
 const params = new URLSearchParams(location.search);
 const id     = params.get('id');
 
@@ -49,24 +49,22 @@ function dedupeById(list){
 }
 
 async function fetchSalesAny(){
-  const headers = { 'Authorization': `Bearer ${token}` };
-
   // 1) endpoint específico
   try{
-    const r1 = await fetch(`${API_URL_SALES}/by-client/${id}`, { headers });
+    const r1 = await authFetch(`${API_URL_SALES}/by-client/${id}`);
     if (r1.ok) return await r1.json();
     if (r1.status !== 404) throw new Error(`HTTP ${r1.status}`);
   }catch(_) {}
 
   // 2) query param
   try{
-    const r2 = await fetch(`${API_URL_SALES}?clientId=${encodeURIComponent(id)}`, { headers });
+    const r2 = await authFetch(`${API_URL_SALES}?clientId=${encodeURIComponent(id)}`);
     if (r2.ok) return await r2.json();
     if (r2.status !== 404) throw new Error(`HTTP ${r2.status}`);
   }catch(_) {}
 
   // 3) todo
-  const r3 = await fetch(API_URL_SALES, { headers });
+  const r3 = await authFetch(API_URL_SALES);
   if (!r3.ok) throw new Error(`HTTP ${r3.status}`);
   return await r3.json();
 }
@@ -113,9 +111,7 @@ function renderSales(list){
 window.addEventListener('DOMContentLoaded', async () => {
   try{
     // Cargar cliente
-    const r = await fetch(`${API_URL_CLI}/${id}`, {
-      headers:{ 'Authorization': `Bearer ${token}` }
-    });
+    const r = await authFetch(`${API_URL_CLI}/${id}`);
     if (!r.ok){
       if (r.status === 401 || r.status === 403){
         alert('Sesión inválida. Iniciá sesión nuevamente.');

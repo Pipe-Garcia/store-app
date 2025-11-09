@@ -1,13 +1,10 @@
-const API_URL_WAREHOUSES = 'http://localhost:8080/warehouses';
+const API_URL_WAREHOUSES = 'http://localhost:8088/warehouses';
 const $ = (s, r = document) => r.querySelector(s);
 
+function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
+
 document.addEventListener('DOMContentLoaded', () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    alert('Debes iniciar sesión para acceder');
-    window.location.href = '../files-html/login.html';
-    return;
-  }
+  if (!getToken()) { window.location.href = '../files-html/login.html'; return; }
 
   $('#formCrearAlmacen').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -25,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(API_URL_WAREHOUSES, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${getToken()}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ name, address, location })
@@ -34,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       mostrarAlerta('✅ Almacén creado con éxito. Redirigiendo…', 'ok');
-      setTimeout(() => window.location.href = '../files-html/almacen.html', 1000);
+      setTimeout(() => window.location.href = '../files-html/almacen.html', 900);
     } catch (err) {
       console.error('Error creando almacén:', err);
       mostrarAlerta('Ocurrió un error al crear el almacén.', 'error');

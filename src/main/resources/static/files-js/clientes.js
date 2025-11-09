@@ -1,16 +1,12 @@
 // /static/files-js/clientes.js
-const API_URL_CLI = 'http://localhost:8080/clients';
+const { authFetch, getToken } = window.api;
+const API_URL_CLI = '/clients';
 
 let clientes = [];
 
-/* ==== Helpers comunes (mientras no tengamos core/) ==== */
+/* ==== Helpers UI (el HTTP/Token ya lo da api.js) ==== */
 const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-
-function getToken() {
-  // Compat: durante la migración aceptamos ambas claves
-  return localStorage.getItem('accessToken') || localStorage.getItem('token');
-}
 
 function go(page) {
   const base = location.pathname.replace(/[^/]+$/, ''); // deja .../files-html/
@@ -27,19 +23,6 @@ function debounce(fn, delay = 250) {
     clearTimeout(t);
     t = setTimeout(() => fn(...args), delay);
   };
-}
-
-function authHeaders(json = true) {
-  const t = getToken();
-  return {
-    ...(json ? { 'Content-Type': 'application/json' } : {}),
-    ...(t ? { 'Authorization': `Bearer ${t}` } : {})
-  };
-}
-
-function authFetch(url, opts = {}) {
-  const headers = { ...authHeaders(!opts.bodyIsForm), ...(opts.headers || {}) };
-  return fetch(url, { ...opts, headers });
 }
 
 function escapeHtml(s) {
@@ -146,7 +129,7 @@ function mostrarClientes(lista) {
       <div>${est}</div>
       <div class="acciones">
         <a class="btn outline" href="detalle-cliente.html?id=${id}" title="Ver">👁️ Ver</a>
-        <button class="btn info"   data-edit="${id}" title="Editar">✏️ Editar</button>
+        <a class="btn info" href="editar-clientes.html?id=${id}" title="Editar">✏️ Editar</a>
         <button class="btn danger" data-del="${id}"  title="Eliminar">🗑️ Eliminar</button>
       </div>
     `;
@@ -164,10 +147,6 @@ $('#lista-clientes')?.addEventListener('click', (e) => {
 
   const idEdit = targetBtn.getAttribute('data-edit');
   const idDel  = targetBtn.getAttribute('data-del');
-  if (idEdit) {
-     go(`editar-clientes.html?id=${idEdit}`);
-    return;
-  }
   if (idDel) eliminarCliente(Number(idDel));
 });
 

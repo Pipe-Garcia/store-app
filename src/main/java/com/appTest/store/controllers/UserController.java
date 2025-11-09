@@ -24,25 +24,25 @@ public class UserController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")
     public List<User> getAllUsers() {
         return servUser.getAllUsers();
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_OWNER')")
+    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         servUser.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasRole('ROLE_OWNER')")
+    @PreAuthorize("hasRole('OWNER')")
     @PostMapping
     public ResponseEntity<User> create(@RequestBody User user){
         return ResponseEntity.ok(servUser.save(user));
     }
 
-    @PreAuthorize("hasRole('ROLE_OWNER')")
+    @PreAuthorize("hasRole('OWNER')")
     @PatchMapping("/{id}")
     public ResponseEntity<User> update(@PathVariable Long id, @RequestBody User partial){
         var opt = servUser.getById(id);

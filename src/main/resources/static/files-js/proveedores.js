@@ -1,64 +1,82 @@
-const API_URL_PROVEEDORES = 'http://localhost:8080/suppliers';
+// /static/files-js/proveedores.js
+const API_URL_PROVEEDORES = 'http://localhost:8088/suppliers';
 
 const $  = (s,r=document)=>r.querySelector(s);
-const fmtEstado = (estado)=> estado ? estado : '—';
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
-// Token
-const token = localStorage.getItem('token');
-if (!token) {
-  alert('Debes iniciar sesión para acceder');
-  window.location.href = '../files-html/login.html';
+/* ===== Helpers comunes ===== */
+function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
+function authHeaders(json=true){
+  const t=getToken(); return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
+}
+function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
+function go(page){ const base=location.pathname.replace(/[^/]+$/,''); location.href=`${base}${page}`; }
+
+let __toastRoot;
+function notify(msg,type='info'){
+  if(!__toastRoot){
+    __toastRoot=document.createElement('div');
+    Object.assign(__toastRoot.style,{position:'fixed',top:'76px',right:'16px',display:'flex',flexDirection:'column',gap:'8px',zIndex:9999});
+    document.body.appendChild(__toastRoot);
+  }
+  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; __toastRoot.appendChild(n);
+  setTimeout(()=>n.remove(),4200);
 }
 
-let proveedores = [];
+const PILL = { ACTIVE:'green', INACTIVE:'gray' };
+const statePill = s=>{
+  const k=(s||'').toUpperCase(); const cls=PILL[k]||'gray';
+  const txt = k==='ACTIVE'?'Activo':k==='INACTIVE'?'Inactivo':(s||'—');
+  return `<span class="pill ${cls}">${txt}</span>`;
+};
+
+let PROVEEDORES = [];
 
 document.addEventListener('DOMContentLoaded', async ()=>{
+  if(!getToken()){ notify('Iniciá sesión','error'); return go('login.html'); }
   await cargarProveedores();
-  applyFilters();
-
-  $('#filtroDni').addEventListener('input', applyFilters);
-  $('#filtroEmpresa').addEventListener('input', applyFilters);
-  $('#filtroEstado').addEventListener('change', applyFilters);   // 👈 nuevo
-  $('#btnLimpiar').addEventListener('click', limpiarFiltros);
+  bindFiltros();
+  aplicarFiltros();
 });
 
-// Cargar todos los proveedores
 async function cargarProveedores(){
   try{
-    const res = await fetch(API_URL_PROVEEDORES, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    proveedores = await res.json() || [];
-  }catch(err){
-    console.error("Error cargando proveedores:", err);
-    alert("No se pudieron cargar los proveedores.");
+    const r=await authFetch(API_URL_PROVEEDORES);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    PROVEEDORES = Array.isArray(data) ? data : (Array.isArray(data?.content)? data.content : []);
+  }catch(e){
+    console.error(e);
+    notify('No se pudieron cargar los proveedores','error');
+    PROVEEDORES = [];
   }
 }
 
-// Filtros
-function limpiarFiltros(){
-  $('#filtroDni').value = '';
-  $('#filtroEmpresa').value = '';
-  $('#filtroEstado').value = '';           // 👈 reset del select
-  applyFilters();
+function bindFiltros(){
+  const deb = ((fn, d=200)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); };})(aplicarFiltros, 180);
+  $('#filtroDni')?.addEventListener('input',deb);
+  $('#filtroEmpresa')?.addEventListener('input',deb);
+  $('#filtroEstado')?.addEventListener('change',deb);
+  $('#btnLimpiar')?.addEventListener('click', ()=>{
+    ['filtroDni','filtroEmpresa','filtroEstado'].forEach(id=>{ const el=$('#'+id); if(el) el.value=''; });
+    aplicarFiltros();
+  });
 }
 
-function applyFilters(){
-  const dni     = ($('#filtroDni').value||'').toLowerCase();
-  const empresa = ($('#filtroEmpresa').value||'').toLowerCase();
-  const estado  = $('#filtroEstado').value; // '' | 'ACTIVE' | 'INACTIVE'
+function aplicarFiltros(){
+  const dni     = ($('#filtroDni')?.value||'').trim().toLowerCase();
+  const empresa = ($('#filtroEmpresa')?.value||'').trim().toLowerCase();
+  const estado  = ($('#filtroEstado')?.value||'').trim().toUpperCase(); // ''|'ACTIVE'|'INACTIVE'
 
-  let list = proveedores.slice();
+  let list = PROVEEDORES.slice();
 
   if (dni)     list = list.filter(p => String(p.dni||'').toLowerCase().includes(dni));
-  if (empresa) list = list.filter(p => (p.nameCompany||'').toLowerCase().includes(empresa));
-  if (estado)  list = list.filter(p => (p.status||'').toUpperCase() === estado); // 👈 aplica estado
+  if (empresa) list = list.filter(p => String(p.nameCompany||'').toLowerCase().includes(empresa));
+  if (estado)  list = list.filter(p => String(p.status||'').toUpperCase() === estado);
 
   renderLista(list);
 }
 
-// Renderizar tabla
 function renderLista(lista){
   const cont = $('#lista-proveedores');
   cont.innerHTML = `
@@ -72,7 +90,7 @@ function renderLista(lista){
     </div>
   `;
 
-  if (!lista.length){
+  if (!Array.isArray(lista) || !lista.length){
     const r=document.createElement('div');
     r.className='fila';
     r.innerHTML = `<div style="grid-column:1/-1;color:#666;">No hay proveedores para los filtros aplicados.</div>`;
@@ -81,45 +99,36 @@ function renderLista(lista){
   }
 
   for (const p of lista){
+    const id = p.idSupplier ?? p.id ?? '';
     const row = document.createElement('div');
     row.className='fila';
     row.innerHTML = `
-      <div>${p.name || ''} ${p.surname || ''}</div>
+      <div>${[p.name,p.surname].filter(Boolean).join(' ') || '—'}</div>
       <div>${p.nameCompany || '—'}</div>
       <div>${p.phoneNumber || '—'}</div>
       <div>${p.email || '—'}</div>
-      <div>${fmtEstado(p.status)}</div>
+      <div>${statePill(p.status)}</div>
       <div class="acciones">
-        <a class="btn outline" href="editar-proveedor.html?id=${p.idSupplier}">✏️ Editar</a>
-        <a class="btn outline" href="detalle-proveedor.html?id=${p.idSupplier}">📦 Ver detalle</a>
-        <a class="btn outline" href="asignar-materiales.html?id=${p.idSupplier}">➕ Asignar articulo</a>
-        <button class="btn danger" data-del="${p.idSupplier}">🗑️ Eliminar</button>
+        <a class="btn outline" href="editar-proveedor.html?id=${id}">✏️ Editar</a>
+        <a class="btn outline" href="detalle-proveedor.html?id=${id}">📦 Ver detalle</a>
+        <a class="btn outline" href="asignar-materiales.html?id=${id}">➕ Asignar artículo</a>
+        <button class="btn danger" data-del="${id}">🗑️ Eliminar</button>
       </div>
     `;
     cont.appendChild(row);
   }
 
-  // Delegación eventos
   cont.onclick = async (ev)=>{
-    const id = ev.target.getAttribute('data-del');
-    if(id) eliminarProveedor(id);
+    const btn = ev.target.closest('[data-del]');
+    if(!btn) return;
+    const id = btn.getAttribute('data-del');
+    if(!confirm('¿Eliminar proveedor?')) return;
+    try{
+      const r=await authFetch(`${API_URL_PROVEEDORES}/${id}`,{method:'DELETE'});
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      notify('Proveedor eliminado','success');
+      PROVEEDORES = PROVEEDORES.filter(p => String(p.idSupplier??p.id) !== String(id));
+      aplicarFiltros();
+    }catch(e){ console.error(e); notify('No se pudo eliminar','error'); }
   };
-}
-
-// Acciones
-async function eliminarProveedor(id){
-  if (!confirm("¿Seguro que desea eliminar este proveedor?")) return;
-  try{
-    const res = await fetch(`${API_URL_PROVEEDORES}/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error("No se pudo eliminar");
-    alert("Proveedor eliminado correctamente");
-    proveedores = proveedores.filter(p=>p.idSupplier!==Number(id));
-    applyFilters();
-  }catch(err){
-    console.error("Error eliminando proveedor:", err);
-    alert("Error al eliminar proveedor");
-  }
 }

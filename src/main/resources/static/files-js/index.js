@@ -1,9 +1,31 @@
-// /static/files-js/index.js
-const API_URL_MATERIALS    = 'http://localhost:8080/materials';
-const API_URL_SALES        = 'http://localhost:8080/sales';
-const API_URL_SALEDETAILS  = 'http://localhost:8080/sale-details';
-const API_URL_DASH = 'http://localhost:8080/dashboard/overview';
-const API_URL_SALES30 = 'http://localhost:8080/dashboard/sales-30d';
+// ===== Cabezal core (usar api.js) =====
+const { authFetch, safeJson } = window.api;
+
+// Helper: devuelve { ok, status, data }
+async function fetchJsonWithStatus(url, opts={}){
+  const r = await authFetch(url, opts);
+  const out = { ok: r.ok, status: r.status, data: null };
+  if (r.ok && r.status !== 204) out.data = await safeJson(r);
+  return out;
+}
+
+// Utils de UI locales
+function hide(el){ if (el) el.style.display = 'none'; }
+function show(el){ if (el) el.style.display = ''; }
+function setText(el, text){ if (el) el.textContent = text; }
+
+
+// Endpoints relativos
+const API_URL_MATERIALS    = '/materials';
+const API_URL_SALES        = '/sales';
+const API_URL_SALEDETAILS  = '/sale-details';
+const API_URL_DASH         = '/dashboard/overview';
+const API_URL_SALES30      = '/dashboard/sales-30d';
+
+// NOTA: ya NO declaramos getToken/authHeaders/authFetch/safeJson acá.
+// Todo va por window.api (alias arriba).
+
+// (el resto de tu archivo sigue igual a partir de acá)
 
 
 
@@ -223,34 +245,6 @@ function setDelta(elId, pct){
 }
 
 
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t = getToken();
-  return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
-}
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
-function notify(msg,type='info'){
-  const n=document.createElement('div');
-  n.className=`notification ${type}`;
-  n.textContent=msg;
-  document.body.appendChild(n);
-  setTimeout(()=>n.remove(),3500);
-}
-async function safeJson(res){
-  try {
-    const text = await res.text();         // puede venir vacío
-    if (!text) return null;                // evitamos JSON.parse sobre vacío
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-}
-function todayISO(){
-  const now = new Date();
-  const tz  = now.getTimezoneOffset()*60000;
-  return new Date(now.getTime()-tz).toISOString().slice(0,10);
-}
-
 let spark7d = null;
 
 let chart7d = null;
@@ -258,7 +252,7 @@ let chart7d = null;
 async function cargarKPIs(){
   try{
     // 1) Reservas activas
-    const r1 = await authFetch('http://localhost:8080/stock-reservations/search?status=ACTIVE');
+    const r1 = await authFetch('/stock-reservations/search?status=ACTIVE');
     const reservas = r1.ok ? await r1.json() : [];
     $('#kpiReservas').textContent = reservas.length;
 
@@ -267,7 +261,7 @@ async function cargarKPIs(){
     $('#kpiPedidosReservados').textContent = ids.size;
 
     // 3) Entregas próximas 7 días (pend/partial)
-    const r2 = await authFetch('http://localhost:8080/deliveries'); // si tenés /search mejor
+    const r2 = await authFetch('/deliveries'); // si tenés /search mejor
     const dels = r2.ok ? await r2.json() : [];
     const today = new Date(); today.setHours(0,0,0,0);
     const in7   = new Date(today); in7.setDate(today.getDate()+7);
@@ -287,7 +281,7 @@ async function cargarKPIs(){
 
 
 window.addEventListener('DOMContentLoaded', ()=>{
-  if(!getToken()){ location.href='../files-html/login.html'; return; }
+  if(!window.api.getToken()){ location.href='../files-html/login.html'; return; }
   cargarKPIs();
   cargarDashboard();
   initSectionNav();
@@ -303,6 +297,13 @@ window.addEventListener('DOMContentLoaded', ()=>{
     retintCharts();
   });
 });
+
+// Fecha local en ISO (YYYY-MM-DD) corrigiendo zona horaria
+function todayISO(){
+  const d  = new Date();
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+}
 
 async function cargarDashboard(){
   try{
@@ -340,13 +341,12 @@ async function cargarDashboard(){
       authFetch(`${API_URL_SALEDETAILS}/material-most-sold`)
     ]);
 
-    // auth guard
-    const statuses = [lowStockRes,caroRes,todayRes,highRes,mostSoldRes].map(r=>r.status);
-    if (statuses.some(s => s===401 || s===403)){
-      notify('Sesión inválida. Iniciá sesión nuevamente','error');
-      location.href='../files-html/login.html';
-      return;
-    }
+    // 🔎 debug mínimo en consola
+    console.log('[DASH] stock-alert', lowStockRes?.status,
+                'most-expensive', caroRes?.status,
+                'sales today', todayRes?.status,
+                'highest sale', highRes?.status,
+                'material most sold', mostSoldRes?.status);
 
     const s30 = await authFetch(API_URL_SALES30);
     const sales30 = s30.ok ? await safeJson(s30) : null;
@@ -382,12 +382,32 @@ function renderKpis(lowStock, masCaro, todayDto, highestDto, mostSold){
   $('#kpiHighestSaleClient').textContent = cli || '—';
 
   // Material más vendido
-  $('#kpiMostSoldName').textContent  = mostSold?.materialName || '—';
-  $('#kpiMostSoldUnits').textContent = Number(mostSold?.totalUnitsSold||0);
+  const mostSoldName =
+    mostSold?.materialName ??
+    mostSold?.name ??
+    mostSold?.material?.name ??
+    '—';
+  const mostSoldUnits =
+    Number(mostSold?.totalUnitsSold ??
+           mostSold?.units ??
+           mostSold?.quantity ??
+           0);
+  $('#kpiMostSoldName').textContent  = mostSoldName;
+  $('#kpiMostSoldUnits').textContent = mostSoldUnits;
 
   // Material más caro (arriba)
-  $('#kpiMostExpName').textContent  = masCaro?.name  || '—';
-  $('#kpiMostExpPrice').textContent = fmtARS.format(Number(masCaro?.price||0));
+  const caroName =
+    masCaro?.name ??
+    masCaro?.materialName ??
+    masCaro?.material?.name ??
+    '—';
+  const caroPrice =
+    Number(masCaro?.priceArs ??
+           masCaro?.price ??
+           masCaro?.amount ??
+           0);
+  $('#kpiMostExpName').textContent  = caroName;
+  $('#kpiMostExpPrice').textContent = fmtARS.format(caroPrice);
 
   // Alertas de stock
   $('#kpiLowStockCount').textContent = Array.isArray(lowStock) ? lowStock.length : 0;
@@ -833,8 +853,8 @@ function renderDel30Donut(deliveries){
 }
 
 // ======== AUDITORÍA – Dashboard ========
-const API_URL_AUDIT_EVENTS = 'http://localhost:8080/audits/events';
-const API_URL_AUDIT_DASH   = 'http://localhost:8080/audit-dashboard';
+const API_URL_AUDIT_EVENTS = '/audits/events';
+const API_URL_AUDIT_DASH   = '/audit-dashboard';
 
 function isoDaysAgo(n){
   const d = new Date(); d.setDate(d.getDate()-n);
@@ -852,14 +872,17 @@ async function fetchJson(url, opts={}){
 }
 
 async function fetchAuditOverview7d(){
-  // 1) Intento endpoint resumido
-  const o = await fetchJson(`${API_URL_AUDIT_DASH}/overview`);
-  if (o) return o;
+  // 1) Intento endpoint resumido (manteniendo status)
+  const r = await fetchJsonWithStatus(`${API_URL_AUDIT_DASH}/overview`);
+  if (r.ok && r.data) return r.data;
+  // si overview está bloqueado, probamos con /audits/events
+  const tried403 = (r.status === 403);
 
   // 2) Fallback: consumo /audits/events últimos 7 días (hasta 5000)
   const {from, to} = range7d();
   const url = `${API_URL_AUDIT_EVENTS}?from=${from}&to=${to}&size=5000&page=0`;
-  const page = await fetchJson(url) || { content:[] };
+  const page = await fetchJson(url);
+  if (!page) return tried403 ? { __forbidden: true } : null;
   const rows = Array.isArray(page.content) ? page.content : [];
 
   const today = isoDaysAgo(0);
@@ -879,14 +902,16 @@ async function fetchAuditOverview7d(){
 }
 
 async function fetchAuditActionsSeries7d(){
-  // 1) Intento endpoint específico
-  const s = await fetchJson(`${API_URL_AUDIT_DASH}/actions-7d`);
-  if (s && s.labels && s.datasets) return s;
+  // 1) Intento endpoint específico (manteniendo status)
+  const r = await fetchJsonWithStatus(`${API_URL_AUDIT_DASH}/actions-7d`);
+  if (r.ok && r.data && r.data.labels && r.data.datasets) return r.data;
+  const tried403 = (r.status === 403);
 
   // 2) Fallback: armo series desde /audits/events
   const {from, to} = range7d();
   const url = `${API_URL_AUDIT_EVENTS}?from=${from}&to=${to}&size=5000&page=0`;
-  const page = await fetchJson(url) || { content:[] };
+  const page = await fetchJson(url);
+  if (!page) return tried403 ? { __forbidden: true } : null;
   const rows = Array.isArray(page.content) ? page.content : [];
 
   const days = [];
@@ -915,14 +940,16 @@ async function fetchAuditActionsSeries7d(){
 }
 
 async function fetchAuditTopActors7d(limit=8){
-  // 1) Intento endpoint específico
-  const list = await fetchJson(`${API_URL_AUDIT_DASH}/top-actors-7d`);
-  if (Array.isArray(list) && list.length) return list.slice(0, limit);
+  // 1) Intento endpoint específico (manteniendo status)
+  const r = await fetchJsonWithStatus(`${API_URL_AUDIT_DASH}/top-actors-7d`);
+  if (r.ok && Array.isArray(r.data) && r.data.length) return r.data.slice(0, limit);
+  const tried403 = (r.status === 403);
 
   // 2) Fallback: agrego desde /audits/events
   const {from, to} = range7d();
   const url = `${API_URL_AUDIT_EVENTS}?from=${from}&to=${to}&size=5000&page=0`;
-  const page = await fetchJson(url) || { content:[] };
+  const page = await fetchJson(url);
+  if (!page) return tried403 ? { __forbidden: true } : null;
   const rows = Array.isArray(page.content) ? page.content : [];
 
   const agg = new Map();
@@ -1034,23 +1061,64 @@ function renderAuditActorsChart(list){
   }));
 }
 
+// helper: rol actual (lo setea header.js en <html data-role="...">)
+const isOwner = () => (document.documentElement.getAttribute('data-role') === 'owner');
+
 async function cargarAuditoria(){
   try{
+    // Si NO es OWNER → no pegamos a ningún endpoint de Auditoría
+    if (!isOwner()) {
+      const sec = document.getElementById('sec-auditoria');
+      const kpis = document.getElementById('audit-kpis');
+      const cardActions = document.getElementById('audit-actions-card');
+      const cardActors  = document.getElementById('audit-actors-card');
+      const msg = document.getElementById('auditMsg');
+      if (kpis) kpis.style.display = 'none';
+      if (cardActions) cardActions.style.display = 'none';
+      if (cardActors) cardActors.style.display  = 'none';
+      if (msg) { msg.textContent = '🔒 Auditoría está disponible solo para OWNER'; msg.style.display = ''; }
+      return;
+    }
     const [ov, series, topActors] = await Promise.all([
       fetchAuditOverview7d(),
       fetchAuditActionsSeries7d(),
       fetchAuditTopActors7d(8)
     ]);
+    // Selección de elementos UI
+    const sec = document.getElementById('sec-auditoria');
+    const kpis = document.getElementById('audit-kpis');
+    const cardActions = document.getElementById('audit-actions-card');
+    const cardActors  = document.getElementById('audit-actors-card');
+    const msg = document.getElementById('auditMsg');
+
+    // Si cualquier endpoint devuelve 403 → ocultar contenido y mostrar banner
+    const allForbidden = ov?.__forbidden && series?.__forbidden && topActors?.__forbidden;
+    if (allForbidden) {
+      if (kpis) hide(kpis);
+      if (cardActions) hide(cardActions);
+      if (cardActors) hide(cardActors);
+      if (msg) { setText(msg, '🔒 Sin permiso para ver Auditoría'); show(msg); }
+      return;
+    }
+
+    // Render normal
     if (ov)      renderAuditKPIs(ov);
-    if (series)  renderAuditActionsChart(series);
-    if (topActors?.length) renderAuditActorsChart(topActors);
+    if (series && series.labels)  renderAuditActionsChart(series);
+    if (Array.isArray(topActors) && topActors.length) renderAuditActorsChart(topActors);
   }catch(e){
     console.warn('Audit dashboard error:', e);
   }
 }
 
 // Hook: ya cargás el resto del dashboard; acá sumamos auditoría
-window.addEventListener('DOMContentLoaded', ()=>{
-  // si no hay token, tu flujo ya redirige en otro lado
+// ✅ Cargar auditoría cuando el header ya resolvió el rol
+document.addEventListener('app:auth-ready', () => {
   cargarAuditoria();
 });
+
+// Fallback por si alguna vista no monta el header (defensivo)
+setTimeout(() => {
+  if (!document.documentElement.getAttribute('data-role')) {
+    cargarAuditoria();
+  }
+}, 1200);

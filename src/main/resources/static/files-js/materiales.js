@@ -1,44 +1,40 @@
 // /static/files-js/materiales.js
-const API_URL_MAT           = 'http://localhost:8080/materials';
-const API_URL_MAT_SEARCH    = 'http://localhost:8080/materials/search';
-const API_URL_FAMILIAS      = 'http://localhost:8080/families';
+const { authFetch, getToken } = window.api;
+
+const API_URL_MAT        = '/materials';
+const API_URL_MAT_SEARCH = '/materials/search';
+const API_URL_FAMILIAS   = '/families';
 
 let materiales = [];
-
 const $  = (s, r=document)=>r.querySelector(s);
-const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 
-function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
-function authHeaders(json=true){
-  const t=getToken(); return { ...(json?{'Content-Type':'application/json'}:{}), ...(t?{'Authorization':`Bearer ${t}`}:{}) };
+function go(page){
+  const p = location.pathname, SEG='/files-html/';
+  const i = p.indexOf(SEG);
+  location.href = (i>=0 ? p.slice(0,i+SEG.length) : p.replace(/[^/]+$/,'') ) + page;
 }
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 function debounce(fn,delay=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; }
-function go(page){ const base=location.pathname.replace(/[^/]+$/,''); location.href=`${base}${page}`; }
 function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 
-// toasts
-let __toastRoot;
-function ensureToastRoot(){
-  if(!__toastRoot){
-    __toastRoot=document.createElement('div');
-    Object.assign(__toastRoot.style,{position:'fixed',top:'76px',right:'16px',display:'flex',flexDirection:'column',gap:'8px',zIndex:9999});
-    document.body.appendChild(__toastRoot);
-  }
-}
+let toastRoot;
 function notify(msg,type='info'){
-  ensureToastRoot();
-  const n=document.createElement('div');
-  n.className=`notification ${type}`;
-  n.textContent=msg;
-  __toastRoot.appendChild(n);
-  setTimeout(()=>n.remove(),4000);
+  if(!toastRoot){
+    toastRoot=document.createElement('div');
+    Object.assign(toastRoot.style,{position:'fixed',top:'76px',right:'16px',display:'flex',flexDirection:'column',gap:'8px',zIndex:9999});
+    document.body.appendChild(toastRoot);
+  }
+  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg;
+  toastRoot.appendChild(n); setTimeout(()=>n.remove(),4000);
 }
 
 /* ============ bootstrap ============ */
 window.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ go('login.html'); return; }
+
+  // flash (desde crear-material)
+  const flash = localStorage.getItem('flash');
+  if (flash){ const {message,type} = JSON.parse(flash); notify(message, type||'success'); localStorage.removeItem('flash'); }
 
   bindFiltros();
   await cargarFamiliasFiltro();
@@ -80,25 +76,12 @@ function validateRanges(){
 
 function buildParams(){
   const p = new URLSearchParams();
-
-  const fam = $('#f_family')?.value;
-  if (fam) p.set('familyId', fam);
-
-  const code = $('#f_code')?.value.trim();
-  if (code) p.set('internalNumber', code);
-
-  const name = $('#f_name')?.value.trim();
-  if (name) p.set('name', name);
-
-  const min = $('#f_min')?.value;
-  if (min) p.set('minPrice', min);
-
-  const max = $('#f_max')?.value;
-  if (max) p.set('maxPrice', max);
-
-  const stock = $('#f_stock')?.value;
-  if (stock) p.set('stockMode', stock);   // IN_STOCK / OUT_OF_STOCK / LOW
-
+  const fam = $('#f_family')?.value; if (fam) p.set('familyId', fam);
+  const code = $('#f_code')?.value.trim(); if (code) p.set('internalNumber', code);
+  const name = $('#f_name')?.value.trim(); if (name) p.set('name', name);
+  const min = $('#f_min')?.value; if (min) p.set('minPrice', min);
+  const max = $('#f_max')?.value; if (max) p.set('maxPrice', max);
+  const stock = $('#f_stock')?.value; if (stock) p.set('stockMode', stock); // IN_STOCK / OUT_OF_STOCK / LOW
   return p;
 }
 
@@ -130,8 +113,7 @@ async function buscarServidor(){
     if(r.status===401 || r.status===403){ notify('Sesión inválida','error'); go('login.html'); return; }
     const data=r.ok?await r.json():[];
     materiales = Array.isArray(data)?data:[];
-
-    // Fallback de stock en front (por si el backend aún no soporta stockMode)
+    // Fallback de stock en front
     const stockMode = $('#f_stock')?.value || '';
     const filtered = (!stockMode) ? materiales : materiales.filter(m=>{
       const q = Number(m.quantityAvailable ?? m.stock?.quantityAvailable ?? 0);
@@ -140,8 +122,7 @@ async function buscarServidor(){
       if (stockMode === 'LOW')          return q <= 10;
       return true;
     });
-
-    // Fallback de name/internalNumber si tu /search sólo usa ?q=
+    // Fallback de texto
     const code = $('#f_code')?.value.trim();
     const name = $('#f_name')?.value.trim();
     const fallbackByText = filtered.filter(m=>{
@@ -150,7 +131,6 @@ async function buscarServidor(){
       if (name) ok = ok && String(m.name ?? '').toLowerCase().includes(name.toLowerCase());
       return ok;
     });
-
     renderTabla(fallbackByText);
   }catch(e){ console.error(e); notify('No se pudo cargar materiales','error'); }
 }
@@ -164,7 +144,7 @@ function stockBadgeClass(q){
 }
 
 function renderTabla(list){
-  const cont = $('#lista-materiales');
+  const cont = document.getElementById('lista-materiales');
   cont.innerHTML='';
   (list||[]).forEach(m=>{
     const code   = escapeHtml(String(m.internalNumber ?? ''));
@@ -190,7 +170,6 @@ function renderTabla(list){
     cont.appendChild(row);
   });
 
-  // delegación de eventos
   cont.onclick = (e)=>{
     const t = e.target.closest('button'); if(!t) return;
     const idEdit=t.getAttribute('data-edit');

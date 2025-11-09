@@ -1,7 +1,9 @@
-// files-js/stock-movimientos.js
+// /static/files-js/stock-movimientos.js
 (function(){
-  const API_BASE = 'http://localhost:8080';
-  const API      = `${API_BASE}/stock-movements`;
+  const { authFetch, safeJson, getToken } = window.api;
+  const API = '/stock-movements';
+
+  if (!getToken()) { location.href = '../files-html/login.html'; return; }
 
   const tbody = document.getElementById('tbody');
   const info  = document.getElementById('pg-info');
@@ -11,17 +13,9 @@
   let page = 0;
   let size = Number(document.getElementById('f-size').value || 50);
 
-  // --- helpers ---
   const $ = (id)=>document.getElementById(id);
   const esc = (s)=>String(s??'').replace(/[&<>"'`]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;' }[c]));
-  const debounce = (fn, wait=450)=>{
-    let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), wait); };
-  };
-
-  function authHeaders(){
-    const t = localStorage.getItem('token') || localStorage.getItem('jwt');
-    return t ? { 'Authorization': 'Bearer ' + t } : {};
-  }
+  const debounce = (fn, wait=450)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; };
 
   function buildQuery(){
     const p = new URLSearchParams();
@@ -44,16 +38,19 @@
   async function load(){
     tbody.innerHTML = `<tr><td colspan="10">Cargando...</td></tr>`;
     try{
-      const res = await fetch(`${API}?${buildQuery()}`, {
-        headers: { 'Content-Type':'application/json', ...authHeaders() }
-      });
-      if (res.status === 401) throw new Error('No autorizado (401). Iniciá sesión.');
+      const res = await authFetch(`${API}?${buildQuery()}`, { method:'GET' });
+      if (res.status === 401 || res.status === 403) {
+        tbody.innerHTML = `<tr><td colspan="10">Sesión expirada. Redirigiendo…</td></tr>`;
+        setTimeout(()=>location.href='../files-html/login.html', 800);
+        return;
+      }
       if(!res.ok) throw new Error('HTTP '+res.status);
 
-      const data = await res.json();
-      renderRows(data.content || []);
-      renderPager(data);
+      const data = await safeJson(res);
+      renderRows(data?.content || []);
+      renderPager(data || {});
     }catch(e){
+      console.error(e);
       tbody.innerHTML = `<tr><td colspan="10">Error: ${esc(e.message)}</td></tr>`;
       info.textContent = '';
       prev.disabled = true; next.disabled = true;
@@ -61,7 +58,7 @@
   }
 
   function renderRows(rows){
-    if(rows.length===0){
+    if(!rows.length){
       tbody.innerHTML = `<tr><td colspan="10">Sin resultados.</td></tr>`;
       return;
     }
@@ -73,10 +70,10 @@
         : `<span class="badge delta-minus">${delta}</span>`;
       return `<tr>
         <td class="nowrap">${ts}</td>
-        <td>${esc(m.materialName)} (#${m.materialId})</td>
-        <td>${esc(m.warehouseName)} (#${m.warehouseId})</td>
-        <td class="text-right">${m.fromQty}</td>
-        <td class="text-right">${m.toQty}</td>
+        <td>${esc(m.materialName||'')} ${m.materialId? `(#${m.materialId})` : ''}</td>
+        <td>${esc(m.warehouseName||'')} ${m.warehouseId? `(#${m.warehouseId})` : ''}</td>
+        <td class="text-right">${m.fromQty ?? '—'}</td>
+        <td class="text-right">${m.toQty ?? '—'}</td>
         <td>${deltaBadge}</td>
         <td>${esc(m.reason||'')}</td>
         <td>${m.sourceType ? `${esc(m.sourceType)}${m.sourceId? ' #'+m.sourceId:''}` : '—'}</td>
@@ -87,17 +84,18 @@
   }
 
   function renderPager(p){
-    info.textContent = `Página ${p.number+1} de ${p.totalPages || 1} · ${p.totalElements||0} movimientos`;
-    prev.disabled = p.first;
-    next.disabled = p.last || (p.totalPages||1)===0;
+    const totalPages = Number(p.totalPages||0);
+    const totalElems = Number(p.totalElements||0);
+    const number     = Number(p.number||0);
+    info.textContent = `Página ${totalPages? (number+1) : 0} de ${totalPages||0} · ${totalElems||0} movimientos`;
+    prev.disabled = p.first === true || number<=0;
+    next.disabled = p.last  === true || number >= (totalPages-1);
   }
 
-  // --- eventos (debounced) ---
+  // eventos (debounced)
   const debouncedSearch = debounce(()=>{ page = 0; size = Number($('f-size').value||50); load(); }, 500);
-
   ['f-desde','f-hasta','f-mat','f-wh','f-reason','f-user','f-size'].forEach(id=>{
-    const el = $(id);
-    if (!el) return;
+    const el = $(id); if (!el) return;
     const evt = el.tagName === 'SELECT' ? 'change' : 'input';
     el.addEventListener(evt, debouncedSearch);
   });
@@ -111,6 +109,5 @@
   prev.addEventListener('click', ()=>{ if(page>0){ page--; load(); }});
   next.addEventListener('click', ()=>{ page++; load(); });
 
-  // init
   load();
 })();

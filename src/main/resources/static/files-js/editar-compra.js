@@ -1,6 +1,7 @@
 // ========= Endpoints =========
-const API_URL_PURCHASES = "http://localhost:8080/purchases";
-const API_URL_PURCHASE_DETAILS = "http://localhost:8080/purchase-details/purchase";
+const API_BASE = "http://localhost:8088";
+const API_URL_PURCHASES        = `${API_BASE}/purchases`;
+const API_URL_PURCHASE_DETAILS = `${API_BASE}/purchase-details/purchase`;
 
 // ========= Helpers =========
 const $  = (s,r=document)=>r.querySelector(s);
