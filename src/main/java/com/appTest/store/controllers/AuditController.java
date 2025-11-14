@@ -27,6 +27,7 @@ public class AuditController {
         this.evRepo = evRepo; this.detRepo = detRepo;
     }
 
+
     @GetMapping("/events")
     @PreAuthorize("hasAnyRole('ROLE_OWNER','ROLE_EMPLOYEE')")
     public Page<AuditEventListDTO> list(
@@ -34,6 +35,7 @@ public class AuditController {
             @RequestParam(required=false) @DateTimeFormat(iso= DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required=false) String actor,
             @RequestParam(required=false) String action,
+            @RequestParam(required=false) String actionGroup,   
             @RequestParam(required=false) String entity,
             @RequestParam(required=false) Long entityId,
             @RequestParam(required=false) String status,
@@ -45,10 +47,21 @@ public class AuditController {
             if (from!=null) ps.add(cb.greaterThanOrEqualTo(root.get("timestamp"), from.atStartOfDay()));
             if (to!=null)   ps.add(cb.lessThan(root.get("timestamp"), to.plusDays(1).atStartOfDay()));
             if (actor!=null && !actor.isBlank())  ps.add(cb.like(cb.lower(root.get("actorName")), "%"+actor.toLowerCase()+"%"));
-            if (action!=null && !action.isBlank())ps.add(cb.equal(root.get("action"), action));
-            if (entity!=null && !entity.isBlank())ps.add(cb.equal(root.get("entity"), entity));
-            if (entityId!=null)                   ps.add(cb.equal(root.get("entityId"), entityId));
-            if (status!=null && !status.isBlank())ps.add(cb.equal(root.get("status"), status));
+
+            if (actionGroup!=null && !actionGroup.isBlank()){
+                // CREATE -> (= 'CREATE' OR LIKE '%_CREATE'), idem para UPDATE/DELETE
+                String suffix = "_" + actionGroup;
+                ps.add(cb.or(
+                        cb.equal(root.get("action"), actionGroup),
+                        cb.like(root.get("action"), "%"+suffix)
+                ));
+            } else if (action!=null && !action.isBlank()){
+                ps.add(cb.equal(root.get("action"), action));
+            }
+
+            if (entity!=null && !entity.isBlank()) ps.add(cb.equal(root.get("entity"), entity));
+            if (entityId!=null)                    ps.add(cb.equal(root.get("entityId"), entityId));
+            if (status!=null && !status.isBlank()) ps.add(cb.equal(root.get("status"), status));
             return cb.and(ps.toArray(Predicate[]::new));
         };
         Pageable pg = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
@@ -57,6 +70,7 @@ public class AuditController {
                         e.getAction(), e.getEntity(), e.getEntityId(), e.getStatus(), e.getMessage())
         );
     }
+
 
     @GetMapping("/events/{id}")
     @PreAuthorize("hasAnyRole('ROLE_OWNER','ROLE_EMPLOYEE')")

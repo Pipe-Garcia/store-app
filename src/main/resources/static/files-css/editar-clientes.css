@@ -1,0 +1,110 @@
+/* ========= Editar Cliente (UI consistente y más “fuerte”) ========= */
+:root{
+  --primary:#2563eb; --primary-600:#1d4ed8;
+  --surface:#fff; --text:#0f172a; --muted:#334155;
+  --border:#e2e8f0; --bg:#f6f7fb; --shadow:0 10px 30px rgba(2,12,27,.06);
+  --field:#fbfcff;
+}
+
+body{ background:var(--bg); }
+
+/* Card central */
+.form-editar{
+  max-width: 980px;
+  margin: 36px auto;
+  padding: 28px 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.form-editar h2{
+  margin: 0 0 22px;
+  text-align: center;
+  font-size: 26px;
+  color: var(--text);
+  font-weight: 800;
+}
+
+/* === Grid 2 columnas: LABEL + CAMPO ===
+   - label con ancho flexible (180–260)
+   - menos hueco entre columnas
+*/
+#formEditarCliente{
+  display: grid;
+  column-gap: 12px;
+}
+
+/* Labels: más grandes y alineados a la izquierda */
+#formEditarCliente label{
+  justify-self: start;       /* antes: end */
+  text-align: left;
+  padding-left: 4px;         /* “los trae” un poco hacia el borde */
+  font-size: 16.5px;         /* sube respecto del input */
+  line-height: 44px;         /* casi igual que el input para mejor alineación */
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* Campos */
+#formEditarCliente input[type="text"],
+#formEditarCliente input[type="email"],
+#formEditarCliente input[type="number"],
+#formEditarCliente select{
+  width: 100%;
+  height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+#formEditarCliente input:focus,
+#formEditarCliente select:focus{
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+  background:#fff;
+}
+
+/* Acciones */
+.form-actions{
+  grid-column: 2;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.form-actions .btn{
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Responsivo */
+@media (max-width: 720px){
+  #formEditarCliente{ grid-template-columns: 1fr; }
+  #formEditarCliente label{
+    justify-self: start;
+    padding-left: 0;
+    line-height: 1.3;
+    margin-top: 6px;
+  }
+  .form-actions{ grid-column: 1; justify-content: stretch; }
+  .form-actions .btn{ flex: 1; }
+}
+
+/* Toasts */
+.notification{
+  position: fixed; right:18px; bottom:18px;
+  padding:10px 14px; border-radius:10px; color:#fff;
+  background:#10b981; box-shadow:var(--shadow); z-index:1000; font-weight:600;
+}
+.notification.error{ background:#ef4444; }
+
+.control.invalid{ border-color:#ef4444!important; box-shadow:0 0 0 3px rgba(239,68,68,.15)!important; }

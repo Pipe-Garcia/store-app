@@ -13,6 +13,7 @@
   <div class="page">
     <h1>Histórico de Stock</h1>
 
+    <!-- ... -->
     <div class="filters card">
       <label>Desde
         <input type="date" id="f-desde">
@@ -20,30 +21,37 @@
       <label>Hasta
         <input type="date" id="f-hasta">
       </label>
-      <label>Material ID
-        <input type="number" id="f-mat" min="1" step="1">
+
+      <!-- antes: Material ID (number) -->
+      <label>Material
+        <input type="text" id="f-mat" placeholder="ID o nombre">
       </label>
-      <label>Depósito ID
-        <input type="number" id="f-wh" min="1" step="1">
+
+      <!-- antes: Depósito ID (number) -->
+      <label>Depósito
+        <input type="text" id="f-wh" placeholder="ID o nombre">
       </label>
+
       <label>Motivo
         <select id="f-reason">
           <option value="">(todos)</option>
-          <option>SALE</option>
-          <option>DELIVERY</option>
-          <option>RESERVATION</option>
-          <option>ADJUST</option>
+          <option value="SALE">Venta</option>
+          <option value="DELIVERY">Entrega</option>
+          <option value="RESERVATION">Reserva</option>
+          <option value="ADJUST">Ajuste</option>
         </select>
       </label>
+
       <label>Usuario
-        <input type="text" id="f-user" placeholder="Ej: admin">
+        <input type="text" id="f-user" placeholder="Ej.: admin">
       </label>
       <label>Tamaño pág.
         <select id="f-size"><option>50</option><option>100</option></select>
       </label>
+
       <button class="btn primary" id="btn-aplicar">Aplicar</button>
       <button class="btn" id="btn-limpiar">Limpiar</button>
-    </div>
+    </div>  
 
     <div class="card">
       <table class="table">
@@ -77,6 +85,12 @@
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
 
+  <script src="../files-js/role-guard.js"></script>
+  <script>
+  // Bloquear EMPLEADO acá también
+  guard.denyIfRole(['employee'], '../files-html/index-emp.html');
+  </script>
+  <script src="../files-js/menu-guard.js"></script>
   <!-- lógica -->
   <script src="../files-js/stock-movimientos.js"></script>
 </body>

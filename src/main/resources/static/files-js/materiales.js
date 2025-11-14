@@ -163,7 +163,7 @@ function renderTabla(list){
       <div>${stock}</div>
       <div>${fmtARS.format(price||0)}</div>
       <div class="acciones">
-        <button class="btn info" data-edit="${m.idMaterial}" title="Editar">✏️ Editar</button>
+        <button class="btn outline" data-edit="${m.idMaterial}" title="Editar">✏️ Editar</button>
         <button class="btn danger" data-del="${m.idMaterial}" title="Eliminar">🗑️ Eliminar</button>
       </div>
     `;

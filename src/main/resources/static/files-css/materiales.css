@@ -217,3 +217,24 @@ a {
 
 
 .field-err { color:#b42318; font-size:.85rem; min-height:1em; }
+
+.btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 12px; border-radius:8px; border:1px solid transparent;
+  font-weight:500; cursor:pointer; text-decoration:none; line-height:1;
+  transition: background .15s, border-color .15s, transform .02s;
+  letter-spacing: .3px;
+}
+.btn:active{ transform: translateY(1px); }
+
+.btn.success {background-color: rgb(0, 203, 0); color: #fff; }
+.btn.primary { background:#1c7ed6; color:#fff; }
+.btn.danger  { background:#f84052; color:#fff; }
+.btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
+
+.btn.primary:hover{ background:#1864ab; }
+.btn.danger:hover { background:#c92a2a; }
+.btn.outline:hover{ background:#f1f3f5; }
+
+a.btn{ text-decoration:none; }
+.acciones{ display:flex; flex-wrap:wrap; gap:8px; }

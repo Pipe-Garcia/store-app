@@ -37,6 +37,9 @@
   --series-3: #f59e0b;        /* amber-500*/
   --series-3-fill: rgba(245,158,11,.15);
   --bar-fill: rgba(59,130,246,.25);
+  --tooltip-bg: #ffffff;
+  --tooltip-color: #111827;
+  --tooltip-border: rgba(0,0,0,.08);
 }
 
 /* Dark theme overrides */
@@ -59,6 +62,9 @@
   --series-3: #fcd34d;        /* amber-300 */
   --series-3-fill: rgba(252,211,77,.25);
   --bar-fill: rgba(96,165,250,.35);
+  --tooltip-bg: #0b1220;
+  --tooltip-color: #e5e7eb;
+  --tooltip-border: rgba(255,255,255,.14);
 }
 
 /* Smooth theme switch */
@@ -318,3 +324,189 @@ hr{ border: none; border-top: 1px solid var(--grid); margin: 24px 0; }
   color:var(--text); opacity:.85;
 }
 .theme-toggle:hover{ background: color-mix(in oklab, var(--bg) 75%, transparent); opacity:1; }
+
+/* Grilla para charts */
+.charts-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+/* Grilla 2-column dentro de una card (chart + tabla) */
+.two-col{
+  display:grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--gap);
+  align-items: start;
+}
+@media (max-width: 1024px){
+  .two-col{ grid-template-columns: 1fr; }
+}
+
+/* Asegura grilla también en auditoría */
+.cards-section .cards-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: var(--gap);
+}
+
+/* Layout 2 columnas: sidebar + main */
+.dashboard-layout{
+  display:grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+}
+
+/* Sidebar vertical */
+.dashboard-layout .section-nav{
+  position: sticky;
+  top: 72px;
+  align-self: start;
+  display:flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--grid);
+  border-radius: 12px;
+}
+.dashboard-layout .section-nav a{
+  display:block;
+  padding:.45rem .75rem;
+  border-radius: 10px;
+  color: var(--text-weak);
+  background: var(--bg);
+  border:1px solid var(--grid);
+}
+.dashboard-layout .section-nav a:hover{ background: #f3f4f6; }
+.dashboard-layout .section-nav a.active{
+  background:#e8f1fd; color:#1e63d5; border-color:#cfe3ff;
+}
+:root[data-theme="dark"] .dashboard-layout .section-nav a:hover{ background:#0f172a; }
+:root[data-theme="dark"] .dashboard-layout .section-nav a.active{
+  background:#0b1220; color:var(--text); border-color:#223245;
+}
+
+/* Responsive: debajo de 992 px, el nav vuelve arriba horizontal */
+@media (max-width: 992px){
+  .dashboard-layout{
+    grid-template-columns: 1fr;
+  }
+  .dashboard-layout .section-nav{
+    position: sticky;
+    top: 64px;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .dashboard-layout .section-nav a{
+    display:inline-block;
+    border-radius: 999px;
+  }
+}
+
+/* ===== Low stock: respirito y columnas correctas ===== */
+.two-col{ gap: 22px; }                     /* más aire entre chart y tabla */
+
+#tablaLowStock{ padding-right: 6px; }      /* scroll suave */
+#tablaLowStock .fila{
+  grid-template-columns: 1.25fr 120px minmax(220px, auto);  /* Acciones con ancho mínimo */
+  column-gap: 16px;
+  padding: 12px 14px;
+}
+#tablaLowStock .fila.encabezado{
+  position: sticky; top: 0; z-index: 1;    /* header fijo si scrolleás */
+}
+#tablaLowStock .fila > div:nth-child(2){ text-align: right; }
+#tablaLowStock .fila > div:last-child{
+  display: flex; gap: 8px; justify-content: flex-start;
+}
+#tablaLowStock a.btn,
+#tablaLowStock .btn{ white-space: nowrap; } /* que no quiebre “Generar Orden de Compra” */
+
+/* Botón chico reutilizable */
+.btn.sm{ padding: 6px 10px; font-size: .85rem; border-radius: 8px; }
+
+#tablaLowStock a.btn{ padding: 6px 10px; font-size: .85rem; }
+
+/* Auditoría: misma grilla que Ventas */
+.cards-section .cards-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+/* Auditoría: usar misma grilla que Ventas (ya existente) */
+.cards-section .charts-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+/* Stock: KPI + card en una sola fila */
+#stock-row{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+/* En la card de stock, gráfico arriba + tabla debajo */
+#stock-card .chart-wrap{
+  /* que el gráfico tenga altura consistente con el resto */
+  height: var(--chart-height);
+  max-width: var(--chart-max-w);
+  margin: 0 auto;
+}
+
+/* Tabla low stock con mejor respiración y header sticky */
+#tablaLowStock{ max-height:260px; overflow:auto; padding-right:6px; }
+#tablaLowStock .fila{
+  grid-template-columns: 1.25fr 120px minmax(220px, auto);
+  column-gap:16px;
+  padding:12px 14px;
+}
+#tablaLowStock .fila.encabezado{ position:sticky; top:0; z-index:1; }
+#tablaLowStock .fila > div:nth-child(2){ text-align:right; }
+#tablaLowStock .fila > div:last-child{ display:flex; gap:8px; }
+#tablaLowStock a.btn{ white-space:nowrap; }
+.btn.sm{ padding:6px 10px; font-size:.85rem; border-radius:8px; }
+
+/* Volver a KPI arriba y card debajo */
+.stock-grid{ display: contents; } /* por si quedó el wrapper, no afecta layout */
+
+/* Card de low stock, apilada y con un toque más de aire */
+.low-stock-card{ gap: 16px; }
+.low-stock-card .chart-wrap{ max-width: 720px; } /* opcional: limita ancho del chart */
+.low-stock-card .tabla{ margin-top: 8px; }
+
+/* === Low stock: columnas con separación pareja === */
+#tablaLowStock{ padding-right: 6px; }
+
+/* Filas (datos) con 3 columnas del mismo peso y buen gap */
+#tablaLowStock .fila{
+  display: grid;
+  grid-template-columns: minmax(220px,1fr) minmax(140px,1fr) minmax(220px,1fr);
+  column-gap: 28px;                 /* más aire entre “Cantidad” y “Acciones” */
+  align-items: center;
+  padding: 12px 14px;
+}
+
+/* El encabezado usa EXACTAMENTE la misma grilla */
+#tablaLowStock .fila.encabezado{
+  grid-template-columns: minmax(220px,1fr) minmax(140px,1fr) minmax(220px,1fr);
+  position: sticky; top: 0; z-index: 1;
+  white-space: nowrap;               /* evita que “Cantidad disponible” se corte */
+}
+
+/* Alineaciones: material a la izq., cantidad a la der., acciones a la izq. */
+#tablaLowStock .fila > div:nth-child(1){ text-align: center; }
+#tablaLowStock .fila > div:nth-child(2){ text-align: center; }
+#tablaLowStock .fila > div:nth-child(3){
+  display: flex; gap: 10px; justify-content: flex-start;
+}
+
+#tablaLowStock a.btn,
+#tablaLowStock .btn{ white-space: nowrap; }

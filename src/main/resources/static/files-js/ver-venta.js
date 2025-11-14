@@ -12,6 +12,27 @@ const UI_STATUS   = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', PAID:'PAGADO' };
 const UI_PAYSTATE = { APPLIED:'Aplicado', PENDING:'Pendiente', REJECTED:'Rechazado', VOID:'Anulado', FAILED:'Rechazado', PAID:'Aplicado' };
 
 function notify(msg,type='info'){ const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; document.body.appendChild(n); setTimeout(()=>n.remove(),3500); }
+// === NUEVO: helpers de estado de pago + toggle del botón ===
+function isSaleFullyPaid(){
+  // 1) si el back ya manda el estado, usalo
+  const ps = String(saleDTO?.paymentStatus || '').toUpperCase();
+  if (ps === 'PAID') return true;
+
+  // 2) fallback por totales
+  const total = Number((saleDTO && saleDTO.total) ?? SALE_TOTAL ?? 0);
+  const paid  = Number((saleDTO && saleDTO.paid)  ?? PAID_SUM   ?? 0);
+  return total > 0 && paid >= total - 1e-6; // tolera redondeos
+}
+
+function setPayButtonState(){
+  const btn = document.getElementById('btnRegistrarPago2');
+  if (!btn) return;
+  const paid = isSaleFullyPaid();
+  btn.disabled = paid;
+  btn.title = paid ? 'Venta saldada' : '';
+  btn.classList.toggle('disabled', paid); // (solo efecto visual)
+}
+
 
 let saleId=null, saleDTO=null, SALE_TOTAL=0, PAID_SUM=0;
 
@@ -140,6 +161,7 @@ async function renderPagos(id){
   }
 
   refreshHeaderTotals();
+  setPayButtonState(); 
 }
 
 function refreshHeaderTotals(){
@@ -149,16 +171,23 @@ function refreshHeaderTotals(){
   setEstado((PAID_SUM||0) <= 0 ? 'PENDING' : (saldoNum === 0 ? 'PAID' : 'PARTIAL'));
   const hint = document.getElementById('payHintSaldo');
   if (hint) hint.textContent = `Saldo: ${fmtARS.format(saldoNum)}`;
+  setPayButtonState();
 }
 
 /* ====== MODAL DE PAGO ====== */
 function openPayDialog(){
+  if (isSaleFullyPaid()){
+    notify('Venta saldada: no se pueden registrar más pagos','info');
+    return;
+  }
   const dlg = document.getElementById('payDialog'); if (!dlg) return;
-  const d = new Date(); const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+  const d = new Date();
+  const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
   $('#payDate').value = `${yyyy}-${mm}-${dd}`;
-  refreshHeaderTotals();
+  refreshHeaderTotals(); // actualiza hint/saldo antes de mostrar
   dlg.showModal();
 }
+
 
 function bindPayDialogEvents(){
   const dlg = document.getElementById('payDialog'); if (!dlg) return;

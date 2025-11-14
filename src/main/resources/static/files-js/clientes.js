@@ -129,7 +129,7 @@ function mostrarClientes(lista) {
       <div>${est}</div>
       <div class="acciones">
         <a class="btn outline" href="detalle-cliente.html?id=${id}" title="Ver">👁️ Ver</a>
-        <a class="btn info" href="editar-clientes.html?id=${id}" title="Editar">✏️ Editar</a>
+        <a class="btn outline" href="editar-clientes.html?id=${id}" title="Editar">✏️ Editar</a>
         <button class="btn danger" data-del="${id}"  title="Eliminar">🗑️ Eliminar</button>
       </div>
     `;

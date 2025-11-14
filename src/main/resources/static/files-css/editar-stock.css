@@ -97,3 +97,20 @@
 @media (max-width:600px){
   .sug-item{ grid-template-columns: 110px 1fr 80px; }
 }
+
+.page-actions{
+  max-width: 680px;
+  margin: 0 auto 8px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.btn.outline{
+  background: transparent;
+  border: 1px solid var(--grid);
+  color: var(--ink);
+  text-decoration: none;
+}
+.btn.outline:hover{ background: #f9fafb; }
+
+.btn.back{ display:inline-flex; align-items:center; gap:.4rem; }

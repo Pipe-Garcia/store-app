@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>🏠 | Inicio – Empleado</title>
+  <link rel="stylesheet" href="../files-css/style.css" />
+  <link rel="stylesheet" href="../files-css/nav.css" />
+  <link rel="stylesheet" href="../files-css/index-emp.css" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="page">
+    <section class="hero card">
+      <div class="hero-icon">👋</div>
+      <div class="hero-copy">
+        <h1 id="greet">¡Bienvenido/a!</h1>
+        <p class="muted">
+          Tu perfil es <strong>Empleado</strong>. Tenés acceso a las tareas diarias.
+        </p>
+      </div>
+    </section>
+
+    <section class="grid">
+      <a class="quick card" href="./ventas.html">
+        <div class="ico">🧾</div>
+        <div class="title">Ventas</div>
+        <div class="desc">Crear y listar ventas</div>
+      </a>
+
+      <a class="quick card" href="./pedidos.html">
+        <div class="ico">🧺</div>
+        <div class="title">Pedidos</div>
+        <div class="desc">Gestionar pedidos de clientes</div>
+      </a>
+
+      <a class="quick card" href="./entregas.html">
+        <div class="ico">🚚</div>
+        <div class="title">Entregas</div>
+        <div class="desc">Ver y actualizar entregas</div>
+      </a>
+
+      <a class="quick card" href="./reservas.html">
+        <div class="ico">🔖</div>
+        <div class="title">Reservas</div>
+        <div class="desc">Revisar reservas de stock</div>
+      </a>
+
+      <a class="quick card" href="./materiales.html">
+        <div class="ico">📦</div>
+        <div class="title">Materiales</div>
+        <div class="desc">Buscar y ver existencias</div>
+      </a>
+
+      <a class="quick card" href="./clientes.html">
+        <div class="ico">👤</div>
+        <div class="title">Clientes</div>
+        <div class="desc">Directorio de clientes</div>
+      </a>
+    </section>
+
+    <section class="tips card">
+      <h2>Atajos rápidos</h2>
+      <ul>
+        <li><kbd>V</kbd> abrir Ventas · <kbd>P</kbd> abrir Pedidos</li>
+        <li><kbd>M</kbd> abrir Materiales · <kbd>C</kbd> abrir Clientes</li>
+      </ul>
+    </section>
+  </main>
+
+  <!-- núcleo + header -->
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+  <script src="../files-js/header.js"></script>
+  <!-- opcional: ocultar elementos del menú por rol (punto 3) -->
+  <script src="../files-js/menu-guard.js"></script>
+  <!-- comportamiento de esta landing -->
+  <script src="../files-js/index-emp.js"></script>
+</body>
+</html>

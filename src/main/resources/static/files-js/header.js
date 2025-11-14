@@ -101,27 +101,40 @@ function initHeaderUser(){
   // —— Rol/visibilidad y nombre ——
   const pathIsUsers = /(^|\/)usuarios\.html(\?|$)/.test(location.pathname);
 
-  function applyRole({ owner, displayName }){
+  const ROLE_LABEL = {
+    owner:    'DUEÑO',
+    employee: 'EMPLEADO',
+    guest:    'INVITADO'
+  };
+
+  function applyRole({ owner, displayName, roleLabel }) {
     const name = displayName || 'Usuario';
+    const roleText = roleLabel || (owner ? ROLE_LABEL.owner : ROLE_LABEL.employee);
+
     document.getElementById('userName').textContent = name;
     document.getElementById('uName').textContent    = name;
-    document.getElementById('uRole').textContent    = owner ? 'OWNER' : 'EMPLOYEE';
+    document.getElementById('uRole').textContent    = roleText;
+
+    // visibilidad de "Usuarios"
     if (usersItem) usersItem.hidden = !owner;
+
+    // atributo para CSS / guards de la app (queda en inglés como antes)
     document.documentElement.setAttribute('data-role', owner ? 'owner' : 'employee');
 
-    // Guard sólo para usuarios.html
+    // Guard sólo en usuarios.html
     if (pathIsUsers && !owner) {
-      try { localStorage.setItem('flash', JSON.stringify({type:'error', message:'Acceso restringido a OWNER'})); } catch(_){}
+      try { localStorage.setItem('flash', JSON.stringify({type:'error', message:'Acceso restringido a OWNER'})); } catch (_){}
       location.replace('../files-html/index.html');
     }
 
-    // ✅ Aviso global: el auth/rol ya está listo
+    // Aviso global
     document.dispatchEvent(new CustomEvent('app:auth-ready', { detail:{ owner } }));
   }
 
+
   // Si no hay token, pintamos invitado y salimos (no redirigimos)
   if (!api.getToken()){
-    applyRole({ owner:false, displayName:'Invitado' });
+    applyRole({ owner:false, displayName:'Invitado', roleLabel: ROLE_LABEL.guest });
     return;
   }
 

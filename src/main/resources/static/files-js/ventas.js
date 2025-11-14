@@ -260,6 +260,11 @@ function getDrillBannerHost(){
   return document.getElementById('drillBannerHost');
 }
 
+const fmtDate = (s)=>{
+  if (!s) return '-';
+  const d = new Date((s.length <= 10 ? s + 'T00:00:00' : s));
+  return isNaN(d) ? s : d.toLocaleDateString('es-AR');
+};
 
 function renderLista(lista){
   const cont = $('#lista-ventas');
@@ -280,7 +285,7 @@ function renderLista(lista){
     const row = document.createElement('div');
     row.className = 'fila';
     row.innerHTML = `
-      <div>${v.dateSale || '-'}</div>
+      <div>${fmtDate(v.dateSale)}</div>
       <div>${v.clientName || '—'}</div>
       <div>${fmtARS.format(total)}</div>
       <div>${fmtARS.format(pag)}</div>
@@ -340,12 +345,18 @@ async function downloadSalePdf(id){
   const t = getToken();
   if (!t){ go('login.html'); return; }
 
-  try{
-    // mini feedback visual: deshabilitar botón mientras descarga
-    const btn = document.querySelector(`button[data-pdf="${id}"]`);
-    if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+  // Tomamos el botón y guardamos su HTML original (con el emoji)
+  const btn = document.querySelector(`button[data-pdf="${id}"]`);
+  const originalHTML = btn ? btn.innerHTML : null;
 
-    const r = await authFetch(`${API_URL_SALES}/${id}/pdf`);
+  try{
+    if (btn){
+      btn.disabled = true;
+      // feedback visual pero sin perder el emoji original
+      btn.innerHTML = '⏳ Generando…';
+    }
+
+    const r = await authFetch(`${API_URL_SALES}/${id}/pdf`, { method: 'GET' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
 
     const blob = await r.blob();
@@ -361,7 +372,11 @@ async function downloadSalePdf(id){
     console.error(e);
     notify('No se pudo generar el PDF','error');
   }finally{
-    const btn = document.querySelector(`button[data-pdf="${id}"]`);
-    if (btn) { btn.disabled = false; btn.textContent = 'PDF'; }
+    if (btn){
+      btn.disabled = false;
+      // restauramos EXACTAMENTE lo que tenía (emoji incluido)
+      btn.innerHTML = originalHTML ?? '🧾 PDF';
+    }
   }
 }
+

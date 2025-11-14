@@ -107,6 +107,7 @@ public class StockService implements IStockService {
         return convertStockToDto(stock);
     }
 
+
     @Override
     @Transactional
     @Auditable(entity="Stock", action="UPDATE", idParam = "dto.idStock")
@@ -122,6 +123,9 @@ public class StockService implements IStockService {
 
             // Registrar movimiento (motivo ADJUST, origen STOCK)
             try {
+                String note = stock.getMaterial().getName() + " — " +
+                        before.stripTrailingZeros().toPlainString() + " → " +
+                        stock.getQuantityAvailable().stripTrailingZeros().toPlainString();
                 movement.logChange(
                         stock.getMaterial().getIdMaterial(),
                         stock.getMaterial().getName(),
@@ -130,7 +134,7 @@ public class StockService implements IStockService {
                         before,
                         stock.getQuantityAvailable(),
                         "ADJUST", "STOCK", stock.getIdStock(),
-                        "Actualización manual"
+                        note
                 );
             } catch (Exception ignored) { /* best-effort */ }
         }

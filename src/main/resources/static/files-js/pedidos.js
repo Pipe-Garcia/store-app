@@ -260,10 +260,11 @@ function renderTable(lista){
         ${hasRes ? `<a class="tag reservado" href="../files-html/reservas.html?orderId=${p.idOrders}">🔖 Reservas</a>` : ''}
       </div>
       <div class="acciones col-acciones">
-        <button class="btn green" data-view="${p.idOrders}">👁️ Ver</button>
-        <button class="btn blue"  data-edit="${p.idOrders}">✏️ Editar</button>
-        <button class="btn danger" data-del="${p.idOrders}">🗑️ Eliminar</button>
+        <button class="btn outline" data-view="${p.idOrders}">👁️ Ver</button>
+        <button class="btn outline" data-edit="${p.idOrders}">✏️ Editar</button>
+        <button class="btn danger"  data-del="${p.idOrders}">🗑️ Eliminar</button>
       </div>
+
     `;
     host.appendChild(row);
   });

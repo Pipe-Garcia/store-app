@@ -102,16 +102,24 @@ async function fetchSaleDay(iso){
 }
 
 function applyChartTheme(){
-  // colores base desde CSS
   const txt  = getCss('--text');
   const grid = getCss('--grid');
 
-  // Defaults globales para Chart.js
+  const tbg  = getCss('--tooltip-bg');
+  const tfg  = getCss('--tooltip-color');
+  const tbr  = getCss('--tooltip-border');
+
   Chart.defaults.color = txt;
   Chart.defaults.borderColor = grid;
+
   Chart.defaults.plugins.legend.labels.color = txt;
-  Chart.defaults.plugins.tooltip.titleColor = txt;
-  Chart.defaults.plugins.tooltip.bodyColor = txt;
+
+  // tooltips legibles en claro/oscuro
+  Chart.defaults.plugins.tooltip.backgroundColor = tbg;
+  Chart.defaults.plugins.tooltip.titleColor      = tfg;
+  Chart.defaults.plugins.tooltip.bodyColor       = tfg;
+  Chart.defaults.plugins.tooltip.borderColor     = tbr;
+  Chart.defaults.plugins.tooltip.borderWidth     = 1;
 }
 applyChartTheme();
 function retintExistingCharts(){
@@ -158,53 +166,53 @@ new MutationObserver((muts)=>{
 }).observe(document.documentElement, { attributes:true });
 
 function retintCharts(){
-  // defaults globales según tokens actuales
   applyChartTheme();
+  const axis = getCss('--text-weak');
+  const grid = getCss('--grid');
+  const text = getCss('--text');
 
-  const axisColor = getCss('--text-weak');
-  const gridColor = getCss('--grid');
-  const textColor = getCss('--text');
+  const tbg  = getCss('--tooltip-bg');
+  const tfg  = getCss('--tooltip-color');
+  const tbr  = getCss('--tooltip-border');
 
-  const s1  = getCss('--series-1'),  s1f = getCss('--series-1-fill');
-  const s2  = getCss('--series-2'),  s2f = getCss('--series-2-fill');
-  const s3  = getCss('--series-3'),  s3f = getCss('--series-3-fill');
-  const bar = getCss('--bar-fill');
+  const s1=getCss('--series-1'), s1f=getCss('--series-1-fill');
+  const s2=getCss('--series-2'), s2f=getCss('--series-2-fill');
+  const s3=getCss('--series-3'), s3f=getCss('--series-3-fill');
+  const bar=getCss('--bar-fill');
 
   __charts.forEach(ch=>{
-    // leyendas/tooltips/ejes
-    if (ch.options?.plugins?.legend?.labels) ch.options.plugins.legend.labels.color = textColor;
-    if (ch.options?.plugins?.tooltip){
-      ch.options.plugins.tooltip.titleColor = textColor;
-      ch.options.plugins.tooltip.bodyColor  = textColor;
+    // ejes
+    if (ch.options.scales){
+      Object.values(ch.options.scales).forEach(sc=>{
+        sc.ticks = { ...(sc.ticks||{}), color: axis };
+        sc.grid  = { ...(sc.grid||{}),  color: grid };
+      });
     }
-    if (ch.options?.scales){
-      for (const key of Object.keys(ch.options.scales)){
-        const sc = ch.options.scales[key] || {};
-        sc.grid  = { ...(sc.grid||{}),  color:gridColor };
-        sc.ticks = { ...(sc.ticks||{}), color:axisColor };
-        ch.options.scales[key] = sc;
+    // tooltip del chart
+    ch.options.plugins = ch.options.plugins || {};
+    ch.options.plugins.tooltip = {
+      ...(ch.options.plugins.tooltip||{}),
+      backgroundColor: tbg,
+      titleColor: tfg,
+      bodyColor: tfg,
+      borderColor: tbr,
+      borderWidth: 1
+    };
+    // datasets
+    ch.data.datasets.forEach((ds,i)=>{
+      if (ch.config.type === 'bar'){ ds.backgroundColor = bar; ds.borderColor = s1; }
+      if (ch.config.type === 'line'){
+        const col=[s1,s2,s3][i%3], fill=[s1f,s2f,s3f][i%3];
+        ds.borderColor = col; if (ds.fill||ds.backgroundColor) ds.backgroundColor = fill;
       }
-    }
-
-    // datasets por tipo
-    ch.data.datasets.forEach((ds, i)=>{
-      if (ch.config.type === 'bar'){
-        ds.backgroundColor = bar;
-        ds.borderColor     = s1;
-      } else if (ch.config.type === 'line'){
-        const col  = [s1,s2,s3][i%3];
-        const fill = [s1f,s2f,s3f][i%3];
-        ds.borderColor     = col;
-        if (ds.fill || ds.backgroundColor) ds.backgroundColor = fill;
-      } else if (ch.config.type === 'doughnut'){
-        ds.backgroundColor = [s1, s2, s3];
-        ds.borderColor     = getCss('--card');
-      }
+      if (ch.config.type === 'doughnut'){ ds.backgroundColor=[s1,s2,s3]; ds.borderColor=getCss('--card'); }
     });
 
     ch.update('none');
   });
 }
+
+
 
 // serie de N días (monto y AOV por día)
 async function fetchDailySeries(n){
@@ -852,6 +860,39 @@ function renderDel30Donut(deliveries){
   }));
 }
 
+// === i18n acciones auditoría ===
+const ACTION_I18N = {
+  UPDATE:            'Actualizar',
+  CREATE:            'Crear',
+  DELETE:            'Eliminar',
+  CLIENT_CREATE:     'Cliente: crear',
+  ORDER_CREATE:      'Pedido: crear',
+  SUPPLIER_CREATE:   'Proveedor: crear',
+  WAREHOUSE_CREATE:  'Almacén: crear',
+  PURCHASE_CREATE:   'Compra: crear',
+  BULK_CREATE:       'Reserva: Crear',
+};
+
+// Fallback elegante si aparece una acción nueva
+function tAction(k=''){
+  if (ACTION_I18N[k]) return ACTION_I18N[k];
+  const words = k.toLowerCase().split('_').map(w=>{
+    if (w==='create') return 'crear';
+    if (w==='update') return 'actualizar';
+    if (w==='delete') return 'eliminar';
+    if (w==='order') return 'pedido';
+    if (w==='client') return 'cliente';
+    if (w==='supplier') return 'proveedor';
+    if (w==='warehouse') return 'almacén';
+    if (w==='purchase') return 'compra';
+    if (w==='bulk') return 'reserva';
+    return w;
+  });
+  // Capitaliza primera palabra
+  return words.map((w,i)=> i===0 ? (w[0]?.toUpperCase()+w.slice(1)) : w).join(' ');
+}
+
+
 // ======== AUDITORÍA – Dashboard ========
 const API_URL_AUDIT_EVENTS = '/audits/events';
 const API_URL_AUDIT_DASH   = '/audit-dashboard';
@@ -1005,9 +1046,10 @@ function renderAuditActionsChart(series){
 
   const datasets = series.datasets.map((ds, i)=>{
     const [stroke, fill] = colorCycle(i);
+    const labelEs = tAction(ds.label);
     return {
       type: 'bar',
-      label: ds.label,
+      label: labelEs,
       data: ds.data,
       borderColor: stroke,
       backgroundColor: fill,
@@ -1024,7 +1066,12 @@ function renderAuditActionsChart(series){
       responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{ position:'bottom', labels:{ color:getCss('--text'), font:{ weight:'bold' } } },
-        tooltip:{ enabled:true }
+        tooltip:{ 
+          enabled:true,
+          callbacks:{
+            label: (ctx)=> ` ${ctx.dataset.label}: ${ctx.parsed.y || 0} evento(s)`
+          }
+        }
       },
       scales:{
         x:{ stacked:true, ticks:{ color:getCss('--text-weak'), maxRotation:0 }, grid:{ color:getCss('--grid') } },
@@ -1033,6 +1080,7 @@ function renderAuditActionsChart(series){
     }
   }));
 }
+
 
 function renderAuditActorsChart(list){
   const ctx = $('#chartAuditActors7d')?.getContext('2d'); if(!ctx) return;

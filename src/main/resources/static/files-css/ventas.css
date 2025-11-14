@@ -183,3 +183,4 @@ a.btn{ text-decoration:none; }
 }
 
 button:disabled { opacity:.55; cursor:not-allowed; }
+button.disabled{ opacity:.6; cursor:not-allowed; }

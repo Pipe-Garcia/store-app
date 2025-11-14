@@ -13,6 +13,14 @@ const $  = (s,r=document)=>r.querySelector(s);
 const fmtARS = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' });
 const norm = (s)=> (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
+// Fecha → dd/mm/aaaa para UI (tolerante a 'YYYY-MM-DD' o 'YYYY-MM-DDTHH:mm')
+const fmtDate = (s)=>{
+  if (!s) return '—';
+  const iso = (s.length > 10 ? s.slice(0,10) : s);
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d) ? '—' : d.toLocaleDateString('es-AR');
+};
+
 
 // getters tolerantes
 const getDeliveryId = x => x?.idDelivery ?? x?.id ?? x?.deliveryId ?? null;
@@ -249,7 +257,8 @@ function render(lista){
 
   for (const e of lista){
     const idDel  = getDeliveryId(e);
-    const fecha  = getDateISO(e) || '—';
+    const fechaIso = getDateISO(e);
+    const fecha    = fmtDate(fechaIso);
     const st     = getStatus(e);
     const oid    = getOrderId(e);
     const total  = TOTALS_BY_ORDER.get(oid) ?? getTotalFallback(e) ?? 0;
@@ -263,7 +272,7 @@ function render(lista){
       <div>${oid ? `#${oid}` : '—'}</div>
       <div>${fmtARS.format(total)}</div>
       <div class="acciones">
-        <a class="btn view" href="../files-html/ver-entrega.html?id=${idDel}">👁️ Ver</a>
+        <a class="btn outline" href="../files-html/ver-entrega.html?id=${idDel}">👁️ Ver</a>
         <a class="btn outline" href="../files-html/editar-entrega.html?id=${idDel}">✏️ Editar</a>
       </div>
     `;

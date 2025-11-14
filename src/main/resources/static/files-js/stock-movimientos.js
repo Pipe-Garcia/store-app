@@ -17,18 +17,62 @@
   const esc = (s)=>String(s??'').replace(/[&<>"'`]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;' }[c]));
   const debounce = (fn, wait=450)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; };
 
-  function buildQuery(){
-    const p = new URLSearchParams();
-    const d = $('f-desde').value.trim(), h = $('f-hasta').value.trim();
-    const mat = $('f-mat').value.trim(), wh = $('f-wh').value.trim();
-    const reason = $('f-reason').value, user = $('f-user').value.trim();
+  // ====== i18n de "Motivo" ======
+  const REASON_ES = {
+    SALE: 'Venta',
+    DELIVERY: 'Entrega',
+    RESERVATION: 'Reserva',
+    ADJUST: 'Ajuste'
+  };
 
-    if(d) p.set('from', d);
-    if(h) p.set('to', h);
-    if(mat) p.set('materialId', mat);
-    if(wh) p.set('warehouseId', wh);
-    if(reason) p.set('reason', reason);
-    if(user) p.set('user', user);
+  // ====== Zona horaria y formateo seguro ======
+  const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const dtf = new Intl.DateTimeFormat('es-AR', { dateStyle:'short', timeStyle:'medium', timeZone:userTZ });
+  function parseTs(ts){
+    if (ts == null) return null;
+    if (typeof ts === 'number') return new Date(ts);
+    if (typeof ts === 'string'){
+      if (/^\d+$/.test(ts)) return new Date(Number(ts));
+      const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(ts);
+      const canon = (!hasTZ && ts.includes('T')) ? ts + 'Z' : ts;
+      const d = new Date(canon);
+      return isNaN(d) ? null : d;
+    }
+    return null;
+  }
+  function formatTs(ts){
+    const d = parseTs(ts);
+    return d ? dtf.format(d) : '—';
+  }
+
+  const isDigits = (s)=> /^\d+$/.test(s || '');
+  const norm = (s)=> (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+  // Leemos filtros "crudos" para decidir si ID o nombre
+  function readRawFilters(){
+    return {
+      desde : $('f-desde').value.trim(),
+      hasta : $('f-hasta').value.trim(),
+      matRaw: $('f-mat').value.trim(),
+      whRaw : $('f-wh').value.trim(),
+      reason: $('f-reason').value,
+      user  : $('f-user').value.trim()
+    };
+  }
+
+  function buildQuery(){
+    const { desde, hasta, matRaw, whRaw, reason, user } = readRawFilters();
+    const p = new URLSearchParams();
+
+    if (desde) p.set('from', desde);
+    if (hasta) p.set('to',   hasta);
+
+    // Solo mandamos al back si son dígitos (ID). Si es texto, filtramos localmente.
+    if (isDigits(matRaw)) p.set('materialId', matRaw);
+    if (isDigits(whRaw))  p.set('warehouseId', whRaw);
+
+    if (reason) p.set('reason', reason);
+    if (user)   p.set('user',   user);
 
     p.set('page', page);
     p.set('size', size);
@@ -47,8 +91,25 @@
       if(!res.ok) throw new Error('HTTP '+res.status);
 
       const data = await safeJson(res);
-      renderRows(data?.content || []);
-      renderPager(data || {});
+      let rows = data?.content || [];
+
+      // Filtro local por NOMBRE cuando el usuario no ingresó números (ID)
+      const { matRaw, whRaw } = readRawFilters();
+      let wasLocal = false;
+
+      if (matRaw && !isDigits(matRaw)) {
+        const q = norm(matRaw);
+        rows = rows.filter(m => norm(m.materialName).includes(q) || String(m.materialId||'') === matRaw);
+        wasLocal = true;
+      }
+      if (whRaw && !isDigits(whRaw)) {
+        const q = norm(whRaw);
+        rows = rows.filter(m => norm(m.warehouseName).includes(q) || String(m.warehouseId||'') === whRaw);
+        wasLocal = true;
+      }
+
+      renderRows(rows);
+      renderPager(data, wasLocal);
     }catch(e){
       console.error(e);
       tbody.innerHTML = `<tr><td colspan="10">Error: ${esc(e.message)}</td></tr>`;
@@ -63,19 +124,22 @@
       return;
     }
     tbody.innerHTML = rows.map(m=>{
-      const ts = m.timestamp ? new Date(m.timestamp).toLocaleString() : '—';
+      const ts = formatTs(m.timestamp);
       const delta = Number(m.delta||0);
       const deltaBadge = delta >= 0
         ? `<span class="badge delta-plus">+${delta}</span>`
         : `<span class="badge delta-minus">${delta}</span>`;
+
+      const motivo = REASON_ES[m.reason] || (m.reason || '—');
+
       return `<tr>
-        <td class="nowrap">${ts}</td>
+        <td class="nowrap" title="${esc(m.timestamp||'')}">${ts}</td>
         <td>${esc(m.materialName||'')} ${m.materialId? `(#${m.materialId})` : ''}</td>
         <td>${esc(m.warehouseName||'')} ${m.warehouseId? `(#${m.warehouseId})` : ''}</td>
         <td class="text-right">${m.fromQty ?? '—'}</td>
         <td class="text-right">${m.toQty ?? '—'}</td>
         <td>${deltaBadge}</td>
-        <td>${esc(m.reason||'')}</td>
+        <td>${esc(motivo)}</td>
         <td>${m.sourceType ? `${esc(m.sourceType)}${m.sourceId? ' #'+m.sourceId:''}` : '—'}</td>
         <td>${esc(m.userName||'')}</td>
         <td>${esc(m.note||'')}</td>
@@ -83,11 +147,12 @@
     }).join('');
   }
 
-  function renderPager(p){
+  function renderPager(p, wasLocal){
     const totalPages = Number(p.totalPages||0);
     const totalElems = Number(p.totalElements||0);
     const number     = Number(p.number||0);
-    info.textContent = `Página ${totalPages? (number+1) : 0} de ${totalPages||0} · ${totalElems||0} movimientos`;
+    const base = `Página ${totalPages? (number+1) : 0} de ${totalPages||0} · ${totalElems||0} movimientos`;
+    info.textContent = wasLocal ? `${base} · filtrado` : base;
     prev.disabled = p.first === true || number<=0;
     next.disabled = p.last  === true || number >= (totalPages-1);
   }

@@ -19,15 +19,17 @@
       <h1>Panel de Control</h1>
     </div>
 
+  <div class="dashboard-layout">  
     <!-- Índice de secciones (sticky) -->
     <nav class="section-nav" aria-label="Atajos de secciones">
-      <a href="#sec-ventas" class="active">Ventas</a>
+      <a href="#sec-ventas"    class="active">Ventas</a>
       <a href="#sec-pedidos">Pedidos & Entregas</a>
       <a href="#sec-stock">Stock & Materiales</a>
       <a href="#sec-clientes">Clientes</a>
-      <a href="#sec-auditoria">Auditoría</a> <!-- NUEVO -->
+      <a href="#sec-auditoria">Auditoría</a>
     </nav>
 
+    <div class="dashboard-main">
     <hr>
     <!-- ============== VENTAS ============== -->
     <section class="area" id="sec-ventas">
@@ -89,27 +91,22 @@
         </div>
       </section>
 
-      <section class="card chart-card" id="sec-ventas">
-        <div class="card-head">
-          <h2>Ventas últimos 30 días</h2>
-          <div class="kpi-delta" id="kpi30dDelta">—</div>
-        </div>
-        <div class="chart-wrap">
-          <canvas id="chartSales30d"></canvas>
-        </div>
-      </section>
+      <div class="charts-grid">
+        <section class="card chart-card">
+          <div class="card-head">
+            <h2>Ventas últimos 30 días</h2>
+            <div class="kpi-delta" id="kpi30dDelta">—</div>
+          </div>
+          <div class="chart-wrap"><canvas id="chartSales30d"></canvas></div>
+        </section>
 
-      <br>
+        <section class="card chart-card">
+          <div class="card-head"><h3>Ventas últimos 7 días</h3></div>
+          <div class="chart-wrap"><canvas id="chartSales7d"></canvas></div>
+        </section>
+      </div>
 
-      <!-- Gráfico ventas 7 días -->
-      <section class="cards-section">
-        <div class="cards-grid">
-          <section class="card chart-card">
-            <div class="card-head"><h3>Ventas últimos 7 días</h3></div>
-            <div class="chart-wrap"><canvas id="chartSales7d"></canvas></div>
-          </section>
-        </div>
-      </section>
+
     </section>
     <hr>
     <!-- ============== PEDIDOS & ENTREGAS ============== -->
@@ -177,6 +174,7 @@
     <section class="area" id="sec-stock">
       <header class="area-head"><h2>Stock & Materiales</h2></header>
 
+      <!-- KPI arriba, estilo “nota” -->
       <section class="kpi-grid">
         <div class="card kpi">
           <div class="kpi-title">Alertas de stock</div>
@@ -185,14 +183,16 @@
         </div>
       </section>
 
-      <section class="card">
+      <!-- Card con gráfico y tabla apilados -->
+      <section class="card low-stock-card">
         <div class="card-head">
           <h3>Materiales con stock bajo</h3>
           <a class="btn outline" href="../files-html/materiales.html">Ver materiales ↗️</a>
         </div>
+
         <div class="chart-wrap"><canvas id="chartStock"></canvas></div>
+
         <div class="tabla compact" id="tablaLowStock">
-          <div class="tabla compact" id="tablaLowStock">
           <div class="fila encabezado">
             <div>Material</div>
             <div>Cantidad disponible</div>
@@ -202,6 +202,8 @@
         </div>
       </section>
     </section>
+
+
     <hr>
     <!-- ============== CLIENTES ============== -->
     <section class="area" id="sec-clientes">
@@ -237,19 +239,16 @@
           <div class="kpi-value" id="audEventsToday">0</div>
           <div class="kpi-sub">registros</div>
         </div>
-
         <div class="card kpi clickable" id="kpiAudFails" data-drill="../files-html/movimientos.html?status=FAIL&from=7d">
           <div class="kpi-title">Fallos (7 días)</div>
           <div class="kpi-value" id="audFails7d">0</div>
           <div class="kpi-sub">status = FAIL</div>
         </div>
-
         <div class="card kpi clickable" id="kpiAudStock" data-drill="../files-html/stock-movimientos.html?from=7d">
           <div class="kpi-title">Movimientos de stock (7 días)</div>
           <div class="kpi-value" id="audStock7d">0</div>
           <div class="kpi-sub">ajustes / ventas / entregas</div>
         </div>
-
         <div class="card kpi">
           <div class="kpi-title">Usuarios activos (7 días)</div>
           <div class="kpi-value" id="audUsers7d">0</div>
@@ -259,20 +258,24 @@
 
       <!-- Charts -->
       <section class="cards-section">
-        <div class="cards-grid">
+        <!-- usamos la MISMA grilla que Ventas -->
+        <div class="charts-grid">
           <section class="card chart-card" id="audit-actions-card">
             <div class="card-head"><h3>Acciones · últimos 7 días</h3></div>
             <div class="chart-wrap"><canvas id="chartAuditActions7d"></canvas></div>
           </section>
-          <br>
-          <section class="card chart-card" id="audit-actions-card">
+
+          <section class="card chart-card" id="audit-actors-card">
             <div class="card-head"><h3>Top usuarios · 7 días</h3></div>
             <div class="chart-wrap"><canvas id="chartAuditActors7d"></canvas></div>
           </section>
         </div>
       </section>
     </section>
-
+    <hr>
+    <br><br><br><br><br>
+    </div>
+  </div>
   </main>
 
 
@@ -286,7 +289,12 @@
 
   <!-- scripts de la página -->
   <script src="../files-js/header.js"></script>
-
+  <script src="../files-js/role-guard.js"></script>
+  <script>
+  // Solo OWNER/ADMIN pueden ver el dashboard; EMPLEADO → index-emp.html
+  guard.onlyAllow(['owner','admin'], '../files-html/index-emp.html');
+  </script>
+  <script src="../files-js/menu-guard.js"></script>
   <!-- Chart.js (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
   <script src="../files-js/index.js"></script>

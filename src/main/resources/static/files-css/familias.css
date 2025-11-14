@@ -75,3 +75,15 @@
   content:'…'; margin-left:4px; animation: ell 1s steps(4,end) infinite;
 }
 @keyframes ell{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+
+.head{
+  display:flex; justify-content:space-between; align-items:center;
+  gap:10px; margin-bottom:14px;
+}
+.head-right{ display:flex; align-items:center; gap:10px; }
+
+/* opcional: que en pantallas chicas se acomode */
+@media (max-width:600px){
+  .head{ flex-wrap:wrap; }
+  .head-right{ width:100%; justify-content:space-between; }
+}

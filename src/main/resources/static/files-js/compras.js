@@ -7,6 +7,15 @@ const API_URL_SUPPLIERS  = `${API_BASE}/suppliers`;
 const $  = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 const fmtARS = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' });
+// Normalizo a 'YYYY-MM-DD' (primeros 10) y formateo a dd/mm/aaaa para UI
+const dateISO = (s) => (s ? String(s).slice(0,10) : '');
+const fmtDate = (s) => {
+  const iso = dateISO(s);
+  if (!iso) return '—';
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d) ? '—' : d.toLocaleDateString('es-AR');
+};
+
 
 function getToken(){ return localStorage.getItem("accessToken") || localStorage.getItem("token"); }
 function authHeaders(json=true){
@@ -68,7 +77,7 @@ async function cargarDatosBase(){
 
     // ordenar por fecha desc
     compras.sort((a,b)=>{
-      const da = a.datePurchase || ""; const db = b.datePurchase || "";
+      const da = dateISO(a.datePurchase); const db = dateISO(b.datePurchase);
       if (da!==db) return db.localeCompare(da);
       return (b.idPurchase||0)-(a.idPurchase||0);
     });
@@ -93,8 +102,14 @@ function applyFilters(){
 
   let list = compras.slice();
 
-  if (desde) list = list.filter(c => !c.datePurchase || c.datePurchase >= desde);
-  if (hasta) list = list.filter(c => !c.datePurchase || c.datePurchase <= hasta);
+  if (desde) list = list.filter(c => {
+    const iso = dateISO(c.datePurchase);
+    return !iso || iso >= desde;
+  });
+  if (hasta) list = list.filter(c => {
+    const iso = dateISO(c.datePurchase);
+    return !iso || iso <= hasta;
+  });
 
   if (q){
     list = list.filter(c =>
@@ -138,13 +153,13 @@ function renderLista(lista){
     row.className="fila";
     row.innerHTML = `
       <div>${c.idPurchase || "-"}</div>
-      <div>${c.datePurchase || "-"}</div>
+      <div>${fmtDate(c.datePurchase)}</div>
       <div>${displaySupplier(c)}</div>
       <div>${fmtARS.format(total)}</div>
       <div class="acciones">
         <a class="btn outline" href="detalle-compra.html?id=${c.idPurchase}">👁️ Ver</a>
         <a class="btn outline" href="editar-compra.html?id=${c.idPurchase}">✏️ Editar</a>
-        <button class="btn green" data-pdf="${c.idPurchase}">📄 PDF</button>
+        <button class="btn outline" style="border 1px black" data-pdf="${c.idPurchase}">📄 PDF</button>
         <button class="btn danger" data-del="${c.idPurchase}">🗑️ Eliminar</button>
       </div>
     `;

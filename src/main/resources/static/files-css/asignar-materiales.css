@@ -1,0 +1,80 @@
+/* asignar-materiales.css – estilos específicos de Asignar materiales */
+:root{
+  --gap-1:.5rem; --gap-2:1rem; --gap-3:1.5rem;
+  --card-pad:1.25rem; --radius:14px;
+  --border:#e6e8eb; --shadow:0 4px 18px rgba(0,0,0,.06);
+}
+
+.page.form-page.narrow{
+  max-width:980px; margin-inline:auto; padding:1.25rem;
+}
+
+.page-head{display:flex;align-items:center;justify-content:space-between;gap:var(--gap-2);margin-bottom:var(--gap-3);}
+.page-head .actions{display:flex;gap:.5rem;}
+
+.card{
+  background:#fff; border:1px solid var(--border);
+  border-radius:var(--radius); padding:var(--card-pad);
+  box-shadow:var(--shadow);
+}
+
+/* Info proveedor */
+.detail-grid{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap-2);
+}
+.detail-grid .muted{color:#6b7280;font-size:.9rem;margin-bottom:.25rem;}
+.detail-grid > div div:last-child{font-weight:600;}
+
+/* Form agregar material */
+.subhead{font-size:1rem;margin:0 0 var(--gap-2);color:#111827;}
+.grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:var(--gap-2);align-items:end;}
+.grid label{display:block;font-size:.9rem;color:#6b7280;margin-bottom:.35rem;}
+.grid input{
+  width:100%;height:40px;padding:0 .75rem;border:1px solid #d1d5db;border-radius:10px;outline:none;
+}
+.grid input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15);}
+.form-actions{display:flex;justify-content:flex-end;margin-top:var(--gap-2);}
+
+/* Autocomplete */
+.autocomplete-list{position:relative;}
+#suggestions.autocomplete-list{
+  position:absolute; inset:auto 0 auto 0; transform:translateY(2px);
+  background:#fff;border:1px solid #d1d5db;border-radius:10px;box-shadow:var(--shadow);
+  max-height:280px;overflow:auto;display:none;z-index:30;
+}
+#suggestions.open{display:block;}
+#suggestions > div{padding:.55rem .75rem;cursor:pointer;}
+#suggestions > div:hover{background:#f3f4f6;}
+
+/* Tabla de materiales asignados */
+.tabla{display:grid;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;}
+.tabla .fila{
+  display:grid;grid-template-columns:1fr 160px 140px 140px;
+  align-items:center;padding:.75rem 1rem;border-top:1px solid #f0f1f3;
+}
+.tabla .fila:first-child{border-top:0;}
+.tabla .encabezado{background:#f9fafb;color:#374151;font-weight:600;}
+.tabla .fila > div:nth-child(2),
+.tabla .fila > div:nth-child(3){text-align:right;font-variant-numeric:tabular-nums;}
+.tabla .fila > div:last-child{display:flex;justify-content:flex-end;}
+.tabla .btn.danger{background:#ef4444;border-color:#ef4444;color:#fff;}
+.tabla .btn.danger:hover{filter:brightness(.95);}
+
+/* Responsive */
+@media (max-width:900px){
+  .detail-grid{grid-template-columns:repeat(2,1fr);}
+  .grid{grid-template-columns:1fr;}
+  .tabla .fila{grid-template-columns:1fr 120px 100px 110px;}
+}
+@media (max-width:640px){
+  .page.form-page.narrow{padding:.75rem;}
+  .detail-grid{grid-template-columns:1fr;}
+  .tabla .fila{grid-template-columns:1fr 1fr;grid-row-gap:.5rem;}
+  .tabla .fila > div:last-child{grid-column:1/-1;justify-content:flex-start;}
+}
+
+
+.form-page .card {
+    margin: 20px auto;
+    max-width: 800px;
+}

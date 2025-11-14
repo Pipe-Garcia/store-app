@@ -21,24 +21,6 @@
   box-shadow: var(--shadow);
 }
 
-/* ====== Botones (mismos tokens que ventas.css) ====== */
-.btn{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:8px 12px; border-radius:8px; border:1px solid transparent;
-  font-weight:500; cursor:pointer; text-decoration:none; line-height:1;
-  transition: background .15s, border-color .15s, transform .02s;
-}
-.btn:active{ transform: translateY(1px); }
-.btn.primary { background:#1c7ed6; color:#fff; }
-.btn.danger  { background:#f84052; color:#fff; }
-.btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
-.btn.primary:hover{ background:#1864ab; }
-.btn.danger:hover { background:#c92a2a; }
-.btn.outline:hover{ background:#f1f3f5; }
-
-a.btn{ text-decoration:none; }
-.acciones{ display:flex; flex-wrap:wrap; gap:8px; }
-
 /* ====== Tabla de pedidos ====== */
 #lista-pedidos{ display:grid; gap:8px; min-width: 980px; }
 #lista-pedidos .fila{
@@ -167,15 +149,6 @@ a.btn{ text-decoration:none; }
 /* ==== Ajustes del filtro Total (ancho/alto/alineación) ==== */
 
 
-/* ==== Botones de acciones con ícono y color ==== */
-.btn.green{ background:#3ac654; color:#fff; }
-.btn.green:hover{ background:#2b8a3e; }
-
-.btn.blue{ background:#2291f2; color:#fff; }   /* pedido: azul #2291f2 */
-.btn.blue:hover{ filter: brightness(.96); }
-
-.acciones .btn{ display:inline-flex; align-items:center; gap:6px; }
-
 .subcol{ display:flex; flex-direction:column; gap:4px; }
 .sub{ color:#6b7280; font-size:.8rem; line-height:1; }
 
@@ -218,3 +191,26 @@ a.btn{ text-decoration:none; }
 .col-estado:has(a.tag.reservado){
   justify-content:flex-start;
 }
+
+
+/* Botones consistentes con Proveedores */
+.btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 12px; border-radius:8px; border:1px solid transparent;
+  font-weight:500; cursor:pointer; text-decoration:none; line-height:1;
+  transition: background .15s, border-color .15s, transform .02s;
+  letter-spacing: .3px;
+}
+.btn:active{ transform: translateY(1px); }
+
+.btn.success {background-color: rgb(0, 203, 0); color: #fff; }
+.btn.primary { background:#1c7ed6; color:#fff; }
+.btn.danger  { background:#f84052; color:#fff; }
+.btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
+
+.btn.primary:hover{ background:#1864ab; }
+.btn.danger:hover { background:#c92a2a; }
+.btn.outline:hover{ background:#f1f3f5; }
+
+a.btn{ text-decoration:none; }
+.acciones{ display:flex; flex-wrap:wrap; gap:8px; }

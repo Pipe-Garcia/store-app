@@ -23,27 +23,45 @@
       <label>Usuario
         <input type="text" id="f-actor" placeholder="Ej: juan">
       </label>
+
+      <!-- Acción: label en ES, value en EN -->
       <label>Acción
         <select id="f-action">
           <option value="">(todas)</option>
-          <option>CREATE</option><option>UPDATE</option><option>DELETE</option>
-          <option>SALE_CREATE</option><option>ORDER_UPDATE</option><option>DELIVERY_CREATE</option><option>ORDER_CREATE</option>
+          <option value="CREATE">Crear</option>
+          <option value="UPDATE">Modificar</option>
+          <option value="DELETE">Eliminar</option>
+          <option value="LOGIN">Inicio de sesión</option>
+          <option value="LOGOUT">Cierre de sesión</option>
         </select>
       </label>
+
+
+      <!-- Entidad: label en ES, value en EN -->
       <label>Entidad
         <select id="f-entity">
           <option value="">(todas)</option>
-          <option>Sale</option><option>Orders</option><option>Delivery</option>
-          <option>Stock</option><option>Material</option><option>Client</option>
+          <option value="Sale">Venta</option>
+          <option value="Orders">Pedido</option>
+          <option value="Delivery">Entrega</option>
+          <option value="Stock">Stock</option>
+          <option value="Material">Material</option>
+          <option value="Client">Cliente</option>
+          <option value="User">Usuario</option>
+          <option value="Payment">Pago</option>
+          <option value="Reservation">Reserva</option>
         </select>
       </label>
+
+      <!-- Estado: label en ES, value en EN -->
       <label>Estado
         <select id="f-status">
           <option value="">(todos)</option>
-          <option value="SUCCESS">SUCCESS</option>
-          <option value="FAIL">FAIL</option>
+          <option value="SUCCESS">Éxito</option>
+          <option value="FAIL">Error</option>
         </select>
       </label>
+
       <label>Tamaño pág.
         <select id="f-size">
           <option>20</option><option>50</option><option>100</option>
@@ -52,6 +70,7 @@
       <button class="btn primary" id="btn-aplicar">Aplicar</button>
       <button class="btn" id="btn-limpiar">Limpiar</button>
     </div>
+
 
     <div class="card">
       <table class="table" id="tbl">
@@ -83,6 +102,12 @@
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
 
+  <script src="../files-js/role-guard.js"></script>
+  <script>
+  // Bloquear EMPLEADO acá
+  guard.denyIfRole(['employee'], '../files-html/index-emp.html');
+  </script>
+  <script src="../files-js/menu-guard.js"></script>
   <!-- lógica -->
   <script src="../files-js/movimientos.js"></script>
 </body>

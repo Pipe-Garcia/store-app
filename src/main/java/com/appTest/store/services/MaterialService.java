@@ -1,42 +1,113 @@
 package com.appTest.store.services;
 
-import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.material.*;
-import com.appTest.store.models.Family;
-import com.appTest.store.models.Material;
-import com.appTest.store.models.Stock;
-import com.appTest.store.models.Warehouse;
-import com.appTest.store.repositories.IFamilyRepository;
-import com.appTest.store.repositories.IMaterialRepository;
-import com.appTest.store.repositories.IStockRepository;
-import com.appTest.store.repositories.IWarehouseRepository;
+import com.appTest.store.models.*;
+import com.appTest.store.repositories.*;
+import com.appTest.store.services.AuditService; // <-- usa tu AuditService
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
-public class MaterialService implements IMaterialService{
+public class MaterialService implements IMaterialService {
 
-    @Autowired
-    private IMaterialRepository repoMat;
+    @Autowired private IMaterialRepository repoMat;
+    @Autowired private IFamilyRepository repoFam;
+    @Autowired private IWarehouseRepository repoWare;
+    @Autowired private IStockRepository repoStock;
 
-    @Autowired
-    
-    private IFamilyRepository repoFam;
+    // ⬇️ agregamos el servicio de auditoría
+    @Autowired private AuditService audit;
 
-    @Autowired
-    
-    private IWarehouseRepository repoWare;
+    /* ==================== Utils ==================== */
 
-    @Autowired
-    
-    private IStockRepository repoStock;
+    private String norm(String s){ return s==null? null : s.trim(); }
+    private boolean hasText(String s){ return s!=null && !s.trim().isEmpty(); }
+
+    // Snapshot “plano” para diffs (no incluimos listas para evitar recursión)
+    private Map<String, Object> snap(Material m){
+        if (m==null) return null;
+        Map<String,Object> map = new LinkedHashMap<>();
+        map.put("id",               m.getIdMaterial());
+        map.put("nombre",           m.getName());
+        map.put("marca",            m.getBrand());
+        map.put("precioArs",        m.getPriceArs());
+        map.put("precioUsd",        m.getPriceUsd());
+        map.put("unidadMedida",     m.getMeasurementUnit());
+        map.put("nroInterno",       m.getInternalNumber());
+        map.put("descripcion",      m.getDescription());
+        map.put("familiaId",        m.getFamily()!=null? m.getFamily().getIdFamily() : null);
+        map.put("familiaNombre",    m.getFamily()!=null? m.getFamily().getTypeFamily() : null);
+        return map;
+    }
+
+    private record Change(String field, Object from, Object to) {}
+
+    private List<Change> diff(Map<String,Object> a, Map<String,Object> b){
+        List<Change> out = new ArrayList<>();
+        Set<String> keys = new LinkedHashSet<>();
+        if (a!=null) keys.addAll(a.keySet());
+        if (b!=null) keys.addAll(b.keySet());
+        for (String k: keys){
+            Object va = a!=null? a.get(k) : null;
+            Object vb = b!=null? b.get(k) : null;
+            if (!Objects.equals(va, vb)){
+                out.add(new Change(k, va, vb));
+            }
+        }
+        return out;
+    }
+
+    private String humanField(String k){
+        return switch (k){
+            case "nombre" -> "Nombre";
+            case "marca" -> "Marca";
+            case "precioArs" -> "Precio ARS";
+            case "precioUsd" -> "Precio USD";
+            case "unidadMedida" -> "Unidad";
+            case "nroInterno" -> "N° interno";
+            case "descripcion" -> "Descripción";
+            case "familiaId", "familiaNombre" -> "Familia";
+            default -> k;
+        };
+    }
+
+    private String fmt(Object v){
+        if (v==null || (v instanceof String s && s.isBlank())) return "—";
+        if (v instanceof BigDecimal bd) return bd.stripTrailingZeros().toPlainString();
+        return String.valueOf(v);
+    }
+
+    private String summarize(List<Change> changes){
+        if (changes==null || changes.isEmpty()) return "OK";
+        return changes.stream()
+                .limit(3)
+                .map(c -> humanField(c.field()) + ": " + fmt(c.from()) + " → " + fmt(c.to()))
+                .collect(Collectors.joining(" · "))
+                + (changes.size()>3 ? " +" + (changes.size()-3) + " más" : "");
+    }
+
+    // Ejecuta “después del commit” (para que tu tabla de auditoría no quede con basura si hace rollback)
+    private void afterCommit(Runnable r){
+        if (TransactionSynchronizationManager.isSynchronizationActive()){
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { r.run(); }
+            });
+        } else {
+            // fallback: sin TX activa, ejecutar ahora
+            r.run();
+        }
+    }
+
+    /* ==================== API pública ==================== */
 
     @Override
     public List<Material> getAllMaterials() {
@@ -45,22 +116,16 @@ public class MaterialService implements IMaterialService{
 
     @Override
     public MaterialDTO convertMaterialToDto(Material material) {
-        // cantidades disponibles sumadas en todos los depósitos
-        BigDecimal totalQuantityAvailable = material.getStockList().stream()
+        BigDecimal totalQty = material.getStockList().stream()
                 .map(Stock::getQuantityAvailable)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // ventas totales (por si las mostrás)
         int totalSales = material.getSaleDetailList().stream()
                 .mapToInt(sd -> sd.getQuantity().intValue())
                 .sum();
 
-        // 🔸 Null-safe: puede haber materiales sin familia
-        Long   famId   = (material.getFamily() != null) ? material.getFamily().getIdFamily()   : null;
-        String famName = (material.getFamily() != null) ? material.getFamily().getTypeFamily() : null;
-
-        // mantenemos "category" por compatibilidad (es el typeFamily)
-        String category = famName;
+        Long famId   = (material.getFamily()!=null) ? material.getFamily().getIdFamily()   : null;
+        String famName = (material.getFamily()!=null) ? material.getFamily().getTypeFamily() : null;
 
         return new MaterialDTO(
                 material.getIdMaterial(),
@@ -71,23 +136,14 @@ public class MaterialService implements IMaterialService{
                 material.getMeasurementUnit(),
                 material.getInternalNumber(),
                 material.getDescription(),
-
-                // familia
-                famId,
-                famName,
-                category,
-
-                // agregados/calculados
-                totalQuantityAvailable,
-                totalSales,
+                famId, famName, famName,
+                totalQty, totalSales,
                 material.getStockList().size(),
                 material.getMaterialSuppliers().size(),
                 material.getSaleDetailList().size(),
                 material.getOrderDetails().size()
         );
     }
-
-
 
     @Override
     public Material getMaterialById(Long idMaterial) {
@@ -105,13 +161,14 @@ public class MaterialService implements IMaterialService{
         return list.isEmpty() ? null : list.get(0);
     }
 
+    /* ==================== CREATE ==================== */
+
     @Override
     @Transactional
-    @Auditable(entity="Material", action="CREATE")
+    // Quitar @Auditable aquí para evitar duplicados
     public MaterialDTO createMaterial(MaterialCreateDTO dto) {
 
         Material material = new Material();
-
         material.setName(dto.getName());
         material.setBrand(dto.getBrand());
         material.setPriceArs(dto.getPriceArs());
@@ -143,30 +200,38 @@ public class MaterialService implements IMaterialService{
             stock.setQuantityAvailable(dto.getStock().getQuantityAvailable());
             stock.setLastUpdate(LocalDate.now());
             repoStock.save(stock);
-            savedMaterial = repoMat.findById(savedMaterial.getIdMaterial())
-                    .orElseThrow(() -> new EntityNotFoundException("Material not found after stock creation"));
         }
 
+        // Refrescar (por si hay relaciones perezosas)
         savedMaterial = repoMat.findById(savedMaterial.getIdMaterial())
                 .orElseThrow(() -> new EntityNotFoundException("Material not found after creation"));
+
+        // === Auditoría (CREATE con ID correcto) ===
+        final Long mid   = savedMaterial.getIdMaterial();
+        final Map<String,Object> after = snap(savedMaterial);
+        final String name = savedMaterial.getName(); // << clave: capturar valor final
+        afterCommit(() -> {
+            Long evId = audit.success("CREATE", "Material", mid, "Creado material \"" + name + "\"");
+            Map<String,Object> diff = Map.of("created", true, "fields", after);
+            audit.attachDiff(evId, null, after, diff);
+        });
+
         return convertMaterialToDto(savedMaterial);
     }
 
-    private String norm(String s){
-        return s==null? null : s.trim();
-    }
-
-    private boolean hasText(String s){
-        return s!=null && !s.trim().isEmpty();
-    }
+    /* ==================== UPDATE ==================== */
 
     @Override
     @Transactional
-    @Auditable(entity="Material", action="UPDATE", idParam="dto.idMaterial")
+    // Quitar @Auditable aquí para evitar duplicados
     public void updateMaterial(MaterialUpdateDTO dto) {
         Material material = repoMat.findById(dto.getIdMaterial())
                 .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + dto.getIdMaterial()));
 
+        // Snapshot “antes”
+        Map<String,Object> before = snap(material);
+
+        // Cambios
         if (hasText(dto.getName())) material.setName(norm(dto.getName()));
         if (hasText(dto.getBrand())) material.setBrand(norm(dto.getBrand()));
         if (dto.getPriceArs() != null) material.setPriceArs(dto.getPriceArs());
@@ -182,12 +247,32 @@ public class MaterialService implements IMaterialService{
         }
 
         repoMat.save(material);
+
+        // Snapshot “después”
+        Map<String,Object> after = snap(material);
+        List<Change> changes = diff(before, after);
+
+        // Mensaje humano (hasta 3 cambios)
+        String message = summarize(changes);
+
+        // Adjuntar auditoría DESPUÉS del commit
+        final Long mid = material.getIdMaterial();
+        afterCommit(() -> {
+            Long evId = audit.success("UPDATE", "Material", mid, message);
+            // Estructura “diffJson” amigable para tu front (cambios[])
+            List<Map<String,Object>> changed = changes.stream()
+                    .map(c -> Map.of("field", c.field(), "from", c.from(), "to", c.to()))
+                    .collect(Collectors.toList());
+            Map<String,Object> diffPayload = Map.of("changed", changed);
+            audit.attachDiff(evId, before, after, diffPayload);
+        });
     }
 
+    /* ==================== DELETE ==================== */
 
     @Override
     @Transactional
-    @Auditable(entity="Material", action="DELETE", idParam="id")
+    // Podés dejar el @Auditable aquí si ya te funcionaba bien
     public boolean deleteMaterialById(Long idMaterial) {
         Material material = repoMat.findById(idMaterial).orElse(null);
         if (material != null) {
@@ -196,5 +281,4 @@ public class MaterialService implements IMaterialService{
         }
         return false;
     }
-
 }

@@ -15,22 +15,88 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class SupplierService implements ISupplierService {
 
-    @Autowired
-    private ISupplierRepository repoSupplier;
+    @Autowired private ISupplierRepository repoSupplier;
+    @Autowired private IMaterialSupplierRepository matSupRepo;
+    @Autowired private IMaterialRepository materialRepo;
 
-    @Autowired
-    private IMaterialSupplierRepository matSupRepo;
+    // Auditoría
+    @Autowired private AuditService audit;
 
-    @Autowired
-    private IMaterialRepository materialRepo;
+    /* ==================== Utils auditoría ==================== */
+
+    private Map<String, Object> snap(Supplier s, int materialsCount){
+        if (s == null) return null;
+        Map<String,Object> m = new LinkedHashMap<>();
+        m.put("id",             s.getIdSupplier());
+        m.put("nombre",         s.getName());
+        m.put("apellido",       s.getSurname());
+        m.put("dni",            s.getDni());
+        m.put("email",          s.getEmail());
+        m.put("direccion",      s.getAddress());
+        m.put("localidad",      s.getLocality());
+        m.put("empresa",        s.getNameCompany());
+        m.put("telefono",       s.getPhoneNumber());
+        m.put("estado",         s.getStatus());
+        m.put("materiales",     materialsCount);
+        return m;
+    }
+
+    private record Change(String field, Object from, Object to) {}
+    private List<Change> diff(Map<String,Object> a, Map<String,Object> b){
+        List<Change> out = new ArrayList<>();
+        Set<String> keys = new LinkedHashSet<>();
+        if (a!=null) keys.addAll(a.keySet());
+        if (b!=null) keys.addAll(b.keySet());
+        for (String k: keys){
+            Object va = a!=null? a.get(k) : null;
+            Object vb = b!=null? b.get(k) : null;
+            if (!Objects.equals(va, vb)) out.add(new Change(k, va, vb));
+        }
+        return out;
+    }
+    private String humanField(String k){
+        return switch (k){
+            case "nombre" -> "Nombre";
+            case "apellido" -> "Apellido";
+            case "dni" -> "DNI";
+            case "email" -> "Email";
+            case "direccion" -> "Dirección";
+            case "localidad" -> "Localidad";
+            case "empresa" -> "Empresa";
+            case "telefono" -> "Teléfono";
+            case "estado" -> "Estado";
+            case "materiales" -> "Materiales asociados";
+            default -> k;
+        };
+    }
+    private String fmt(Object v){ return (v==null || String.valueOf(v).isBlank()) ? "—" : String.valueOf(v); }
+    private String summarize(List<Change> changes){
+        if (changes==null || changes.isEmpty()) return "OK";
+        String s = changes.stream()
+                .limit(3)
+                .map(c -> humanField(c.field()) + ": " + fmt(c.from()) + " → " + fmt(c.to()))
+                .collect(Collectors.joining(" · "));
+        if (changes.size()>3) s += " +" + (changes.size()-3) + " más";
+        return s;
+    }
+    private void afterCommit(Runnable r){
+        if (TransactionSynchronizationManager.isSynchronizationActive()){
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit(){ r.run(); }
+            });
+        } else r.run();
+    }
+
+    /* ==================== API existente ==================== */
 
     @Override
     public List<SupplierDTO> getAllSuppliers() {
@@ -51,7 +117,6 @@ public class SupplierService implements ISupplierService {
         Supplier supplier = getSupplierById(id);
         SupplierDTO dto = convertSupplierToDto(supplier);
 
-        // Agregar materiales asociados
         List<MaterialSupplier> asociados = matSupRepo.findBySupplier(supplier);
         List<MaterialSupplierDTO> materiales = new ArrayList<>();
         for (MaterialSupplier ms : asociados) {
@@ -63,14 +128,14 @@ public class SupplierService implements ISupplierService {
             matDTO.setDeliveryTimeDays(ms.getDeliveryTimeDays());
             materiales.add(matDTO);
         }
-
         dto.setMaterials(materiales);
         return dto;
     }
 
+    /* ==================== CREATE (sin @Auditable) ==================== */
+
     @Override
     @Transactional
-    @Auditable(action="SUPPLIER_CREATE", entity="Supplier")
     public SupplierDTO createSupplier(SupplierCreateDTO dto) {
         Supplier supplier = new Supplier(
                 dto.getName(), dto.getSurname(), dto.getDni(), dto.getEmail(),
@@ -93,14 +158,33 @@ public class SupplierService implements ISupplierService {
             }
         }
 
+        // auditoría
+        int afterCount = matSupRepo.findBySupplier(saved).size();
+        final Long sid = saved.getIdSupplier();
+        final String display = (saved.getNameCompany()!=null && !saved.getNameCompany().isBlank())
+                ? saved.getNameCompany()
+                : (saved.getName()+" "+saved.getSurname()).trim();
+        final Map<String,Object> after = snap(saved, afterCount);
+
+        afterCommit(() -> {
+            Long ev = audit.success("SUPPLIER_CREATE", "Supplier", sid,
+                    "Creado proveedor \"" + display + "\"");
+            Map<String,Object> diff = Map.of("created", true, "fields", after);
+            audit.attachDiff(ev, null, after, diff);
+        });
+
         return convertSupplierToDto(saved);
     }
 
+    /* ==================== UPDATE (sin @Auditable) ==================== */
+
     @Override
     @Transactional
-    @Auditable(entity="Supplier", action="UPDATE", idParam="dto.idSupplier")
     public SupplierDTO updateSupplier(Long id, SupplierCreateDTO dto) {
         Supplier supplier = getSupplierById(id);
+
+        int prevCount = matSupRepo.findBySupplier(supplier).size();
+        Map<String,Object> before = snap(supplier, prevCount);
 
         supplier.setName(dto.getName());
         supplier.setSurname(dto.getSurname());
@@ -114,24 +198,42 @@ public class SupplierService implements ISupplierService {
 
         Supplier saved = repoSupplier.save(supplier);
 
-        matSupRepo.deleteBySupplier(supplier);
-
+        // Reemplazás asociaciones
+        matSupRepo.deleteBySupplier(saved);
         if (dto.getMaterials() != null) {
             for (MaterialSupplierCreateDTO matDTO : dto.getMaterials()) {
                 Material material = materialRepo.findById(matDTO.getMaterialId())
                         .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + matDTO.getMaterialId()));
-                MaterialSupplier matSup = new MaterialSupplier(
+                MaterialSupplier ms = new MaterialSupplier(
                         matDTO.getDeliveryTimeDays(),
                         material,
                         matDTO.getPriceUnit(),
                         saved
                 );
-                matSupRepo.save(matSup);
+                matSupRepo.save(ms);
             }
         }
 
+        int afterCount = matSupRepo.findBySupplier(saved).size();
+        Map<String,Object> after = snap(saved, afterCount);
+        List<Change> changes = diff(before, after);
+        String message = summarize(changes);
+
+        final Long sid = saved.getIdSupplier();
+        final List<Map<String,Object>> changed = changes.stream()
+                .map(c -> Map.of("field", c.field(), "from", c.from(), "to", c.to()))
+                .collect(Collectors.toList());
+        final Map<String,Object> payload = Map.of("changed", changed);
+
+        afterCommit(() -> {
+            Long ev = audit.success("UPDATE", "Supplier", sid, message);
+            audit.attachDiff(ev, before, after, payload);
+        });
+
         return convertSupplierToDto(saved);
     }
+
+    /* ==================== DELETE (puede quedar con @Auditable) ==================== */
 
     @Override
     @Transactional
