@@ -43,7 +43,7 @@
 .items{ margin-top:.25rem; }
 .items .fila{
   display:grid;
-  grid-template-columns: 2fr 1.4fr .7fr .9fr .6fr; /* Material | Depósito | Cant | Reservar | Quitar */
+  grid-template-columns: 2fr 1.4fr .7fr .9fr; /* Material | Depósito | Cant | Quitar */
   gap:10px; align-items:center;
   background:#fff; border:1px solid var(--border);
   border-radius:10px; padding:10px 12px; box-shadow: var(--shadow);

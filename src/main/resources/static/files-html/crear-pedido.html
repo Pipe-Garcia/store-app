@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>📝 Crear pedido</title>
+  <title>📝 Crear Presupuesto</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/dashboard.css"/>
   <link rel="stylesheet" href="../files-css/pedidos.css"/>
@@ -14,7 +14,7 @@
   <div id="app-header"></div>
 
 <main class="page">
-  <div class="page-head" style="margin-left: 280px;"><h1>Crear pedido</h1></div>
+  <div class="page-head" style="margin-left: 280px;"><h1>Crear Presupuesto</h1></div>
 
   <section class="order-card">
     <div class="order-grid">
@@ -38,7 +38,7 @@
         <div>Material</div>
         <div>Depósito</div>
         <div>Cant.</div>
-        <div>Reservar</div>
+     
         <div>Quitar</div>
       </div>
 
@@ -46,22 +46,15 @@
       <div id="items"></div>
     </div>
 
-    <div class="hint" style="margin-top:.25rem;">
-      Si marcás <strong>Reservar</strong>, al guardar se crea la reserva de stock para ese renglón.
-    </div>
+   
 
     <div class="toolbar">
       <button id="btnAdd" class="btn blue">＋ Agregar material</button>
 
-      <label class="chk-all">
-        <input type="checkbox" id="chkReservarTodos">
-        <span>Reservar stock de todos los renglones al guardar</span>
-      </label>
-    </div>
 
     <div class="order-actions">
       <button id="btnCancelar" class="btn outline">Cancelar</button>
-      <button id="btnGuardar" class="btn primary">Guardar pedido</button>
+      <button id="btnGuardar" class="btn primary">Guardar Presupuesto</button>
     </div>
   </section>
 </main>

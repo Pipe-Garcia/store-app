@@ -31,7 +31,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   $('#btnAdd').addEventListener('click', addRow);
   $('#btnCancelar').addEventListener('click', ()=> go('pedidos.html'));
   $('#btnGuardar').addEventListener('click', guardar);
-  $('#chkReservarTodos').addEventListener('change', toggleMasterReservas);
+
 
   addRow(); // fila inicial
 });
@@ -65,9 +65,6 @@ function newRowEl(){
 
     <input type="number" min="1" step="1" class="in in-qty" value="1">
 
-    <div class="cell-center">
-      <input type="checkbox" class="chk-res" title="Reservar">
-    </div>
 
     <div class="cell-right">
       <button class="btn icon trash btn-del" title="Quitar">🗑️</button>
@@ -125,17 +122,7 @@ async function onMaterialChange(row){
 }
 
 /* ========= Maestro “Reservar todos” <-> filas ========= */
-function toggleMasterReservas(){
-   const master = $('#chkReservarTodos').checked;
-   document.querySelectorAll('#items .fila .chk-res').forEach(chk=>{
-     chk.checked = master;
-   });
-   syncMasterCheckbox();
-}
-function syncMasterCheckbox(){
-   const chks = Array.from(document.querySelectorAll('#items .fila .chk-res'));
-   $('#chkReservarTodos').checked = chks.length>0 && chks.every(c=>c.checked);
-}
+
 
 /* =================== Guardar =================== */
 async function guardar(e){
@@ -170,7 +157,6 @@ async function guardar(e){
     notify('✅ Pedido creado','success');
 
     // 2) Reservas (maestro o por fila)
-    const reservarTodos = $('#chkReservarTodos').checked;
     const items = [];
     for (const row of rows){
       const marked = reservarTodos || row.querySelector('.chk-res').checked;
