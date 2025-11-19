@@ -155,7 +155,7 @@ function renderTabla(list){
     const stock  = `<span class="badge ${stockBadgeClass(stockN)}">${stockN}</span>`;
 
     const row = document.createElement('div');
-    row.className = 'fila row-card';
+    row.className = 'fila';;
     row.innerHTML = `
       <div>${code || '-'}</div>
       <div>${name}</div>
@@ -163,7 +163,9 @@ function renderTabla(list){
       <div>${stock}</div>
       <div>${fmtARS.format(price||0)}</div>
       <div class="acciones">
+        <button class="btn outline" data-edit="${m.idMaterial}" title="Editar">👁️ Ver</button>
         <button class="btn outline" data-edit="${m.idMaterial}" title="Editar">✏️ Editar</button>
+
         <button class="btn danger" data-del="${m.idMaterial}" title="Eliminar">🗑️ Eliminar</button>
       </div>
     `;

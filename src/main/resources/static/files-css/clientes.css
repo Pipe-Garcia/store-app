@@ -54,12 +54,12 @@
 .tabla{
   /* ID | Cliente | DNI | Teléfono | Estado | Acciones */
   --cols-6: minmax(60px,.5fr) minmax(0,1fr) minmax(120px,1fr) minmax(140px,1.1fr) minmax(110px,.9fr) minmax(120px,1fr);
-  display:grid; gap:8px; min-width:900px;
+  display:grid; min-width:900px;
 }
 
 .fila{
   display:grid;
-  grid-template-columns: var(--cols-6);
+  grid-template-columns: 1fr 2fr 1fr 0.8fr 1fr 1fr;
   align-items:center; gap:10px;
   background:#fff; border-radius:10px; padding:12px 14px; box-shadow:var(--shadow);
 }
@@ -80,9 +80,9 @@
 /* filas dinámicas creadas por clientes.js */
 #lista-clientes .cliente-cont{
   display:grid;
-  grid-template-columns: var(--cols-6);
-  align-items:center; gap:10px;
-  background:#fff; border-radius:10px; padding:12px 14px; box-shadow:var(--shadow);
+  grid-template-columns: 1fr 2fr 1fr 0.8fr 1fr 1fr;
+  align-items:center; gap:4px;
+  background:#fff; border-radius:4px; padding:12px 14px; box-shadow:var(--shadow);
   border:1px solid #eef1f3;
 }
 #lista-clientes .cliente-cont:hover{ box-shadow:0 6px 16px rgba(0,0,0,.06); }
@@ -101,7 +101,7 @@
   display:flex; gap:.4rem; justify-content:center; align-items:center;
 }
 #lista-clientes .cliente-cont .acciones .btn{
-  border-radius:10px;
+  border-radius: 4px;
   padding:.5rem .8rem;
   border:1px solid rgba(16,24,40,.12);
 }

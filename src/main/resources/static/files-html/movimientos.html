@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>🔄 | Movimientos (Auditoría)</title>
+  <title>🔄 Movimientos (Auditoría)</title>
   <link rel="stylesheet" href="../files-css/style.css">
   <link rel="stylesheet" href="../files-css/auditoria.css">
   <link rel="stylesheet" href="../files-css/nav.css">
@@ -13,81 +13,76 @@
 
   <div class="page">
     <h1>Movimientos</h1>
+    <hr><br>
     <div class="filters card">
-      <label>Desde
-        <input type="date" id="f-desde">
-      </label>
-      <label>Hasta
-        <input type="date" id="f-hasta">
-      </label>
-      <label>Usuario
-        <input type="text" id="f-actor" placeholder="Ej: juan">
-      </label>
+      <div class="row">
+        <label>Desde
+          <input type="date" id="f-desde">
+        </label>
+        <label>Hasta
+          <input type="date" id="f-hasta">
+        </label>
+        <label>Usuario
+          <input type="text" id="f-actor" placeholder="Ej: juan">
+        </label>
 
-      <!-- Acción: label en ES, value en EN -->
-      <label>Acción
-        <select id="f-action">
-          <option value="">(todas)</option>
-          <option value="CREATE">Crear</option>
-          <option value="UPDATE">Modificar</option>
-          <option value="DELETE">Eliminar</option>
-          <option value="LOGIN">Inicio de sesión</option>
-          <option value="LOGOUT">Cierre de sesión</option>
-        </select>
-      </label>
+        <label>Acción
+          <select id="f-action">
+            <option value="">(todas)</option>
+            <option value="CREATE">Crear</option>
+            <option value="UPDATE">Modificar</option>
+            <option value="DELETE">Eliminar</option>
+            <option value="LOGIN">Inicio de sesión</option>
+            <option value="LOGOUT">Cierre de sesión</option>
+          </select>
+        </label>
 
+        <label>Entidad
+          <select id="f-entity">
+            <option value="">(todas)</option>
+            <option value="Sale">Venta</option>
+            <option value="Orders">Pedido</option>
+            <option value="Delivery">Entrega</option>
+            <option value="Stock">Stock</option>
+            <option value="Material">Material</option>
+            <option value="Client">Cliente</option>
+            <option value="User">Usuario</option>
+            <option value="Payment">Pago</option>
+            <option value="Reservation">Reserva</option>
+          </select>
+        </label>
 
-      <!-- Entidad: label en ES, value en EN -->
-      <label>Entidad
-        <select id="f-entity">
-          <option value="">(todas)</option>
-          <option value="Sale">Venta</option>
-          <option value="Orders">Pedido</option>
-          <option value="Delivery">Entrega</option>
-          <option value="Stock">Stock</option>
-          <option value="Material">Material</option>
-          <option value="Client">Cliente</option>
-          <option value="User">Usuario</option>
-          <option value="Payment">Pago</option>
-          <option value="Reservation">Reserva</option>
-        </select>
-      </label>
+        <label>Estado
+          <select id="f-status">
+            <option value="">(todos)</option>
+            <option value="SUCCESS">Éxito</option>
+            <option value="FAIL">Error</option>
+          </select>
+        </label>
 
-      <!-- Estado: label en ES, value en EN -->
-      <label>Estado
-        <select id="f-status">
-          <option value="">(todos)</option>
-          <option value="SUCCESS">Éxito</option>
-          <option value="FAIL">Error</option>
-        </select>
-      </label>
-
-      <label>Tamaño pág.
-        <select id="f-size">
-          <option>20</option><option>50</option><option>100</option>
-        </select>
-      </label>
-      <button class="btn primary" id="btn-aplicar">Aplicar</button>
-      <button class="btn" id="btn-limpiar">Limpiar</button>
+        <label>Tamaño pág.
+          <select id="f-size">
+            <option>20</option><option>50</option><option>100</option>
+          </select>
+        </label>
+        <button class="btn" id="btn-aplicar">Buscar</button>
+        <button class="btn" id="btn-limpiar">Limpiar</button>
+      </div>
     </div>
-
-
+    
     <div class="card">
-      <table class="table" id="tbl">
-        <thead>
-          <tr>
-            <th>Fecha/Hora</th>
-            <th>Usuario</th>
-            <th>Acción</th>
-            <th>Entidad</th>
-            <th class="text-right">ID</th>
-            <th>Estado</th>
-            <th>Mensaje</th>
-            <th class="text-right">Ver</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
+      <div class="tabla" id="lista-movimientos">
+        <div class="fila encabezado">
+          <div>Fecha/Hora</div>
+          <div>Usuario</div>
+          <div>Acción</div>
+          <div>Entidad</div>
+          <div>ID</div>
+          <div>Estado</div>
+          <div>Mensaje</div>
+          <div>Ver</div>
+        </div>
+        </div>
 
       <div class="pager">
         <div class="info" id="pg-info"></div>
@@ -97,7 +92,6 @@
     </div>
   </div>
 
-  <!-- núcleo + base URL + header -->
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
@@ -108,7 +102,6 @@
   guard.denyIfRole(['employee'], '../files-html/index-emp.html');
   </script>
   <script src="../files-js/menu-guard.js"></script>
-  <!-- lógica -->
   <script src="../files-js/movimientos.js"></script>
 </body>
 </html>

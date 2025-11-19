@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>📦 | Histórico de Stock</title>
+  <title>📦 Histórico de Stock</title>
   <link rel="stylesheet" href="../files-css/style.css">
   <link rel="stylesheet" href="../files-css/nav.css">
   <link rel="stylesheet" href="../files-css/auditoria.css">
@@ -12,65 +12,54 @@
 
   <div class="page">
     <h1>Histórico de Stock</h1>
-
-    <!-- ... -->
-    <div class="filters card">
-      <label>Desde
-        <input type="date" id="f-desde">
-      </label>
-      <label>Hasta
-        <input type="date" id="f-hasta">
-      </label>
-
-      <!-- antes: Material ID (number) -->
-      <label>Material
-        <input type="text" id="f-mat" placeholder="ID o nombre">
-      </label>
-
-      <!-- antes: Depósito ID (number) -->
-      <label>Depósito
-        <input type="text" id="f-wh" placeholder="ID o nombre">
-      </label>
-
-      <label>Motivo
-        <select id="f-reason">
-          <option value="">(todos)</option>
-          <option value="SALE">Venta</option>
-          <option value="DELIVERY">Entrega</option>
-          <option value="RESERVATION">Reserva</option>
-          <option value="ADJUST">Ajuste</option>
-        </select>
-      </label>
-
-      <label>Usuario
-        <input type="text" id="f-user" placeholder="Ej.: admin">
-      </label>
-      <label>Tamaño pág.
-        <select id="f-size"><option>50</option><option>100</option></select>
-      </label>
-
-      <button class="btn primary" id="btn-aplicar">Aplicar</button>
-      <button class="btn" id="btn-limpiar">Limpiar</button>
+    <hr><br> <div class="filters card">
+      <div class="row">
+        <label>Desde
+          <input type="date" id="f-desde">
+        </label>
+        <label>Hasta
+          <input type="date" id="f-hasta">
+        </label>
+        <label>Material
+          <input type="text" id="f-mat" placeholder="ID o nombre">
+        </label>
+        <label>Depósito
+          <input type="text" id="f-wh" placeholder="ID o nombre">
+        </label>
+        <label>Motivo
+          <select id="f-reason">
+            <option value="">(todos)</option>
+            <option value="SALE">Venta</option>
+            <option value="DELIVERY">Entrega</option>
+            <option value="RESERVATION">Reserva</option>
+            <option value="ADJUST">Ajuste</option>
+          </select>
+        </label>
+        <label>Usuario
+          <input type="text" id="f-user" placeholder="Ej.: admin">
+        </label>
+        <label>Tamaño pág.
+          <select id="f-size"><option>50</option><option>100</option></select>
+        </label>
+        <button class="btn" id="btn-aplicar">Buscar</button>
+        <button class="btn" id="btn-limpiar">Limpiar</button>
+      </div>
     </div>  
 
     <div class="card">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Fecha/Hora</th>
-            <th>Material</th>
-            <th>Depósito</th>
-            <th class="text-right">De</th>
-            <th class="text-right">A</th>
-            <th>Cambio</th>
-            <th>Motivo</th>
-            <th>Origen</th>
-            <th>Usuario</th>
-            <th>Nota</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
+      <div class="tabla" id="lista-stock-movimientos"> <div class="fila encabezado">
+          <div>Fecha/Hora</div>
+          <div>Material</div>
+          <div>Depósito</div>
+          <div class="text-right">De</div>
+          <div class="text-right">A</div>
+          <div>Cambio</div>
+          <div>Motivo</div>
+          <div>Origen</div>
+          <div>Usuario</div>
+          <div>Nota</div>
+        </div>
+        </div>
 
       <div class="pager">
         <div class="info" id="pg-info"></div>
@@ -80,7 +69,6 @@
     </div>
   </div>
 
-  <!-- núcleo + base URL + header -->
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
@@ -91,7 +79,6 @@
   guard.denyIfRole(['employee'], '../files-html/index-emp.html');
   </script>
   <script src="../files-js/menu-guard.js"></script>
-  <!-- lógica -->
   <script src="../files-js/stock-movimientos.js"></script>
 </body>
 </html>

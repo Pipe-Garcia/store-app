@@ -50,18 +50,9 @@ body {
 .seccion-clientes {
     padding: 40px;
 }
-.busqueda, .formulario-nuevo {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
 
-  .busqueda input,
-  .formulario-nuevo input {
-      padding: 8px;
-      flex: 1 1 200px;
-  }
+
+
 
   .busqueda button,
   .formulario-nuevo button {
@@ -88,7 +79,6 @@ body {
   .cliente-cont{
     display: flex;
     justify-content: space-around;
-    margin: 10px 0 10px 0;
   }
   .cliente-cont div{
     display: flex;

@@ -11,68 +11,76 @@
 <body>
   <div id="app-header"></div>
 
-<main class="page">
-  <div class="encabezado-lista">
-    <h1>Nuevo material</h1>
-  </div>
+  <main class="page form-page narrow">
+    <div class="page-head">
+      <h1>Nuevo material</h1>
+    </div>
 
-  <section class="card" style="background:#fdfafa; border-radius:12px; box-shadow:0 2px 4px rgb(0 0 0 / 0.1); margin-top:1rem;">
-    <form id="frmNuevoMat" class="form-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:12px;">
-      <div>
-        <label class="lbl">Código interno</label>
-        <input class="in" id="internalNumber" type="text" required>
-      </div>
-      <div>
-        <label class="lbl">Nombre</label>
-        <input class="in" id="name" required>
-      </div>
-      <div>
-        <label class="lbl">Marca</label>
-        <input class="in" id="brand" required>
-      </div>
-      <div>
-        <label class="lbl">Precio ARS</label>
-        <input class="in" id="priceArs" type="number" step="0.01" min="0" required>
-      </div>
-      <div>
-        <label class="lbl">Familia</label>
-        <select class="in" id="familyId" required>
-          <option value="">Seleccionar…</option>
-        </select>
-      </div>
-      <div>
-        <label class="lbl">Unidad de medida</label>
-        <input class="in" id="measurementUnit" placeholder="unidad, caja, kg…">
-      </div>
-      <div style="grid-column:1/-1;">
-        <label class="lbl">Descripción</label>
-        <textarea class="in" id="description" rows="3" placeholder="Detalle del material"></textarea>
-      </div>
-      <div>
-        <label class="lbl">Depósito inicial</label>
-        <select class="in" id="warehouseId" required>
-          <option value="">Seleccionar…</option>
-        </select>
-      </div>
-      <div>
-        <label class="lbl">Cantidad inicial</label>
-        <input class="in" id="initialQuantity" type="number" step="1" min="0" required>
-      </div>
+    <section class="card">
+      <form id="frmNuevoMat">
+        <div class="grid">
+          
+          <div>
+            <label for="internalNumber">Código interno</label>
+            <input id="internalNumber" type="text" required>
+          </div>
 
-      <div class="form-actions" style="grid-column:1/-1;display:flex;gap:.5rem;justify-content:flex-end;">
-        <button type="button" class="btn" id="btnCancelar">Cancelar</button>
-        <button type="submit" class="btn primary">Crear</button>
-      </div>
-    </form>
-  </section>
-</main>
+          <div>
+            <label for="name">Nombre</label>
+            <input id="name" type="text" required>
+          </div>
 
-  <!-- núcleo + base URL + header -->
+          <div>
+            <label for="brand">Marca</label>
+            <input id="brand" type="text" required>
+          </div>
+
+          <div>
+            <label for="priceArs">Precio ARS</label>
+            <input id="priceArs" type="number" step="0.01" min="0" required>
+          </div>
+
+          <div>
+            <label for="familyId">Familia</label>
+            <select id="familyId" required>
+              <option value="">Seleccionar…</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="measurementUnit">Unidad de medida</label>
+            <input id="measurementUnit" type="text" placeholder="unidad, caja, kg…">
+          </div>
+
+          <div style="grid-column:1/-1;">
+            <label for="description">Descripción</label>
+            <textarea id="description" rows="3" placeholder="Detalle del material"></textarea>
+          </div>
+
+          <div>
+            <label for="warehouseId">Depósito inicial</label>
+            <select id="warehouseId" required>
+              <option value="">Seleccionar…</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="initialQuantity">Cantidad inicial</label>
+            <input id="initialQuantity" type="number" step="1" min="0" required>
+          </div>
+
+        </div> <div class="form-actions">
+          <button type="submit" class="btn primary">Crear material</button>
+          <button type="button" class="btn outline" id="btnCancelar">Cancelar</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
   <script src="../files-js/menu-guard.js"></script>
-  <!-- script de la página -->
   <script type="module" src="../files-js/crear-material.js"></script>
 </body>
 </html>

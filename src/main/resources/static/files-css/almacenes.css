@@ -91,3 +91,74 @@ input[type="text"]{
 @media (max-width: 900px){
   .row input[type="text"]{ min-width: 150px; }
 }
+/* ==========================================================
+   ESTILOS DE FORMULARIO ESTANDARIZADOS
+   (Añadir al final de almacenes.css)
+   ========================================================== */
+
+/* 1. Layout del Formulario (Centrado y ancho limitado) */
+.form-page.narrow { 
+  max-width: 900px; 
+  margin: 0 auto; 
+}
+
+.form-page .card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: var(--card-pad);
+  box-shadow: var(--shadow);
+  border: none;
+  margin: 0;
+  max-width: 100%;
+}
+
+/* 2. Grid de 2 columnas */
+.form-page .grid { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap: 12px; 
+}
+@media (max-width: 900px){
+  .form-page .grid{ grid-template-columns: 1fr; }
+}
+
+/* 3. Estilo de Labels */
+.form-page label { 
+  display: block; 
+  font-size: 0.9rem; 
+  color: #444; 
+  margin-bottom: 6px; 
+  font-weight: normal;
+}
+
+/* 4. Estilo de Inputs (Igual a Clientes/Materiales) */
+.form-page input[type="text"],
+.form-page input[type="number"],
+.form-page input[type="email"],
+.form-page select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #dfe3e6; /* Borde gris suave base */
+  border-radius: 8px;
+  background: #fff;
+  color: #495057;
+  font-size: 0.95rem;
+  outline: none;
+  min-width: 0; /* Reseteo para grid */
+}
+
+/* 5. Efecto Focus (Borde azul grueso) */
+.form-page input:focus,
+.form-page select:focus {
+  outline: none;
+  box-shadow: none;
+  border: 2px solid; /* Borde grueso azul al hacer clic */
+}
+
+/* 6. Botones alineados a la izquierda */
+.form-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+}
