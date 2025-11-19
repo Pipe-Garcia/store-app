@@ -21,7 +21,7 @@
 
 /* ====== Filtros ====== */
 .filters .row{
-  display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px;
+  display:flex; flex-wrap:wrap; align-items:flex-end; gap: 8px; 
 }
 .filters label{
   display:flex; flex-direction:column; gap:6px; font-size:.95rem; color:#555;
@@ -62,13 +62,14 @@ a.btn{ text-decoration:none; }
 .acciones{ display:flex; flex-wrap:wrap; gap:8px; }
 
 /* ====== Tabla de proveedores ====== */
-#lista-proveedores{ display:grid; gap:8px; min-width: 900px; }
+#lista-proveedores{ display:grid; min-width: 900px; }
 #lista-proveedores .fila{
   display:grid;
   grid-template-columns: 1.2fr 1.4fr 1fr 1.4fr .8fr 1.6fr;
   align-items:center; gap:10px;
   background:#fff; border-radius:10px; padding:12px 14px;
   box-shadow: var(--shadow);
+  border:  1px solid #eef1f3;
 }
 #lista-proveedores .fila.encabezado{
   background:#f1f3f5; font-weight:800; box-shadow:none; position:sticky; top:0; z-index:1;
@@ -95,12 +96,13 @@ a.btn{ text-decoration:none; }
 }
 .form-page.narrow { max-width: 900px; margin: 0 auto; }
 .form-page .card {
-  max-width: 600px;
-    margin: 60px auto;
-    padding: 30px;
-    background-color: #f9f9f9;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  background: #fff;          /* Fondo BLANCO */
+  border-radius: var(--radius);
+  padding: var(--card-pad);  /* Padding estándar */
+  box-shadow: var(--shadow);
+  border: none;
+  margin: 0;                 /* Quitamos el margen gigante */
+  max-width: 100%;           /* Quitamos el límite de 600px */
 }
 .form-page .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
 /* Para posicionar el autocomplete debajo del input */
@@ -147,7 +149,7 @@ a.btn{ text-decoration:none; }
 .autocomplete-list div:hover{ background:#f6f7f9; }
 
 /* ====== TABLAS GENERALES ====== */
-.tabla{ display:grid; gap:8px; }
+.tabla{ display:grid; }
 .tabla .fila{
   display:grid; align-items:center; gap:10px;
   background:#fff; border-radius:10px; padding:12px 14px;

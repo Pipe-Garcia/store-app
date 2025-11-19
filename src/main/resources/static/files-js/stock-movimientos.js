@@ -5,7 +5,8 @@
 
   if (!getToken()) { location.href = '../files-html/login.html'; return; }
 
-  const tbody = document.getElementById('tbody');
+  // CAMBIO 1: El ID del contenedor ahora es 'lista-stock-movimientos'
+  const tbody = document.getElementById('lista-stock-movimientos');
   const info  = document.getElementById('pg-info');
   const prev  = document.getElementById('pg-prev');
   const next  = document.getElementById('pg-next');
@@ -80,11 +81,40 @@
   }
 
   async function load(){
-    tbody.innerHTML = `<tr><td colspan="10">Cargando...</td></tr>`;
+    // CAMBIO 3: Mensaje de 'Cargando' adaptado a la estructura de DIVs
+    tbody.innerHTML = `
+      <div class="fila encabezado">
+        <div>Fecha/Hora</div>
+        <div>Material</div>
+        <div>Depósito</div>
+        <div class="text-right">De</div>
+        <div class="text-right">A</div>
+        <div>Cambio</div>
+        <div>Motivo</div>
+        <div>Origen</div>
+        <div>Usuario</div>
+        <div>Nota</div>
+      </div>
+      <div class="fila" style="grid-column:1/-1;color:#666;padding:20px;">Cargando...</div>
+    `;
     try{
       const res = await authFetch(`${API}?${buildQuery()}`, { method:'GET' });
       if (res.status === 401 || res.status === 403) {
-        tbody.innerHTML = `<tr><td colspan="10">Sesión expirada. Redirigiendo…</td></tr>`;
+        tbody.innerHTML = `
+          <div class="fila encabezado">
+            <div>Fecha/Hora</div>
+            <div>Material</div>
+            <div>Depósito</div>
+            <div class="text-right">De</div>
+            <div class="text-right">A</div>
+            <div>Cambio</div>
+            <div>Motivo</div>
+            <div>Origen</div>
+            <div>Usuario</div>
+            <div>Nota</div>
+          </div>
+          <div class="fila" style="grid-column:1/-1;color:#666;padding:20px;">Sesión expirada. Redirigiendo…</div>
+        `;
         setTimeout(()=>location.href='../files-html/login.html', 800);
         return;
       }
@@ -112,18 +142,68 @@
       renderPager(data, wasLocal);
     }catch(e){
       console.error(e);
-      tbody.innerHTML = `<tr><td colspan="10">Error: ${esc(e.message)}</td></tr>`;
+      tbody.innerHTML = `
+        <div class="fila encabezado">
+          <div>Fecha/Hora</div>
+          <div>Material</div>
+          <div>Depósito</div>
+          <div class="text-right">De</div>
+          <div class="text-right">A</div>
+          <div>Cambio</div>
+          <div>Motivo</div>
+          <div>Origen</div>
+          <div>Usuario</div>
+          <div>Nota</div>
+        </div>
+        <div class="fila" style="grid-column:1/-1;color:#900;padding:20px;">Error: ${esc(e.message)}</div>
+      `;
       info.textContent = '';
       prev.disabled = true; next.disabled = true;
     }
   }
 
+  // CAMBIO 2: Función 'renderRows' reescrita para usar DIVs
   function renderRows(rows){
     if(!rows.length){
-      tbody.innerHTML = `<tr><td colspan="10">Sin resultados.</td></tr>`;
+      // Mantenemos el encabezado visible
+      tbody.innerHTML = `
+        <div class="fila encabezado">
+          <div>Fecha/Hora</div>
+          <div>Material</div>
+          <div>Depósito</div>
+          <div class="text-right">De</div>
+          <div class="text-right">A</div>
+          <div>Cambio</div>
+          <div>Motivo</div>
+          <div>Origen</div>
+          <div>Usuario</div>
+          <div>Nota</div>
+        </div>
+        <div class="fila" style="grid-column:1/-1;color:#666;padding:20px;">Sin resultados.</div>
+      `;
       return;
     }
-    tbody.innerHTML = rows.map(m=>{
+
+    // Creamos un array de strings HTML, empezando por el encabezado
+    const htmlRows = [
+      `
+      <div class="fila encabezado">
+        <div>Fecha/Hora</div>
+        <div>Material</div>
+        <div>Depósito</div>
+        <div class="text-right">De</div>
+        <div class="text-right">A</div>
+        <div>Cambio</div>
+        <div>Motivo</div>
+        <div>Origen</div>
+        <div>Usuario</div>
+        <div>Nota</div>
+      </div>
+      `
+    ];
+    
+    // Agregamos cada fila de datos
+    rows.forEach(m => {
       const ts = formatTs(m.timestamp);
       const delta = Number(m.delta||0);
       const deltaBadge = delta >= 0
@@ -132,19 +212,24 @@
 
       const motivo = REASON_ES[m.reason] || (m.reason || '—');
 
-      return `<tr>
-        <td class="nowrap" title="${esc(m.timestamp||'')}">${ts}</td>
-        <td>${esc(m.materialName||'')} ${m.materialId? `(#${m.materialId})` : ''}</td>
-        <td>${esc(m.warehouseName||'')} ${m.warehouseId? `(#${m.warehouseId})` : ''}</td>
-        <td class="text-right">${m.fromQty ?? '—'}</td>
-        <td class="text-right">${m.toQty ?? '—'}</td>
-        <td>${deltaBadge}</td>
-        <td>${esc(motivo)}</td>
-        <td>${m.sourceType ? `${esc(m.sourceType)}${m.sourceId? ' #'+m.sourceId:''}` : '—'}</td>
-        <td>${esc(m.userName||'')}</td>
-        <td>${esc(m.note||'')}</td>
-      </tr>`;
-    }).join('');
+      htmlRows.push(`
+        <div class="fila">
+          <div class="nowrap" title="${esc(m.timestamp||'')}">${ts}</div>
+          <div>${esc(m.materialName||'')} ${m.materialId? `(#${m.materialId})` : ''}</div>
+          <div>${esc(m.warehouseName||'')} ${m.warehouseId? `(#${m.warehouseId})` : ''}</div>
+          <div class="text-right">${m.fromQty ?? '—'}</div>
+          <div class="text-right">${m.toQty ?? '—'}</div>
+          <div>${deltaBadge}</div>
+          <div>${esc(motivo)}</div>
+          <div>${m.sourceType ? `${esc(m.sourceType)}${m.sourceId? ' #'+m.sourceId:''}` : '—'}</div>
+          <div>${esc(m.userName||'')}</div>
+          <div title="${esc(m.note||'')}">${esc(m.note||'')}</div>
+        </div>
+      `);
+    });
+    
+    // Unimos todo y lo insertamos en el DOM
+    tbody.innerHTML = htmlRows.join('');
   }
 
   function renderPager(p, wasLocal){

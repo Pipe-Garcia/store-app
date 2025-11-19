@@ -4,7 +4,8 @@
   const API = '/audits/events';
   const API_DETAIL = id => `/audits/events/${id}`;
 
-  const tbody = document.getElementById('tbody');
+  // CAMBIO 1: El ID del contenedor ahora es 'lista-movimientos'
+  const tbody = document.getElementById('lista-movimientos');
   const info  = document.getElementById('pg-info');
   const prev  = document.getElementById('pg-prev');
   const next  = document.getElementById('pg-next');
@@ -187,7 +188,8 @@
 
   async function fillSummaries(ids){
     await Promise.all(ids.map(async (id)=>{
-      const td = tbody.querySelector(`td.msg[data-id="${id}"]`);
+      // CAMBIO: Ahora buscamos '.msg' en lugar de 'td.msg'
+      const td = tbody.querySelector(`.msg[data-id="${id}"]`);
       if (!td) return;
       const sum = await fetchSummary(id);
       if (sum){ td.textContent = sum; td.title = sum; }
@@ -222,7 +224,7 @@
     if (action === 'CREATE' || action === 'UPDATE' || action === 'DELETE') {
       p.set('actionGroup', action);     // <-- NUEVO
     } else if (action) {
-      p.set('action', action);          // LOGIN / LOGOUT u otros específicos
+      p.set('action', action);         // LOGIN / LOGOUT u otros específicos
     }
 
     if(entity) p.set('entity', entity);
@@ -235,11 +237,36 @@
 
 
   async function load(){
-    tbody.innerHTML = `<tr><td colspan="8">Cargando...</td></tr>`;
+    // CAMBIO 3: Mensaje de 'Cargando' adaptado a la estructura de DIVs
+    tbody.innerHTML = `
+      <div class="fila encabezado">
+        <div>Fecha/Hora</div>
+        <div>Usuario</div>
+        <div>Acción</div>
+        <div>Entidad</div>
+        <div>ID</div>
+        <div>Estado</div>
+        <div>Mensaje</div>
+        <div >Ver</div>
+      </div>
+      <div class="fila" style="grid-column:1/-1;color:#666;padding:20px;">Cargando...</div>
+    `;
     try{
       const res = await authFetch(`${API}?${buildQuery()}`, { method:'GET' });
       if (res.status === 401 || res.status === 403) {
-        tbody.innerHTML = `<tr><td colspan="8">Sesión expirada. Redirigiendo…</td></tr>`;
+        tbody.innerHTML = `
+          <div class="fila encabezado">
+            <div>Fecha/Hora</div>
+            <div>Usuario</div>
+            <div>Acción</div>
+            <div>Entidad</div>
+            <div>ID</div>
+            <div>Estado</div>
+            <div>Mensaje</div>
+            <div>Ver</div>
+          </div>
+          <div class="fila" style="grid-column:1/-1;color:#666;padding:20px;">Sesión expirada. Redirigiendo…</div>
+        `;
         setTimeout(()=>location.href='../files-html/login.html', 800);
         return;
       }
@@ -251,43 +278,94 @@
       wirePrefetch();
     }catch(e){
       console.error(e);
-      tbody.innerHTML = `<tr><td colspan="8">Error cargando datos: ${esc(e.message)}</td></tr>`;
+      tbody.innerHTML = `
+        <div class="fila encabezado">
+          <div>Fecha/Hora</div>
+          <div>Usuario</div>
+          <div>Acción</div>
+          <div>Entidad</div>
+          <div class="text-right">ID</div>
+          <div>Estado</div>
+          <div>Mensaje</div>
+          <div class="text-right">Ver</div>
+        </div>
+        <div class="fila" style="grid-column:1/-1;color:#900;padding:20px;">Error cargando datos: ${esc(e.message)}</div>
+      `;
       info.textContent=''; prev.disabled=true; next.disabled=true;
     }
   }
 
+  // CAMBIO 2: Función 'renderRows' reescrita para usar DIVs
   function renderRows(rows){
     if(!rows.length){
-      tbody.innerHTML = `<tr><td colspan="8">Sin resultados.</td></tr>`;
+      // Mantenemos el encabezado visible
+      tbody.innerHTML = `
+        <div class="fila encabezado">
+          <div>Fecha/Hora</div>
+          <div>Usuario</div>
+          <div>Acción</div>
+          <div>Entidad</div>
+          <div>ID</div>
+          <div>Estado</div>
+          <div>Mensaje</div>
+          <div >Ver</div>
+        </div>
+        <div class="fila" style="grid-column:1/-1;color:#666;padding:20px;">Sin resultados.</div>
+      `;
       return;
     }
 
-    tbody.innerHTML = rows.map(r=>{
-      const ts     = formatTs(r.timestamp);
+    // Creamos un array de strings HTML, empezando por el encabezado
+    const htmlRows = [
+      `
+      <div class="fila encabezado">
+        <div>Fecha/Hora</div>
+        <div>Usuario</div>
+        <div>Acción</div>
+        <div>Entidad</div>
+        <div>ID</div>
+        <div>Estado</div>
+        <div>Mensaje</div>
+        <div>Ver</div>
+      </div>
+      `
+    ];
+
+    // Agregamos cada fila de datos
+    rows.forEach(r => {
+      const ts = formatTs(r.timestamp);
       const action = humanAction(r.action);
       const entity = humanEntity(r.entity);
       const baseMsg = (r.message||'').trim();
 
-      return `<tr>
-        <td class="nowrap" title="${esc(r.timestamp||'')}">${ts}</td>
-        <td>${esc(r.actorName||'—')}</td>
-        <td>${esc(action)}</td>
-        <td>${esc(entity)}</td>
-        <td class="text-right">${r.entityId ?? '—'}</td>
-        <td>${badgeStatus(r.status||'')}</td>
-        <td class="msg" data-id="${r.id}" title="${esc(baseMsg)}">${esc(baseMsg || '—')}</td>
-        <td class="text-right"><a class="btn outline" href="./movimiento-detalle.html?id=${r.id}">Detalle</a></td>
-      </tr>`;
-    }).join('');
+      htmlRows.push(`
+        <div class="fila">
+          <div class="nowrap" title="${esc(r.timestamp||'')}">${ts}</div>
+          <div>${esc(r.actorName||'—')}</div>
+          <div>${esc(action)}</div>
+          <div>${esc(entity)}</div>
+          <div>${r.entityId ?? '—'}</div>
+          <div>${badgeStatus(r.status||'')}</div>
+          <div class="msg" data-id="${r.id}" title="${esc(baseMsg)}">${esc(baseMsg || '—')}</div>
+          <div class="acciones">
+            <a class="btn outline" href="./movimiento-detalle.html?id=${r.id}">Detalle</a>
+          </div>
+        </div>
+      `);
+    });
+
+    // Unimos todo y lo insertamos en el DOM
+    tbody.innerHTML = htmlRows.join('');
 
     // Completar mensajes ni bien se pintan
-    const ids = rows.map(r=> r.id);
+    const ids = rows.map(r => r.id);
     queueMicrotask(()=> fillSummaries(ids));
   }
 
   // Prefetch perezoso en hover/focus
   function wirePrefetch(){
-    tbody.querySelectorAll('td.msg').forEach(td=>{
+    // CAMBIO: Buscamos '.msg' en lugar de 'td.msg'
+    tbody.querySelectorAll('.msg').forEach(td=>{
       const id = td.getAttribute('data-id');
       let loaded = false;
       const handler = async ()=>{

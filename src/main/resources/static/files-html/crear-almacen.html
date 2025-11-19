@@ -9,39 +9,42 @@
   <link rel="stylesheet" href="../files-css/nav.css"/>
 </head>
 <body>
-  <!-- NAV -->
   <div id="app-header"></div>
 
-  <main class="page">
+  <main class="page form-page narrow">
     <div class="page-head">
       <h1>Nuevo Almacén</h1>
-      
     </div>
 
     <section class="card">
-      <form id="formCrearAlmacen" class="form-almacen" novalidate>
-        <label>
-          <input type="text" id="name" placeholder="Nombre" required>
-        </label>
+      <form id="formCrearAlmacen" novalidate>
+        <div class="grid">
+          
+          <div>
+            <label for="name">Nombre</label>
+            <input type="text" id="name" placeholder="Ej: Depósito Central" required>
+          </div>
 
-        <label>
-          <input type="text" id="address" placeholder="Dirección" required>
-        </label>
+          <div>
+            <label for="address">Dirección</label>
+            <input type="text" id="address" placeholder="Ej: Av. Siempre Viva 123" required>
+          </div>
 
-        <label>
-          <input type="text" id="location" placeholder="Localidad" required>
-        </label>
+          <div>
+            <label for="location">Localidad</label>
+            <input type="text" id="location" placeholder="Ej: Tostado" required>
+          </div>
+
+        </div>
 
         <div class="form-actions">
-          <button type="submit" class="btn primary">Guardar</button>
-          <button type="reset" class="btn outline">Limpiar</button>
+          <button type="submit" class="btn primary">Crear Almacen</button>
           <a class="btn outline" href="../files-html/almacen.html">Cancelar</a>
         </div>
       </form>
     </section>
 
-    <!-- Mensajes -->
-    <section id="alerta" class="alerta" style="display:none;"></section>
+    <section id="alerta" class="alerta" style="display:none; margin-top:20px;"></section>
   </main>
 
   <script src="../files-js/header.js"></script>
