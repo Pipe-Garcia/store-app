@@ -1,3 +1,4 @@
+<!-- /static/files-html/ver-venta.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -29,14 +30,29 @@
       <div><span class="muted">ID Venta:</span> <strong id="saleId">—</strong></div>
       <div><span class="muted">Fecha:</span> <strong id="fecha">—</strong></div>
       <div><span class="muted">Cliente:</span> <strong id="cliente">—</strong></div>
-      <div><span class="muted">Pedido asociado:</span> <strong id="pedido">—</strong></div>
-      <div><span class="muted">Entrega asociada:</span> <strong id="entrega">—</strong></div>
+
+      <div id="rowPedido">
+        <span class="muted">Presupuesto asociado:</span> 
+        <strong id="pedido">—</strong>
+      </div>
+
+      <div id="rowEntregas">
+        <span class="muted">Entregas:</span> 
+        <strong id="entregasResumen">—</strong>
+      </div>
+
       <div><span class="muted">Total:</span> <strong id="total">$ 0,00</strong></div>
       <div><span class="muted">Pagado:</span> <strong id="pagado">$ 0,00</strong></div>
       <div><span class="muted">Saldo:</span> <strong id="saldo">$ 0,00</strong></div>
+
       <div>
         <span class="muted">Estado de pago:</span>
-        <span id="estado" class="pill pending">PENDING</span>
+        <span id="estadoPago" class="pill pending">PENDIENTE</span>
+      </div>
+
+      <div id="rowEstadoEntrega">
+        <span class="muted">Estado de entrega:</span>
+        <span id="estadoEntrega" class="pill pending">PENDIENTE A ENTREGAR</span>
       </div>
     </div>
   </section>
@@ -54,6 +70,21 @@
       <!-- filas dinámicas -->
     </div>
     <p id="msgItems" class="muted" style="margin-top:8px; display:none;"></p>
+  </section>
+
+  <section class="card" id="cardEntregasVenta">
+    <div class="card-head"><h2>Entregas de esta venta</h2></div>
+    <div class="tabla tabla-entregas-venta" id="tablaEntregasVenta">
+      <div class="fila encabezado">
+        <div>ID</div>
+        <div>Fecha</div>
+        <div>Entregado</div>
+        <div>Estado</div>
+        <div>Acciones</div>
+      </div>
+      <!-- filas dinámicas -->
+    </div>
+    <p id="msgEntregasVenta" class="muted" style="margin-top:8px; display:none;"></p>
   </section>
 
   <!-- Pagos -->
@@ -113,12 +144,12 @@
 </dialog>
 
 <!-- núcleo + base URL + header -->
-  <script src="../files-js/core/api.js"></script>
-  <script>window.api.setBaseUrl('http://localhost:8088');</script>
-  <script src="../files-js/header.js"></script>
-  <script src="../files-js/menu-guard.js"></script>
+<script src="../files-js/core/api.js"></script>
+<script>window.api.setBaseUrl('http://localhost:8088');</script>
+<script src="../files-js/header.js"></script>
+<script src="../files-js/menu-guard.js"></script>
 
-  <!-- lógica -->
-  <script src="../files-js/ver-venta.js"></script>
+<!-- lógica -->
+<script src="../files-js/ver-venta.js"></script>
 </body>
 </html>

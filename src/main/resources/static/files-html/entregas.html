@@ -1,3 +1,4 @@
+<!-- /static/files-html/entregas.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -23,12 +24,12 @@
 
   <hr><br>
 
-  <!-- Filtros estilo "Pedidos" -->
+  <!-- Filtros: ahora centrados en VENTA -->
   <section class="card filters" style="margin-bottom:12px;">
     <div class="row">
       <label>
-        <span>Pedido #</span>
-        <input id="fOrderId" type="number" class="in" placeholder="ID" min="1">
+        <span>Venta #</span>
+        <input id="fSaleId" type="number" class="in" placeholder="ID" min="1">
       </label>
 
       <label>
@@ -40,7 +41,7 @@
 
       <!-- Fecha Entrega -->
       <label class="stack">
-        <span>Fecha Entrega</span>
+        <span>Fecha de entrega</span>
         <div class="range-2">
           <div class="subcol">
             <small class="sub">Desde</small>
@@ -66,40 +67,21 @@
 
       <label>
         <span>Buscar</span>
-        <input id="fText" type="text" class="in" placeholder="Cliente o #Pedido">
-      </label>
-
-      <!-- Doble slider de Total (igual que Pedidos) -->
-      <label class="stack wide">
-        <span>Total Pedido</span>
-        <div id="priceRange" class="price-range">
-          <input id="f_t_slider_min" type="range" min="0" max="1000" step="100">
-          <input id="f_t_slider_max" type="range" min="0" max="1000" step="100">
-          <div class="price-legend">
-            <span id="priceFrom">$ 0</span>
-            <span></span>
-            <span id="priceTo">$ 0</span>
-          </div>
-        </div>
-        <!-- valores efectivos (ocultos) -->
-        <input id="fMinTotal" type="number" hidden>
-        <input id="fMaxTotal" type="number" hidden>
+        <input id="fText" type="text" class="in" placeholder="Cliente o #Venta">
       </label>
 
       <button id="btnClear" class="btn outline" style="align-self:flex-end;">Limpiar</button>
     </div>
   </section>
 
-
-
   <section class="list">
     <div id="lista-entregas" class="tabla">
       <div class="fila encabezado">
         <div>Fecha</div>
-        <div>Estado</div>
         <div>Cliente</div>
-        <div>Pedido</div>
-        <div>Total Pedido</div>
+        <div>Venta</div>
+        <!-- 👇 quitamos columna Presupuesto -->
+        <div>Estado</div>
         <div>Acciones</div>
       </div>
       <!-- filas dinámicas -->
@@ -111,6 +93,6 @@
 <script>window.api.setBaseUrl('http://localhost:8088');</script>
 <script src="../files-js/header.js"></script>
 <script src="../files-js/menu-guard.js"></script>
-<script src="../files-js/entregas.js" type="module"></script>
+<script type="module" src="../files-js/entregas.js"></script>
 </body>
 </html>

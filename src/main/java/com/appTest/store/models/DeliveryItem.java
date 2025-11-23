@@ -18,7 +18,12 @@ public class DeliveryItem {
     @JoinColumn(name = "delivery_id")
     private Delivery delivery;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "sale_detail_id")
+    private SaleDetail saleDetail;
+
+    // Opcional, solo por trazabilidad con el presupuesto (si existe)
+    @ManyToOne(optional = true)
     @JoinColumn(name = "order_detail_id")
     private OrderDetail orderDetail;
 
@@ -35,5 +40,4 @@ public class DeliveryItem {
 
     @Column(nullable = true) // snapshot opcional
     private BigDecimal unitPriceSnapshot;
-
 }

@@ -1,6 +1,7 @@
 package com.appTest.store.services;
 
 import com.appTest.store.dto.sale.*;
+import com.appTest.store.dto.saleDetail.SaleDetailLiteDTO;
 import com.appTest.store.models.Sale;
 import org.springframework.data.repository.query.Param;
 
@@ -17,4 +18,5 @@ public interface ISaleService {
     public void updateSale(SaleUpdateDTO dto);
     public void deleteSaleById(Long idSale);
     List<Sale> search(LocalDate from, LocalDate to, Long clientId, String paymentStatus);
+    List<SaleDetailLiteDTO> getSaleDetailsLite(Long saleId);
 }

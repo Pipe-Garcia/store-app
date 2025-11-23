@@ -1,332 +1,357 @@
-// ========= Endpoints =========
-const { authFetch, getToken, url } = window.api;
-const API_URL_SALES    = '/sales';
-const API_URL_SEARCH   = '/sales/search';
-const API_URL_CLIENTS  = '/clients';
-const API_URL_PAYMENTS = '/payments'; // fallback: si el DTO no trae paid/balance
+// /static/files-js/ventas.js
+// Listado de Ventas.
+// Ahora el estado de la venta es LOGÍSTICO:
+//   - ENTREGADA        (DELIVERED)
+//   - PENDIENTE A ENTREGAR (PENDING_DELIVERY)
+// Ya no se muestran Pagado / Saldo en la grilla.
 
-// ========= Helpers =========
-const $  = (s,r=document)=>r.querySelector(s);
-const fmtARS = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' });
-// --- Drill-down Ventas ---
-const DRILL = { statuses: null }; // e.g., ['PENDING','PARTIAL']
+const { authFetch, getToken, safeJson } = window.api;
+
+const API_URL_SALES   = '/sales';
+const API_URL_SEARCH  = '/sales/search';
+const API_URL_CLIENTS = '/clients';
+
+const $  = (s, r=document) => r.querySelector(s);
+const fmtARS = new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS' });
+const norm = (s)=> (s||'').toString().toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+const debounce = (fn,d=250)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); }; };
 
 function notify(msg,type='info'){
-  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg;
-  document.body.appendChild(n); setTimeout(()=>n.remove(),3500);
+  const n=document.createElement('div');
+  n.className=`notification ${type}`;
+  n.textContent=msg;
+  document.body.appendChild(n);
+  setTimeout(()=>n.remove(),3500);
 }
-function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
-function debounce(fn, d=250){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); }; }
-
-// Si venís de dashboard con ?status=..., aplicá ese filtro inicial
-function applyDrilldownVentas(){
-  const qs = new URLSearchParams(location.search);
-  const raw = qs.get('status'); // "PENDING,PARTIAL"
-  if (!raw) return;
-
-  const list = raw.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
-  if (!list.length) return;
-  
-  // Pedimos ambos (o varios) estados vía filtro de FRONT, no en el back:
-  DRILL.statuses = list;
-
-  // Dejar el select de estado en "Todos" para no enviar paymentStatus al back.
-  const sel = document.getElementById('fEstadoPago');
-  if (sel) sel.value = ''; // ⬅️ clave
+function go(page){
+  const base = location.pathname.replace(/[^/]+$/, '');
+  location.href = `${base}${page}`;
 }
 
+let CLIENTS = [];
+let LAST_SALES = [];
 
-// ========= Estado =========
-let CLIENTS = [];                 // catálogo
-let PAYMENTS = [];                // fallback
-let PAGADO_MAP = new Map();       // fallback: saleId -> amount
-let LAST_SALES = [];              // último resultado del /search
-
-// ========= Bootstrap =========
+// ================== Bootstrap ==================
 window.addEventListener('DOMContentLoaded', async ()=>{
-  if(!getToken()){ go('login.html'); return; }
+  if (!getToken()){ go('login.html'); return; }
 
-  // si viene el drill-down, lo aplicamos ya (antes de cargar)
-  applyDrilldownVentas();
-  renderDrillBanner();
-
-  // flash (si venís de “crear/editar/registrar pago”)
+  // flash (desde crear/editar)
   const flash = localStorage.getItem('flash');
-  if (flash){ const {message,type} = JSON.parse(flash); notify(message, type||'success'); localStorage.removeItem('flash'); }
+  if (flash){
+    try{
+      const {message,type} = JSON.parse(flash);
+      if (message) notify(message, type||'success');
+    }catch(_){}
+    localStorage.removeItem('flash');
+  }
 
-  await loadBase();   // carga CLIENTS + (fallback) PAYMENTS
+  await loadClients();
   bindFilters();
-  await reloadFromFilters();      // primer render
+  await reloadFromFilters();
 });
 
-// ========= Carga base (clientes + pagos) =========
-async function loadBase(){
+// ================== Carga de clientes ==================
+async function loadClients(){
   try{
-    const [rClients, rPayments] = await Promise.all([
-      authFetch(API_URL_CLIENTS),
-      authFetch(API_URL_PAYMENTS)
-    ]);
+    const r = await authFetch(API_URL_CLIENTS);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
 
-    for (const r of [rClients, rPayments]){
-      if(!r.ok){
-        if(r.status===401 || r.status===403){ notify('Sesión inválida. Iniciá sesión nuevamente','error'); go('login.html'); return; }
-        throw new Error(`HTTP ${r.status}`);
-      }
-    }
+    let data = await safeJson(r);
+    if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
+    if (!Array.isArray(data)) data = [];
 
-    CLIENTS  = await rClients.json()  || [];
-    PAYMENTS = await rPayments.json() || [];
+    CLIENTS = data;
 
-    // llenar select clientes
     const sel = $('#filtroCliente');
     sel.innerHTML = `<option value="">Todos</option>`;
-    CLIENTS
+    (CLIENTS || [])
       .slice()
-      .sort((a,b)=> `${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
+      .sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
       .forEach(c=>{
-        const opt=document.createElement('option');
-        opt.value = String(c.idClient || c.id);
-        opt.textContent = `${c.name||''} ${c.surname||''}`.trim() || `#${c.idClient}`;
+        const id = c.idClient ?? c.id;
+        const nm = `${c.name||''} ${c.surname||''}`.trim() || `#${id}`;
+        const opt = document.createElement('option');
+        opt.value = String(id ?? '');
+        opt.textContent = nm;
         sel.appendChild(opt);
       });
-
-    // Fallback: mapa de pagado por venta (si el back no envía paid/balance)
-    PAGADO_MAP = PAYMENTS.reduce((map,p)=>{
-      const sid = Number(p.saleId);
-      const amt = Number(p.amount||0);
-      map.set(sid, (map.get(sid)||0) + amt);
-      return map;
-    }, new Map());
   }catch(e){
     console.error(e);
-    notify('No se pudo cargar la base de clientes/pagos','error');
+    notify('No se pudo cargar la lista de clientes','error');
   }
 }
 
-// ========= Filtros =========
+// ================== Filtros ==================
 function bindFilters(){
   const deb = debounce(reloadFromFilters, 280);
-  $('#filtroCliente').addEventListener('change', deb);
-  $('#fEstadoPago').addEventListener('change', deb);
-  $('#fDesde').addEventListener('change', deb);
-  $('#fHasta').addEventListener('change', deb);
-  $('#fTexto').addEventListener('input', deb);
-  $('#btnLimpiar').addEventListener('click', ()=>{
-    $('#filtroCliente').value=''; $('#fEstadoPago').value='';
-    $('#fDesde').value=''; $('#fHasta').value=''; $('#fTexto').value='';
+
+  $('#filtroCliente')?.addEventListener('change', deb);
+  $('#fDesde')       ?.addEventListener('change', deb);
+  $('#fHasta')       ?.addEventListener('change', deb);
+  $('#fEstadoEntrega')?.addEventListener('change', deb);
+  $('#fTexto')       ?.addEventListener('input',  deb);
+
+  $('#btnLimpiar')?.addEventListener('click', ()=>{
+    $('#filtroCliente').value = '';
+    $('#fDesde').value = '';
+    $('#fHasta').value = '';
+    $('#fEstadoEntrega').value = '';
+    $('#fTexto').value = '';
     reloadFromFilters();
   });
 }
 
 function buildQueryFromFilters(){
   const q = new URLSearchParams();
-  const from = $('#fDesde').value; if(from) q.set('from', from);
-  const to   = $('#fHasta').value; if(to)   q.set('to',   to);
-  const cid  = $('#filtroCliente').value; if(cid) q.set('clientId', cid);
-  const st   = $('#fEstadoPago').value;   if(st)  q.set('paymentStatus', st); // PENDING | PARTIAL | PAID
+  const from = $('#fDesde').value;
+  const to   = $('#fHasta').value;
+  const cid  = $('#filtroCliente').value;
 
-  // ⬇️ Nuevo: si el drill-down trae múltiples estados (PENDING+PARTIAL),
-  // no mandamos paymentStatus al back; filtramos en FRONT.
-  const hasMultiDrill = DRILL.statuses && DRILL.statuses.length > 1;
-  if (st && !hasMultiDrill) {
-    q.set('paymentStatus', st); // solo si el usuario eligió algo y no hay multi-drill
-  }
+  if (from) q.set('from', from);
+  if (to)   q.set('to',   to);
+  if (cid)  q.set('clientId', cid);
+
+  // NOTA: no mandamos estado al back; el estado de entrega se calcula en front.
   return q.toString();
 }
 
-async function reloadFromFilters(){
-  // 1) pedir al back
+async function fetchSalesFromServer(){
   const qs = buildQueryFromFilters();
-  const full = qs ? `${API_URL_SEARCH}?${qs}` : API_URL_SEARCH;
+  let data = [];
+
   try{
-    // mini “loading”
-    renderListSkeleton();
-    const r = await authFetch(full);
-    if(!r.ok){ throw new Error(`HTTP ${r.status}`); }
-    LAST_SALES = await r.json() || [];
-
-    // 2) texto libre (ID o cliente) – lo aplicamos en front sobre el resultado del back
-    const text = ($('#fTexto').value||'').trim().toLowerCase();
-    let view = LAST_SALES;
-    if (text){
-      view = LAST_SALES.filter(v =>
-        String(v.idSale||'').includes(text) ||
-        (v.clientName||'').toLowerCase().includes(text)
-      );
+    const url = qs ? `${API_URL_SEARCH}?${qs}` : API_URL_SEARCH;
+    const r = await authFetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    data = await safeJson(r);
+  }catch(e){
+    console.warn('Fallo /sales/search, usando fallback /sales…', e);
+    try{
+      const rAll = await authFetch(API_URL_SALES);
+      if (rAll.ok) data = await safeJson(rAll);
+    }catch(e2){
+      console.error('Fallo también /sales', e2);
     }
+  }
 
-    // 2.5) filtro extra desde drill-down si el select no puede representar múltiples
-    if (DRILL.statuses && DRILL.statuses.length){
-      view = view.filter(v => {
-        const st = String(v.paymentStatus || calcEstadoPago(v) || '').toUpperCase();
-        return DRILL.statuses.includes(st);
+  if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
+  if (!Array.isArray(data)) data = [];
+  return data;
+}
+
+async function reloadFromFilters(){
+  renderListSkeleton();
+  try{
+    const data = await fetchSalesFromServer();
+    LAST_SALES = data;
+    let view = data.slice();
+
+    // Texto libre: ID o cliente
+    const text = norm($('#fTexto').value || '');
+    if (text){
+      view = view.filter(v=>{
+        const idStr = String(v.idSale || v.saleId || v.id || '');
+        const cli   = norm(v.clientName || '');
+        return idStr.includes(text) || cli.includes(text);
       });
     }
 
+    // Estado de entrega (front-only)
+    const stFilter = ($('#fEstadoEntrega').value || '').toUpperCase();
+    if (stFilter){
+      view = view.filter(v => getDeliveryStateCode(v) === stFilter);
+    }
 
-    // 3) ordenar por fecha desc / id desc, mantener consistente
+    // Ordenar por fecha desc, luego id desc
     view.sort((a,b)=>{
-      const da = a.dateSale || ''; const db = b.dateSale || '';
-      if (da!==db) return db.localeCompare(da);
-      return (b.idSale||0)-(a.idSale||0);
+      const da = (a.dateSale || a.date || '') + '';
+      const db = (b.dateSale || b.date || '') + '';
+      if (da !== db) return db.localeCompare(da);
+      return (b.idSale || b.saleId || 0) - (a.idSale || a.saleId || 0);
     });
 
     renderLista(view);
-    renderDrillBanner(); 
   }catch(e){
     console.error(e);
     notify('No se pudieron cargar las ventas','error');
-    renderLista([]); // vacío en caso de error
+    renderLista([]);
   }
 }
 
-// ========= Render =========
-// Preferir lo que diga el backend (DTO). Si no viene, usar fallback con PAGADO_MAP.
-function calcPagado(v){
-  if (typeof v.paid === 'number') return v.paid;
-  return PAGADO_MAP.get(Number(v.idSale)) || 0;
+// ================== Estado de entrega ==================
+// Helpers tolerantes: intentan leer distintos nombres de campos del DTO.
+function getSoldUnits(v){
+  return Number(
+    v.totalUnits ??
+    v.unitsSold ??
+    v.totalQuantity ??
+    v.quantityTotal ??
+    v.unitsTotal ??
+    0
+  );
 }
-function calcSaldo(v){
-  if (typeof v.balance === 'number') return Math.max(0, v.balance);
-  const t=Number(v.total||0); const p=calcPagado(v); return Math.max(0, t-p);
+function getDeliveredUnits(v){
+  return Number(
+    v.deliveredUnits ??
+    v.unitsDelivered ??
+    v.deliveryUnits ??
+    v.totalDelivered ??
+    0
+  );
 }
-function calcEstadoPago(v){
-  if (v.paymentStatus) return String(v.paymentStatus).toUpperCase();
-  const t=Number(v.total||0), p=calcPagado(v);
-  if (t<=0 || p<=0) return 'PENDING';
-  if (p>=t) return 'PAID';
-  return 'PARTIAL';
+function getPendingUnits(v){
+  return Number(
+    v.pendingToDeliver ??
+    v.pendingUnits ??
+    v.unitsPending ??
+    v.toDeliver ??
+    0
+  );
 }
-// Mapa UI (solo etiqueta; las clases siguen iguales)
-const UI_STATUS = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', PAID:'PAGADO' };
-function pillHtml(status){
-  const cls = (status==='PAID')?'completed' : (status==='PARTIAL')?'partial':'pending';
-  const label = UI_STATUS[status] || status;
+
+/**
+ * Devuelve un código lógico de estado de entrega:
+ *  - 'DELIVERED'        → ENTREGADA
+ *  - 'PENDING_DELIVERY' → PENDIENTE A ENTREGAR
+ */
+function getDeliveryStateCode(v){
+  // 1) Si el back ya manda un estado de entrega explícito, lo usamos
+  const explicit = (v.deliveryStatus ?? v.deliveryState ?? '').toString().toUpperCase();
+  if (['DELIVERED','COMPLETED','FULL','ENTREGADA'].includes(explicit)) return 'DELIVERED';
+  if (['PENDING','PARTIAL','IN_PROGRESS','PENDIENTE'].includes(explicit)) return 'PENDING_DELIVERY';
+
+  // 2) Flags booleanos tipo fullyDelivered / allDelivered
+  const fully = v.fullyDelivered ?? v.allDelivered ?? v.deliveryCompleted;
+  if (typeof fully === 'boolean'){
+    return fully ? 'DELIVERED' : 'PENDING_DELIVERY';
+  }
+
+  // 3) Cálculo por unidades
+  const sold      = getSoldUnits(v);
+  const delivered = getDeliveredUnits(v);
+  const pending   = getPendingUnits(v);
+
+  if (sold > 0){
+    if (pending > 0) return 'PENDING_DELIVERY';
+    if (delivered >= sold) return 'DELIVERED';
+    if (delivered > 0 && delivered < sold) return 'PENDING_DELIVERY';
+    // vendidas > 0, entregadas = 0 y pending no viene → asumimos pendiente
+    return 'PENDING_DELIVERY';
+  }
+
+  // Sin info de vendidas, pero hay pending/delivered
+  if (pending > 0)   return 'PENDING_DELIVERY';
+  if (delivered > 0) return 'DELIVERED';
+
+  // Sin información → por defecto consideramos que falta entregar
+  return 'PENDING_DELIVERY';
+}
+
+const UI_DELIVERY_STATUS = {
+  DELIVERED:        'ENTREGADA',
+  PENDING_DELIVERY: 'PENDIENTE A ENTREGAR'
+};
+
+function deliveryPillHtml(code){
+  const cls   = (code === 'DELIVERED') ? 'completed' : 'pending';
+  const label = UI_DELIVERY_STATUS[code] || code;
   return `<span class="pill ${cls}">${label}</span>`;
 }
 
+// ================== Render ==================
 function renderListSkeleton(){
   const cont = $('#lista-ventas');
   cont.innerHTML = `
     <div class="fila encabezado">
-      <div>Fecha</div><div>Cliente</div><div>Total</div>
-      <div>Pagado</div><div>Saldo</div><div>Estado</div><div>Acciones</div>
+      <div>Fecha</div>
+      <div>Cliente</div>
+      <div>Total</div>
+      <div>Estado</div>
+      <div>Acciones</div>
     </div>
-    <div class="fila"><div style="grid-column:1/-1;color:#777;">Cargando…</div></div>
+    <div class="fila">
+      <div style="grid-column:1/-1;color:#777;">Cargando…</div>
+    </div>
   `;
-}
-
-// ===== Banner "Filtro rápido" (drill-down) =====
-function renderDrillBanner(){
-  // Si no hay multi-drill activo (PENDING+PARTIAL), ocultar/limpiar
-  const host = getDrillBannerHost();
-  if (!DRILL.statuses || DRILL.statuses.length <= 1){
-    if (host) host.remove();
-    return;
-  }
-
-  // Crear/recuperar host justo antes de la lista
-  const list = document.getElementById('lista-ventas');
-  let banner = getDrillBannerHost();
-  if (!banner){
-    banner = document.createElement('div');
-    banner.id = 'drillBannerHost';
-    list?.parentNode?.insertBefore(banner, list);
-  }
-
-  // Render simple
-  banner.className = 'info-banner';
-  banner.innerHTML = `
-    <span class="tag tag-ice">Filtro rápido</span>
-    <strong>Ventas con saldo:</strong>
-    <span>PENDIENTE + PARCIAL</span>
-    <button class="close" title="Quitar filtro rápido">✕</button>
-  `;
-
-  // Quitar filtro rápido → limpiamos DRILL y sacamos ?status=... de la URL
-  banner.querySelector('.close')?.addEventListener('click', ()=>{
-    DRILL.statuses = null;
-    const sel = document.getElementById('fEstadoPago');
-    if (sel) sel.value = '';         // mantener "Todos"
-    // limpiar parámetro de la URL visualmente
-    if (location.search.includes('status=')){
-      history.replaceState({}, '', location.pathname);
-    }
-    reloadFromFilters();
-  });
-}
-
-function getDrillBannerHost(){
-  return document.getElementById('drillBannerHost');
 }
 
 const fmtDate = (s)=>{
   if (!s) return '-';
-  const d = new Date((s.length <= 10 ? s + 'T00:00:00' : s));
-  return isNaN(d) ? s : d.toLocaleDateString('es-AR');
+  const iso = (s.length > 10 ? s.slice(0,10) : s);
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d) ? iso : d.toLocaleDateString('es-AR');
 };
 
 function renderLista(lista){
   const cont = $('#lista-ventas');
   cont.innerHTML = `
     <div class="fila encabezado">
-      <div>Fecha</div><div>Cliente</div><div>Total</div>
-      <div>Pagado</div><div>Saldo</div><div>Estado</div><div>Acciones</div>
+      <div>Fecha</div>
+      <div>Cliente</div>
+      <div>Total</div>
+      <div>Estado</div>
+      <div>Acciones</div>
     </div>
   `;
 
+  if (!lista.length){
+    const row = document.createElement('div');
+    row.className = 'fila';
+    row.innerHTML = `<div style="grid-column:1/-1;color:#666;">Sin resultados.</div>`;
+    cont.appendChild(row);
+    return;
+  }
+
   for (const v of lista){
-    const total  = Number(v.total||0);
-    const pag    = calcPagado(v);
-    const saldo  = calcSaldo(v);
-    const estado = calcEstadoPago(v);
-    const canPay = (estado !== 'PAID');             // deshabilitar si ya está saldada    
+    const id    = v.idSale ?? v.saleId ?? v.id;
+    const fecha = fmtDate(v.dateSale || v.date);
+    const cli   = v.clientName || '—';
+    const total = Number(v.total ?? v.totalArs ?? v.amount ?? 0);
+    const st    = getDeliveryStateCode(v);
 
     const row = document.createElement('div');
     row.className = 'fila';
     row.innerHTML = `
-      <div>${fmtDate(v.dateSale)}</div>
-      <div>${v.clientName || '—'}</div>
+      <div>${fecha}</div>
+      <div>${cli}</div>
       <div>${fmtARS.format(total)}</div>
-      <div>${fmtARS.format(pag)}</div>
-      <div>${fmtARS.format(saldo)}</div>
-      <div>${pillHtml(estado)}</div>
+      <div>${deliveryPillHtml(st)}</div>
       <div class="acciones">
-        <a class="btn outline" href="ver-venta.html?id=${v.idSale}">👁️ Ver</a>
-        <a class="btn outline" href="editar-venta.html?id=${v.idSale}">✏️ Editar</a>
-        <button class="btn outline" data-pdf="${v.idSale}">🧾 PDF</button>
-        ${canPay ? `<button class="btn green" data-pay="${v.idSale}">💵 Registrar pago</button>`
-        : `<button class="btn green" disabled title="Venta saldada">💵 Registrar pago</button>`}
-        <button class="btn danger" data-del="${v.idSale}">🗑️ Eliminar</button>
+        <a class="btn outline" href="ver-venta.html?id=${id}">👁️ Ver</a>
+        <a class="btn outline" href="editar-venta.html?id=${id}">✏️ Editar</a>
+        <button class="btn outline" data-pdf="${id}">🧾 PDF</button>
+        <button class="btn danger" data-del="${id}">🗑️ Eliminar</button>
       </div>
     `;
     cont.appendChild(row);
   }
 
   cont.onclick = (ev)=>{
-    const delId = ev.target.getAttribute('data-del');
-    const payId = ev.target.getAttribute('data-pay');
-    const pdfId = ev.target.getAttribute('data-pdf');
-    if (delId) borrarVenta(Number(delId));
-    if (payId) registrarPago(Number(payId));
-    if (pdfId) downloadSalePdf(Number(pdfId));
+    const target = ev.target.closest('button, a');
+    if (!target) return;
+    const delId = target.getAttribute('data-del');
+    const pdfId = target.getAttribute('data-pdf');
+    if (delId){
+      borrarVenta(Number(delId));
+    }else if (pdfId){
+      downloadSalePdf(Number(pdfId));
+    }
   };
-
 }
 
-
-// ========= Acciones =========
+// ================== Acciones ==================
 async function borrarVenta(id){
   if (!confirm(`¿Eliminar definitivamente la venta #${id}?`)) return;
   try{
     const r = await authFetch(`${API_URL_SALES}/${id}`, { method:'DELETE' });
     if (!r.ok){
-      if (r.status===403){ notify('No tenés permisos para eliminar ventas (ROLE_OWNER requerido).','error'); return; }
+      if (r.status === 403){
+        notify('No tenés permisos para eliminar ventas (ROLE_OWNER requerido).','error');
+        return;
+      }
       throw new Error(`HTTP ${r.status}`);
     }
-    // actualizar memoria/mapa
-    LAST_SALES = LAST_SALES.filter(v => v.idSale !== id);
-    PAGADO_MAP.delete(id);
     notify('Venta eliminada.','success');
     await reloadFromFilters();
   }catch(e){
@@ -335,28 +360,20 @@ async function borrarVenta(id){
   }
 }
 
-function registrarPago(id){
-  go(`registrar-pago.html?saleId=${id}`);
-}
-
-
-// ---------- Descargar PDF de la venta ----------
 async function downloadSalePdf(id){
   const t = getToken();
   if (!t){ go('login.html'); return; }
 
-  // Tomamos el botón y guardamos su HTML original (con el emoji)
   const btn = document.querySelector(`button[data-pdf="${id}"]`);
   const originalHTML = btn ? btn.innerHTML : null;
 
   try{
     if (btn){
       btn.disabled = true;
-      // feedback visual pero sin perder el emoji original
       btn.innerHTML = '⏳ Generando…';
     }
 
-    const r = await authFetch(`${API_URL_SALES}/${id}/pdf`, { method: 'GET' });
+    const r = await authFetch(`${API_URL_SALES}/${id}/pdf`, { method:'GET' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
 
     const blob = await r.blob();
@@ -374,9 +391,7 @@ async function downloadSalePdf(id){
   }finally{
     if (btn){
       btn.disabled = false;
-      // restauramos EXACTAMENTE lo que tenía (emoji incluido)
       btn.innerHTML = originalHTML ?? '🧾 PDF';
     }
   }
 }
-

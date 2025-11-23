@@ -1,6 +1,7 @@
 package com.appTest.store.services;
 
 import com.appTest.store.audit.Auditable;
+import com.appTest.store.dto.saleDetail.SaleDetailLiteDTO;
 import com.appTest.store.dto.saleDetail.SaleDetailRequestDTO;
 import com.appTest.store.dto.sale.*;
 import com.appTest.store.models.*;
@@ -9,6 +10,11 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.appTest.store.models.Delivery;
+import com.appTest.store.models.DeliveryItem;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -56,35 +62,97 @@ public class SaleService implements ISaleService{
         return repoSale.findById(idSale).orElse(null);
     }
 
+
     @Override
     public SaleDTO convertSaleToDto(Sale sale) {
-        // Cliente
-        Long clientId = (sale.getClient()!=null) ? sale.getClient().getIdClient() : null;
-        String clientName = (sale.getClient()!=null)
+
+        // ===== Cliente =====
+        Long clientId = (sale.getClient() != null)
+                ? sale.getClient().getIdClient()
+                : null;
+
+        String clientName = (sale.getClient() != null)
                 ? (sale.getClient().getName() + " " + sale.getClient().getSurname()).trim()
                 : "—";
 
-        // Totales
+        // ===== Totales monetarios =====
         BigDecimal total = calculateTotal(sale);
-        BigDecimal paid  = sale.getPaymentList()==null ? BigDecimal.ZERO :
-                sale.getPaymentList().stream()
-                        .map(Payment::getAmount)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal paid = (sale.getPaymentList() == null)
+                ? BigDecimal.ZERO
+                : sale.getPaymentList().stream()
+                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal balance = total.subtract(paid);
-        if (balance.signum() < 0) balance = BigDecimal.ZERO;
+        if (balance.signum() < 0) {
+            balance = BigDecimal.ZERO;
+        }
 
-        String status = computePaymentStatus(total, paid);
+        String paymentStatus = computePaymentStatus(total, paid);
 
-        // (opcional/compat) primer metodo de pago
-        String paymentMethod = (sale.getPaymentList()!=null && !sale.getPaymentList().isEmpty())
+        // (compat) primer metodo de pago si existe
+        String paymentMethod = (sale.getPaymentList() != null && !sale.getPaymentList().isEmpty())
                 ? sale.getPaymentList().get(0).getMethodPayment()
                 : null;
 
-        
-        Long orderId    = (sale.getOrders()!=null)   ? sale.getOrders().getIdOrders()    : null;
+        // ===== Unidades vendidas =====
+        BigDecimal totalUnits = BigDecimal.ZERO;
+        if (sale.getSaleDetailList() != null) {
+            totalUnits = sale.getSaleDetailList().stream()
+                    .map(sd -> sd.getQuantity() != null ? sd.getQuantity() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
 
-        // Armar DTO
+        // ===== Unidades entregadas (todas las entregas de esta venta) =====
+        BigDecimal deliveredUnits = BigDecimal.ZERO;
+        if (sale.getDeliveries() != null) {
+            for (Delivery d : sale.getDeliveries()) {
+                if (d.getItems() == null) continue;
+                for (DeliveryItem di : d.getItems()) {
+                    if (di.getQuantityDelivered() != null) {
+                        deliveredUnits = deliveredUnits.add(di.getQuantityDelivered());
+                    }
+                }
+            }
+        }
+
+        if (deliveredUnits.compareTo(BigDecimal.ZERO) < 0) {
+            deliveredUnits = BigDecimal.ZERO;
+        }
+        // por seguridad, no sobrepasar las vendidas
+        if (totalUnits.compareTo(BigDecimal.ZERO) > 0
+                && deliveredUnits.compareTo(totalUnits) > 0) {
+            deliveredUnits = totalUnits;
+        }
+
+        BigDecimal pendingUnits = totalUnits.subtract(deliveredUnits);
+        if (pendingUnits.compareTo(BigDecimal.ZERO) < 0) {
+            pendingUnits = BigDecimal.ZERO;
+        }
+
+        String deliveryStatus;
+        if (totalUnits.compareTo(BigDecimal.ZERO) <= 0) {
+            deliveryStatus = "NO_ITEMS";
+        } else if (deliveredUnits.compareTo(BigDecimal.ZERO) <= 0) {
+            deliveryStatus = "PENDING";
+        } else if (deliveredUnits.compareTo(totalUnits) < 0) {
+            deliveryStatus = "PARTIAL";
+        } else {
+            deliveryStatus = "COMPLETED";
+        }
+
+        // ===== Referencias =====
+        Long orderId = (sale.getOrders() != null)
+                ? sale.getOrders().getIdOrders()
+                : null;
+
+        Long deliveryId = null;
+        if (sale.getDeliveries() != null && sale.getDeliveries().size() == 1) {
+            deliveryId = sale.getDeliveries().get(0).getIdDelivery();
+        }
+
+        // ===== Armar DTO =====
         SaleDTO dto = new SaleDTO();
         dto.setIdSale(sale.getIdSale());
         dto.setClientId(clientId);
@@ -93,21 +161,141 @@ public class SaleService implements ISaleService{
         dto.setTotal(total);
         dto.setPaid(paid);
         dto.setBalance(balance);
-        dto.setPaymentStatus(status);
-        dto.setPaymentMethod(paymentMethod); // opcional
-        dto.setDeliveryId(
-                sale.getDelivery() != null ? sale.getDelivery().getIdDelivery() : null
-        );
+        dto.setPaymentStatus(paymentStatus);
+        dto.setPaymentMethod(paymentMethod);
         dto.setOrderId(orderId);
+        dto.setDeliveryId(deliveryId);
+
+        dto.setTotalUnits(totalUnits);
+        dto.setDeliveredUnits(deliveredUnits);
+        dto.setPendingUnits(pendingUnits);
+        dto.setDeliveryStatus(deliveryStatus);
+
         return dto;
     }
 
+
+    @Transactional(readOnly = true)
+    public List<SaleDetailLiteDTO> getSaleDetailsLite(Long saleId) {
+        Sale sale = repoSale.findById(saleId)
+                .orElseThrow(() -> new EntityNotFoundException("Sale not found with ID: " + saleId));
+
+        List<SaleDetailLiteDTO> result = new ArrayList<>();
+
+        // Mapa: materialId -> total entregado en TODAS las entregas de esta venta
+        Map<Long, BigDecimal> deliveredByMaterial = new HashMap<>();
+
+        if (sale.getDeliveries() != null) {
+            for (Delivery delivery : sale.getDeliveries()) {
+                if (delivery.getItems() == null) continue;
+
+                for (DeliveryItem item : delivery.getItems()) {
+                    if (item.getMaterial() == null) continue;
+
+                    Long matId = item.getMaterial().getIdMaterial();
+                    BigDecimal q = item.getQuantityDelivered() != null
+                            ? item.getQuantityDelivered()
+                            : BigDecimal.ZERO;
+
+                    deliveredByMaterial.merge(matId, q, BigDecimal::add);
+                }
+            }
+        }
+
+        if (sale.getSaleDetailList() != null) {
+            for (SaleDetail sd : sale.getSaleDetailList()) {
+
+                Long matId = sd.getMaterial().getIdMaterial();
+                BigDecimal qty = sd.getQuantity() != null ? sd.getQuantity() : BigDecimal.ZERO;
+
+                BigDecimal delivered = deliveredByMaterial.getOrDefault(matId, BigDecimal.ZERO);
+                if (delivered.compareTo(qty) > 0) {
+                    delivered = qty; // cap de seguridad
+                }
+
+                BigDecimal pending = qty.subtract(delivered);
+                if (pending.compareTo(BigDecimal.ZERO) < 0) {
+                    pending = BigDecimal.ZERO;
+                }
+
+                result.add(new SaleDetailLiteDTO(
+                        sd.getIdSaleDetail(),
+                        matId,
+                        sd.getMaterial().getName(),
+                        qty,
+                        sd.getPriceUni(),
+                        delivered,
+                        pending
+                ));
+            }
+        }
+
+        return result;
+    }
 
     private BigDecimal calculateTotal(Sale sale) {
         return sale.getSaleDetailList().stream()
                 .map(detail -> detail.getQuantity().multiply(detail.getPriceUni()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
+
+    /**
+     * Para un pedido dado (orderId), calcula cuántas unidades quedan pendientes por vender
+     * por cada material.
+     *
+     * pendiente(material) = presupuestado(material) - vendidoHastaAhora(material)
+     * (nunca devuelve negativos).
+     */
+    private Map<Long, BigDecimal> calculatePendingByMaterialForOrder(Long orderId) {
+
+        Orders orders = repoOrders.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId));
+
+        // 1) Cantidades PRESUPUESTADAS por material en el pedido
+        Map<Long, BigDecimal> orderedByMat = new HashMap<>();
+        if (orders.getOrderDetails() != null) {
+            for (OrderDetail od : orders.getOrderDetails()) {
+                if (od.getMaterial() == null) continue;
+
+                Long matId = od.getMaterial().getIdMaterial();
+                BigDecimal qty = Optional.ofNullable(od.getQuantity()).orElse(BigDecimal.ZERO);
+                orderedByMat.merge(matId, qty, BigDecimal::add);
+            }
+        }
+
+        // 2) Cantidades VENDIDAS hasta ahora en todas las ventas ligadas a ese pedido
+        Map<Long, BigDecimal> soldByMat = new HashMap<>();
+        List<Sale> salesFromOrder = repoSale.findByOrders_IdOrders(orderId);
+
+        for (Sale s : salesFromOrder) {
+            if (s.getSaleDetailList() == null) continue;
+
+            for (SaleDetail sd : s.getSaleDetailList()) {
+                if (sd.getMaterial() == null) continue;
+
+                Long matId = sd.getMaterial().getIdMaterial();
+                BigDecimal qty = Optional.ofNullable(sd.getQuantity()).orElse(BigDecimal.ZERO);
+                soldByMat.merge(matId, qty, BigDecimal::add);
+            }
+        }
+
+        // 3) Pendiente = presupuestado - vendido (cap en 0)
+        Map<Long, BigDecimal> pendingByMat = new HashMap<>();
+        for (var entry : orderedByMat.entrySet()) {
+            Long matId = entry.getKey();
+            BigDecimal ordered = Optional.ofNullable(entry.getValue()).orElse(BigDecimal.ZERO);
+            BigDecimal sold = Optional.ofNullable(soldByMat.get(matId)).orElse(BigDecimal.ZERO);
+
+            BigDecimal pending = ordered.subtract(sold);
+            if (pending.compareTo(BigDecimal.ZERO) < 0) {
+                pending = BigDecimal.ZERO;
+            }
+            pendingByMat.put(matId, pending);
+        }
+
+        return pendingByMat;
+    }
+
 
     @Override
     public SaleSummaryByDateDTO getSaleSummaryByDate(LocalDate date) {
@@ -137,72 +325,90 @@ public class SaleService implements ISaleService{
                 .orElseThrow(() -> new EntityNotFoundException("Client not found with ID: " + dto.getClientId()));
         sale.setClient(client);
 
-        if (dto.getDeliveryId() != null) {
-            Delivery delivery = repoDelivery.findById(dto.getDeliveryId())
-                    .orElseThrow(() -> new EntityNotFoundException("Delivery not found with ID: " + dto.getDeliveryId()));
-            sale.setDelivery(delivery);
-        }
-
-        // Vincular PEDIDO si vino orderId (venta por pedido)
+        // Vincular pedido como “origen” si viene orderId
         if (dto.getOrderId() != null) {
             Orders order = repoOrders.findById(dto.getOrderId())
                     .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + dto.getOrderId()));
             sale.setOrders(order);
         }
 
-        // --- Detalle + lógica de stock ---
         List<SaleDetail> saleDetailList = new ArrayList<>();
-
         final boolean isOrderSale = (dto.getOrderId() != null);
 
-        for (SaleDetailRequestDTO item : dto.getMaterials()) {
-            if (item.getMaterialId() == null || item.getWarehouseId() == null)
-                throw new IllegalArgumentException("MaterialId and WarehouseId are required.");
-            if (item.getQuantity() == null || item.getQuantity().signum() <= 0)
-                throw new IllegalArgumentException("Quantity must be > 0.");
+        Map<Long, BigDecimal> pendingByMaterial = new HashMap<>();
+        if (isOrderSale) {
+            pendingByMaterial = calculatePendingByMaterialForOrder(dto.getOrderId());
 
-            Material material = repoMat.findById(item.getMaterialId())
-                    .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + item.getMaterialId()));
+            BigDecimal totalPending = pendingByMaterial.values().stream()
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            var qty = item.getQuantity();
-            var matId = item.getMaterialId();
-            var whId  = item.getWarehouseId();
-
-            if (isOrderSale) {
-                // ===== Venta por pedido =====
-                // 1) Pasar reservas ACTIVE del cliente a ALLOCATED para este pedido
-                var allocated = reservationService.allocateForSale(
-                        dto.getClientId(), matId, whId, qty, dto.getOrderId()
-                );
-                var remainder = qty.subtract(allocated);
-
-                // 2) Si faltó, crear ALLOCATED directo (bloquea disponibilidad; NO baja stock físico)
-                if (remainder.signum() > 0) {
-                    var free = servStock.availableForReservation(matId, whId);
-                    if (remainder.compareTo(free) > 0) {
-                        throw new IllegalStateException("Not enough free stock (reserved by others).");
-                    }
-                    reservationService.recordDirectAllocation(
-                            dto.getClientId(), matId, whId, remainder, dto.getOrderId()
-                    );
-                }
-
-            } else {
-                // ===== Venta directa =====
-                // Descuenta stock físico YA. (Sin pasar por ALLOCATED)
-                var onHand = servStock.availability(matId, whId);
-                if (qty.compareTo(onHand) > 0) {
-                    throw new IllegalStateException("Not enough stock on hand.");
-                }
-                servStock.decreaseStock(matId, whId, qty);
-
-                // (Opcional) registrar traza como CONSUMED (no afecta stock; útil para reportes)
-                reservationService.recordDirectConsumption(
-                        dto.getClientId(), matId, whId, qty, null
+            // Si el presupuesto ya está totalmente vendido, no dejamos crear más ventas asociadas
+            if (totalPending.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalStateException(
+                        "Order #" + dto.getOrderId() + " is already fully sold (no pending units)."
                 );
             }
+        }
 
-            // Snapshot de precio y renglón de venta
+        // --- Detalle + lógica de stock ---
+        for (SaleDetailRequestDTO item : dto.getMaterials()) {
+            if (item.getMaterialId() == null || item.getWarehouseId() == null) {
+                throw new IllegalArgumentException("MaterialId and WarehouseId are required.");
+            }
+            if (item.getQuantity() == null || item.getQuantity().signum() <= 0) {
+                throw new IllegalArgumentException("Quantity must be > 0.");
+            }
+
+            Long matId       = item.getMaterialId();
+            Long warehouseId = item.getWarehouseId();
+            BigDecimal qty   = item.getQuantity();
+
+            // === NUEVO: si la venta viene de un presupuesto, respetar lo pendiente de ese presupuesto ===
+            if (isOrderSale) {
+                BigDecimal pendingForMat = pendingByMaterial.get(matId);
+
+                // Si el material forma parte del presupuesto, limitamos por lo pendiente
+                if (pendingForMat != null) {
+                    if (pendingForMat.compareTo(BigDecimal.ZERO) <= 0) {
+                        throw new IllegalStateException(
+                                "Order #" + dto.getOrderId() +
+                                        " has no pending units for material ID " + matId + "."
+                        );
+                    }
+                    if (qty.compareTo(pendingForMat) > 0) {
+                        throw new IllegalArgumentException(
+                                "Requested quantity " + qty +
+                                        " for material ID " + matId +
+                                        " exceeds pending units (" + pendingForMat +
+                                        ") in order #" + dto.getOrderId() + "."
+                        );
+                    }
+                }
+                // Si pendingForMat == null → ese material no estaba en el presupuesto.
+                // Permitimos agregarlo igualmente; la regla fuerte es que el pedido no esté en 0 global.
+            }
+
+            // Ahora sí buscamos el material
+            Material material = repoMat.findById(matId)
+                    .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + matId));
+
+            // === NUEVO MODELO: SIEMPRE baja stock físico en la venta ===
+            BigDecimal onHand = servStock.availability(matId, warehouseId);
+            if (qty.compareTo(onHand) > 0) {
+                throw new IllegalStateException("Not enough stock on hand.");
+            }
+            servStock.decreaseStock(matId, warehouseId, qty); // ← único lugar donde baja stock
+
+            // (Opcional) dejar traza en reservas como histórico (no afecta stock)
+            try {
+                if (isOrderSale) {
+                    reservationService.consumeForSale(dto.getClientId(), matId, warehouseId, qty, dto.getOrderId());
+                } else {
+                    reservationService.recordDirectConsumption(dto.getClientId(), matId, warehouseId, qty, null);
+                }
+            } catch (Exception ignored) { }
+
+            // Renglón de venta (precio foto)
             SaleDetail d = new SaleDetail();
             d.setMaterial(material);
             d.setSale(sale);
@@ -211,38 +417,35 @@ public class SaleService implements ISaleService{
             saleDetailList.add(d);
         }
 
+
         sale.setSaleDetailList(saleDetailList);
 
-        // ...luego de setear sale.setSaleDetailList(saleDetailList);
-
         // Total calculado de la venta (para validar pagos)
-                BigDecimal totalAmount = saleDetailList.stream()
-                        .map(d -> d.getQuantity().multiply(d.getPriceUni()))
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalAmount = saleDetailList.stream()
+                .map(d -> d.getQuantity().multiply(d.getPriceUni()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Validación extra defensiva del pago opcional
-                if (dto.getPayment() != null) {
-                    var p = dto.getPayment();
+        // Validación de pago opcional (igual que antes)
+        if (dto.getPayment() != null) {
+            var p = dto.getPayment();
 
-                    if (p.getAmount() == null || p.getAmount().signum() <= 0
-                            || p.getDatePayment() == null
-                            || p.getMethodPayment() == null || p.getMethodPayment().isBlank()) {
-                        throw new IllegalArgumentException(
-                                "If 'payment' is sent, amount (> 0), date and method are required."
-                        );
-                    }
+            if (p.getAmount() == null || p.getAmount().signum() <= 0
+                    || p.getDatePayment() == null
+                    || p.getMethodPayment() == null || p.getMethodPayment().isBlank()) {
+                throw new IllegalArgumentException(
+                        "If 'payment' is sent, amount (> 0), date and method are required."
+                );
+            }
 
-                    // (opcional, recomendado) impedir pagar más que el total en el alta
-                    if (p.getAmount().compareTo(totalAmount) > 0) {
-                        throw new IllegalArgumentException("Payment amount cannot exceed sale total.");
-                    }
-                }
+            if (p.getAmount().compareTo(totalAmount) > 0) {
+                throw new IllegalArgumentException("Payment amount cannot exceed sale total.");
+            }
+        }
 
-
-        // --- Persistir venta ---
+        // Persistir venta
         Sale savedSale = repoSale.save(sale);
 
-        // --- Pago inicial (opcional) ---
+        // Pago inicial opcional
         if (dto.getPayment() != null) {
             Payment p = new Payment();
             p.setAmount(dto.getPayment().getAmount());
@@ -251,12 +454,15 @@ public class SaleService implements ISaleService{
             p.setSale(savedSale);
             repoPayment.save(p);
 
-            if (savedSale.getPaymentList() == null) savedSale.setPaymentList(new ArrayList<>());
+            if (savedSale.getPaymentList() == null) {
+                savedSale.setPaymentList(new ArrayList<>());
+            }
             savedSale.getPaymentList().add(p);
         }
 
         return convertSaleToDto(savedSale);
     }
+
 
 
     // ADD: helper de consumo

@@ -1,3 +1,4 @@
+<!-- /static/files-html/ventas.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -22,7 +23,8 @@
     </div>
 
     <hr><br>
-    <!-- Filtros -->
+
+    <!-- Filtros (ahora por estado de ENTREGA, no de pago) -->
     <section class="filters card">
       <div class="row">
         <label>Cliente
@@ -39,12 +41,11 @@
           <input type="date" id="fHasta"/>
         </label>
 
-        <label>Estado de pago
-          <select id="fEstadoPago">
+        <label>Estado de entrega
+          <select id="fEstadoEntrega">
             <option value="">Todos</option>
-            <option value="PENDING">Pendiente</option>
-            <option value="PARTIAL">Parcial</option>
-            <option value="PAID">Pagado</option>
+            <option value="PENDING_DELIVERY">Pendiente a entregar</option>
+            <option value="DELIVERED">Entregada</option>
           </select>
         </label>
 
@@ -63,8 +64,6 @@
           <div>Fecha</div>
           <div>Cliente</div>
           <div>Total</div>
-          <div>Pagado</div>
-          <div>Saldo</div>
           <div>Estado</div>
           <div>Acciones</div>
         </div>

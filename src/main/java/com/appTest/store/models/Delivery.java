@@ -26,20 +26,22 @@ public class Delivery {
     @JoinColumn(name = "order_id", referencedColumnName = "idOrders")
     private Orders orders;
 
-
-// Las ventas se asociaran a la entrega más adelante. Mantén esta relación si ya existe en Sale.
-    @OneToMany(mappedBy = "delivery", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Sale> sales = new ArrayList<>();
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "sale_id")
+    private Sale sale;
 
     @OneToMany(mappedBy = "delivery", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeliveryItem> items = new ArrayList<>();
 
-
     public Delivery() {}
 
-    public Delivery(LocalDate deliveryDate, Orders orders, com.appTest.store.models.enums.DeliveryStatus status) {
+    public Delivery(LocalDate deliveryDate,
+                    Orders orders,
+                    Sale sale,
+                    com.appTest.store.models.enums.DeliveryStatus status) {
         this.deliveryDate = deliveryDate;
         this.orders = orders;
+        this.sale = sale;
         this.status = status;
     }
 }

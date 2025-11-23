@@ -9,7 +9,6 @@ import com.appTest.store.repositories.IPaymentRepository;
 import com.appTest.store.repositories.ISaleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,45 +66,116 @@ public class PaymentService implements IPaymentService{
     @Override
     @Transactional
     public PaymentDTO createPayment(PaymentCreateDTO dto) {
+
+        // 1) Buscar venta
+        Sale sale = repoSale.findById(dto.getSaleId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Sale not found with ID: " + dto.getSaleId()
+                ));
+
+        // 2) Total de la venta
+        BigDecimal saleTotal = (sale.getSaleDetailList() == null)
+                ? BigDecimal.ZERO
+                : sale.getSaleDetailList().stream()
+                .map(detail -> {
+                    BigDecimal q = detail.getQuantity() != null ? detail.getQuantity() : BigDecimal.ZERO;
+                    BigDecimal p = detail.getPriceUni() != null ? detail.getPriceUni() : BigDecimal.ZERO;
+                    return q.multiply(p);
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 3) Pagado hasta ahora
+        BigDecimal alreadyPaid = (sale.getPaymentList() == null)
+                ? BigDecimal.ZERO
+                : sale.getPaymentList().stream()
+                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal remaining = saleTotal.subtract(alreadyPaid);
+        if (remaining.compareTo(BigDecimal.ZERO) < 0) {
+            remaining = BigDecimal.ZERO;
+        }
+
+        // 4) Validar que el nuevo pago no exceda el saldo
+        if (dto.getAmount().compareTo(remaining) > 0) {
+            throw new IllegalArgumentException(
+                    "Payment amount cannot exceed remaining balance for the sale."
+            );
+        }
+
+        // 5) Crear pago
         Payment payment = new Payment();
         payment.setAmount(dto.getAmount());
         payment.setDatePayment(dto.getDatePayment());
         payment.setMethodPayment(dto.getMethodPayment());
-        Sale sale = repoSale.findById(dto.getSaleId())
-                .orElseThrow(() -> new EntityNotFoundException("Sale not found with ID: " + dto.getSaleId()));
         payment.setSale(sale);
-        BigDecimal totalPaid = sale.getPaymentList().stream()
-                .map(Payment::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .add(dto.getAmount());
-        BigDecimal saleTotal = sale.getSaleDetailList().stream()
-                .map(detail -> detail.getQuantity().multiply(detail.getPriceUni()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        payment.setStatus(calculatePaymentStatus(totalPaid, saleTotal));
+
+        BigDecimal totalPaidAfter = alreadyPaid.add(dto.getAmount());
+        payment.setStatus(calculatePaymentStatus(totalPaidAfter, saleTotal));
+
         Payment savedPayment = repoPayment.save(payment);
         return convertPaymentToDto(savedPayment);
     }
+
 
     @Override
     @Transactional
     public void updatePayment(PaymentUpdateDTO dto) {
         Payment payment = repoPayment.findById(dto.getIdPayment())
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found with ID: " + dto.getIdPayment()));
-        if (dto.getAmount() != null) payment.setAmount(dto.getAmount());
-        if (dto.getDatePayment() != null) payment.setDatePayment(dto.getDatePayment());
-        if (dto.getMethodPayment() != null) payment.setMethodPayment(dto.getMethodPayment());
 
+        Sale sale = payment.getSale();
+
+        // Si cambia el importe, hay que validar contra el saldo
         if (dto.getAmount() != null) {
-            BigDecimal totalPaid = payment.getSale().getPaymentList().stream()
-                    .map(Payment::getAmount)
+
+            // Total de la venta
+            BigDecimal saleTotal = (sale.getSaleDetailList() == null)
+                    ? BigDecimal.ZERO
+                    : sale.getSaleDetailList().stream()
+                    .map(detail -> {
+                        BigDecimal q = detail.getQuantity() != null ? detail.getQuantity() : BigDecimal.ZERO;
+                        BigDecimal p = detail.getPriceUni() != null ? detail.getPriceUni() : BigDecimal.ZERO;
+                        return q.multiply(p);
+                    })
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal saleTotal = payment.getSale().getSaleDetailList().stream()
-                    .map(detail -> detail.getQuantity().multiply(detail.getPriceUni()))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            payment.setStatus(calculatePaymentStatus(totalPaid, saleTotal));
+
+            // Suma de los otros pagos (excepto el que estamos editando)
+            BigDecimal othersPaid = BigDecimal.ZERO;
+            if (sale.getPaymentList() != null) {
+                for (Payment p : sale.getPaymentList()) {
+                    if (p.getIdPayment() != null && p.getIdPayment().equals(payment.getIdPayment())) {
+                        continue; // saltamos el actual
+                    }
+                    if (p.getAmount() != null) {
+                        othersPaid = othersPaid.add(p.getAmount());
+                    }
+                }
+            }
+
+            BigDecimal newTotalPaid = othersPaid.add(dto.getAmount());
+
+            if (newTotalPaid.compareTo(saleTotal) > 0) {
+                throw new IllegalArgumentException(
+                        "Payment amount cannot exceed remaining balance for the sale."
+                );
+            }
+
+            // Sólo ahora actualizamos el importe y el status
+            payment.setAmount(dto.getAmount());
+            payment.setStatus(calculatePaymentStatus(newTotalPaid, saleTotal));
         }
+
+        if (dto.getDatePayment() != null) {
+            payment.setDatePayment(dto.getDatePayment());
+        }
+        if (dto.getMethodPayment() != null) {
+            payment.setMethodPayment(dto.getMethodPayment());
+        }
+
         repoPayment.save(payment);
     }
+
 
     private String calculatePaymentStatus(BigDecimal totalPaid, BigDecimal saleTotal) {
         if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {

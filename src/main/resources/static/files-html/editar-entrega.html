@@ -1,3 +1,4 @@
+<!-- /static/files-html/editar-entrega.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -21,25 +22,22 @@
       </div>
     </div>
 
+    <p class="muted" style="margin: 4px 0 16px;">
+      Usá esta pantalla solo para corregir errores puntuales de carga (fecha o cantidades).
+      El estado de la entrega se recalcula automáticamente según las cantidades entregadas.
+    </p>
+
     <hr><br>
 
     <form id="form-editar" class="card">
       <div class="grid">
         <div>
-          <label>Pedido</label>
+          <label>Venta / Presupuesto</label>
           <div id="pedidoLabel" style="padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#f8f9fa;">—</div>
         </div>
         <div>
           <label>Fecha de entrega</label>
           <input id="fecha" type="date" required />
-        </div>
-        <div>
-          <label>Estado</label>
-          <select id="estado">
-            <option value="PENDING">PENDING</option>
-            <option value="PARTIAL">PARTIAL</option>
-            <option value="COMPLETED">COMPLETED</option>
-          </select>
         </div>
       </div>
 
@@ -47,7 +45,7 @@
       <div class="tabla">
         <div class="fila encabezado" style="grid-template-columns: 2fr .8fr .8fr;">
           <div>Material</div>
-          <div>Cantidad Pedida</div>
+          <div>Cantidad Vendida</div>
           <div>Cantidad Entregada</div>
         </div>
         <div id="items"></div>

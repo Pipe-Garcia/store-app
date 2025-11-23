@@ -20,9 +20,12 @@ public interface IDeliveryService {
     void deleteDeliveryById(Long id);
 
     DeliveryDetailDTO getDeliveryDetail(Long id);
-    List<Delivery> search(DeliveryStatus status, Long orderId, Long clientId, LocalDate from, LocalDate to);
+    List<Delivery> search(DeliveryStatus status, Long saleId, Long clientId, LocalDate from, LocalDate to);
 
-    // ===== NUEVOS =====
+
     List<DeliveryDTO> getDeliveriesByOrder(Long orderId);
     List<DeliveryDetailDTO> getDeliveryDetailsByOrder(Long orderId);
+
+
+    List<DeliveryDTO> getDeliveriesBySale(Long saleId);
 }

@@ -82,22 +82,12 @@ public class SaleController {
         return ResponseEntity.ok(saleHighestDTO);
     }
 
-    // endpoint NUEVO: detalles compactos de la venta
+    // SaleController
     @GetMapping("/{id}/details")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<List<SaleDetailLiteDTO>> getSaleDetails(@PathVariable Long id) {
-        // trae detalles con material (query ya optimizada en el repo)
-        var list = saleDetailRepo.findBySaleIdWithMaterial(id);
-        var dto = list.stream()
-                .map(sd -> new SaleDetailLiteDTO(
-                        sd.getMaterial().getIdMaterial(),
-                        sd.getMaterial().getName(),
-                        sd.getQuantity(),
-                        sd.getPriceUni()
-                ))
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dto);
+    public List<SaleDetailLiteDTO> getSaleDetails(@PathVariable Long id) {
+        return servSale.getSaleDetailsLite(id);
     }
+
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")

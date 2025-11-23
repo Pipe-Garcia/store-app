@@ -21,29 +21,29 @@
   box-shadow: var(--shadow);
 }
 
-/* ====== Tabla de pedidos ====== */
-#lista-pedidos{ display:grid; gap:8px; min-width: 980px; }
-#lista-pedidos .fila{
+/* ====== Tabla de presupuestos ====== */
+#lista-presupuestos{ display:grid; gap:8px; min-width: 980px; }
+#lista-presupuestos .fila{
   display:grid;
   /* 7 columnas: id, cliente, f.crea, f.entrega, total, reserva, acciones */
-  grid-template-columns: .7fr 1fr 1fr 1.1fr 1fr 1.4fr 1fr;
+  grid-template-columns: repeat(5, 1fr);
   align-items:center; gap:10px;
   background:#fff; border-radius:10px; padding:12px 14px;
   box-shadow: var(--shadow);
 }
-#lista-pedidos .fila.encabezado{
+#lista-presupuestos .fila.encabezado{
   background:#f1f3f5; font-weight:700; box-shadow: var(--shadow) ; position:sticky; top:0; z-index:1;
   border:1px solid var(--c-border);
 }
 
 /* Zebra + hover */
-#lista-pedidos .fila:not(.encabezado):nth-child(odd){ background:#fcfcfd; }
-#lista-pedidos .fila:not(.encabezado):hover{ box-shadow: 0 6px 16px rgba(0,0,0,.06); }
+#lista-presupuestos .fila:not(.encabezado):nth-child(odd){ background:#fcfcfd; }
+#lista-presupuestos .fila:not(.encabezado):hover{ box-shadow: 0 6px 16px rgba(0,0,0,.06); }
 
 /* Alineación de números */
-#lista-pedidos .fila > div:nth-child(3),
-#lista-pedidos .fila > div:nth-child(4),
-#lista-pedidos .fila > div:nth-child(5){ text-align:right; }
+#lista-presupuestos .fila > div:nth-child(3),
+#lista-presupuestos .fila > div:nth-child(4),
+#lista-presupuestos .fila > div:nth-child(5){ text-align:right; }
 
 /* ====== Badge “Reservado” ====== */
 .tag{ display:inline-block; padding:4px 10px; border-radius:999px; font-size:.85rem; font-weight:700; }
@@ -51,7 +51,7 @@
 
 /* ====== Responsivo ====== */
 @media (max-width: 1100px){
-  #lista-pedidos .fila{
+  #lista-presupuestos .fila{
     grid-template-columns: .7fr 1.4fr .9fr .9fr .9fr 1fr 1.2fr;
   }
 }
@@ -60,7 +60,7 @@
   .card { overflow-x:auto; }
 }
 
-#lista-pedidos .fila.row {
+#lista-presupuestos .fila.row {
   height: 100px;
 }
 
@@ -160,7 +160,7 @@
 .col-estado{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
 /* Hover de filas un pelín más “elevado” */
-#lista-pedidos .fila:not(.encabezado):hover{
+#lista-presupuestos .fila:not(.encabezado):hover{
   transform: translateY(-1px);
   box-shadow: 0 8px 22px rgba(0,0,0,.08);
 }
@@ -214,3 +214,53 @@
 
 a.btn{ text-decoration:none; }
 .acciones{ display:flex; flex-wrap:wrap; gap:8px; }
+
+
+#lista-presupuestos{
+  display:grid;
+  gap:8px;
+  min-width: 980px;
+}
+
+#lista-presupuestos .fila{
+  display:grid;
+  /* 5 columnas: Fecha | Cliente | Total | Estado | Acciones */
+  grid-template-columns: 130px 2fr 1.1fr 1.6fr 1.8fr;
+  align-items:center;
+  gap:10px;
+  background:#fff;
+  border-radius:10px;
+  padding:12px 14px;
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 1100px){
+  #lista-presupuestos .fila{
+    /* un poco más comprimido pero siempre 5 columnas */
+    grid-template-columns: 100px 1.8fr 1.1fr 1.6fr 1.6fr;
+  }
+}
+
+/* Alineación de números: solo la columna Total (3ª) */
+#lista-presupuestos .fila > div:nth-child(3){
+  text-align:right;
+}
+
+/* Estado y Acciones centrados */
+#lista-presupuestos .fila > div:nth-child(4),
+#lista-presupuestos .fila > div:nth-child(5){
+  text-align:center;
+}
+
+
+.acciones{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;   /* <--- nuevo */
+}
+
+.btn-disabled{
+  opacity: .55;
+  cursor: not-allowed;
+}

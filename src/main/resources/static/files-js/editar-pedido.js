@@ -1,7 +1,6 @@
 // /static/files-js/editar-pedido.js
 const { authFetch, safeJson, getToken } = window.api;
 
-const API_URL_CLIENTES       = '/clients';
 const API_URL_MATERIALES     = '/materials';
 const API_URL_ORDERS         = '/orders';
 const API_URL_ORDER_DETAILS  = '/order-details';
@@ -12,21 +11,29 @@ let detallesOriginales = new Map(); // key: materialId, value: { idDetail, quant
 
 /* ===== Helpers ===== */
 const $ = (s, r=document) => r.querySelector(s);
+
 function go(page) {
   const base = location.pathname.replace(/[^/]+$/, ''); // .../files-html/
   window.location.href = `${base}${page}`;
 }
-function flashAndGo(message, page) {
-  localStorage.setItem('flash', JSON.stringify({ message, type:'success' }));
-  go(page);
-}
+
 let __toastRoot;
 function ensureToastRoot(){
   if(!__toastRoot){
     __toastRoot = document.createElement('div');
     Object.assign(__toastRoot.style, {
-      position:'fixed', top:'36px', right:'16px', display:'flex', flexDirection:'column',
-      gap:'8px', zIndex:9999, height:'50vh', overflowY:'auto', pointerEvents:'none', maxWidth:'400px', width:'400px'
+      position:'fixed',
+      top:'36px',
+      right:'16px',
+      display:'flex',
+      flexDirection:'column',
+      gap:'8px',
+      zIndex:9999,
+      height:'50vh',
+      overflowY:'auto',
+      pointerEvents:'none',
+      maxWidth:'400px',
+      width:'400px'
     });
     document.body.appendChild(__toastRoot);
   }
@@ -40,11 +47,18 @@ function notify(message, type='info'){
   setTimeout(()=>n.remove(), 5000);
 }
 
+const fmtDate = s=>{
+  if (!s) return '—';
+  const iso = (s.length > 10 ? s.slice(0,10) : s);
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d) ? '—' : d.toLocaleDateString('es-AR');
+};
+
 document.addEventListener('DOMContentLoaded', bootstrap);
 
 async function bootstrap(){
   if (!getToken()) {
-    notify('Debes iniciar sesión para editar un pedido', 'error');
+    notify('Debes iniciar sesión para editar un presupuesto', 'error');
     go('login.html');
     return;
   }
@@ -52,55 +66,73 @@ async function bootstrap(){
   const urlParams = new URLSearchParams(window.location.search);
   const orderId = urlParams.get('id');
   if (!orderId) {
-    notify('ID de pedido no especificado', 'error');
+    notify('ID de presupuesto no especificado', 'error');
     go('pedidos.html');
     return;
   }
 
+  // boton volver detalle
+  const back = $('#btnVolverDetalle');
+  if (back) back.href = `ver-pedido.html?id=${orderId}`;
+
   try {
-    const [pedido, materiales, detallesMaybePaged] = await Promise.all([
+    const [pedido, materiales, detallesMaybePaged, view] = await Promise.all([
       authFetch(`${API_URL_ORDERS}/${orderId}`).then(r=> r.ok ? safeJson(r) : null),
       authFetch(API_URL_MATERIALES).then(r=> r.ok ? safeJson(r) : []),
-      // Intento por query param (si la API lo soporta); si no, traigo todo y filtro
       authFetch(`${API_URL_ORDER_DETAILS}?orderId=${orderId}`)
-        .then(r => r.ok ? safeJson(r) : authFetch(API_URL_ORDER_DETAILS).then(x=> x.ok ? safeJson(x) : []))
+        .then(r => r.ok ? safeJson(r) : authFetch(API_URL_ORDER_DETAILS).then(x=> x.ok ? safeJson(x) : [])),
+      authFetch(`${API_URL_ORDERS}/${orderId}/view`).then(r=> r.ok ? safeJson(r) : null)
     ]);
 
-    pedidoOriginal  = pedido || {};
+    // Preferimos la VIEW para mostrar datos, pero para detalles usamos lo que más info traiga
+    pedidoOriginal  = view || pedido || {};
     listaMateriales = materiales || [];
-    $('#fecha-entrega').value = pedidoOriginal?.dateDelivery || '';
+
+    // Cabecera
+    $('#id-pedido').textContent = pedidoOriginal.idOrders ?? pedidoOriginal.id ?? orderId;
+    const cliente = pedidoOriginal.clientName ??
+      [pedidoOriginal.client?.name, pedidoOriginal.client?.surname].filter(Boolean).join(' ');
+    $('#cliente').textContent = cliente || '—';
+    $('#fecha-creacion').textContent = fmtDate(pedidoOriginal.dateCreate);
+    $('#fecha-entrega').value = (pedidoOriginal.dateDelivery || '').slice(0,10) || '';
 
     const contenedor = $('#materiales-container');
     contenedor.innerHTML = '';
 
-    const detallesFiltrados = Array.isArray(detallesMaybePaged)
-      ? detallesMaybePaged.filter(d => Number(d.ordersId ?? d.orderId) === Number(orderId))
-      : [];
+    const detailsFromView = Array.isArray(view?.details) ? view.details : null;
+
+    const detallesFiltrados = detailsFromView ??
+      (Array.isArray(detallesMaybePaged)
+        ? detallesMaybePaged.filter(d => Number(d.ordersId ?? d.orderId) === Number(orderId))
+        : []);
 
     // Mapa de originales
     detallesOriginales.clear();
-    detallesFiltrados.forEach(d => {
+    (detallesFiltrados || []).forEach(d => {
       const idDetail   = d.idOrderDetail ?? d.idOrderDetails ?? d.id ?? d.orderDetailId;
       const materialId = d.materialId ?? d.idMaterial;
       if (materialId) detallesOriginales.set(Number(materialId), { idDetail, quantity: Number(d.quantity || 0) });
     });
 
-    if (detallesFiltrados.length > 0) {
+    if ((detallesFiltrados || []).length > 0) {
       detallesFiltrados.forEach(d => {
         const selectedId = d.materialId ?? d.idMaterial
           ?? (listaMateriales.find(m => m.name === d.materialName)?.idMaterial);
         const qty = Number(d.quantity || 1);
-        contenedor.appendChild(makeFilaMaterial(selectedId, qty, d.idOrderDetail ?? d.idOrderDetails ?? d.id));
+        contenedor.appendChild(
+          makeFilaMaterial(selectedId, qty, d.idOrderDetail ?? d.idOrderDetails ?? d.id)
+        );
       });
     } else {
       agregarMaterial();
     }
 
     $('#form-editar-pedido')?.addEventListener('submit', guardarCambios);
+    // para el botón inline
     window.agregarMaterial = agregarMaterial;
   } catch (err) {
     console.error('Error al cargar datos:', err);
-    notify('Error al cargar el pedido para edición', 'error');
+    notify('Error al cargar el presupuesto para edición', 'error');
     go('pedidos.html');
   }
 }
@@ -112,7 +144,9 @@ function makeFilaMaterial(selectedId, qty, detailId){
   fila.innerHTML = `
     <select class="select-material" required>
       <option value="">Seleccione material</option>
-      ${(listaMateriales||[]).map(m => `<option value="${m.idMaterial}" ${Number(selectedId)===Number(m.idMaterial)?'selected':''}>${m.name}</option>`).join('')}
+      ${(listaMateriales||[]).map(m =>
+        `<option value="${m.idMaterial}" ${Number(selectedId)===Number(m.idMaterial)?'selected':''}>${m.name}</option>`
+      ).join('')}
     </select>
     <input type="number" min="1" class="input-cantidad" value="${qty ?? ''}" placeholder="Cantidad" required />
     <button type="button" class="btn outline" onclick="this.parentElement.remove()">🗑️</button>
@@ -121,7 +155,9 @@ function makeFilaMaterial(selectedId, qty, detailId){
 }
 
 function agregarMaterial() {
-  $('#materiales-container').appendChild(makeFilaMaterial('', ''));
+  const cont = $('#materiales-container');
+  if (!cont) return;
+  cont.appendChild(makeFilaMaterial('', ''));
 }
 
 async function guardarCambios(e) {
@@ -146,9 +182,9 @@ async function guardarCambios(e) {
     return;
   }
 
-  // 1) actualizar cabecera del pedido
+  // 1) actualizar cabecera del presupuesto (sin stock, solo datos)
   const payloadCab = {
-    idOrders:     pedidoOriginal.idOrders,
+    idOrders:     pedidoOriginal.idOrders ?? pedidoOriginal.id,
     dateDelivery: fechaEntrega || null,
     details,
     deleteMissingDetails: true
@@ -168,11 +204,11 @@ async function guardarCambios(e) {
     // a) nuevos o modificados
     for (const [matId, qty] of nuevos.entries()) {
       if (!detallesOriginales.has(matId)) {
-        aCrear.push({ ordersId: pedidoOriginal.idOrders, materialId: matId, quantity: qty });
+        aCrear.push({ ordersId: pedidoOriginal.idOrders ?? pedidoOriginal.id, materialId: matId, quantity: qty });
       } else {
         const ori = detallesOriginales.get(matId);
         if (Number(ori.quantity) !== Number(qty)) {
-          aActualizar.push({ id: ori.idDetail, ordersId: pedidoOriginal.idOrders, materialId: matId, quantity: qty });
+          aActualizar.push({ id: ori.idDetail, ordersId: pedidoOriginal.idOrders ?? pedidoOriginal.id, materialId: matId, quantity: qty });
         }
       }
     }
@@ -183,22 +219,24 @@ async function guardarCambios(e) {
       }
     }
 
-    // 3) aplicar parches
+    // 3) aplicar parches sobre /order-details
     const postBody = d => JSON.stringify({ ordersId: d.ordersId, materialId: d.materialId, quantity: d.quantity });
     const putBody  = d => JSON.stringify({
       idOrderDetail: d.id, ordersId: d.ordersId, materialId: d.materialId, quantity: d.quantity
     });
 
     const ops = [];
-    aCrear.forEach(d => ops.push(authFetch(API_URL_ORDER_DETAILS, { method:'POST', body: postBody(d) })));
-    aActualizar.forEach(d => ops.push(authFetch(API_URL_ORDER_DETAILS, { method:'PUT',  body: putBody(d)  })));
-    aEliminar.forEach(d => { if (d.id) ops.push(authFetch(`${API_URL_ORDER_DETAILS}/${d.id}`, { method:'DELETE' })); });
+    aCrear.forEach(d     => ops.push(authFetch(API_URL_ORDER_DETAILS,           { method:'POST', body: postBody(d) })));
+    aActualizar.forEach(d=> ops.push(authFetch(API_URL_ORDER_DETAILS,           { method:'PUT',  body: putBody(d)  })));
+    aEliminar.forEach(d  => { if (d.id) ops.push(authFetch(`${API_URL_ORDER_DETAILS}/${d.id}`, { method:'DELETE' })); });
 
     if (ops.length > 0) await Promise.all(ops);
 
-    flashAndGo('✅ Pedido actualizado con éxito', 'pedidos.html');
+    notify('✅ Presupuesto actualizado con éxito','success');
+    const idGo = pedidoOriginal.idOrders ?? pedidoOriginal.id;
+    setTimeout(()=> go(`ver-pedido.html?id=${idGo}`), 400);
   }catch(err){
-    console.error('Error en actualización de pedido:', err);
-    notify('Error al actualizar el pedido', 'error');
+    console.error('Error en actualización de presupuesto:', err);
+    notify('Error al actualizar el presupuesto', 'error');
   }
 }

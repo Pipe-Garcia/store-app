@@ -1,13 +1,12 @@
 // /static/files-js/crear-entrega.js
-// Crear entrega desde una venta PAGADA vinculada a un pedido.
-// Cap de cantidades = min(pendiente del pedido, vendido en esa venta, stock disponible en depósito).
+// Crear entrega apoyada 100% en la VENTA.
+// Cap por renglón = min(pendiente de esa venta, stock disponible del depósito).
 const { authFetch, safeJson, getToken } = window.api;
 
-const API_URL_SALES            = '/sales';
-const API_URL_DELIVERIES       = '/deliveries';
-const API_URL_DELIVERY_PENDING = (orderId) => `/orders/${orderId}/delivery-pending`;
-const API_URL_SALE_DETAILS     = (saleId)  => `/sales/${saleId}/details`;
-const API_URL_STOCKS_BY_MAT    = (matId)   => `/stocks/by-material/${matId}`;
+const API_URL_SALES        = '/sales';
+const API_URL_DELIVERIES   = '/deliveries';
+const API_URL_SALE_DETAILS = (saleId)  => `/sales/${saleId}/details`;
+const API_URL_STOCKS_BY_MAT= (matId)   => `/stocks/by-material/${matId}`;
 
 const $  = (s, r=document) => r.querySelector(s);
 const fmt = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
@@ -32,6 +31,7 @@ function go(page){
 
 let currentSale = null;
 let currentOrderId = null;
+let currentDetails = [];   // [{saleDetailId, materialId, materialName, sold, delivered, pending}]
 let paramSaleId = null;
 let sending = false;
 
@@ -45,7 +45,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const qs = new URLSearchParams(location.search);
   paramSaleId = Number(qs.get('sale') || qs.get('saleId') || 0) || null;
 
-  await cargarVentasPagadas();      // llena el <select> con ventas pagadas elegibles
+  await cargarVentasConPendiente();      // llena el <select> con ventas elegibles
   if (paramSaleId) {
     await preselectVenta(paramSaleId);
   }
@@ -55,51 +55,64 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('#form-entrega')?.addEventListener('submit', guardarEntrega);
 });
 
-/* ================== Ventas elegibles (pagadas y con pedido, sin entrega previa) ================== */
-async function cargarVentasPagadas(){
-  const sel = $('#venta');
-  if (!sel) return;
-  sel.innerHTML = `<option value="">Seleccionar venta (pagada)</option>`;
+/* ================== Ventas con pendiente de entrega ================== */
 
-  const candidates = [
-    `${API_URL_SALES}?paymentStatus=PAID`,
-    `${API_URL_SALES}?status=PAID`,
-    `${API_URL_SALES}`
-  ];
-  let raw = null;
-  for (const url of candidates){
-    try{
-      const res = await authFetch(url);
-      if (!res.ok) continue;
-      raw = await safeJson(res); break;
-    }catch(_){}
+function normalizeSale(raw){
+  const id = raw.idSale ?? raw.saleId ?? raw.id ?? null;
+  if (!id) return null;
+
+  const clientName = (
+    raw.clientName ??
+    raw.client ??
+    `${raw.clientFirstName??''} ${raw.clientLastName??''}`.trim()) ||
+    [raw.client?.name, raw.client?.surname].filter(Boolean).join(' ');
+
+  const dateSale = raw.dateSale ?? raw.date ?? raw.createdAt ?? '';
+  const total = Number(raw.total ?? raw.amount ?? 0);
+
+  const soldUnits      = Number(raw.totalUnits ?? raw.soldUnits ?? raw.unitsSold ?? raw.totalQuantity ?? 0);
+  const deliveredUnits = Number(raw.deliveredUnits ?? raw.unitsDelivered ?? 0);
+  let pendingUnits     = raw.pendingUnits ?? raw.deliveryPendingUnits ?? raw.unitsPending ?? null;
+
+  const deliveryStatus = (raw.deliveryStatus ?? '').toString().toUpperCase();
+  if (pendingUnits == null || isNaN(pendingUnits)){
+    if (soldUnits || deliveredUnits){
+      pendingUnits = Math.max(0, soldUnits - deliveredUnits);
+    } else {
+      // fallback: usar estado de entrega si existe
+      if (deliveryStatus === 'COMPLETED') pendingUnits = 0;
+      else if (deliveryStatus === 'PARTIAL' || deliveryStatus === 'PENDING') pendingUnits = 1;
+      else pendingUnits = 0;
+    }
   }
 
-  const list = Array.isArray(raw) ? raw
+  const orderId = raw.orderId ?? raw.ordersId ?? raw.order?.idOrders ?? null;
+  return { id, clientName, dateSale, total, pendingUnits: Number(pendingUnits||0), deliveryStatus, orderId };
+}
+
+async function cargarVentasConPendiente(){
+  const sel = $('#venta');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">Seleccionar venta</option>`;
+
+  let raw = null;
+  try{
+    const res = await authFetch(API_URL_SALES);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    raw = await safeJson(res);
+  }catch(_){ raw = []; }
+
+  let list = Array.isArray(raw) ? raw
             : (raw && Array.isArray(raw.content)) ? raw.content
             : [];
+  list = (list||[]).map(normalizeSale).filter(Boolean);
 
-  const norm = list.map(s => {
-    const id = s.idSale ?? s.id ?? s.saleId;
-    const clientName = s.clientName ?? s.client ?? `${s.clientFirstName??''} ${s.clientLastName??''}`.trim();
-    const total = Number(s.total ?? s.amount ?? 0);
-    const paid  = Number(s.paid  ?? s.totalPaid ?? 0);
-    const status = (s.paymentStatus ?? s.status ?? '').toString().toUpperCase();
-    const dateSale = s.dateSale ?? s.date ?? s.createdAt ?? '';
-    const orderId = s.orderId ?? s.ordersId ?? s.order?.idOrders ?? null;
-    const deliveryId = s.deliveryId ?? s.delivery?.idDelivery ?? null;
-    return { id, clientName, total, paid, status, dateSale, orderId, deliveryId };
-  }).filter(x=>x.id);
+  const eligible = list.filter(s => (s.pendingUnits || 0) > 0);
 
-  const onlyPaid = norm.filter(s =>
-    (s.status === 'PAID' || (s.total && s.paid >= s.total)) &&
-    s.orderId && !s.deliveryId
-  );
-
-  onlyPaid.forEach(s => {
+  eligible.forEach(s => {
     const opt = document.createElement('option');
     opt.value = s.id;
-    opt.textContent = `#${s.id} — ${s.clientName||'—'} — ${s.dateSale||''} — Total ${fmt.format(s.total||0)}`;
+    opt.textContent = `#${s.id} — ${s.clientName||'—'} — ${s.dateSale||''} — Pendiente: ${s.pendingUnits} unid`;
     opt.dataset.orderId = s.orderId ?? '';
     sel.appendChild(opt);
   });
@@ -112,17 +125,22 @@ async function preselectVenta(id){
     try{
       const r = await authFetch(`${API_URL_SALES}/${id}`);
       if (r.ok){
-        const s = await safeJson(r);
-        opt = document.createElement('option');
-        opt.value = String(id);
-        opt.textContent = `#${s.idSale} — ${s.clientName||'—'} — ${s.dateSale||''} — Total ${fmt.format(Number(s.total||0))}`;
-        opt.dataset.orderId = s.orderId ?? s.ordersId ?? '';
-        sel.appendChild(opt);
+        const sRaw = await safeJson(r);
+        const s = normalizeSale(sRaw);
+        if (s){
+          opt = document.createElement('option');
+          opt.value = String(s.id);
+          opt.textContent = `#${s.id} — ${s.clientName||'—'} — ${s.dateSale||''} — Pendiente: ${s.pendingUnits} unid`;
+          opt.dataset.orderId = s.orderId ?? '';
+          sel.appendChild(opt);
+        }
       }
     }catch(_){}
   }
-  sel.value = String(id);
-  await onChangeVenta();
+  if (opt){
+    sel.value = String(id);
+    await onChangeVenta();
+  }
 }
 
 async function lookupVentaPorId(){
@@ -133,15 +151,15 @@ async function lookupVentaPorId(){
   try{
     const res = await authFetch(`${API_URL_SALES}/${id}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const s = await safeJson(res);
-
-    // validaciones mínimas: que esté pagada, tenga pedido y no tenga entrega
-    const total = Number(s.total ?? 0), paid = Number(s.paid ?? 0);
-    const isPaid = (s.paymentStatus ?? s.status ?? '').toString().toUpperCase() === 'PAID' || (total>0 && paid>=total);
-    const oid = s.orderId ?? s.ordersId ?? null;
-    const hasDelivery = !!(s.deliveryId ?? s.delivery?.idDelivery ?? null);
-    if(!isPaid || !oid || hasDelivery){
-      notify('La venta no es elegible (debe estar pagada, ligada a pedido y sin entrega).','error'); 
+    const sRaw = await safeJson(res);
+    const s = normalizeSale(sRaw);
+    if (!s){
+      notify('No se pudo interpretar la venta','error');
+      return;
+    }
+    if ((s.pendingUnits || 0) <= 0){
+      notify('Esa venta no tiene materiales pendientes de entregar','info');
+      return;
     }
 
     const sel = $('#venta');
@@ -149,9 +167,8 @@ async function lookupVentaPorId(){
     if (!opt){
       opt = document.createElement('option');
       opt.value = id;
-      const client = s.clientName ?? s.client ?? '';
-      opt.dataset.orderId = oid ?? '';
-      opt.textContent = `#${id} — ${client} — ${s.dateSale||''} — Total ${fmt.format(total)}`;
+      opt.dataset.orderId = s.orderId ?? '';
+      opt.textContent = `#${id} — ${s.clientName||'—'} — ${s.dateSale||''} — Pendiente: ${s.pendingUnits} unid`;
       sel.appendChild(opt);
     }
     sel.value = String(id);
@@ -163,72 +180,99 @@ async function lookupVentaPorId(){
 }
 
 /* ============ Al seleccionar venta ============ */
+
+function normalizeDetail(d){
+  const saleDetailId = d.idSaleDetail ?? d.saleDetailId ?? d.id ?? d.detailId ?? null;
+  const materialId   = d.materialId ?? d.idMaterial ?? d.material?.idMaterial ?? null;
+  const materialName = d.materialName ?? d.material?.name ?? `Material #${materialId ?? ''}`;
+
+  const sold = Number(
+    d.quantity ??
+    d.quantitySold ??
+    d.soldUnits ??
+    d.qty ??
+    0
+  );
+
+  const delivered = Number(
+    d.quantityDelivered ??        // NUEVO
+    d.deliveredUnits ??
+    d.deliveredQty ??
+    0
+  );
+
+  let pending =
+    d.pendingQuantity ??          // NUEVO
+    d.pendingUnits ??
+    d.unitsPending ??
+    d.pendingToDeliver ??
+    null;
+
+  if (pending == null || isNaN(pending)) {
+    pending = Math.max(0, sold - delivered);
+  }
+
+  return {
+    saleDetailId,
+    materialId,
+    materialName,
+    sold: Number(sold || 0),
+    delivered: Number(delivered || 0),
+    pending: Number(pending || 0)
+  };
+}
+
+
 async function onChangeVenta(){
   const sel = $('#venta');
   const saleId = Number(sel.value || 0);
-  currentSale = null; currentOrderId = null;
+  currentSale = null;
+  currentOrderId = null;
+  currentDetails = [];
   $('#pedidoAsociado').value = '—';
-  renderPendientes([]);
+  renderFilas([]);
 
   if (!saleId) return;
 
   try{
-    // 1) Traer venta (para orderId)
+    // 1) Traer venta (para cliente + orderId asociado)
     const res = await authFetch(`${API_URL_SALES}/${saleId}`);
-    if (res.ok) currentSale = await safeJson(res);
-
-    const viaDto = currentSale?.orderId ?? currentSale?.ordersId ?? null;
-    const viaOption = sel.selectedOptions?.[0]?.dataset?.orderId;
-    currentOrderId = viaDto ?? (viaOption ? Number(viaOption)||null : null);
-
-    if (!currentOrderId){
-      notify('Esta venta no está asociada a un pedido','error');
-      return;
+    if (res.ok){
+      const dto = await safeJson(res);
+      currentSale = dto;
+      currentOrderId = dto.orderId ?? dto.ordersId ?? dto.order?.idOrders ?? null;
+      if (currentOrderId){
+        $('#pedidoAsociado').value = `#${currentOrderId}`;
+      }
     }
-    $('#pedidoAsociado').value = `#${currentOrderId}`;
 
-    // 2) Detalles de la venta (materiales y cantidades vendidas)
+    // 2) Detalles de la venta con info de entrega (vendido / entregado / pendiente)
     const rDet = await authFetch(API_URL_SALE_DETAILS(saleId));
     if (!rDet.ok) throw new Error(`HTTP ${rDet.status}`);
-    const saleDetails = await safeJson(rDet); // [{materialId, materialName, quantity, unitPrice}]
+    let det = await safeJson(rDet);
+    det = Array.isArray(det) ? det : [];
+    currentDetails = det.map(normalizeDetail).filter(d => d.materialId && d.saleDetailId);
 
-    const soldByMat = new Map(saleDetails.map(d => [Number(d.materialId), Number(d.quantity||0)]));
-
-    // 3) Pendientes del pedido
-    const rp = await authFetch(API_URL_DELIVERY_PENDING(currentOrderId));
-    if (!rp.ok) throw new Error(`HTTP ${rp.status}`);
-    let pendientes = await safeJson(rp); // [{orderDetailId, materialId, materialName, pendingToDeliver}]
-
-    // 4) Cruzar: sólo materiales vendidos en esta venta y cap = min(vendida, pendiente)
-    const merged = [];
-    for (const p of (pendientes||[])) {
-      const matId = Number(p.materialId);
-      const pend = Number(p.pendingToDeliver || 0);
-      const sold = Number(soldByMat.get(matId) || 0);
-      if (sold <= 0 || pend <= 0) continue;
-      const cap = Math.min(sold, pend);
-      merged.push({...p, cap});
+    const conPendiente = currentDetails.filter(d => d.pending > 0);
+    if (!conPendiente.length){
+      notify('Esa venta no tiene pendientes de entrega','info');
     }
-
-    if (!merged.length){
-      notify('No hay ítems pendientes para esta venta (ya entregados o no coinciden materiales).','info');
-    }
-
-    renderPendientes(merged, /*useCap*/true);
+    await renderFilas(conPendiente);
   }catch(e){
     console.error(e);
-    notify('No se pudieron cargar los datos de la venta/pedido','error');
+    notify('No se pudieron cargar los datos de la venta','error');
   }
 }
 
-/* ====== Render de filas con selección de depósito ====== */
-async function renderPendientes(rows, useCap=false){
+/* ====== Render filas ====== */
+
+async function renderFilas(rows){
   const cont = $('#items');
   cont.innerHTML = `
     <div class="fila encabezado" style="grid-template-columns: 2fr 1.3fr .8fr .8fr;">
       <div>Material</div>
       <div>Depósito</div>
-      <div>Pendiente</div>
+      <div>Vendido (venta)</div>
       <div>Entregar</div>
     </div>
   `;
@@ -237,20 +281,24 @@ async function renderPendientes(rows, useCap=false){
     const empty = document.createElement('div');
     empty.className = 'fila';
     empty.style.gridTemplateColumns = '1fr';
-    empty.textContent = 'Sin pendientes para este pedido.';
+    empty.textContent = 'Sin pendientes para esta venta.';
     cont.appendChild(empty);
     return;
   }
 
   for (const r of rows){
-    const pendiente = Number(r.pendingToDeliver||0);
-    const max = useCap ? Number(r.cap||0) : pendiente;
-
     const row = document.createElement('div');
     row.className = 'fila';
     row.style.gridTemplateColumns = '2fr 1.3fr .8fr .8fr';
-    row.dataset.odid = r.orderDetailId;
-    row.dataset.materialId = r.materialId;
+    row.dataset.saleDetailId = r.saleDetailId;
+    row.dataset.materialId   = r.materialId;
+
+    row.innerHTML = `
+      <div>${r.materialName}</div>
+      <div></div>
+      <div>${r.sold}</div>
+      <div></div>
+    `;
 
     // Select de depósitos (con disponibilidad)
     const whSel = document.createElement('select');
@@ -260,7 +308,7 @@ async function renderPendientes(rows, useCap=false){
     try{
       const rs = await authFetch(API_URL_STOCKS_BY_MAT(r.materialId));
       const list = rs.ok ? await safeJson(rs) : [];
-      list.forEach(w=>{
+      (list||[]).forEach(w=>{
         const o = document.createElement('option');
         o.value = w.warehouseId;
         o.dataset.available = String(w.quantityAvailable || 0);
@@ -274,27 +322,25 @@ async function renderPendientes(rows, useCap=false){
     }catch(_){}
 
     const qty = document.createElement('input');
-    qty.type='number'; qty.min='0'; qty.step='1'; qty.value = max>0? String(max) : '0';
+    qty.type='number'; qty.min='0'; qty.step='1';
+    qty.value = r.pending>0? String(r.pending) : '0';
     qty.className = 'qty';
+    qty.placeholder = `max ${r.pending}`;
+    qty.title = `Pendiente por entregar en esta venta: ${r.pending}`;
 
     const capQty = ()=>{
       const avail = Number(whSel.selectedOptions?.[0]?.dataset?.available || 0);
-      const capSrc = max; // cap por min(vendida, pendiente)
-      const cap = Math.max(0, Math.min(avail, capSrc));
+      let cap = r.pending;
+      if (avail > 0) cap = Math.min(cap, avail);
+      cap = Math.max(0, cap);
       const n = Number(qty.value||0);
-      qty.value = String(Math.min(n, cap));
+      qty.value = String(Math.min(Math.max(0, n), cap));
       qty.max = String(cap);
     };
     whSel.addEventListener('change', capQty);
     qty.addEventListener('input', capQty);
     capQty();
 
-    row.innerHTML = `
-      <div>${r.materialName}</div>
-      <div></div>
-      <div>${pendiente}</div>
-      <div></div>
-    `;
     row.children[1].appendChild(whSel);
     row.children[3].appendChild(qty);
 
@@ -307,17 +353,28 @@ async function guardarEntrega(ev){
   ev.preventDefault();
   if (sending) return;
 
-  if (!currentOrderId){ notify('Seleccioná una venta válida','error'); return; }
+  const selVenta = $('#venta');
+  const saleId = Number(selVenta?.value || 0);
+  if (!saleId || !currentSale){
+    notify('Seleccioná una venta válida','error');
+    return;
+  }
   const deliveryDate = $('#fecha').value;
+  if (!deliveryDate){
+    notify('Indicá la fecha de entrega','error');
+    return;
+  }
 
-  const items = Array.from(document.querySelectorAll('#items .fila'))
-    .map(row => {
-      const od = Number(row.dataset.odid);
-      const mat = Number(row.dataset.materialId);
+  const rows = Array.from(document.querySelectorAll('#items .fila'))
+    .filter(r => r.dataset.saleDetailId && r.dataset.materialId);
+
+  const items = rows.map(row => {
+      const saleDetailId = Number(row.dataset.saleDetailId || 0);
+      const materialId   = Number(row.dataset.materialId || 0);
       const q = parseFloat(row.querySelector('.qty')?.value || '0');
-      const wh = Number(row.querySelector('.wh')?.value || '0');
-      return (od && mat && q > 0 && wh>0)
-        ? { orderDetailId: od, materialId: mat, warehouseId: wh, quantityDelivered: q }
+      const wh = Number(row.querySelector('.wh')?.value || 0);
+      return (saleDetailId && materialId && q > 0 && wh>0)
+        ? { saleDetailId, materialId, warehouseId: wh, quantity: q }
         : null;
     })
     .filter(Boolean);
@@ -327,8 +384,7 @@ async function guardarEntrega(ev){
     return;
   }
 
-  const saleId = Number($('#venta').value || 0) || paramSaleId || null;
-  const payload = { ordersId: currentOrderId, deliveryDate, items, saleId };
+  const payload = { saleId, deliveryDate, items };
 
   try{
     sending = true;
@@ -341,7 +397,7 @@ async function guardarEntrega(ev){
     flashAndGo('Entrega creada correctamente','entregas.html');
   }catch(err){
     console.error(err);
-    notify('No se pudo crear la entrega','error');
     sending = false;
+    notify('No se pudo crear la entrega','error');
   }
 }

@@ -1,76 +1,74 @@
+<!-- /static/files-html/pedidos.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📄 - Listado de Pedidos</title>
-  <link rel="stylesheet" href="../files-css/style.css">
-  <link rel="stylesheet" href="../files-css/pedidos.css">
-  <!-- NAV fijo -->
-  <link rel="stylesheet" href="../files-css/nav.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📄 - Presupuestos</title>
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/pedidos.css"/>
+  <link rel="stylesheet" href="../files-css/nav.css"/>
 </head>
 <body>
-  <!-- NAV -->
+
   <div id="app-header"></div>
 
-  <main class="page">
-    <div class="page-head">
-      <h1>Pedidos</h1>
-      <a class="btn primary" href="../files-html/crear-pedido.html">+ Nuevo pedido</a>
+<main class="page">
+  <div class="page-head">
+    <h1>Presupuestos</h1>
+    <div class="actions">
+      <a class="btn primary" href="../files-html/crear-pedido.html">+ Nuevo presupuesto</a>
     </div>
+  </div>
 
-    <hr><br>
+  <hr><br>
 
-    <!-- Filtros -->
-    <section class="card filters" style="margin-bottom:12px;">
+  <!-- Filtros similares a Ventas/Entregas -->
+  <section class="card filters" style="margin-bottom:12px;">
     <div class="row">
       <label>
-        <span>Pedido #</span>
-        <input id="f_orderId" type="number" class="in" placeholder="ID" min="1">
+        <span>Presupuesto #</span>
+        <input id="fOrderId" type="number" class="in" placeholder="ID" min="1">
       </label>
 
       <label>
         <span>Cliente</span>
-        <select id="f_client" class="in">
+        <select id="fClient" class="in">
           <option value="">Todos</option>
         </select>
       </label>
 
-      <!-- Creación -->
       <label class="stack">
-        <span>Fecha Creación</span>
+        <span>Fecha creación</span>
         <div class="range-2">
           <div class="subcol">
             <small class="sub">Desde</small>
-            <input id="f_c_from" type="date" class="in" aria-label="Fecha de creación desde">
+            <input id="fFrom" type="date" class="in" aria-label="Fecha de creación desde">
           </div>
-          <span class="dash"></span>
+          <span class="dash">—</span>
           <div class="subcol">
             <small class="sub">Hasta</small>
-            <input id="f_c_to" type="date" class="in" aria-label="Fecha de creación hasta">
+            <input id="fTo" type="date" class="in" aria-label="Fecha de creación hasta">
           </div>
         </div>
       </label>
 
-      <!-- Entrega -->
-      <label class="stack">
-        <span>Fecha Entrega</span>
-        <div class="range-2">
-          <div class="subcol">
-            <small class="sub">Desde</small>
-            <input id="f_d_from" type="date" class="in" aria-label="Fecha de entrega desde">
-          </div>
-          <span class="dash"></span>
-          <div class="subcol">
-            <small class="sub">Hasta</small>
-            <input id="f_d_to" type="date" class="in" aria-label="Fecha de entrega hasta">
-          </div>
-        </div>
+      <label>
+        <span>Estado</span>
+        <select id="fStatus" class="in">
+          <option value="">Todos</option>
+          <option value="PENDING">Con pendiente por vender</option>
+          <option value="SOLD_OUT">Sin pendiente (todo vendido)</option>
+        </select>
       </label>
 
-      <!-- Total: doble slider + leyenda -->
+      <label>
+        <span>Buscar</span>
+        <input id="fText" type="text" class="in" placeholder="ID, cliente...">
+      </label>
+
       <label class="stack wide">
-        <span>Total Pedido</span>
+        <span>Total presupuesto</span>
         <div id="priceRange" class="price-range">
           <input id="f_t_slider_min" type="range" min="0" max="1000" step="100">
           <input id="f_t_slider_max" type="range" min="0" max="1000" step="100">
@@ -80,38 +78,33 @@
             <span id="priceTo">$ 0</span>
           </div>
         </div>
-        <input id="f_t_min" type="number" hidden>
-        <input id="f_t_max" type="number" hidden>
+        <input id="fMinTotal" type="number" hidden>
+        <input id="fMaxTotal" type="number" hidden>
       </label>
 
-      <label>
-        <span>Estado</span>
-        <select id="f_status" class="in">
-          <option value="">Todos</option>
-          <option value="pend_con">Pendiente (con reserva)</option>
-          <option value="pend_sin">Pendiente (sin reserva)</option>
-          <option value="vendido">Vendido</option>
-        </select>
-      </label>
-
-      <button id="btnLimpiar" class="btn outline" style="align-self:flex-end;">Limpiar</button>
+      <button id="btnClear" class="btn outline" style="align-self:flex-end;">Limpiar</button>
     </div>
   </section>
 
-  <!-- Lista de pedidos -->
-  <section class="card" style="margin-top:12px;">
-    <div id="lista-pedidos"></div>
+  <section class="list">
+    <div id="lista-presupuestos" class="tabla">
+      <div class="fila encabezado">
+        <div>Fecha</div>
+        <div>Cliente</div>
+        <div>Total</div>
+        <div>Estado</div>
+        <div>Acciones</div>
+      </div>
+      <!-- filas dinámicas -->
+    </div>
   </section>
 
+</main>
 
-  </main>
-
-  <!-- núcleo + base URL + header -->
-  <script src="../files-js/core/api.js"></script>
-  <script>window.api.setBaseUrl('http://localhost:8088');</script>
-  <script src="../files-js/header.js"></script>
-  <script src="../files-js/menu-guard.js"></script>
-  <!-- lógica -->
-  <script src="../files-js/pedidos.js"></script>
+<script src="../files-js/core/api.js"></script>
+<script>window.api.setBaseUrl('http://localhost:8088');</script>
+<script src="../files-js/header.js"></script>
+<script src="../files-js/menu-guard.js"></script>
+<script src="../files-js/pedidos.js"></script>
 </body>
 </html>

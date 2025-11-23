@@ -7,6 +7,7 @@ import com.appTest.store.models.enums.DeliveryStatus;
 import com.appTest.store.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,7 +41,9 @@ public class DeliveryService implements IDeliveryService {
 
     @Override
     public List<Delivery> getAllDeliveries() {
-        return repoDelivery.findAll();
+        return repoDelivery.findAll(
+                Sort.by(Sort.Direction.DESC, "deliveryDate", "idDelivery")
+        );
     }
 
     @Override
@@ -50,29 +53,63 @@ public class DeliveryService implements IDeliveryService {
     }
 
     @Override
-    public List<Delivery> search(DeliveryStatus status, Long orderId, Long clientId, LocalDate from, LocalDate to) {
-        return repoDelivery.search(status, orderId, clientId, from, to);
+    public List<Delivery> search(DeliveryStatus status, Long saleId, Long clientId, LocalDate from, LocalDate to) {
+        return repoDelivery.search(status, saleId, clientId, from, to);
     }
 
     /* ==================== DTO mappers ==================== */
 
     @Override
     public DeliveryDTO convertDeliveryToDto(Delivery delivery) {
-        String clientName = Optional.ofNullable(delivery.getOrders())
-                .map(Orders::getClient)
-                .map(c -> (c.getName() + " " + c.getSurname()).trim())
-                .orElse("Name not found");
 
-        Long orderId = Optional.ofNullable(delivery.getOrders())
-                .map(Orders::getIdOrders).orElse(null);
+        // 1) saleId: desde la venta asociada (si existe)
+        Long saleId = (delivery.getSale() != null)
+                ? delivery.getSale().getIdSale()
+                : null;
 
-        return new DeliveryDTO(
+        // 2) ordersId: preferimos el pedido asociado a la venta,
+        //    si no está, usamos el Orders que cuelga directo de Delivery (compat legacy)
+        Long orderId = null;
+        if (delivery.getSale() != null && delivery.getSale().getOrders() != null) {
+            orderId = delivery.getSale().getOrders().getIdOrders();
+        } else if (delivery.getOrders() != null) {
+            orderId = delivery.getOrders().getIdOrders();
+        }
+
+        // 3) clientName: prioridad al cliente de la venta; si no, cliente del pedido
+        String clientName = "Name not found";
+        if (delivery.getSale() != null && delivery.getSale().getClient() != null) {
+            var c = delivery.getSale().getClient();
+            clientName = (c.getName() + " " + c.getSurname()).trim();
+        } else if (delivery.getOrders() != null && delivery.getOrders().getClient() != null) {
+            var c = delivery.getOrders().getClient();
+            clientName = (c.getName() + " " + c.getSurname()).trim();
+        }
+
+        // 4) total de unidades entregadas en ESTA entrega
+        java.math.BigDecimal deliveredUnits = java.math.BigDecimal.ZERO;
+        if (delivery.getItems() != null) {
+            for (com.appTest.store.models.DeliveryItem di : delivery.getItems()) {
+                if (di.getQuantityDelivered() != null) {
+                    deliveredUnits = deliveredUnits.add(di.getQuantityDelivered());
+                }
+            }
+        }
+        if (deliveredUnits.compareTo(java.math.BigDecimal.ZERO) < 0) {
+            deliveredUnits = java.math.BigDecimal.ZERO;
+        }
+
+        // 5) Usamos el constructor NUEVO de DeliveryDTO (con saleId + ordersId)
+        DeliveryDTO dto = new DeliveryDTO(
                 delivery.getIdDelivery(),
+                saleId,
                 orderId,
                 delivery.getDeliveryDate(),
                 delivery.getStatus().name(),
                 clientName
         );
+        dto.setDeliveredUnits(deliveredUnits);
+        return dto;
     }
 
     @Override
@@ -80,19 +117,24 @@ public class DeliveryService implements IDeliveryService {
         Delivery d = repoDelivery.findByIdWithGraph(id)
                 .orElseThrow(() -> new EntityNotFoundException("Delivery not found with id: " + id));
 
-        String clientName = (d.getOrders() != null && d.getOrders().getClient() != null)
+        String clientName = (d.getSale() != null && d.getSale().getClient() != null)
+                ? (d.getSale().getClient().getName() + " " + d.getSale().getClient().getSurname()).trim()
+                : (d.getOrders() != null && d.getOrders().getClient() != null)
                 ? (d.getOrders().getClient().getName() + " " + d.getOrders().getClient().getSurname()).trim()
                 : "Name not found";
 
         List<DeliveryItemDTO> items = d.getItems().stream().map(i ->
                 new DeliveryItemDTO(
                         i.getIdDeliveryItem(),
-                        i.getOrderDetail().getIdOrderDetail(),
+                        i.getOrderDetail() != null ? i.getOrderDetail().getIdOrderDetail() : null,
                         i.getMaterial().getIdMaterial(),
                         i.getMaterial().getName(),
                         i.getWarehouse() != null ? i.getWarehouse().getIdWarehouse() : null,
                         i.getWarehouse() != null ? i.getWarehouse().getName() : null,
-                        i.getOrderDetail().getQuantity(),
+                        // quantityOrdered: usamos OrderDetail si existe, sino la quantity de venta como referencia
+                        i.getOrderDetail() != null && i.getOrderDetail().getQuantity() != null
+                                ? i.getOrderDetail().getQuantity()
+                                : (i.getSaleDetail() != null ? i.getSaleDetail().getQuantity() : BigDecimal.ZERO),
                         i.getQuantityDelivered(),
                         i.getUnitPriceSnapshot()
                 )
@@ -103,10 +145,12 @@ public class DeliveryService implements IDeliveryService {
                         .multiply(it.getQuantityDelivered() == null ? BigDecimal.ZERO : it.getQuantityDelivered()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        Long saleId = (d.getSale() != null ? d.getSale().getIdSale() : null);
         Long orderId = (d.getOrders() != null ? d.getOrders().getIdOrders() : null);
 
         return new DeliveryDetailDTO(
                 d.getIdDelivery(),
+                saleId,
                 orderId,
                 d.getDeliveryDate(),
                 d.getStatus().name(),
@@ -116,12 +160,23 @@ public class DeliveryService implements IDeliveryService {
         );
     }
 
+
     @Override
     @Transactional(readOnly = true)
     public List<DeliveryDTO> getDeliveriesByOrder(Long orderId) {
         List<Delivery> list = repoDelivery.findByOrders_IdOrders(orderId);
         return list.stream().map(this::convertDeliveryToDto).collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DeliveryDTO> getDeliveriesBySale(Long saleId) {
+        List<Delivery> list = repoDelivery.findBySale_IdSale(saleId);
+        return list.stream()
+                .map(this::convertDeliveryToDto)
+                .collect(Collectors.toList());
+    }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -150,15 +205,20 @@ public class DeliveryService implements IDeliveryService {
                     .map(it -> it.getUnitPriceSnapshot().multiply(it.getQuantityDelivered()))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+
+            Long saleId = (d.getSale() != null ? d.getSale().getIdSale() : null);
+
             return new DeliveryDetailDTO(
                     d.getIdDelivery(),
-                    d.getOrders().getIdOrders(),
+                    saleId,
+                    d.getOrders() != null ? d.getOrders().getIdOrders() : null,
                     d.getDeliveryDate(),
                     d.getStatus().toString(),
                     clientName,
                     total,
                     items
             );
+
         }).collect(Collectors.toList());
     }
 
@@ -204,63 +264,89 @@ public class DeliveryService implements IDeliveryService {
 
     /* ==================== Create ==================== */
 
+    // src/main/java/com/appTest/store/services/DeliveryService.java
+
     @Override
     @Transactional
-    @Auditable(entity="Delivery", action="CREATE")
+    @Auditable(entity = "Delivery", action = "CREATE")
     public DeliveryDTO createDelivery(DeliveryCreateDTO dto) {
-        Orders orders = repoOrders.findById(dto.getOrdersId())
-                .orElseThrow(() -> new EntityNotFoundException("Orders not found with ID: " + dto.getOrdersId()));
 
-        ensureDate(orders, dto.getDeliveryDate());
-
-        Sale sale = null; // <-- mantendremos referencia si vino
-        if (dto.getSaleId() != null) {
-            sale = repoSale.findById(dto.getSaleId())
-                    .orElseThrow(() -> new EntityNotFoundException("Sale not found with ID: " + dto.getSaleId()));
-
-            if (sale.getOrders() == null || !Objects.equals(sale.getOrders().getIdOrders(), orders.getIdOrders())) {
-                throw new IllegalArgumentException("Sale does not belong to the given Order");
-            }
-            // ⛔ si ya tiene entrega asociada
-            if (sale.getDelivery() != null) {
-                throw new IllegalStateException("This sale is already linked to delivery #" +
-                        sale.getDelivery().getIdDelivery());
-            }
-
-            // exigir pago completo (si querés)
-            var saleTotal = sale.getSaleDetailList().stream()
-                    .map(sd -> sd.getPriceUni().multiply(sd.getQuantity()))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            var totalPaid = sale.getPaymentList().stream()
-                    .map(Payment::getAmount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            if (totalPaid.compareTo(saleTotal) < 0) {
-                throw new IllegalStateException("Delivery requires a fully paid sale.");
-            }
+        if (dto.getDeliveryDate() == null) {
+            throw new IllegalArgumentException("Delivery date is required");
         }
-
         if (dto.getItems() == null || dto.getItems().isEmpty()) {
             throw new IllegalArgumentException("At least one delivery item is required.");
         }
 
+        // === 1) Resolver la venta (nuevo eje del modelo) ===
+        Sale sale = null;
+        if (dto.getSaleId() != null) {
+            sale = repoSale.findById(dto.getSaleId())
+                    .orElseThrow(() ->
+                            new EntityNotFoundException("Sale not found with ID: " + dto.getSaleId()));
+        } else {
+            // Para el modelo nuevo queremos SIEMPRE una venta
+            throw new IllegalArgumentException("Sale ID is required to create a delivery.");
+        }
+
+        // === 2) Resolver el pedido (solo como origen / control interno) ===
+        Orders orders = null;
+
+        if (dto.getOrdersId() != null) {
+            // Caso compatibilidad: si vino ordersId en el JSON, lo usamos
+            orders = repoOrders.findById(dto.getOrdersId())
+                    .orElseThrow(() ->
+                            new EntityNotFoundException("Orders not found with ID: " + dto.getOrdersId()));
+        } else if (sale.getOrders() != null) {
+            // Caso modelo nuevo: derivamos el pedido desde la venta
+            orders = sale.getOrders();
+        }
+
+        if (orders == null) {
+            // Por ahora solo soportamos entregas para ventas que provienen de un presupuesto.
+            throw new IllegalArgumentException(
+                    "This sale has no associated Order. Deliveries are currently supported only for sales generated from a Presupuesto."
+            );
+        }
+
+        // Coherencia: si la venta ya tiene pedido asociado, debe coincidir con el ordersId (si vino)
+        if (sale.getOrders() != null &&
+                !Objects.equals(sale.getOrders().getIdOrders(), orders.getIdOrders())) {
+            throw new IllegalArgumentException("Sale does not belong to the given Order");
+        }
+
+        // === 3) Validar fechas (entrega no puede ser anterior al presupuesto) ===
+        ensureDate(orders, dto.getDeliveryDate());
+
+        // === 4) Exigir venta 100% paga antes de entregar (política de negocio) ===
+        BigDecimal saleTotal = sale.getSaleDetailList().stream()
+                .map(sd -> sd.getPriceUni().multiply(sd.getQuantity()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalPaid = (sale.getPaymentList() == null)
+                ? BigDecimal.ZERO
+                : sale.getPaymentList().stream()
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (totalPaid.compareTo(saleTotal) < 0) {
+            throw new IllegalStateException("Delivery requires a fully paid sale.");
+        }
+
+        // === 5) Mapa: orderDetailId -> ya entregado antes de esta entrega (modelo viejo) ===
         Map<Long, BigDecimal> deliveredByDetail = loadDeliveredByDetailForOrder(orders.getIdOrders());
 
+        // === 6) Armar la cabecera de la entrega ===
         Delivery delivery = new Delivery();
         delivery.setOrders(orders);
         delivery.setDeliveryDate(dto.getDeliveryDate());
         delivery.setStatus(DeliveryStatus.PENDING);
 
+        // === 7) Procesar renglones ===
         for (DeliveryItemCreateDTO it : dto.getItems()) {
-            OrderDetail od = repoOrderDetail.findById(it.getOrderDetailId())
-                    .orElseThrow(() -> new EntityNotFoundException("OrderDetail not found: " + it.getOrderDetailId()));
-            if (!Objects.equals(od.getOrders().getIdOrders(), orders.getIdOrders())) {
-                throw new IllegalArgumentException("OrderDetail does not belong to the Delivery's Order");
-            }
 
-            Material mat = repoMaterial.findById(it.getMaterialId())
-                    .orElseThrow(() -> new EntityNotFoundException("Material not found: " + it.getMaterialId()));
-            if (!Objects.equals(od.getMaterial().getIdMaterial(), mat.getIdMaterial())) {
-                throw new IllegalArgumentException("materialId does not match the OrderDetail material");
+            if (it.getMaterialId() == null) {
+                throw new IllegalArgumentException("materialId is required for each delivery item.");
             }
 
             BigDecimal qty = it.getQuantityDelivered();
@@ -268,48 +354,97 @@ public class DeliveryService implements IDeliveryService {
                 throw new IllegalArgumentException("quantityDelivered must be > 0");
             }
 
-            BigDecimal already = deliveredByDetail.getOrDefault(od.getIdOrderDetail(), BigDecimal.ZERO);
-            if (already.add(qty).compareTo(od.getQuantity()) > 0) {
-                throw new IllegalArgumentException("Over-delivery on orderDetail " + od.getIdOrderDetail());
+            // Material
+            Material mat = repoMaterial.findById(it.getMaterialId())
+                    .orElseThrow(() ->
+                            new EntityNotFoundException("Material not found: " + it.getMaterialId()));
+
+            // === 7.a) Resolver OrderDetail (si existe), por ID o por material ===
+            OrderDetail od = null;
+            if (it.getOrderDetailId() != null) {
+                od = repoOrderDetail.findById(it.getOrderDetailId())
+                        .orElseThrow(() ->
+                                new EntityNotFoundException("OrderDetail not found: " + it.getOrderDetailId()));
+
+                // Si hay pedido asociado, validamos que coincida
+                if (orders != null && !Objects.equals(od.getOrders().getIdOrders(), orders.getIdOrders())) {
+                    throw new IllegalArgumentException("OrderDetail does not belong to the Delivery's Order");
+                }
+                if (od.getMaterial() == null ||
+                        !Objects.equals(od.getMaterial().getIdMaterial(), mat.getIdMaterial())) {
+                    throw new IllegalArgumentException("materialId does not match the OrderDetail material");
+                }
+
+            } else if (orders != null) {
+                // Inferimos el OrderDetail solamente a efectos de trazabilidad y control (si hay pedido asociado)
+                final Orders ord = orders; // efectivamente final para usar en la lambda
+
+                od = ord.getOrderDetails().stream()
+                        .filter(d -> d.getMaterial() != null &&
+                                Objects.equals(d.getMaterial().getIdMaterial(), mat.getIdMaterial()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "No OrderDetail found for material " + mat.getIdMaterial()
+                                        + " in Order " + ord.getIdOrders()));
+            }
+            // Si orders == null y no vino orderDetailId, dejamos od = null (entrega ligada solo a venta)
+
+
+            // === 7.b) No sobre-entregar vs pedido (solo si tenemos OrderDetail) ===
+            if (od != null) {
+                BigDecimal already = deliveredByDetail.getOrDefault(od.getIdOrderDetail(), BigDecimal.ZERO);
+                if (already.add(qty).compareTo(od.getQuantity()) > 0) {
+                    throw new IllegalArgumentException("Over-delivery on orderDetail " + od.getIdOrderDetail());
+                }
             }
 
+            // Depósito
             Warehouse wh = null;
             if (it.getWarehouseId() != null) {
                 wh = repoWarehouse.findById(it.getWarehouseId())
-                        .orElseThrow(() -> new EntityNotFoundException("Warehouse not found: " + it.getWarehouseId()));
+                        .orElseThrow(() ->
+                                new EntityNotFoundException("Warehouse not found: " + it.getWarehouseId()));
             }
 
+            // Crear renglón de entrega
             DeliveryItem di = new DeliveryItem();
             di.setDelivery(delivery);
-            di.setOrderDetail(od);
+            di.setOrderDetail(od); // si no hay pedido asociado, puede quedar null
             di.setMaterial(mat);
             di.setWarehouse(wh);
             di.setQuantityDelivered(qty);
-            di.setUnitPriceSnapshot(od.getPriceUni());
+
+            // Precio snapshot: preferimos OrderDetail, si no usamos el del material
+            BigDecimal snapshotPrice = (od != null && od.getPriceUni() != null)
+                    ? od.getPriceUni()
+                    : (mat.getPriceArs() != null ? mat.getPriceArs() : BigDecimal.ZERO);
+            di.setUnitPriceSnapshot(snapshotPrice);
+
             delivery.getItems().add(di);
 
-            Long orderId = orders.getIdOrders();
-            Long clientId = orders.getClient() != null ? orders.getClient().getIdClient() : null;
-            Long materialId = mat.getIdMaterial();
-            Long warehouseId = (wh != null ? wh.getIdWarehouse() : null);
-
-            BigDecimal shipped = reservationService.shipFromAllocation(clientId, materialId, warehouseId, qty, orderId);
-            if (shipped.compareTo(qty) < 0) {
-                throw new IllegalStateException("Not enough allocated units to deliver the requested quantity.");
+            // Actualizamos acumulado solo si hay OrderDetail
+            if (od != null) {
+                deliveredByDetail.merge(od.getIdOrderDetail(), qty, BigDecimal::add);
             }
-            stockService.decreaseStock(materialId, warehouseId, qty);
 
-            deliveredByDetail.merge(od.getIdOrderDetail(), qty, BigDecimal::add);
         }
 
+        // === 8) Guardar y linkear con la venta (1..N) ===
+
+        // Primero colgamos la venta en la entrega (lado dueño de la relación)
+        delivery.setSale(sale);
+
+        // Guardamos la entrega
         Delivery saved = repoDelivery.save(delivery);
 
-        // 🔗 Linkear venta → entrega si vino saleId
-        if (sale != null) {
-            sale.setDelivery(saved);
-            repoSale.save(sale); // persiste FK en tabla sale (delivery_id)
+        // Mantenemos la colección de entregas de la venta coherente en memoria
+        if (sale.getDeliveries() == null) {
+            sale.setDeliveries(new ArrayList<>());
         }
+        sale.getDeliveries().add(saved);
+        repoSale.save(sale);
 
+        // === 9) Recalcular estado global del pedido respecto de sus entregas (modelo existente) ===
         DeliveryStatus status = calculateStatusForOrder(orders.getIdOrders());
         saved.setStatus(status);
         repoDelivery.save(saved);
@@ -328,6 +463,7 @@ public class DeliveryService implements IDeliveryService {
         Delivery delivery = repoDelivery.findByIdWithGraph(dto.getIdDelivery())
                 .orElseThrow(() -> new EntityNotFoundException("Delivery not found with id: " + dto.getIdDelivery()));
 
+        // Si la entrega está completada, solo permitimos cambiar fecha
         if (delivery.getStatus() == DeliveryStatus.COMPLETED) {
             if (dto.getItems() != null && !dto.getItems().isEmpty()) {
                 throw new IllegalStateException("Completed deliveries cannot be modified.");
@@ -340,12 +476,13 @@ public class DeliveryService implements IDeliveryService {
             return;
         }
 
+        // Actualizar fecha si viene
         if (dto.getDeliveryDate() != null) {
             ensureDate(delivery.getOrders(), dto.getDeliveryDate());
             delivery.setDeliveryDate(dto.getDeliveryDate());
         }
 
-        // Índices
+        // Índices para buscar ítems existentes
         Map<Long, DeliveryItem> byId = delivery.getItems().stream()
                 .filter(i -> i.getIdDeliveryItem() != null)
                 .collect(Collectors.toMap(DeliveryItem::getIdDeliveryItem, i -> i));
@@ -374,9 +511,13 @@ public class DeliveryService implements IDeliveryService {
                     // UPDATE existente
                     BigDecimal prev = target.getQuantityDelivered();
                     BigDecimal next = Optional.ofNullable(in.getQuantityDelivered()).orElse(BigDecimal.ZERO);
-                    BigDecimal delta = next.subtract(prev); // si < 0 sería “devolver entrega”
+                    BigDecimal delta = next.subtract(prev); // si < 0 sería “devolver” entrega
 
-                    // Validaciones de sobreentrega
+                    if (next.signum() <= 0) {
+                        throw new IllegalArgumentException("quantityDelivered must be > 0");
+                    }
+
+                    // Validaciones de sobreentrega vs pedido
                     OrderDetail od = target.getOrderDetail();
                     BigDecimal deliveredSoFar = deliveredSoFarForDetail(od.getIdOrderDetail())
                             .subtract(prev); // restamos lo que ya contaba este ítem
@@ -385,28 +526,13 @@ public class DeliveryService implements IDeliveryService {
                         throw new IllegalArgumentException("Quantity exceeds pending for orderDetail " + od.getIdOrderDetail());
                     }
 
-                    target.setQuantityDelivered(next);
-
-                    if (delta.signum() > 0) {
-                        Long orderId = delivery.getOrders().getIdOrders();
-                        Long clientId = delivery.getOrders().getClient() != null ? delivery.getOrders().getClient().getIdClient() : null;
-                        Long materialId = target.getMaterial().getIdMaterial();
-                        Long warehouseId = (target.getWarehouse() != null ? target.getWarehouse().getIdWarehouse() : null);
-
-                        BigDecimal shipped = reservationService.shipFromAllocation(
-                                clientId, materialId, warehouseId, delta, orderId
-                        );
-                        if (shipped.compareTo(delta) < 0) {
-                            throw new IllegalStateException("Not enough allocated units to deliver this delta.");
-                        }
-                        stockService.decreaseStock(materialId, warehouseId, delta);
-                    } else if (delta.signum() < 0) {
-                        // Si querés soportar “devolver” entrega: reponer stock y mover reservas CONSUMED -> ALLOCATED
-                        // stockService.increaseStock(target.getMaterial().getIdMaterial(), target.getWarehouse()!=null?target.getWarehouse().getIdWarehouse():null, delta.abs());
-                        // reservationService.returnConsumedToAllocation(...);
-                        throw new UnsupportedOperationException("Reducir entregas existentes no está soportado todavía.");
+                    // En el modelo nuevo NO tocamos stock ni reservas acá
+                    if (delta.signum() < 0) {
+                        // si en el futuro querés soportar devoluciones, acá habría que manejar nota de crédito, etc.
+                        throw new UnsupportedOperationException("Reducing deliveries is not supported yet.");
                     }
 
+                    target.setQuantityDelivered(next);
                     keepIds.add(target.getIdDeliveryItem());
                 } else {
                     // CREATE nuevo
@@ -438,6 +564,7 @@ public class DeliveryService implements IDeliveryService {
                         throw new IllegalArgumentException("quantityDelivered must be > 0");
                     }
 
+                    // Validar contra pendiente de ese OrderDetail
                     BigDecimal deliveredSoFar = deliveredSoFarForDetail(od.getIdOrderDetail());
                     BigDecimal inThisDelivery = delivery.getItems().stream()
                             .filter(i -> i.getOrderDetail().getIdOrderDetail().equals(od.getIdOrderDetail()))
@@ -457,23 +584,11 @@ public class DeliveryService implements IDeliveryService {
                     di.setQuantityDelivered(qty);
                     di.setUnitPriceSnapshot(od.getPriceUni());
                     delivery.getItems().add(di);
-
-                    Long orderId = delivery.getOrders().getIdOrders();
-                    Long clientId = delivery.getOrders().getClient() != null ? delivery.getOrders().getClient().getIdClient() : null;
-                    Long materialId = mat.getIdMaterial();
-                    Long warehouseId = (wh != null ? wh.getIdWarehouse() : null);
-
-                    BigDecimal shipped = reservationService.shipFromAllocation(
-                            clientId, materialId, warehouseId, qty, orderId
-                    );
-                    if (shipped.compareTo(qty) < 0) {
-                        throw new IllegalStateException("Not enough allocated units to deliver the requested quantity.");
-                    }
-                    stockService.decreaseStock(materialId, warehouseId, qty);
                 }
             }
         }
 
+        // Borrado de ítems que no vinieron en el update
         if (dto.isDeleteMissingItems()) {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             boolean owner = auth != null && auth.getAuthorities().stream()
@@ -482,7 +597,9 @@ public class DeliveryService implements IDeliveryService {
 
             delivery.getItems().removeIf(i ->
                     i.getIdDeliveryItem() != null && !keepIds.contains(i.getIdDeliveryItem()));
-            // TO-DO: si borrás, considerá reponer stock / revertir reservas consumidas
+
+            // En el modelo nuevo, borrar un item de entrega NO toca stock:
+            // el stock se manejó en la venta.
         }
 
         // Recalcular estado del pedido y reflejar en esta entrega
@@ -491,6 +608,7 @@ public class DeliveryService implements IDeliveryService {
 
         repoDelivery.save(delivery);
     }
+
 
     /* ==================== Delete ==================== */
 
@@ -501,9 +619,12 @@ public class DeliveryService implements IDeliveryService {
         Delivery delivery = repoDelivery.findByIdWithGraph(id)
                 .orElseThrow(() -> new EntityNotFoundException("Delivery not found with id: " + id));
 
-        // TO-DO: reponer stock por cada renglón eliminado y revertir reservas si corresponde
-        // for (DeliveryItem i : delivery.getItems()) { ... }
+        // Modelo nuevo: la entrega no mueve stock, así que borrar la entrega
+        // solo afecta el "histórico de lo entregado". Si quisieras que una
+        // cancelación de entrega impacte stock, tendría que pasar por una
+        // nota de crédito / lógica de venta, no acá.
 
         repoDelivery.delete(delivery);
     }
+
 }

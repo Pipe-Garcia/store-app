@@ -4,16 +4,30 @@ const API_SALES   = '/sales';
 const API_CLIENTS = '/clients';
 
 const $ = (s,r=document)=>r.querySelector(s);
-function notify(msg,type='info'){ const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; document.body.appendChild(n); setTimeout(()=>n.remove(),3500); }
-function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
-let saleId=null;
+function notify(msg,type='info'){
+  const n=document.createElement('div');
+  n.className=`notification ${type}`;
+  n.textContent=msg;
+  document.body.appendChild(n);
+  setTimeout(()=>n.remove(),3500);
+}
+function go(page){
+  const base = location.pathname.replace(/[^/]+$/, '');
+  location.href = `${base}${page}`;
+}
+
+let saleId = null;
 
 window.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ go('login.html'); return; }
 
-  const qp=new URLSearchParams(location.search);
+  const qp = new URLSearchParams(location.search);
   saleId = Number(qp.get('id')||0);
-  if(!saleId){ notify('Falta id','error'); go('ventas.html'); return; }
+  if(!saleId){
+    notify('Falta id de venta','error');
+    go('ventas.html');
+    return;
+  }
   $('#btnVolver').onclick = ()=> go(`ver-venta.html?id=${saleId}`);
 
   const [rSale, rClients] = await Promise.all([
@@ -22,7 +36,8 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   ]);
 
   const sale    = rSale.ok ? await safeJson(rSale) : null;
-  const clients = rClients.ok ? await safeJson(rClients) : [];
+  let clients   = rClients.ok ? await safeJson(rClients) : [];
+  if (clients && !Array.isArray(clients) && Array.isArray(clients.content)) clients = clients.content;
 
   const sel = $('#cliente');
   sel.innerHTML = `<option value="">Seleccionar cliente</option>` + (clients||[]).map(c=>
@@ -30,23 +45,33 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   ).join('');
 
   if(sale){
-    $('#fecha').value = sale.dateSale || '';
-    if (sale.clientId) sel.value = String(sale.clientId);
-    else {
-      const match = (clients||[]).find(c => `${c.name||''} ${c.surname||''}`.trim() === (sale.clientName||'').trim());
-      if(match) sel.value = String(match.idClient||match.id);
+    $('#fecha').value = (sale.dateSale || sale.date || '').toString().slice(0,10);
+    if (sale.clientId){
+      sel.value = String(sale.clientId);
+    }else{
+      const match = (clients||[]).find(c =>
+        `${c.name||''} ${c.surname||''}`.trim() === (sale.clientName||'').trim()
+      );
+      if (match) sel.value = String(match.idClient||match.id);
     }
   }
 
   $('#btnGuardar').onclick = async ()=>{
     const dateSale = $('#fecha').value;
     const clientId = Number(sel.value||0);
-    if(!dateSale || !clientId){ notify('Completá fecha y cliente','error'); return; }
+    if(!dateSale || !clientId){
+      notify('Completá fecha y cliente','error');
+      return;
+    }
     try{
-      const res = await authFetch(API_SALES, { method:'PUT', body: JSON.stringify({ idSale: saleId, dateSale, clientId }) });
+      const payload = { idSale: saleId, dateSale, clientId };
+      const res = await authFetch(API_SALES, { method:'PUT', body: JSON.stringify(payload) });
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       notify('Venta actualizada','success');
       setTimeout(()=> go(`ver-venta.html?id=${saleId}`), 300);
-    }catch(e){ console.error(e); notify('No se pudo actualizar','error'); }
+    }catch(e){
+      console.error(e);
+      notify('No se pudo actualizar la venta','error');
+    }
   };
 });

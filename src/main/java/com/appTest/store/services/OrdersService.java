@@ -14,6 +14,10 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.appTest.store.repositories.ISaleRepository;
+import com.appTest.store.models.Sale;
+import com.appTest.store.models.SaleDetail;
+
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -32,6 +36,7 @@ public class OrdersService implements IOrdersService {
     @Autowired private IMaterialRepository repoMat;
     @Autowired private IStockReservationRepository repoReservation;
     @Autowired private IDeliveryItemRepository repoDeliveryItem;
+    @Autowired private ISaleRepository repoSale;
 
     @Override
     public List<Orders> getAllOrders() {
@@ -99,12 +104,16 @@ public class OrdersService implements IOrdersService {
                 .map(d -> d.getPriceUni().multiply(d.getQuantity()))
                 .reduce(ZERO, java.math.BigDecimal::add);
 
-        // 3) "Comprometidas" = ALLOCATED (reservas comprometidas)
-        java.util.Map<Long, java.math.BigDecimal> allocatedByMat = new java.util.HashMap<>();
-        for (Object[] row : repoReservation.allocatedByMaterialForOrder(o.getIdOrders())) {
-            Long matId = (Long) row[0];
-            java.math.BigDecimal qty = (java.math.BigDecimal) row[1];
-            allocatedByMat.put(matId, qty != null ? qty : ZERO);
+        // 3) "Vendidas" = sumatoria de SaleDetail por material para este pedido
+        java.util.Map<Long, java.math.BigDecimal> soldByMat = new java.util.HashMap<>();
+        var sales = repoSale.findByOrders_IdOrders(o.getIdOrders());
+        for (Sale s : sales) {
+            if (s.getSaleDetailList() == null) continue;
+            for (SaleDetail sd : s.getSaleDetailList()) {
+                Long matId = sd.getMaterial().getIdMaterial();
+                java.math.BigDecimal qty = sd.getQuantity() != null ? sd.getQuantity() : ZERO;
+                soldByMat.merge(matId, qty, java.math.BigDecimal::add);
+            }
         }
 
         // 3b) “Entregadas” = DeliveryItem sumadas por renglón (orderDetailId)
@@ -126,36 +135,41 @@ public class OrdersService implements IOrdersService {
             String matName = d.getMaterial().getName();
 
             java.math.BigDecimal ordered   = d.getQuantity(); // pedidas
-            java.math.BigDecimal allocated = allocatedByMat.getOrDefault(matId, ZERO);
             java.math.BigDecimal delivered = deliveredByDetail.getOrDefault(d.getIdOrderDetail(), ZERO);
+            java.math.BigDecimal sold      = soldByMat.getOrDefault(matId, ZERO);
 
-            if (allocated.compareTo(ZERO) < 0) allocated = ZERO;
-            if (delivered.compareTo(ordered) > 0) delivered = ordered; // sanity
+            if (delivered.compareTo(ordered) > 0) {
+                delivered = ordered; // sanity
+            }
 
-            // Pendiente SIEMPRE respecto de lo entregado (no de lo comprometido)
+            // Siempre pendiente vs pedido (no vs vendido)
             java.math.BigDecimal remaining = ordered.subtract(delivered);
             if (remaining.signum() < 0) remaining = ZERO;
 
-            // Lo “comprometido visible” no debe exceder lo que queda pendiente por entregar
-            java.math.BigDecimal committedToShow = allocated.min(remaining);
+            // NUEVO: comprometido = vendido - entregado, acotado a lo pendiente
+            java.math.BigDecimal committed = sold.subtract(delivered);
+            if (committed.signum() < 0) committed = ZERO;
+            if (committed.compareTo(remaining) > 0) {
+                committed = remaining;
+            }
 
             totalRemainingUnits = totalRemainingUnits.add(remaining);
             totalDeliveredUnits = totalDeliveredUnits.add(delivered);
-            totalCommittedUnits = totalCommittedUnits.add(committedToShow);
+            totalCommittedUnits = totalCommittedUnits.add(committed);
 
             Long orderDetailId = d.getIdOrderDetail();
             details.add(new OrderDetailViewDTO(
-                    orderDetailId,                // orderDetailId
-                    matId,                               // materialId
-                    matName,                             // materialName
-                    d.getPriceUni(),                     // priceUni
-                    ordered,                             // quantityOrdered
-                    committedToShow,                     // quantityCommitted (ALLOCATED acotado)
-                    delivered,                           // quantityDelivered
-                    remaining                            // remainingUnits (pedidas - entregadas)
-
+                    orderDetailId,
+                    matId,
+                    matName,
+                    d.getPriceUni(),
+                    ordered,
+                    committed,
+                    delivered,
+                    remaining
             ));
         }
+
 
         boolean soldOut = (totalRemainingUnits.signum() == 0);
 

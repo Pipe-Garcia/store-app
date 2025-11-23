@@ -1,54 +1,81 @@
+<!-- /static/files-html/ver-entrega.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🚚 - Detalle de entrega</title>
+  <title>🚚 - Entrega | Detalle</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
-  <link rel="stylesheet" href="../files-css/entregas.css">
-  <link rel="stylesheet" href="../files-css/nav.css">
+  <link rel="stylesheet" href="../files-css/entregas.css"/>
+  <link rel="stylesheet" href="../files-css/nav.css"/>
 </head>
 <body>
-
-  <!-- NAV -->
   <div id="app-header"></div>
 
-  <div class="page-edit">
+  <main class="page">
     <div class="page-head">
-      <h1>Detalle de Entrega</h1>
-      <div class="actions">
-        <a id="btnEditar" class="btn primary" href="#">Editar</a>
+      <h1>Detalle de entrega</h1>
+      <div class="acciones">
+        <!-- Dejamos el botón de editar por si en el futuro lo reusamos -->
+        <a id="btnEditarEntrega" class="btn outline" style="display:none;">✏️ Editar</a>
         <a class="btn outline" href="entregas.html">Volver</a>
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:16px;">
-      <div class="view-delivery">
-        <div><strong>ID Entrega:</strong> <span id="id"></span></div>
-        <div><strong>Pedido:</strong> #<span id="orderId"></span></div>
-        <div><strong>Cliente:</strong> <span id="cliente"></span></div>
-        <div><strong>Fecha:</strong> <span id="fecha"></span></div>
-        <div><strong>Estado:</strong> <span id="estado" class="pill"></span></div>
-        <div><strong>Total:</strong> $ <span id="total">0,00</span></div>
-      </div>
-    </div>
+    <!-- Cabecera -->
+    <section class="card">
+      <div class="detail-grid">
+        <div><span class="muted">ID Entrega:</span> <strong id="deliveryId">—</strong></div>
+        <div><span class="muted">Fecha de entrega:</span> <strong id="fecha">—</strong></div>
+        <div><span class="muted">Cliente:</span> <strong id="cliente">—</strong></div>
 
-    <div class="tabla">
-      <div class="fila encabezado">
-        <div>Material</div>
-        <div>Cantidad Pedida</div>
-        <div>Cantidad Entregada</div>
-        <div>Precio</div>
-        <div>Subtotal</div>
-      </div>
-      <div id="items"></div>
-    </div>
-  </div>
+        <div>
+          <span class="muted">Venta asociada:</span>
+          <a id="ventaAsociada" class="link-venta">—</a>
+        </div>
+        <div>
+          <span class="muted">Presupuesto (referencia):</span>
+          <strong id="pedidoAsociado">—</strong>
+        </div>
 
-<script src="../files-js/core/api.js"></script>
-<script>window.api.setBaseUrl('http://localhost:8088');</script>
-<script src="../files-js/header.js"></script>
-<script src="../files-js/menu-guard.js"></script>
-<script src="../files-js/ver-entrega.js"></script>
+        <div>
+          <span class="muted">Estado de entrega:</span>
+          <span id="estadoEntrega" class="pill pending">PENDIENTE A ENTREGAR</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ítems -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Materiales de la entrega</h2>
+        <p class="muted" style="margin-top:4px;">
+          Se muestra la cantidad <strong>vendida</strong> (referencia), lo
+          <strong>entregado en esta entrega</strong> y lo
+          <strong>pendiente</strong> según esa referencia.
+        </p>
+      </div>
+
+      <div class="tabla" id="tablaItems">
+        <div class="fila encabezado">
+          <div>Material</div>
+          <div>Vendido (ref.)</div>
+          <div>Entregado</div>
+          <div>Pendiente</div>
+        </div>
+        <!-- filas dinámicas -->
+      </div>
+      <p id="msgItems" class="muted" style="margin-top:8px; display:none;"></p>
+    </section>
+  </main>
+
+  <!-- núcleo + base URL + header -->
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+  <script src="../files-js/header.js"></script>
+  <script src="../files-js/menu-guard.js"></script>
+
+  <!-- lógica -->
+  <script src="../files-js/ver-entrega.js"></script>
 </body>
 </html>

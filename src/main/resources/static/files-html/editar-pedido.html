@@ -1,31 +1,53 @@
+<!-- /static/files-html/editar-pedido.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>✏️ - Editar Pedido</title>
+  <title>✏️ - Editar presupuesto</title>
   <link rel="stylesheet" href="../files-css/style.css">
+  <link rel="stylesheet" href="../files-css/pedidos.css">
   <link rel="stylesheet" href="../files-css/nav.css">
 </head>
 <body>
   
   <div id="app-header"></div>
 
-  <main class="seccion-editar-pedido">
-    <h2>Editar Pedido</h2>
-    <form id="form-editar-pedido" class="formulario-pedido">
-      <label for="fecha-entrega">Fecha estimada de entrega:</label>
-      <input type="date" id="fecha-entrega" required />
+<main class="page form-page narrow seccion-editar-pedido">
+  <div class="page-head">
+    <h1>Editar presupuesto</h1>
+    <p class="muted" style="margin-top:4px; max-width:650px;">
+      Editar el presupuesto no mueve stock ni entregas. Si la venta ya fue creada
+      y cambian cantidades o precios reales, ajustá la venta, no el presupuesto.
+    </p>
+  </div>
 
-      <h3>Materiales</h3>
+  <section class="card">
+    <div class="detail-grid" style="margin-bottom:16px;">
+      <div><span class="muted">ID Presupuesto:</span> <strong id="id-pedido">—</strong></div>
+      <div><span class="muted">Cliente:</span> <strong id="cliente">—</strong></div>
+      <div><span class="muted">Fecha creación:</span> <strong id="fecha-creacion">—</strong></div>
+    </div>
+
+    <form id="form-editar-pedido" class="formulario-pedido">
+      <div class="grid">
+        <div>
+          <label for="fecha-entrega">Fecha estimada de entrega</label>
+          <input type="date" id="fecha-entrega" required />
+        </div>
+      </div>
+
+      <h3 class="subhead" style="margin-top:16px;">Materiales del presupuesto</h3>
       <div id="materiales-container"></div>
-      <div class="botones-crearPedidos">
-        <button type="button" onclick="agregarMaterial()">+ Agregar material</button>
-        <button type="submit">Guardar Cambios</button>
+
+      <div class="form-actions" style="margin-top:16px;">
+        <button type="button" class="btn outline" onclick="agregarMaterial()">+ Agregar material</button>
+        <button type="submit" class="btn primary">Guardar cambios</button>
+        <a class="btn outline" id="btnVolverDetalle">Volver al detalle</a>
       </div>
     </form>
-    <button onclick="window.location.href='../files-html/pedidos.html'">Cancelar</button>
-  </main>
+  </section>
+</main>
 
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>

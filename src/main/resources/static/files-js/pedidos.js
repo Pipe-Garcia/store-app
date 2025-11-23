@@ -1,285 +1,370 @@
-// files-js/pedidos.js
+// /static/files-js/pedidos.js
+// Listado de Presupuestos basado en /orders y /orders/search.
+// Sin reservas ni entregas: solo total, unidades VENDIDAS / PENDIENTES POR VENDER y estado por soldOut.
+
 const { authFetch, safeJson, getToken } = window.api;
 
-// ===== Endpoints (relativos a base 8088) =====
-const API_URL_ORDERS   = '/orders';
-const API_URL_CLIENTS  = '/clients';
-const API_URL_RESERVAS = '/stock-reservations/search?status=ACTIVE';
+const API_URL_ORDERS        = '/orders';
+const API_URL_ORDERS_SEARCH = '/orders/search';
+const API_URL_CLIENTS       = '/clients';
 
-// ===== Helpers =====
-const $ = (s, r=document)=>r.querySelector(s);
-const fmtCurrency = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
-const fmtShort    = (n)=> new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
-const fmtDate     = (s)=> s ? new Date(s).toLocaleDateString('es-AR') : '—';
-const parseISO    = (s)=> s? new Date(s+'T00:00:00') : null;
-const debounce    = (fn,d=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); }; };
+const $  = (s,r=document)=>r.querySelector(s);
+const fmtARS = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' });
+const norm = (s)=> (s||'').toString().toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
 
-let __toastRoot;
-function notify(msg, type='info'){
-  if(!__toastRoot){
-    __toastRoot=document.createElement('div');
-    Object.assign(__toastRoot.style,{position:'fixed',top:'66px',right:'16px',display:'flex',flexDirection:'column',gap:'8px',zIndex:9999});
-    document.body.appendChild(__toastRoot);
+// Fecha → dd/mm/aaaa
+const fmtDate = (s)=>{
+  if (!s) return '—';
+  const iso = (s.length > 10 ? s.slice(0,10) : s);
+  const d = new Date(iso + 'T00:00:00');
+  return isNaN(d) ? '—' : d.toLocaleDateString('es-AR');
+};
+
+function notify(msg,type='info'){
+  const div=document.createElement('div');
+  div.className=`notification ${type}`;
+  div.textContent=msg;
+  document.body.appendChild(div);
+  setTimeout(()=>div.remove(),3800);
+}
+function go(page){
+  const base = location.pathname.replace(/[^/]+$/, '');
+  location.href = `${base}${page}`;
+}
+
+// ===== getters tolerantes =====
+const getId        = o => o?.idOrders ?? o?.idOrder ?? o?.id ?? o?.orderId ?? null;
+const getClientId  = o => o?.clientId ?? o?.client?.idClient ?? o?.client?.id ?? null;
+const getClientName= o => (
+  o?.clientName ??
+  [o?.client?.name, o?.client?.surname].filter(Boolean).join(' ')
+).trim();
+const getDateISO   = o => (o?.dateCreate ?? o?.date ?? '').toString().slice(0,10) || '';
+const getTotal     = o => Number(o?.total ?? o?.totalArs ?? o?.grandTotal ?? 0);
+
+// Unidades vendidas desde este presupuesto (no entregas físicas)
+const getSoldUnits = o => Number(
+  o?.soldUnits ??
+  o?.deliveredUnits ??      // compat vieja
+  o?.unitsSold ??
+  o?.unitsDelivered ??
+  0
+);
+
+// Unidades que aún NO se vendieron de lo presupuestado
+const getRemainingUnits = o => Number(
+  o?.remainingUnits ??
+  o?.unitsRemaining ??
+  o?.pendingUnits ??
+  o?.pendingToSell ??
+  0
+);
+
+const isSoldOut    = o => !!(o?.soldOut);
+
+// Estado lógico desde soldOut
+function getEstadoCode(o){
+  return isSoldOut(o) ? 'SOLD_OUT' : 'PENDING';
+}
+function pill(code){
+  const txt = (code === 'SOLD_OUT')
+    ? 'SIN PENDIENTE (todo vendido)'
+    : 'CON PENDIENTE por vender';
+  const cls = (code === 'SOLD_OUT') ? 'completed' : 'pending';
+  return `<span class="pill ${cls}">${txt}</span>`;
+}
+
+// estado global
+let PRESUPUESTOS = [];
+let MAX_TOTAL = 1000;
+
+window.addEventListener('DOMContentLoaded', async ()=>{
+  if (!getToken()){ go('login.html'); return; }
+
+  // flash desde crear/editar
+  const flash = localStorage.getItem('flash');
+  if (flash){
+    try{
+      const {message,type} = JSON.parse(flash);
+      if (message) notify(message, type||'success');
+    }catch(_){}
+    localStorage.removeItem('flash');
   }
-  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; __toastRoot.appendChild(n);
-  setTimeout(()=>n.remove(),4000);
-}
-function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
 
-// --- DRILL-DOWN flags ---
-const DRILL = { onlyPending: false };
-function applyDrilldownPedidos(){
-  const qs = new URLSearchParams(location.search);
-  if ((qs.get('estado')||'').toLowerCase() === 'pendiente'){
-    DRILL.onlyPending = true;
-  }
-}
-
-// ===== Estado =====
-let ORDERS   = [];
-let RESV_SET = new Set();
-let CLIENTS  = [];
-let SL_ABS_MIN = 0;
-let SL_ABS_MAX = 0;
-
-function getListHost(){
-  return document.querySelector('#lista-pedidos') || document.querySelector('#contenedor-pedidos');
-}
-
-// ===== Bootstrap =====
-document.addEventListener('DOMContentLoaded', async ()=>{
-  if(!getToken()){ go('login.html'); return; }
-
-  applyDrilldownPedidos();
-
-  await Promise.all([loadClients(), loadOrdersAndReservations()]);
-  bindFilters();
-
-  // Delegación de acciones
-  const host = getListHost();
-  host?.addEventListener('click', (e)=>{
-    const btn = e.target.closest('button');
-    if(!btn) return;
-    const { view:vid, edit:eid, del:did } = btn.dataset;
-    if (vid) return go(`ver-pedido.html?id=${vid}`);
-    if (eid) return go(`editar-pedido.html?id=${eid}`);
-    if (did)  return eliminarPedido(Number(did));
-  });
+  await loadClients();
+  wireFilters();
+  await loadPresupuestos();
 });
 
-// ===== Carga =====
-async function loadClients(){
-  try{
-    const r=await authFetch(API_URL_CLIENTS);
-    CLIENTS = r.ok? await safeJson(r) : [];
-    const sel = $('#f_client');
-    if (!sel) return;
-    (CLIENTS||[]).forEach(c=>{
-      const txt = `${c.name||''} ${c.surname||''}`.trim();
-      const o=document.createElement('option'); 
-      o.value=txt; 
-      o.textContent=txt || `ID ${c.idClient||c.id}`;
-      sel.appendChild(o);
-    });
-  }catch(e){ console.warn(e); }
+// ===== Filtros =====
+function wireFilters(){
+  const debServer = debounce(loadPresupuestos, 250);
+  const debLocal  = debounce(applyFilters, 120);
+
+  $('#fOrderId')?.addEventListener('input',  ()=>{ debServer(); debLocal(); });
+  $('#fClient') ?.addEventListener('change', ()=>{ debServer(); debLocal(); });
+  $('#fFrom')   ?.addEventListener('change', ()=>{ debServer(); debLocal(); });
+  $('#fTo')     ?.addEventListener('change', ()=>{ debServer(); debLocal(); });
+  $('#fStatus') ?.addEventListener('change', debLocal);
+  $('#fText')   ?.addEventListener('input',  debLocal);
+
+  $('#btnClear')?.addEventListener('click', ()=>{
+    $('#fOrderId').value='';
+    $('#fClient').value='';
+    $('#fFrom').value='';
+    $('#fTo').value='';
+    $('#fStatus').value='';
+    $('#fText').value='';
+    setSliderBounds(MAX_TOTAL);
+    applyFilters();
+    loadPresupuestos();
+  });
+
+  $('#f_t_slider_min')?.addEventListener('input', onSliderChange);
+  $('#f_t_slider_max')?.addEventListener('input', onSliderChange);
 }
 
-async function loadOrdersAndReservations(){
+async function loadClients(){
   try{
-    const [resOrders, resResv] = await Promise.all([
-      authFetch(API_URL_ORDERS),
-      authFetch(API_URL_RESERVAS)
-    ]);
-    ORDERS = resOrders.ok? await safeJson(resOrders) : [];
-    const resvList = resResv.ok? await safeJson(resResv) : [];
-    RESV_SET = new Set((resvList||[]).filter(x=>x.orderId!=null).map(x=>x.orderId));
+    const r = await authFetch(API_URL_CLIENTS);
+    let data = r.ok ? await safeJson(r) : [];
+    if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
 
-    setupPriceSlider();
-    renderFiltered();
+    const sel = $('#fClient');
+    if (!sel) return;
+    sel.innerHTML = `<option value="">Todos</option>`;
+    (data||[])
+      .sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
+      .forEach(c=>{
+        const id = c.idClient ?? c.id;
+        const nm = `${c.name||''} ${c.surname||''}`.trim() || `#${id}`;
+        const opt=document.createElement('option');
+        opt.value = String(id ?? '');
+        opt.textContent = nm;
+        sel.appendChild(opt);
+      });
   }catch(e){
-    console.error(e);
-    notify('Error al cargar pedidos','error');
+    console.warn('clients',e);
   }
 }
 
-// ===== Slider de Total =====
-function setupPriceSlider(){
+function readFilterValues(){
+  const sel = $('#fClient');
+  return {
+    orderId : $('#fOrderId')?.value || '',
+    clientId: sel?.value || '',
+    clientNameSel: sel?.selectedOptions?.[0]?.textContent || '',
+    from    : $('#fFrom')?.value || '',
+    to      : $('#fTo')?.value || '',
+    status  : $('#fStatus')?.value || '',
+    text    : ($('#fText')?.value || '').trim().toLowerCase(),
+    minT    : Number($('#fMinTotal')?.value || 0),
+    maxT    : Number($('#fMaxTotal')?.value || MAX_TOTAL)
+  };
+}
+
+function buildSearchQuery(){
+  // Solo mandamos filtros “baratos” al back: fecha + cliente + ID
+  const { orderId, clientId, from, to } = readFilterValues();
+  const q = new URLSearchParams();
+  if (orderId) q.set('id', orderId);
+  if (clientId) q.set('clientId', clientId);
+  if (from) q.set('from', from);
+  if (to)   q.set('to',   to);
+  return q.toString();
+}
+
+async function loadPresupuestos(){
+  try{
+    const qs = buildSearchQuery();
+    const url = qs ? `${API_URL_ORDERS_SEARCH}?${qs}` : API_URL_ORDERS;
+
+    let data = [];
+    try{
+      const r = await authFetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      data = await safeJson(r);
+      if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
+      if (!Array.isArray(data)) data = [];
+    }catch{
+      const rAll = await authFetch(API_URL_ORDERS);
+      data = rAll.ok ? await safeJson(rAll) : [];
+      if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
+      if (!Array.isArray(data)) data = [];
+    }
+
+    PRESUPUESTOS = data;
+
+    const allTotals = PRESUPUESTOS.map(getTotal);
+    const max = Math.max(1000, ...allTotals, 0);
+    setSliderBounds(max);
+
+    applyFilters();
+  }catch(e){
+    console.error('orders',e);
+    PRESUPUESTOS = [];
+    setSliderBounds(1000);
+    applyFilters();
+  }
+}
+
+// ===== Slider por total =====
+function setSliderBounds(max){
+  MAX_TOTAL = Math.max(1000, Number(max||0));
   const sMin = $('#f_t_slider_min');
   const sMax = $('#f_t_slider_max');
-  if (!sMin || !sMax) return;
+  const vMin = $('#fMinTotal');
+  const vMax = $('#fMaxTotal');
+  if (!sMin || !sMax || !vMin || !vMax) return;
 
-  const maxTotal = Math.max(0, ...ORDERS.map(o=>Number(o.total||0)));
-  SL_ABS_MIN = 0;
-  SL_ABS_MAX = Math.max(1000, Math.ceil(maxTotal/1000)*1000);
+  const STEPS = 100;
+  sMin.min = 0; sMax.min = 0; sMin.max = STEPS; sMax.max = STEPS; sMin.step = 1; sMax.step = 1;
 
-  [sMin,sMax].forEach(s=>{
-    s.min = String(SL_ABS_MIN);
-    s.max = String(SL_ABS_MAX);
-    s.step = '1000';
-  });
+  sMin.dataset.stepmap = String(MAX_TOTAL / STEPS);
+  sMax.dataset.stepmap = String(MAX_TOTAL / STEPS);
 
-  sMin.value = SL_ABS_MIN;
-  sMax.value = SL_ABS_MAX;
-  $('#f_t_min') && ($('#f_t_min').value = SL_ABS_MIN);
-  $('#f_t_max') && ($('#f_t_max').value = SL_ABS_MAX);
+  sMin.value = 0; sMax.value = STEPS;
+  vMin.value = 0; vMax.value = MAX_TOTAL;
 
-  $('#priceFrom') && ($('#priceFrom').textContent = `$ ${fmtShort(SL_ABS_MIN)}`);
-  $('#priceTo')   && ($('#priceTo').textContent   = `$ ${fmtShort(SL_ABS_MAX)}`);
   paintSlider();
-
-  const onSlide = ()=>{
-    let a = Number(sMin.value);
-    let b = Number(sMax.value);
-    if (a > b) [a,b] = [b,a];
-    sMin.value=a; sMax.value=b;
-    $('#f_t_min') && ($('#f_t_min').value=a);
-    $('#f_t_max') && ($('#f_t_max').value=b);
-    $('#priceFrom') && ($('#priceFrom').textContent = `$ ${fmtShort(a)}`);
-    $('#priceTo')   && ($('#priceTo').textContent   = `$ ${fmtShort(b)}`);
-    paintSlider();
-  };
-  sMin.addEventListener('input', debounce(()=>{ onSlide(); renderFiltered(); }, 80));
-  sMax.addEventListener('input', debounce(()=>{ onSlide(); renderFiltered(); }, 80));
 }
-
+function sliderToAmount(sliderEl){
+  const step = Number(sliderEl.dataset.stepmap || (MAX_TOTAL/100));
+  return Math.round(Number(sliderEl.value) * step);
+}
 function paintSlider(){
-  const host = $('#priceRange'); if(!host) return;
   const sMin = $('#f_t_slider_min'), sMax = $('#f_t_slider_max');
-  const aV = Number(sMin?.value ?? SL_ABS_MIN);
-  const bV = Number(sMax?.value ?? SL_ABS_MAX);
-  const a = ((Math.min(aV,bV) - SL_ABS_MIN) / (SL_ABS_MAX - SL_ABS_MIN)) * 100;
-  const b = ((Math.max(aV,bV) - SL_ABS_MIN) / (SL_ABS_MAX - SL_ABS_MIN)) * 100;
-  host.style.setProperty('--a', `${a}%`);
-  host.style.setProperty('--b', `${b}%`);
+  const vMin = $('#fMinTotal'),     vMax = $('#fMaxTotal');
+  if (!sMin || !sMax || !vMin || !vMax) return;
+
+  if (+sMin.value > +sMax.value) [sMin.value, sMax.value] = [sMax.value, sMin.value];
+  vMin.value = sliderToAmount(sMin);
+  vMax.value = sliderToAmount(sMax);
+
+  const a = (+sMin.value / +sMin.max) * 100, b = (+sMax.value / +sMax.max) * 100;
+  const pr = $('#priceRange'); 
+  if (pr){
+    pr.style.setProperty('--a',`${a}%`);
+    pr.style.setProperty('--b',`${b}%`);
+  }
+
+  $('#priceFrom').textContent = fmtARS.format(Number(vMin.value||0));
+  $('#priceTo').textContent   = fmtARS.format(Number(vMax.value||0));
 }
+function onSliderChange(){ paintSlider(); applyFilters(); }
 
-// ===== Filtros =====
-function bindFilters(){
-  const deb = debounce(renderFiltered, 220);
-  ['f_orderId','f_client','f_c_from','f_c_to','f_d_from','f_d_to','f_status']
-    .forEach(id => { const el=$('#'+id); if(!el) return; el.addEventListener(id==='f_client'?'change':'input', deb); });
+// ===== Aplicar filtros locales + render =====
+function applyFilters(){
+  const { orderId, clientId, clientNameSel, from, to, status, text, minT, maxT } = readFilterValues();
+  let list = PRESUPUESTOS.slice();
 
-  $('#btnLimpiar')?.addEventListener('click', ()=>{
-    ['f_orderId','f_client','f_c_from','f_c_to','f_d_from','f_d_to','f_status']
-      .forEach(id=>{ const el=$('#'+id); if(el) el.value=''; });
+  if (orderId){
+    list = list.filter(o => String(getId(o) ?? '') === String(orderId));
+  }
 
-    if ($('#f_t_slider_min') && $('#f_t_slider_max')){
-      $('#f_t_slider_min').value = SL_ABS_MIN;
-      $('#f_t_slider_max').value = SL_ABS_MAX;
-      $('#f_t_min') && ($('#f_t_min').value = SL_ABS_MIN);
-      $('#f_t_max') && ($('#f_t_max').value = SL_ABS_MAX);
-      $('#priceFrom') && ($('#priceFrom').textContent = `$ ${fmtShort(SL_ABS_MIN)}`);
-      $('#priceTo')   && ($('#priceTo').textContent   = `$ ${fmtShort(SL_ABS_MAX)}`);
-      paintSlider();
-    }
-    renderFiltered();
-  });
-}
+  if (clientId){
+    const targetName = norm(clientNameSel);
+    list = list.filter(o =>
+      String(getClientId(o) ?? '') === String(clientId) ||
+      norm(getClientName(o)) === targetName
+    );
+  }
 
-function renderFiltered(){
-  const idEq    = Number($('#f_orderId')?.value||0) || null;
-  const client  = ($('#f_client')?.value||'').trim().toLowerCase();
-  const cFrom   = parseISO($('#f_c_from')?.value);
-  const cTo     = parseISO($('#f_c_to')?.value);
-  const dFrom   = parseISO($('#f_d_from')?.value);
-  const dTo     = parseISO($('#f_d_to')?.value);
-  const tMin    = Number($('#f_t_min')?.value ?? SL_ABS_MIN);
-  const tMax    = Number($('#f_t_max')?.value ?? SL_ABS_MAX);
-  const status  = $('#f_status')?.value || ''; // '', 'pend_con', 'pend_sin', 'vendido'
+  if (from) list = list.filter(o => (getDateISO(o) || '0000-00-00') >= from);
+  if (to)   list = list.filter(o => (getDateISO(o) || '9999-12-31') <= to);
 
-  const filtered = (ORDERS||[]).filter(o=>{
-    if (idEq && o.idOrders !== idEq) return false;
+  if (status){
+    list = list.filter(o => getEstadoCode(o) === status);
+  }
 
-    const name = String(o.clientName||'').toLowerCase();
-    if (client && name !== client) return false;
+  if (text){
+    list = list.filter(o=>{
+      const name = getClientName(o).toLowerCase();
+      const idStr= String(getId(o)||'');
+      return name.includes(text) || idStr.includes(text);
+    });
+  }
 
-    const cDate = parseISO(o.dateCreate?.slice(0,10));
-    const dDate = parseISO(o.dateDelivery?.slice(0,10));
-    if (cFrom && cDate && cDate < cFrom) return false;
-    if (cTo   && cDate && cDate > cTo)   return false;
-    if (dFrom && dDate && dDate < dFrom) return false;
-    if (dTo   && dDate && dDate > dTo)   return false;
-
-    const total = Number(o.total||0);
-    if (total < tMin || total > tMax) return false;
-
-    const hasResv = RESV_SET.has(o.idOrders);
-    const isSold  = o.soldOut === true;
-
-    if (status === 'vendido'   && !isSold)              return false;
-    if (status === 'pend_con'  && (isSold || !hasResv)) return false;
-    if (status === 'pend_sin'  && (isSold ||  hasResv)) return false;
-
-    if (DRILL.onlyPending && isSold) return false;
-
-    return true;
+  list = list.filter(o=>{
+    const tot = getTotal(o);
+    return tot >= minT && tot <= maxT;
   });
 
-  renderTable(filtered);
+  // ordenar: fecha desc, luego id desc
+  list.sort((a,b)=>{
+    const da = getDateISO(a), db = getDateISO(b);
+    if (da !== db) return db.localeCompare(da);
+    return (getId(b)||0) - (getId(a)||0);
+  });
+
+  render(list);
 }
 
-// ===== Render =====
-function renderTable(lista){
-  const host = getListHost();
-  if(!host) return;
-  host.innerHTML = `
-    <div class="fila encabezado">
-      <div>Pedido</div>
-      <div>Cliente</div>
-      <div>Fecha creación</div>
-      <div>Fecha entrega</div>
-      <div>Total</div>
-      <div class="col-estado">Estado</div>
-      <div>Acciones</div>
-    </div>
-  `;
+function render(lista){
+  const cont = $('#lista-presupuestos');
+  if (!cont) return;
 
-  (lista||[]).forEach(p=>{
+  // borrar filas viejas (no la cabecera)
+  cont.querySelectorAll('.fila.row').forEach(n=>n.remove());
+
+  if (!lista.length){
     const row = document.createElement('div');
-    row.className='fila';
-    row.setAttribute('data-order', String(p.idOrders));
-    const hasRes = RESV_SET.has(p.idOrders);
+    row.className='fila row';
+    row.innerHTML = `<div style="grid-column:1/-1;color:#666;">Sin resultados.</div>`;
+    cont.appendChild(row);
+    return;
+  }
 
-    let soldTag;
-    if (p.soldOut === true) {
-      soldTag = `<span class="tag vendido" title="Vendido (sin pendiente)">✔️ Vendido</span>`;
-    } else if (hasRes) {
-      soldTag = `<span class="tag pendiente" title="Pendiente con reserva">⏳ Pendiente (con reserva)</span>`;
-    } else {
-      soldTag = `<span class="tag pendiente" title="Pendiente sin reserva">⏳ Pendiente (sin reserva)</span>`;
-    }
+  for (const o of lista){
+    const id    = getId(o);
+    const fecha = fmtDate(getDateISO(o));
+    const cli   = getClientName(o) || '—';
+    const total = getTotal(o);
+    const est   = getEstadoCode(o);
 
+    const row = document.createElement('div');
+    row.className='fila row';
     row.innerHTML = `
-      <div>${p.idOrders ?? '-'}</div>
-      <div>${p.clientName ?? '-'}</div>
-      <div>${fmtDate(p.dateCreate)}</div>
-      <div>${fmtDate(p.dateDelivery)}</div>
-      <div>${fmtCurrency.format(Number(p.total||0))}</div>
-      <div class="col-estado">
-        ${soldTag}
-        ${hasRes ? `<a class="tag reservado" href="../files-html/reservas.html?orderId=${p.idOrders}">🔖 Reservas</a>` : ''}
+      <div>${fecha}</div>
+      <div>${cli}</div>
+      <div>${fmtARS.format(total)}</div>
+      <div>${pill(est)}</div>
+      <div class="acciones">
+        <a class="btn outline" href="ver-pedido.html?id=${id}">👁️ Ver</a>
+        <a class="btn outline" href="editar-pedido.html?id=${id}">✏️ Editar</a>
+        <button class="btn danger" data-del="${id}">🗑️ Eliminar</button>
       </div>
-      <div class="acciones col-acciones">
-        <button class="btn outline" data-view="${p.idOrders}">👁️ Ver</button>
-        <button class="btn outline" data-edit="${p.idOrders}">✏️ Editar</button>
-        <button class="btn danger"  data-del="${p.idOrders}">🗑️ Eliminar</button>
-      </div>
-
     `;
-    host.appendChild(row);
-  });
+    cont.appendChild(row);
+  }
+
+
+  cont.onclick = (ev)=>{
+    const btn = ev.target.closest('button[data-del]');
+    if (!btn) return;
+    const id = Number(btn.dataset.del);
+    borrarPresupuesto(id);
+  };
 }
 
-// ===== Acciones =====
-async function eliminarPedido(id){
-  if(!confirm('¿Eliminar pedido?')) return;
+async function borrarPresupuesto(id){
+  if (!confirm(`¿Eliminar definitivamente el presupuesto #${id}?`)) return;
   try{
-    const r=await authFetch(`${API_URL_ORDERS}/${id}`,{method:'DELETE'});
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    notify('🗑️ Pedido eliminado','success');
-    await loadOrdersAndReservations();
+    const r = await authFetch(`${API_URL_ORDERS}/${id}`, { method:'DELETE' });
+    if (!r.ok){
+      if (r.status===403){
+        notify('No tenés permisos para eliminar presupuestos (ROLE_OWNER requerido).','error');
+        return;
+      }
+      throw new Error(`HTTP ${r.status}`);
+    }
+    PRESUPUESTOS = PRESUPUESTOS.filter(o => getId(o) !== id);
+    notify('Presupuesto eliminado.','success');
+    applyFilters();
   }catch(e){
     console.error(e);
-    notify('No se pudo eliminar','error');
+    notify('No se pudo eliminar el presupuesto','error');
   }
 }

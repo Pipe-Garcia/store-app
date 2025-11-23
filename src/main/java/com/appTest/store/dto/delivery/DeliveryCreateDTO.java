@@ -7,21 +7,31 @@ import lombok.Setter;
 import java.io.Serializable;
 import java.time.LocalDate;
 
-@Getter @Setter
+@Getter
+@Setter
 public class DeliveryCreateDTO implements Serializable {
 
     @NotNull(message = "Delivery date is required")
     private LocalDate deliveryDate;
 
-    @NotNull(message = "Order ID is required")
+    /**
+     * Opcional: si no viene, el servicio intenta derivarlo desde la venta
+     * (sale.getOrders()). Se mantiene por compatibilidad y trazabilidad,
+     * pero el flujo principal ahora es por saleId.
+     */
     private Long ordersId;
 
-    // NUEVO 👇 (opcional en el payload)
+    /**
+     * ✅ Nuevo eje del modelo: la entrega nace desde la VENTA.
+     */
+    @NotNull(message = "Sale ID is required")
     private Long saleId;
 
-    private String status; // opcional, si se envía lo ignoramos y calculamos
+    /**
+     * Campo opcional, se ignora en create (el servicio recalcula).
+     */
+    private String status;
 
-    @NotNull
+    @NotNull(message = "At least one delivery item is required")
     private java.util.List<DeliveryItemCreateDTO> items;
 }
-

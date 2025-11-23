@@ -1,3 +1,4 @@
+// src/main/java/com/appTest/store/models/Sale.java
 package com.appTest.store.models;
 
 import jakarta.persistence.*;
@@ -9,13 +10,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-
 @Getter @Setter
 public class Sale {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idSale;
+
     private LocalDate dateSale;
 
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -28,9 +29,9 @@ public class Sale {
     @JoinColumn(name = "order_id", referencedColumnName = "idOrders")
     private Orders orders;
 
-    @ManyToOne
-    @JoinColumn(name = "delivery_id")
-    private Delivery delivery;
+    // 🔴 nueva relación 1 (venta) -> N (entregas)
+    @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Delivery> deliveries = new ArrayList<>();
 
     @ManyToOne
     @JoinColumn(name = "client_id")
@@ -38,10 +39,9 @@ public class Sale {
 
     public Sale () {}
 
-    public Sale(Client client, LocalDate dateSale, Orders orders, Delivery delivery) {
+    public Sale(Client client, LocalDate dateSale, Orders orders) {
         this.client = client;
         this.dateSale = dateSale;
         this.orders = orders;
-        this.delivery = delivery;
     }
 }

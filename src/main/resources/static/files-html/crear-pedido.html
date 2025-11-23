@@ -1,75 +1,59 @@
+<!-- /static/files-html/crear-pedido.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>📝 Crear pedido</title>
+  <title>📄 - Nuevo presupuesto</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
-  <link rel="stylesheet" href="../files-css/dashboard.css"/>
   <link rel="stylesheet" href="../files-css/pedidos.css"/>
-  <link rel="stylesheet" href="../files-css/crear-pedido.css">
+  <link rel="stylesheet" href="../files-css/crear-pedido.css"/>
   <link rel="stylesheet" href="../files-css/nav.css"/>
 </head>
 <body>
+
   <div id="app-header"></div>
 
-<main class="page">
-  <div class="page-head" style="margin-left: 280px;"><h1>Crear pedido</h1></div>
-
-  <section class="order-card">
-    <div class="order-grid">
-      <div>
-        <label class="lbl" for="cliente">Cliente</label>
-        <select id="cliente" class="in">
-          <option value="">Seleccionar cliente</option>
-        </select>
-      </div>
-      <div>
-        <label class="lbl" for="fechaEntrega">Fecha estimada de entrega</label>
-        <input id="fechaEntrega" type="date" class="in"/>
-      </div>
+  <main class="page form-page narrow seccion-crear-pedido">
+    <div class="page-head">
+      <h1>Nuevo presupuesto</h1>
+      <p class="muted" style="margin-top:4px; max-width:600px;">
+        Este presupuesto es solo una cotización: no reserva stock ni genera entregas.
+        El stock se descuenta recién al crear la venta.
+      </p>
     </div>
 
-    <div class="sep"></div>
+    <section class="card">
+      <form id="form-crear-pedido" class="formulario-pedido">
+        <div class="grid">
+          <div>
+            <label for="cliente">Cliente</label>
+            <select id="cliente" required>
+              <option value="">Seleccionar cliente</option>
+            </select>
+          </div>
+          <div>
+            <label for="fecha-entrega">Fecha estimada de entrega</label>
+            <input type="date" id="fecha-entrega" required />
+          </div>
+        </div>
 
-    <h3>Materiales</h3>
-    <div class="items">
-      <div class="fila head">
-        <div>Material</div>
-        <div>Depósito</div>
-        <div>Cant.</div>
-        <div>Reservar</div>
-        <div>Quitar</div>
-      </div>
+        <h3 class="subhead" style="margin-top:16px;">Materiales del presupuesto</h3>
+        <div id="materiales-container"></div>
 
-      <!-- tu JS sigue escribiendo aquí las filas -->
-      <div id="items"></div>
-    </div>
-
-    <div class="hint" style="margin-top:.25rem;">
-      Si marcás <strong>Reservar</strong>, al guardar se crea la reserva de stock para ese renglón.
-    </div>
-
-    <div class="toolbar">
-      <button id="btnAdd" class="btn blue">＋ Agregar material</button>
-
-      <label class="chk-all">
-        <input type="checkbox" id="chkReservarTodos">
-        <span>Reservar stock de todos los renglones al guardar</span>
-      </label>
-    </div>
-
-    <div class="order-actions">
-      <button id="btnCancelar" class="btn outline">Cancelar</button>
-      <button id="btnGuardar" class="btn primary">Guardar pedido</button>
-    </div>
-  </section>
-</main>
+        <div class="botones-crearPedidos form-actions" style="margin-top:16px;">
+          <button type="button" class="btn outline" onclick="agregarMaterial()">+ Agregar material</button>
+          <button type="submit" class="btn primary">Guardar presupuesto</button>
+          <a class="btn" href="../files-html/pedidos.html">Cancelar</a>
+        </div>
+      </form>
+    </section>
+  </main>
 
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
   <script src="../files-js/menu-guard.js"></script>
-  <script type="module" src="../files-js/crear-pedido.js"></script>
+  <script src="../files-js/crear-pedido.js"></script>
 </body>
 </html>

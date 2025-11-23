@@ -1,10 +1,12 @@
+<!-- /static/files-html/ver-pedido.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📖 - Detalle del Pedido</title>
+  <title>📄 - Presupuesto | Detalle</title>
   <link rel="stylesheet" href="../files-css/style.css">
+  <link rel="stylesheet" href="../files-css/pedidos.css">
   <link rel="stylesheet" href="../files-css/ver-pedido.css">
   <link rel="stylesheet" href="../files-css/nav.css">
 </head>
@@ -12,23 +14,56 @@
   
   <div id="app-header"></div>
 
-  <main class="seccion-detalle-pedido">
-    <h2>Detalle del Pedido</h2>
-    <div id="detalle-pedido" class="info-pedido">
-      <p><strong>ID Pedido:</strong> <span id="id-pedido">-</span></p>
-      <p><strong>Cliente:</strong> <span id="cliente">-</span></p>
-      <p><strong>Fecha Creación:</strong> <span id="fecha-creacion">-</span></p>
-      <p><strong>Fecha Entrega:</strong> <span id="fecha-entrega">-</span></p>
-      <p><strong>Total:</strong> <span id="total">$-</span></p>
-      <p><strong>Entregadas (unid):</strong> <span id="entregadas">-</span></p>
-      <p><strong>Comprometidas (unid):</strong> <span id="comprometidas">-</span></p>
-      <p><strong>Pendientes (unid):</strong> <span id="pendiente">-</span></p>
-      <p><strong>Estado:</strong> <span id="estado">-</span></p>
-      <h3>Materiales</h3>
-      <ul id="lista-materiales"></ul>
+<main class="page">
+  <div class="page-head">
+    <h1>Detalle de presupuesto</h1>
+    <div class="actions">
+      <button id="btnCrearVenta" class="btn primary">Crear venta</button>
+      <a id="btnEditar" class="btn outline">✏️ Editar</a>
+      <a class="btn outline" href="pedidos.html">Volver</a>
     </div>
-    <button onclick="window.location.href='../files-html/pedidos.html'">Volver</button>
-  </main>
+  </div>
+
+  <!-- Cabecera -->
+  <section class="card">
+    <div class="detail-grid">
+      <div><span class="muted">ID Presupuesto:</span> <strong id="id-pedido">—</strong></div>
+      <div><span class="muted">Cliente:</span> <strong id="cliente">—</strong></div>
+      <div><span class="muted">Fecha creación:</span> <strong id="fecha-creacion">—</strong></div>
+      <div><span class="muted">Fecha estimada entrega:</span> <strong id="fecha-entrega">—</strong></div>
+      <div><span class="muted">Total presupuesto:</span> <strong id="total">$ 0,00</strong></div>
+      <div>
+        <span class="muted">Estado:</span>
+        <span id="estado" class="pill pending">—</span>
+      </div>
+      <div><span class="muted">Vendidas (unid):</span> <strong id="vendidas">0</strong></div>
+      <div><span class="muted">Pendientes por vender (unid):</span> <strong id="pendiente">0</strong></div>
+    </div>
+    <p class="muted" style="margin-top:8px; max-width:650px;">
+      Este presupuesto es solo una cotización: no reserva stock ni genera entregas.
+      El stock se descuenta recién al crear la venta.
+    </p>
+  </section>
+
+  <!-- Materiales -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Materiales del presupuesto</h2>
+    </div>
+    <div class="tabla" id="tablaMateriales">
+      <div class="fila encabezado">
+        <div>Material</div>
+        <div>Presupuestado</div>
+        <div>Vendido desde este presupuesto</div>
+        <div>Pendiente por vender</div>
+        <div>Precio unitario</div>
+        <div>Subtotal</div>
+      </div>
+      <!-- filas dinámicas -->
+    </div>
+    <p id="msgMateriales" class="muted" style="margin-top:8px; display:none;"></p>
+  </section>
+</main>
 
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>

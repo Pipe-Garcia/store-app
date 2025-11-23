@@ -13,6 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.appTest.store.models.enums.DeliveryStatus;
+import org.springframework.format.annotation.DateTimeFormat;
+
 
 import java.time.LocalDate;
 import java.util.List;
@@ -52,17 +55,38 @@ public class DeliveryController {
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<DeliveryDTO>> search(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) Long orderId,
+            @RequestParam(required = false) Long saleId,
             @RequestParam(required = false) Long clientId,
-            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate to
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
-        // Mantengo el comportamiento actual (si querés, luego lo cambiamos a repo.search)
-        List<Delivery> list = servDelivery.getAllDeliveries();
-        return ResponseEntity.ok(
-                list.stream().map(servDelivery::convertDeliveryToDto).collect(java.util.stream.Collectors.toList())
-        );
+        // Parsear el enum de manera tolerante
+        DeliveryStatus st = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                st = DeliveryStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                // Si mandan algo raro en status, lo ignoramos y buscamos sin filtro de estado
+            }
+        }
+
+        List<Delivery> list = servDelivery.search(st, saleId, clientId, from, to);
+
+        List<DeliveryDTO> dtoList = list.stream()
+                .map(servDelivery::convertDeliveryToDto)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(dtoList);
     }
+
+    @GetMapping("/by-sale/{saleId}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    public ResponseEntity<List<DeliveryDTO>> getBySale(@PathVariable Long saleId) {
+        return ResponseEntity.ok(servDelivery.getDeliveriesBySale(saleId));
+    }
+
 
     // ===== NUEVO: entregas por pedido (compacto) =====
     @GetMapping("/by-order/{orderId}")

@@ -28,14 +28,17 @@
         <select id="cliente" required></select>
       </div>
       <div>
-        <label for="orderSelect">Pedido (opcional)</label>
+        <label for="orderSelect">Presupuesto (opcional)</label>
         <div style="display:flex; gap:8px; align-items:center;">
           <select id="orderSelect">
             <option value="">—</option>
           </select>
           <button id="btnClearOrder" class="btn outline" style="display:none;">Limpiar</button>
         </div>
-        <small class="hint">Solo se listan pedidos con saldo pendiente. Si seleccionás uno, se precargan sus renglones y se bloquea el cliente.</small>
+        <small class="hint">
+          Solo se listan presupuestos con unidades pendientes. Si seleccionás uno,
+          se precargan sus renglones y se bloquea el cliente.
+        </small>
       </div>
     </div>
 

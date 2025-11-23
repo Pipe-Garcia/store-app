@@ -1,204 +1,202 @@
 // /static/files-js/crear-pedido.js
+// Alta de Presupuesto basado en /orders.
+// El presupuesto es SOLO una cotización: no reserva stock ni genera entregas.
+// Envía clientId, dateDelivery y detalles. Si el backend ignora "details",
+// hace fallback creando renglones vía /order-details.
+
 const { authFetch, safeJson, getToken } = window.api;
 
-const API_URL_CLIENTS       = '/clients';
-const API_URL_MATERIALS     = '/materials';
-const API_URL_STOCKS_BY_MAT = (id)=> `/stocks/by-material/${id}`;
 const API_URL_ORDERS        = '/orders';
-const API_URL_RES_BULK      = '/stock-reservations/bulk';
+const API_URL_CLIENTS       = '/clients';
+const API_URL_MATERIALES    = '/materials';
+const API_URL_ORDER_DETAILS = '/order-details';
 
-const $  = (s,r=document)=>r.querySelector(s);
+const $ = (s, r=document) => r.querySelector(s);
 
-function go(page){ const base=location.pathname.replace(/[^/]+$/,''); location.href=`${base}${page}`; }
-function notify(msg,type='info'){
-  let root=document.querySelector('#toasts');
-  if(!root){ root=document.createElement('div'); root.id='toasts'; root.style.cssText='position:fixed;top:76px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:9999'; document.body.appendChild(root); }
-  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; root.appendChild(n);
-  setTimeout(()=>n.remove(),4200);
+function go(page){
+  const base = location.pathname.replace(/[^/]+$/, '');
+  location.href = `${base}${page}`;
 }
 
-let materiales = [];
-let clientes   = [];
-
-window.addEventListener('DOMContentLoaded', async ()=>{
-  if(!getToken()){ go('login.html'); return; }
-
-  await Promise.all([cargarClientes(), cargarMateriales()]);
-  // fecha default: hoy + 7
-  const d=new Date(); d.setDate(d.getDate()+7);
-  $('#fechaEntrega').value = new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
-
-  $('#btnAdd').addEventListener('click', addRow);
-  $('#btnCancelar').addEventListener('click', ()=> go('pedidos.html'));
-  $('#btnGuardar').addEventListener('click', guardar);
-  $('#chkReservarTodos').addEventListener('change', toggleMasterReservas);
-
-  addRow(); // fila inicial
-});
-
-/* =================== Carga catálogos =================== */
-async function cargarClientes(){
-  const r=await authFetch(API_URL_CLIENTS);
-  clientes = r.ok ? await safeJson(r) : [];
-  const sel = $('#cliente');
-  sel.innerHTML = `<option value="">Seleccionar cliente</option>` +
-    (clientes||[]).map(c=>`<option value="${c.idClient||c.id}">${(c.name||'')+' '+(c.surname||'')}</option>`).join('');
+function notify(message, type='info'){
+  const div = document.createElement('div');
+  div.className = `notification ${type}`;
+  div.textContent = message;
+  document.body.appendChild(div);
+  setTimeout(()=> div.remove(), 3800);
 }
 
-async function cargarMateriales(){
-  const r=await authFetch(API_URL_MATERIALS);
-  materiales = r.ok ? await safeJson(r) : [];
-}
+let listaMateriales = [];
 
-/* =================== Filas =================== */
-function newRowEl(){
-  const row = document.createElement('div');
-  row.className = 'fila';
-  row.innerHTML = `
-    <select class="in sel-mat">
-      <option value="">Seleccionar material</option>
-    </select>
+window.addEventListener('DOMContentLoaded', init);
 
-    <select class="in sel-wh" disabled title="Elegí material primero">
-      <option value="">Depósito</option>
-    </select>
-
-    <input type="number" min="1" step="1" class="in in-qty" value="1">
-
-    <div class="cell-center">
-      <input type="checkbox" class="chk-res" title="Reservar">
-    </div>
-
-    <div class="cell-right">
-      <button class="btn icon trash btn-del" title="Quitar">🗑️</button>
-    </div>
-  `;
-  return row;
-}
-
-async function addRow(e){
-  if(e) e.preventDefault();
-  const row = newRowEl();
-  $('#items').appendChild(row);
-
-  const selMat = row.querySelector('.sel-mat');
-  selMat.insertAdjacentHTML('beforeend',
-    (materiales||[]).map(m=>`<option value="${m.idMaterial}">${m.name}</option>`).join('')
-  );
-
-  selMat.addEventListener('change', ()=> onMaterialChange(row));
-  row.querySelector('.btn-del').addEventListener('click', ()=>{ row.remove(); syncMasterCheckbox(); });
-  row.querySelector('.chk-res').addEventListener('change', syncMasterCheckbox);
-}
-
-async function onMaterialChange(row){
-  const matId = Number(row.querySelector('.sel-mat').value||0);
-  const selWh = row.querySelector('.sel-wh');
-  const chk   = row.querySelector('.chk-res');
-
-  selWh.disabled = true;
-  selWh.innerHTML = `<option value="">Depósito</option>`;
-  chk.checked = false;
-  syncMasterCheckbox();
-
-  if(!matId) return;
+async function init(){
+  if (!getToken()){
+    notify('Debes iniciar sesión para crear un presupuesto','error');
+    go('login.html');
+    return;
+  }
 
   try{
-    const r = await authFetch(API_URL_STOCKS_BY_MAT(matId));
-    const list = r.ok ? await safeJson(r) : [];
-    if(!Array.isArray(list) || list.length===0){
-      selWh.innerHTML = `<option value="">(sin stock)</option>`;
-      return;
-    }
-    selWh.innerHTML = `<option value="">Seleccionar depósito</option>` + list.map(s=>{
-      const free = Number(s.quantityAvailable||0);
-      const dis  = free<=0 ? 'disabled' : '';
-      return `<option value="${s.warehouseId}" data-free="${free}" ${dis}>
-        ${s.warehouseName} — disp: ${free}
-      </option>`;
-    }).join('');
-    selWh.disabled = false;
+    const [rCli, rMat] = await Promise.all([
+      authFetch(API_URL_CLIENTS),
+      authFetch(API_URL_MATERIALES)
+    ]);
+
+    const clientes = rCli.ok ? await safeJson(rCli) : [];
+    listaMateriales = rMat.ok ? await safeJson(rMat) : [];
+
+    renderClientes(clientes);
+    setDefaultFechaEntrega();
+
+    // Primera fila de materiales
+    agregarMaterial();
+
+    const form = $('#form-crear-pedido');
+    if (form) form.addEventListener('submit', guardarPresupuesto);
+
+    // para el botón inline onclick
+    window.agregarMaterial = agregarMaterial;
   }catch(e){
     console.error(e);
-    selWh.innerHTML = `<option value="">(error)</option>`;
+    notify('Error al preparar el formulario de presupuesto','error');
   }
 }
 
-/* ========= Maestro “Reservar todos” <-> filas ========= */
-function toggleMasterReservas(){
-   const master = $('#chkReservarTodos').checked;
-   document.querySelectorAll('#items .fila .chk-res').forEach(chk=>{
-     chk.checked = master;
-   });
-   syncMasterCheckbox();
-}
-function syncMasterCheckbox(){
-   const chks = Array.from(document.querySelectorAll('#items .fila .chk-res'));
-   $('#chkReservarTodos').checked = chks.length>0 && chks.every(c=>c.checked);
+function setDefaultFechaEntrega(){
+  const el = $('#fecha-entrega');
+  if (!el) return;
+  if (el.value) return;
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth()+1).padStart(2,'0');
+  const dd   = String(d.getDate()).padStart(2,'0');
+  el.value = `${yyyy}-${mm}-${dd}`;
 }
 
-/* =================== Guardar =================== */
-async function guardar(e){
-  e.preventDefault();
-  const clientId = Number($('#cliente').value||0);
-  const dateDelivery = $('#fechaEntrega').value;
+function renderClientes(clientes){
+  const sel = $('#cliente');
+  if (!sel) return;
 
-  if(!clientId){ notify('Seleccioná un cliente','error'); return; }
-  if(!dateDelivery){ notify('Ingresá una fecha de entrega','error'); return; }
+  sel.innerHTML = `<option value="">Seleccionar cliente</option>`;
+  (clientes || [])
+    .sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
+    .forEach(c=>{
+      const id = c.idClient ?? c.id;
+      const nombre = `${c.name||''} ${c.surname||''}`.trim() || `#${id}`;
+      const opt = document.createElement('option');
+      opt.value = String(id || '');
+      opt.textContent = nombre;
+      sel.appendChild(opt);
+    });
+}
 
-  const rows = Array.from(document.querySelectorAll('#items .fila'));
-  const mats = [];
-  for (const row of rows){
-    const materialId  = Number(row.querySelector('.sel-mat').value||0);
-    const quantity    = Number(row.querySelector('.in-qty').value||0);
-    if(materialId && quantity>0) mats.push({ materialId, quantity });
+function makeFilaMaterial(selectedId, qty){
+  const fila = document.createElement('div');
+  fila.className = 'fila-material';
+  fila.innerHTML = `
+    <select class="select-material" required>
+      <option value="">Seleccione material</option>
+      ${(listaMateriales||[]).map(m =>
+        `<option value="${m.idMaterial}" ${Number(selectedId)===Number(m.idMaterial)?'selected':''}>${m.name}</option>`
+      ).join('')}
+    </select>
+    <input type="number" min="1" class="input-cantidad" value="${qty ?? ''}" placeholder="Cantidad" required />
+    <button type="button" class="btn outline" onclick="this.parentElement.remove()">🗑️</button>
+  `;
+  return fila;
+}
+
+function agregarMaterial(){
+  const cont = $('#materiales-container');
+  if (!cont) return;
+  cont.appendChild(makeFilaMaterial('', ''));
+}
+
+async function guardarPresupuesto(ev){
+  ev.preventDefault();
+
+  if (!getToken()){
+    notify('Debes iniciar sesión para crear un presupuesto','error');
+    go('login.html');
+    return;
   }
-  if(!mats.length){ notify('Agregá al menos un material','error'); return; }
 
-  const orderPayload = {
-    dateCreate: new Date().toISOString().slice(0,10),
-    dateDelivery,
+  const clientId = Number($('#cliente')?.value || 0);
+  const fechaEntrega = $('#fecha-entrega')?.value || '';
+
+  const filas = Array.from(document.querySelectorAll('.fila-material'));
+  const detalles = filas.map(fila => {
+    const materialId = Number(fila.querySelector('.select-material')?.value || 0);
+    const quantity   = Number(fila.querySelector('.input-cantidad')?.value || 0);
+    return (materialId && quantity > 0) ? { materialId, quantity } : null;
+  }).filter(Boolean);
+
+  if (!clientId || !fechaEntrega || !detalles.length){
+    notify('Seleccioná un cliente, una fecha y al menos un material con cantidad válida.','error');
+    return;
+  }
+
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm   = String(hoy.getMonth()+1).padStart(2,'0');
+  const dd   = String(hoy.getDate()).padStart(2,'0');
+  const dateCreate = `${yyyy}-${mm}-${dd}`;
+
+  const payload = {
     clientId,
-    materials: mats
+    dateCreate,              // requerido por el DTO
+    dateDelivery: fechaEntrega,
+    materials: detalles      // el DTO espera "materials", no "details"
   };
 
   try{
-    // 1) Crear pedido
-    const res = await authFetch(API_URL_ORDERS,{ method:'POST', body: JSON.stringify(orderPayload) });
-    if(!res.ok){ const t=await res.text().catch(()=> ''); console.warn('POST /orders', res.status, t); throw new Error(`HTTP ${res.status}`); }
-    const dto = await safeJson(res);
-    notify('✅ Pedido creado','success');
-
-    // 2) Reservas (maestro o por fila)
-    const reservarTodos = $('#chkReservarTodos').checked;
-    const items = [];
-    for (const row of rows){
-      const marked = reservarTodos || row.querySelector('.chk-res').checked;
-      if(!marked) continue;
-
-      const materialId  = Number(row.querySelector('.sel-mat').value||0);
-      const warehouseId = Number(row.querySelector('.sel-wh').value||0);
-      const qty         = Number(row.querySelector('.in-qty').value||0);
-      const opt         = row.querySelector('.sel-wh')?.selectedOptions?.[0];
-      const free        = Number(opt?.dataset?.free||0);
-
-      if(!materialId || !warehouseId) continue;
-      if(!(qty>0)) continue;
-      if(qty>free){ notify(`La cantidad supera lo disponible (${free})`, 'error'); continue; }
-
-      items.push({ materialId, warehouseId, quantity: qty });
+    const r = await authFetch(API_URL_ORDERS, {
+      method:'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok){
+      const txt = await r.text().catch(()=> '');
+      console.warn('POST /orders', r.status, txt);
+      throw new Error(`HTTP ${r.status}`);
     }
 
-    if(items.length){
-      const r2 = await authFetch(API_URL_RES_BULK,{ method:'POST', body: JSON.stringify({ orderId: dto.idOrders, items }) });
-      if(!r2.ok){ const t=await r2.text().catch(()=> ''); console.warn('POST /stock-reservations/bulk', r2.status, t); throw new Error(`HTTP ${r2.status}`); }
-      const list = await safeJson(r2);
-      notify(`✅ ${list.length} reserva(s) creadas`, 'success');
+    const created = await safeJson(r);
+    const orderId = created.idOrders ?? created.idOrder ?? created.id ?? created.orderId;
+    if (!orderId){
+      notify('Se creó el presupuesto pero no pude obtener su ID. Verificá el backend.','error');
+      return;
     }
 
-    setTimeout(()=> go(`ver-pedido.html?id=${dto.idOrders}`), 700);
+    // Fallback: si el backend ignoró "details", creamos los renglones via /order-details
+    let view = null;
+    try{
+      const rv = await authFetch(`${API_URL_ORDERS}/${orderId}/view`);
+      if (rv.ok) view = await safeJson(rv);
+    }catch(_){}
+
+    const tieneDetalles = Array.isArray(view?.details) && view.details.length > 0;
+    if (!tieneDetalles && detalles.length){
+      const ops = detalles.map(d =>
+        authFetch(API_URL_ORDER_DETAILS, {
+          method:'POST',
+          body: JSON.stringify({
+            ordersId:  orderId,
+            materialId: d.materialId,
+            quantity:   d.quantity
+          })
+        })
+      );
+      await Promise.all(ops);
+    }
+
+    localStorage.setItem('flash', JSON.stringify({
+      message:'✅ Presupuesto creado correctamente',
+      type:'success'
+    }));
+    go(`ver-pedido.html?id=${orderId}`);
   }catch(err){
-    console.error(err);
-    notify('No se pudo crear el pedido o las reservas','error');
+    console.error('Error al crear presupuesto:', err);
+    notify('No se pudo crear el presupuesto. Revisá los datos e intentá nuevamente.','error');
   }
 }

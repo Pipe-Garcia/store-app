@@ -1,3 +1,4 @@
+<!-- /static/files-html/crear-entrega.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -20,9 +21,12 @@
       <div>
         <label for="venta">Venta</label>
         <select id="venta" required>
-          <option value="">Seleccionar venta (pagada)</option>
+          <option value="">Seleccionar venta</option>
         </select>
-        <small class="hint">Si la lista está vacía, buscá por número de venta abajo.</small>
+        <small class="hint">
+          Solo se listan ventas con materiales pendientes de entregar.
+          Si la lista está vacía, podés buscar por número de venta abajo.
+        </small>
       </div>
 
       <div>
@@ -40,21 +44,24 @@
         </div>
       </div>
       <div>
-        <label>Pedido asociado</label>
+        <label>Presupuesto asociado</label>
         <input id="pedidoAsociado" type="text" disabled value="—"/>
       </div>
     </div>
 
     <div class="subhead">
-      <h3>Materiales pendientes</h3>
-      <small>Indicá cantidades a entregar (no podés superar el pendiente). Elegí también el depósito.</small>
+      <h3>Materiales de la venta</h3>
+      <small>
+        Se muestran las cantidades vendidas en la venta y lo pendiente por entregar.
+        El presupuesto es solo referencia: el stock ya se descontó en la venta.
+      </small>
     </div>
 
     <div id="items" class="tabla compact">
       <div class="fila encabezado" style="grid-template-columns: 2fr 1.3fr .8fr .8fr;">
         <div>Material</div>
         <div>Depósito</div>
-        <div>Pendiente</div>
+        <div>Vendido (venta)</div>
         <div>Entregar</div>
       </div>
       <!-- filas dinámicas -->

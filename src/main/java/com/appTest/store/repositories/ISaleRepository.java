@@ -109,5 +109,6 @@ public interface ISaleRepository extends JpaRepository <Sale, Long> {
         @Param("from") java.time.LocalDate from,
         @Param("to")   java.time.LocalDate to);
 
+    List<Sale> findByOrders_IdOrders(Long orderId);
 
 }

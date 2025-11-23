@@ -13,9 +13,23 @@ const API_URL_STOCKS_BY_MAT  = (id)=> `/stocks/by-material/${id}`;
 
 /* ===== Helpers ===== */
 const $ = (s,r=document)=>r.querySelector(s);
-function notify(msg,type='info'){ const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; document.body.appendChild(n); setTimeout(()=>n.remove(),3600); }
-function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
-function todayStr(){ const d=new Date(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${d.getFullYear()}-${m}-${day}`; }
+function notify(msg,type='info'){
+  const n=document.createElement('div');
+  n.className=`notification ${type}`;
+  n.textContent=msg;
+  document.body.appendChild(n);
+  setTimeout(()=>n.remove(),3600);
+}
+function go(page){
+  const base = location.pathname.replace(/[^/]+$/, '');
+  location.href = `${base}${page}`;
+}
+function todayStr(){
+  const d=new Date();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 const sleep = (ms)=> new Promise(r=>setTimeout(r,ms));
 function maybeSetDefaultPaymentDate(){
@@ -26,10 +40,11 @@ function maybeSetDefaultPaymentDate(){
 
 /* ===== Estado ===== */
 let materials=[], warehouses=[], clients=[];
-let lockedClientId = null;        // cliente fijado por pedido
+let lockedClientId = null;        // cliente fijado por presupuesto
 let suppressClientChange = false; // evita loops cuando seteamos cliente por código
-let currentOrderId = null;        // pedido seleccionado (o null)
-const ORDER_REMAIN = new Map();   // materialId -> remainingUnits (pendiente del pedido)
+let currentOrderId = null;        // presupuesto seleccionado (o null)
+const ORDER_REMAIN = new Map();   // materialId -> remainingUnits (pendiente del presupuesto)
+let CURRENT_TOTAL = 0; // total actual calculado de la venta
 
 /* ===== Init ===== */
 window.addEventListener('DOMContentLoaded', init);
@@ -52,7 +67,38 @@ async function init(){
   clients    = rC.ok ? await rC.json() : [];
 
   renderClientes();
-  await loadOrdersForClient(''); // al inicio, lista de pedidos completa
+  await loadOrdersForClient(''); // al inicio, lista de presupuestos completa
+
+  const qs = new URLSearchParams(location.search);
+  const orderIdFromQS = qs.get('orderId');
+  if (orderIdFromQS){
+    const sel = $('#orderSelect');
+    if (sel){
+      // si ya está en el combo, lo seleccionamos
+      const opt = Array.from(sel.options).find(o => o.value === String(orderIdFromQS));
+      if (opt){
+        sel.value = opt.value;
+        await onOrderChange();   // reuse lógica de precarga
+      }else{
+        // fallback: forzar carga por cliente si se conoce desde /orders/{id}/view
+        try{
+          const rView = await authFetch(`/orders/${orderIdFromQS}/view`);
+          if (rView.ok){
+            const view = await rView.json();
+            if (view.clientId){
+              setClientLocked(view.clientId);
+              await loadOrdersForClient(view.clientId);
+              const opt2 = Array.from(sel.options).find(o => o.value === String(orderIdFromQS));
+              if (opt2){
+                sel.value = opt2.value;
+                await onOrderChange();
+              }
+            }
+          }
+        }catch(_){}
+      }
+    }
+  }
 
   // eventos
   $('#cliente').addEventListener('change', async ()=>{
@@ -69,7 +115,10 @@ async function init(){
   $('#btnAdd').onclick = (e)=>{ e.preventDefault(); addRow(); };
   $('#btnGuardar').onclick = guardar;
 
-  addRow(); // una fila vacía para empezar
+  if (!orderIdFromQS) {
+    addRow();  // solo agregamos fila vacía si NO venimos desde un presupuesto
+  }
+
 }
 
 /* ===== Lock / Unlock Cliente ===== */
@@ -79,7 +128,7 @@ function setClientLocked(id){
   renderClientes();                 // render respeta lockedClientId
   suppressClientChange = false;
 
-  // visual: habilitar botón para quitar pedido si existe
+  // visual: habilitar botón para quitar presupuesto si existe
   const btn = $('#btnClearOrder');
   if (btn) btn.style.display = 'inline-flex';
 }
@@ -93,7 +142,7 @@ function clearOrderAndUnlockClient(){
   limpiarItems(); addRow(); recalc();
 }
 
-/* ===== Clientes / Pedidos ===== */
+/* ===== Clientes / Presupuestos ===== */
 function renderClientes(){
   const sel = $('#cliente');
   sel.innerHTML = `<option value="">Seleccionar cliente</option>`;
@@ -126,7 +175,7 @@ async function loadOrdersForClient(clientId){
     : all
   );
 
-  // *** clave: solo pendientes (no soldOut) ***
+  // *** clave: solo presupuestos con pendientes (no soldOut) ***
   list = list.filter(o => o.soldOut !== true);
 
   // Orden: más recientes primero
@@ -138,7 +187,6 @@ async function loadOrdersForClient(clientId){
     const opt  = document.createElement('option');
     opt.value = id;
     opt.dataset.clientId = String(o.clientId || o.client?.idClient || '');
-    // Si algún día querés “mostrar pero deshabilitar”, acá podrías setear opt.disabled = o.soldOut === true;
     opt.textContent = `#${id} — ${name||'s/cliente'} — ${(o.dateCreate||'').slice(0,10)}`;
     sel.appendChild(opt);
   }
@@ -146,7 +194,7 @@ async function loadOrdersForClient(clientId){
 }
 
 
-/* ===== Cambio de Pedido ===== */
+/* ===== Cambio de Presupuesto ===== */
 async function onOrderChange(){
   const sel = $('#orderSelect');
   const val = sel.value;
@@ -157,8 +205,8 @@ async function onOrderChange(){
   currentOrderId = Number(val);
 
   try{
-    // Traer vista del pedido (incluye clientId y remaining por renglón)
-    const rView = await authFetch(`/orders/${val}/view`);
+    // Traer vista del presupuesto (incluye clientId y remaining por renglón)
+    let rView = await authFetch(`/orders/${val}/view`);
     if (!rView.ok) throw new Error(`HTTP ${rView.status}`);
     const view = await rView.json();
 
@@ -173,14 +221,14 @@ async function onOrderChange(){
         if (r.ok){ const ord = await r.json(); cid = ord.clientId || ord.client?.idClient || ord.client?.id; }
       }
       if (cid) setClientLocked(cid);
-      else notify('No pude determinar el cliente del pedido. Verificá el endpoint /orders/{id}','error');
+      else notify('No pude determinar el cliente del presupuesto. Verificá el endpoint /orders/{id}','error');
     }
 
-    // 2) Precargar renglones pendientes del pedido
+    // 2) Precargar renglones pendientes del presupuesto
     await preloadFromOrderView(view);
   }catch(err){
     console.error(err);
-    notify('No se pudo cargar el pedido seleccionado','error');
+    notify('No se pudo cargar el presupuesto seleccionado','error');
   }
 }
 
@@ -216,7 +264,7 @@ function addRow(prefill){
   del.textContent='🗑️';
   del.onclick = (e)=>{ e.preventDefault(); row.remove(); requestAnimationFrame(recalc); };
 
-  // Si la fila viene “atada” a pedido
+  // Si la fila viene “atada” a presupuesto
   if (prefill?.orderBound) row.dataset.orderBound = '1';
 
   matSel.onchange = async ()=>{
@@ -238,7 +286,7 @@ function addRow(prefill){
       }catch(_){}
     }
     whSel.value = '';
-    // Si está ligada a pedido, cap a lo pendiente de ese material
+    // Si está ligada a presupuesto, cap a lo pendiente de ese material
     const mid = Number(matSel.value||0);
     if (currentOrderId && ORDER_REMAIN.has(mid)){
       const rem = ORDER_REMAIN.get(mid);
@@ -255,7 +303,7 @@ function addRow(prefill){
     const opt = whSel.selectedOptions[0];
     const avail = Number(opt?.dataset?.available || 0);
     qty.max = avail>0? String(avail): null;
-    // Aplicar el mínimo entre “pendiente del pedido” y “disponible del depósito”
+    // Aplicar el mínimo entre “pendiente del presupuesto” y “disponible del depósito”
     let cap = avail>0? avail : Infinity;
     const mid = Number(matSel.value||0);
     if (currentOrderId && ORDER_REMAIN.has(mid)){
@@ -310,10 +358,23 @@ function recalc(){
     subEl.textContent = fmtARS.format(sub);
     total += sub;
   });
+
+  CURRENT_TOTAL = total;
   $('#total').textContent = fmtARS.format(total);
+
+  // límite visual para el pago inicial
+  const payInput = $('#pagoImporte');
+  if (payInput) {
+    if (total > 0) {
+      payInput.max = String(total);
+    } else {
+      payInput.removeAttribute('max');
+    }
+  }
 }
 
-/* ===== Precarga desde Pedido ===== */
+
+/* ===== Precarga desde Presupuesto ===== */
 async function preloadFromOrder(orderId){
   try{
     // Preferimos la VIEW
@@ -329,16 +390,16 @@ async function preloadFromOrder(orderId){
     await preloadFromOrderFallback(orderId);
   }catch(e){
     console.error(e);
-    notify('No se pudo precargar el pedido','error');
+    notify('No se pudo precargar el presupuesto','error');
   }
 }
 
 async function preloadFromOrderView(view){
-  // Si el pedido ya no tiene pendientes, limpiamos y salimos
+  // Si el presupuesto ya no tiene pendientes, limpiamos y salimos
   const lines = (view.details || []).filter(d => Number(d.remainingUnits || 0) > 0);
   if (!lines.length){
     clearOrderAndUnlockClient();
-    notify('Ese pedido no tiene cantidades pendientes.','info');
+    notify('Ese presupuesto no tiene cantidades pendientes.','info');
     return;
   }
 
@@ -373,7 +434,7 @@ async function preloadFromOrderView(view){
   recalc();
   // Mostrar botón “Limpiar”
   $('#btnClearOrder') && ($('#btnClearOrder').style.display = 'inline-flex');
-  notify('Ítems pendientes cargados desde el pedido','success');
+  notify('Ítems pendientes cargados desde el presupuesto','success');
 }
 
 async function preloadFromOrderFallback(orderId){
@@ -396,7 +457,7 @@ async function preloadFromOrderFallback(orderId){
 
   if(!items.length){
     limpiarItems(); addRow(); recalc();
-    notify('El pedido no tiene renglones para precargar','info');
+    notify('El presupuesto no tiene renglones para precargar','info');
     return;
   }
 
@@ -418,7 +479,7 @@ async function preloadFromOrderFallback(orderId){
   }
   recalc();
   $('#btnClearOrder') && ($('#btnClearOrder').style.display = 'inline-flex');
-  notify('Ítems cargados desde el pedido (fallback)','success');
+  notify('Ítems cargados desde el presupuesto (fallback)','success');
 }
 
 
@@ -482,6 +543,17 @@ async function guardar(e){
       notify('Si cargás un pago inicial: importe (>0), fecha y método son obligatorios.','error');
       return;
     }
+
+    const total = CURRENT_TOTAL || 0;
+    if (total > 0 && amount > total + 1e-6) {
+      $imp.classList.add('field-error');
+      notify(
+        `El importe del pago inicial no puede superar el total de la venta (${fmtARS.format(total)}).`,
+        'error'
+      );
+      return;
+    }
+
     payment = { amount, methodPayment: method, datePayment: pdate };
   }
 

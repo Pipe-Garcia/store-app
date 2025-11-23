@@ -300,4 +300,48 @@ h3.subhead {
 a.btn{ text-decoration:none; }
 .acciones{ display:flex; flex-wrap:wrap; gap:8px; }
 
+
+.tabla .fila{
+  display:grid;
+  /* Fecha | Cliente | Venta | Estado | Acciones */
+  grid-template-columns: 1.1fr 2.6fr 1.1fr 1.3fr 1.7fr;
+  align-items:center; gap:10px;
+  background:#fff; border-radius:10px; padding:12px 14px;
+  box-shadow:var(--shadow);
+  border:1px solid #f1f3f5;
+}
+
+/* Alineación: fecha y #venta a la derecha, resto centrado/izquierda */
+.tabla .fila > div:nth-child(1),
+.tabla .fila > div:nth-child(3){
+  text-align:right;
+}
+.tabla .fila > div:nth-child(4),
+.tabla .fila > div:nth-child(5){
+  text-align:center;
+}
+
+@media (max-width:1100px){
+  .tabla .fila{
+    grid-template-columns: 1.1fr 1.8fr .9fr 1.1fr 1.5fr;
+  }
+}
+
+
+.link-venta{
+  font-weight:600;
+  color:#1c7ed6;
+  cursor:pointer;
+  text-decoration:none;
+}
+.link-venta:hover{
+  text-decoration:underline;
+}
+.link-venta.disabled{
+  color:#6c757d;
+  cursor:default;
+  text-decoration:none;
+}
+
+
 /* =================== Fin entregas.css =================== */

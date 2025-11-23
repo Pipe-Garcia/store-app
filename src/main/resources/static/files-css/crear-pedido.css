@@ -9,7 +9,7 @@
 }
 
 /* Card contenedor ya existe en pedidos.css, acá afinamos */
-.order-card{
+.card{
   max-width: 1260px;
   margin: 8px auto 24px;
   background:#fff;
@@ -19,22 +19,22 @@
   padding: 20px;
 }
 
-.order-grid{
+.grid{
   display: flex;
   justify-content: space-evenly;
   align-items: center;
 }
-.order-grid > div{
+.grid > div{
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 1.15rem;
   color: #0b0b0b;
 }
-.order-grid > div select.in{
+.grid > div select.in{
   height: 36px; border-radius: 8px; border:1px solid var(--border); padding:6px 8px;
 }
-.order-grid > div input[type="date"]{
+.grid > div input[type="date"]{
   height: 36px; border-radius: 8px; border:1px solid var(--border); padding:6px 8px;
 }
 
@@ -107,3 +107,4 @@
   .items .fila > :nth-child(5){ grid-column: span 1; }
   .toolbar{ flex-direction:column; align-items:flex-start; gap:8px; }
 }
+

@@ -21,22 +21,37 @@ public interface IDeliveryRepository extends JpaRepository<Delivery, Long> {
     @EntityGraph(attributePaths = {"orders", "orders.client"})
     List<Delivery> findByStatus(DeliveryStatus status);
 
-    @EntityGraph(attributePaths = {"orders", "orders.client"})
+    @EntityGraph(attributePaths = {
+            "orders", "orders.client",
+            "sale", "sale.client"
+    })
     @Query("""
-      select d from Delivery d
-       where (:status is null or d.status = :status)
-         and (:orderId is null or d.orders.idOrders = :orderId)
-         and (:clientId is null or d.orders.client.idClient = :clientId)
-         and (:from is null or d.deliveryDate >= :from)
-         and (:to is null or d.deliveryDate <= :to)
+    select d from Delivery d
+       where (:status  is null or d.status = :status)
+         and (:saleId  is null or d.sale.idSale = :saleId)
+         and (
+               :clientId is null
+            or d.sale.client.idClient   = :clientId
+            or d.orders.client.idClient = :clientId
+         )
+         and (:from   is null or d.deliveryDate >= :from)
+         and (:to     is null or d.deliveryDate <= :to)
+       order by d.deliveryDate desc, d.idDelivery desc
     """)
     List<Delivery> search(
-            @Param("status") DeliveryStatus status,
-            @Param("orderId") Long orderId,
+            @Param("status")   DeliveryStatus status,
+            @Param("saleId")   Long saleId,
             @Param("clientId") Long clientId,
-            @Param("from") LocalDate from,
-            @Param("to") LocalDate to
+            @Param("from")     LocalDate from,
+            @Param("to")       LocalDate to
     );
+
+    @EntityGraph(attributePaths = {
+            "sale", "sale.client",
+            "orders", "orders.client",
+            "items", "items.orderDetail", "items.material", "items.warehouse"
+    })
+    List<Delivery> findBySale_IdSale(Long saleId);
 
     // ===== NUEVO: listar entregas por pedido =====
     @EntityGraph(attributePaths = {"orders", "orders.client"})
