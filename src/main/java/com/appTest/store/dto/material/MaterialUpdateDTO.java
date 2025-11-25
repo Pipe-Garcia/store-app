@@ -36,4 +36,6 @@ public class MaterialUpdateDTO implements Serializable {
 
     private Long familyId;
 
+    private Long warehouseId;
+
 }

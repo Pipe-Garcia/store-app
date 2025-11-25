@@ -29,18 +29,30 @@
   const formatTs = ts => { const d=parseTs(ts); return d ? dtf.format(d) : '—'; };
 
   // ====== Diccionarios ES ======
-  const LABEL_ACTION = {
-    CREATE:'Crear', UPDATE:'Modificar', DELETE:'Eliminar',
-    ORDER_CREATE:'Alta de pedido', ORDER_UPDATE:'Modificación de pedido',
-    SALE_CREATE:'Alta de venta', DELIVERY_CREATE:'Alta de entrega',
-    BULK_CREATE:'Alta masiva', LOGIN:'Inicio de sesión', LOGOUT:'Cierre de sesión'
-  };
-  const LABEL_ENTITY = {
-    Sale:'Venta', Orders:'Pedido', Delivery:'Entrega',
-    Stock:'Stock', Material:'Material', Client:'Cliente',
-    User:'Usuario', Payment:'Pago', Reservation:'Reserva',
-    Supplier:'Supplier' // si querés: 'Proveedor'
-  };
+const LABEL_ACTION = {
+  CREATE:'Crear', UPDATE:'Modificar', DELETE:'Eliminar',
+  ORDER_CREATE:'Crear', ORDER_UPDATE:'Modificar',
+  SALE_CREATE:'Alta de venta',
+  DELIVERY_CREATE:'Alta de entrega',
+  PURCHASE_CREATE:'Alta de compra',   // 👈 NUEVO (para histórico)
+  BULK_CREATE:'Alta masiva',
+  LOGIN:'Inicio de sesión',
+  LOGOUT:'Cierre de sesión'
+};
+
+const LABEL_ENTITY = {
+  Sale:      'Venta',
+  Purchase:  'Compra',   
+  Orders:    'Presupuesto',
+  Delivery:  'Entrega',
+  Stock:     'Stock',
+  Material:  'Material',
+  Client:    'Cliente',
+  User:      'Usuario',
+  Payment:   'Pago',
+  Supplier:  'Proveedor'
+};
+
   const LABEL_STATUS = { SUCCESS:'OK', FAIL:'Error' };
 
   // ====== Util ======

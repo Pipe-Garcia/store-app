@@ -73,6 +73,16 @@ public class StockController {
         return ResponseEntity.ok(new com.appTest.store.dto.stock.AvailabilityDTO(materialId, warehouseId, qty));
     }
 
+    @GetMapping("/by-warehouse/{warehouseId}")
+    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    public ResponseEntity<List<StockDTO>> getByWarehouse(@PathVariable Long warehouseId) {
+        List<Stock> stockList = servStock.getStocksByWarehouse(warehouseId);
+        List<StockDTO> stockDTOList = stockList.stream()
+                .map(servStock::convertStockToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(stockDTOList);
+    }
+
 
     @GetMapping("/by-material/{materialId}")
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")

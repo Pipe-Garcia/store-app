@@ -4,6 +4,7 @@ const API_URL_PURCHASES               = `${API_BASE}/purchases`;
 const API_URL_SUPPLIERS               = `${API_BASE}/suppliers`;
 const API_URL_WAREHOUSES              = `${API_BASE}/warehouses`;
 const API_URL_MAT_SUP_BY_SUPPLIER     = `${API_BASE}/material-suppliers/by-supplier`;
+const API_URL_STOCKS_BY_MATERIAL      = `${API_BASE}/stocks/by-material`;   
 
 // ========= Helpers =========
 const $  = (s,r=document)=>r.querySelector(s);
@@ -27,10 +28,13 @@ function go(page){
 
 // ========= Estado =========
 let supplierList = [];
-let warehouseList = [];
+let warehouseList = []; // la seguimos cargando, por si se necesita en otras pantallas
 let materialSuppliers = [];
-let filas = []; // {rowId, materialSupplierId, unitPrice, quantity, warehouseId}
+let filas = []; // {rowId, materialSupplierId, materialId, unitPrice, quantity, warehouseId, allowedWarehouses}
 let nextRowId = 1;
+
+// cache: materialId -> [{idWarehouse, name}]
+const materialStockCache = new Map();
 
 // ========= Init =========
 window.addEventListener("DOMContentLoaded", async ()=>{
@@ -90,6 +94,75 @@ async function onSupplierChange(){
   }catch(err){ console.error(err); notify("No se pudieron cargar materiales del proveedor","error"); }
 }
 
+// ========= Utils de materiales/stock =========
+
+// tratar de sacar el materialId real del objeto materialSupplier
+function extractMaterialId(ms){
+  if(!ms) return null;
+  return (
+    ms.materialId ??
+    ms.idMaterial ??
+    (ms.material && (ms.material.idMaterial ?? ms.material.id)) ??
+    null
+  );
+}
+
+function getMaterialName(ms){
+  if(!ms) return "Material";
+  return (
+    ms.materialName ||
+    (ms.material && ms.material.name) ||
+    ms.name ||
+    `Mat #${ms.idMaterialSupplier ?? ms.id ?? ""}`
+  );
+}
+
+// carga (o toma del cache) los depósitos donde el material tiene stock
+async function loadWarehousesForMaterial(materialId){
+  if(!materialId) return [];
+  if (materialStockCache.has(materialId)){
+    return materialStockCache.get(materialId);
+  }
+  try{
+    const r = await authFetch(`${API_URL_STOCKS_BY_MATERIAL}/${materialId}`);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json() || [];
+    const normalized = (data || []).map(s => {
+      const idW   = s.warehouseId ?? s.idWarehouse ?? (s.warehouse && (s.warehouse.idWarehouse));
+      const nameW = s.warehouseName ?? (s.warehouse && s.warehouse.name) ?? `Depósito #${idW}`;
+      return idW ? { idWarehouse:idW, name:nameW } : null;
+    }).filter(Boolean);
+    materialStockCache.set(materialId, normalized);
+    return normalized;
+  }catch(err){
+    console.error("stocks/by-material", err);
+    materialStockCache.set(materialId, []);
+    return [];
+  }
+}
+
+// refresca allowedWarehouses y re-renderiza la tabla para una fila
+async function actualizarDepositosFila(fila){
+  if (!fila) return;
+
+  if (!fila.materialId){
+    fila.allowedWarehouses = null;
+    fila.warehouseId = "";
+    renderTabla();
+    return;
+  }
+
+  const list = await loadWarehousesForMaterial(fila.materialId);
+  fila.allowedWarehouses = list;
+
+  // si el depósito seleccionado ya no es válido, lo limpiamos
+  if (fila.warehouseId && !list.some(w => String(w.idWarehouse) === String(fila.warehouseId))) {
+    fila.warehouseId = "";
+  }
+
+  renderTabla();
+}
+
 // ========= Filas =========
 function limpiarFilas(){
   filas = []; nextRowId = 1;
@@ -99,7 +172,15 @@ function limpiarFilas(){
 function agregarFila(){
   if(!$("#supplierId").value){ notify("Seleccioná un proveedor","error"); return; }
   if(materialSuppliers.length===0){ notify("El proveedor no tiene materiales","error"); return; }
-  filas.push({ rowId: nextRowId++, materialSupplierId: "", unitPrice: 0, quantity: 1, warehouseId: "" });
+  filas.push({
+    rowId: nextRowId++,
+    materialSupplierId: "",
+    materialId: null,
+    unitPrice: 0,
+    quantity: 1,
+    warehouseId: "",
+    allowedWarehouses: null
+  });
   renderTabla();
 }
 
@@ -128,31 +209,32 @@ function renderTabla(){
     const filaEl = document.createElement("div");
     filaEl.className = "fila";
 
-    // Material
+    // === Material ===
     const matCell = document.createElement("div");
     const selMat = document.createElement("select");
     selMat.innerHTML = `<option value="">Seleccione…</option>`;
     for(const ms of materialSuppliers){
       const opt = document.createElement("option");
       opt.value = ms.idMaterialSupplier || ms.id;
-      const matName = ms.materialName || (ms.material && ms.material.name) || `Mat #${opt.value}`;
-      opt.textContent = matName;
+      opt.textContent = getMaterialName(ms);
       selMat.appendChild(opt);
     }
     selMat.value = f.materialSupplierId || "";
-    selMat.addEventListener("change", ()=>{
+    selMat.addEventListener("change", async ()=>{
       f.materialSupplierId = selMat.value || "";
       const ms = materialSuppliers.find(x => String(x.idMaterialSupplier||x.id) === String(f.materialSupplierId));
-      f.unitPrice = ms ? Number(ms.priceUnit || 0) : 0;
-      renderTabla();
+      f.unitPrice  = ms ? Number(ms.priceUnit || 0) : 0;
+      f.materialId = extractMaterialId(ms);
+      f.allowedWarehouses = null; // se recalcularán
+      await actualizarDepositosFila(f);
     });
     matCell.appendChild(selMat);
 
-    // Precio unit.
+    // === Precio unit. ===
     const priceCell = document.createElement("div");
     priceCell.textContent = fmtARS.format(Number(f.unitPrice||0));
 
-    // Cantidad
+    // === Cantidad ===
     const qtyCell = document.createElement("div");
     const qty = document.createElement("input");
     qty.type = "number"; qty.min="1"; qty.step="1";
@@ -163,27 +245,54 @@ function renderTabla(){
     });
     qtyCell.appendChild(qty);
 
-    // Depósito
+    // === Depósito ===
     const depCell = document.createElement("div");
     const selDep = document.createElement("select");
-    selDep.innerHTML = `<option value="">Seleccione…</option>`;
-    for(const w of warehouseList){
-      const opt = document.createElement("option");
-      opt.value = w.idWarehouse;
-      opt.textContent = w.name || `Depósito #${w.idWarehouse}`;
-      selDep.appendChild(opt);
+    let disabledMsg = null;
+
+    if (!f.materialSupplierId){
+      // todavía no eligió material
+      disabledMsg = "Elegí un material primero";
+    } else if (Array.isArray(f.allowedWarehouses)) {
+      if (f.allowedWarehouses.length === 0) {
+        // material con 0 depósitos configurados
+        disabledMsg = "Sin depósito configurado";
+      } else {
+        selDep.innerHTML = `<option value="">Seleccione…</option>`;
+        for(const w of f.allowedWarehouses){
+          const opt = document.createElement("option");
+          opt.value = w.idWarehouse;
+          opt.textContent = w.name || `Depósito #${w.idWarehouse}`;
+          selDep.appendChild(opt);
+        }
+      }
+    } else {
+      // ya eligió material pero todavía no cargamos depósitos (fetch en curso)
+      disabledMsg = "Cargando depósitos…";
     }
-    selDep.value = f.warehouseId || "";
-    selDep.addEventListener("change", ()=>{ f.warehouseId = selDep.value || ""; });
+
+    if (disabledMsg){
+      selDep.innerHTML = "";
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = disabledMsg;
+      selDep.appendChild(opt);
+      selDep.disabled = true;
+    } else {
+      selDep.disabled = false;
+      selDep.value = f.warehouseId || "";
+      selDep.addEventListener("change", ()=>{ f.warehouseId = selDep.value || ""; });
+    }
+
     depCell.appendChild(selDep);
 
-    // Subtotal
+    // === Subtotal ===
     const sub = Number(f.unitPrice||0) * Number(f.quantity||0);
     total += sub;
     const subCell = document.createElement("div");
     subCell.textContent = fmtARS.format(sub);
 
-    // Acciones
+    // === Acciones ===
     const actions = document.createElement("div");
     actions.className = "acciones";
     const btnDel = document.createElement("button");
@@ -216,10 +325,37 @@ async function crearCompra(){
   if(filas.length===0){ notify("Agregá al menos un renglón","error"); return; }
 
   for(const f of filas){
-    if(!f.materialSupplierId){ notify("Hay renglones sin material","error"); return; }
-    if(!f.warehouseId){ notify("Hay renglones sin depósito","error"); return; }
+    if(!f.materialSupplierId){
+      notify("Hay renglones sin material","error"); 
+      return;
+    }
+
+    // si conocemos el material y no tiene depósitos configurados, mensaje claro
+    if (f.materialId && Array.isArray(f.allowedWarehouses) && f.allowedWarehouses.length === 0){
+      const ms = materialSuppliers.find(x => String(x.idMaterialSupplier||x.id) === String(f.materialSupplierId));
+      const matName = getMaterialName(ms);
+      notify(`El material "${matName}" no tiene ningún depósito configurado. ` +
+             `Configuralo en "Editar material" o en "Editar stock" antes de cargar la compra.`, "error");
+      return;
+    }
+
+    if(!f.warehouseId){
+      notify("Hay renglones sin depósito válido","error"); 
+      return;
+    }
+
+    // seguridad extra: que el depósito elegido esté dentro de los permitidos
+    if (f.materialId && Array.isArray(f.allowedWarehouses) && f.allowedWarehouses.length > 0){
+      const ok = f.allowedWarehouses.some(w => String(w.idWarehouse) === String(f.warehouseId));
+      if (!ok){
+        notify("Hay renglones con un depósito no válido para el material seleccionado.","error");
+        return;
+      }
+    }
+
     if(!Number.isInteger(Number(f.quantity)) || Number(f.quantity) < 1){
-      notify("La cantidad debe ser un entero ≥ 1","error"); return;
+      notify("La cantidad debe ser un entero ≥ 1","error"); 
+      return;
     }
   }
 

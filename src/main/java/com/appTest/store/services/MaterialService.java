@@ -46,6 +46,21 @@ public class MaterialService implements IMaterialService {
         map.put("descripcion",      m.getDescription());
         map.put("familiaId",        m.getFamily()!=null? m.getFamily().getIdFamily() : null);
         map.put("familiaNombre",    m.getFamily()!=null? m.getFamily().getTypeFamily() : null);
+
+        Long depoId   = null;
+        String depoNm = null;
+        if (m.getStockList() != null && !m.getStockList().isEmpty()) {
+            Stock primary = m.getStockList().stream()
+                    .filter(Objects::nonNull)
+                    .min(Comparator.comparing(Stock::getIdStock))
+                    .orElse(null);
+            if (primary != null && primary.getWarehouse() != null) {
+                depoId = primary.getWarehouse().getIdWarehouse();
+                depoNm = primary.getWarehouse().getName();
+            }
+        }
+        map.put("depositoId",    depoId);
+        map.put("depositoNombre",depoNm);
         return map;
     }
 
@@ -56,9 +71,23 @@ public class MaterialService implements IMaterialService {
         Set<String> keys = new LinkedHashSet<>();
         if (a!=null) keys.addAll(a.keySet());
         if (b!=null) keys.addAll(b.keySet());
+
         for (String k: keys){
-            Object va = a!=null? a.get(k) : null;
-            Object vb = b!=null? b.get(k) : null;
+            Object va = (a!=null) ? a.get(k) : null;
+            Object vb = (b!=null) ? b.get(k) : null;
+
+            // 🔹 BigDecimal: consideramos igual si compareTo == 0 (misma cantidad)
+            if (va instanceof BigDecimal && vb instanceof BigDecimal){
+                BigDecimal bdA = (BigDecimal) va;
+                BigDecimal bdB = (BigDecimal) vb;
+                if (bdA.compareTo(bdB) == 0){
+                    // mismo valor lógico (ej: 35000 vs 35000.00) => no registrar cambio
+                    continue;
+                }
+                out.add(new Change(k, bdA, bdB));
+                continue;
+            }
+
             if (!Objects.equals(va, vb)){
                 out.add(new Change(k, va, vb));
             }
@@ -66,19 +95,22 @@ public class MaterialService implements IMaterialService {
         return out;
     }
 
+
     private String humanField(String k){
         return switch (k){
-            case "nombre" -> "Nombre";
-            case "marca" -> "Marca";
-            case "precioArs" -> "Precio ARS";
-            case "precioUsd" -> "Precio USD";
-            case "unidadMedida" -> "Unidad";
-            case "nroInterno" -> "N° interno";
-            case "descripcion" -> "Descripción";
+            case "nombre"        -> "Nombre";
+            case "marca"         -> "Marca";
+            case "precioArs"     -> "Precio ARS";
+            case "precioUsd"     -> "Precio USD";
+            case "unidadMedida"  -> "Unidad";
+            case "nroInterno"    -> "N° interno";
+            case "descripcion"   -> "Descripción";
             case "familiaId", "familiaNombre" -> "Familia";
+            case "depositoId", "depositoNombre" -> "Depósito";
             default -> k;
         };
     }
+
 
     private String fmt(Object v){
         if (v==null || (v instanceof String s && s.isBlank())) return "—";
@@ -244,6 +276,47 @@ public class MaterialService implements IMaterialService {
             Family family = repoFam.findById(dto.getFamilyId())
                     .orElseThrow(() -> new EntityNotFoundException("Family not found with ID: " + dto.getFamilyId()));
             material.setFamily(family);
+        }
+
+        if (dto.getWarehouseId() != null) {
+            Warehouse newWh = repoWare.findById(dto.getWarehouseId())
+                    .orElseThrow(() -> new EntityNotFoundException("Warehouse not found with ID: " + dto.getWarehouseId()));
+
+            // buscamos todos los registros de stock de este material
+            List<Stock> stocks = repoStock.findByMaterial_IdMaterial(material.getIdMaterial());
+
+            if (stocks.isEmpty()) {
+                // No había stock: creamos uno en 0 en el nuevo depósito
+                Stock st = new Stock();
+                st.setMaterial(material);
+                st.setWarehouse(newWh);
+                st.setQuantityAvailable(BigDecimal.ZERO);
+                st.setLastUpdate(LocalDate.now());
+                repoStock.save(st);
+
+                material.getStockList().add(st); // mantener la relación en memoria
+
+            } else if (stocks.size() == 1) {
+                // Caso “normal”: un solo depósito → movemos ese registro al nuevo depósito
+                Stock st = stocks.get(0);
+                if (!Objects.equals(
+                        st.getWarehouse().getIdWarehouse(),
+                        newWh.getIdWarehouse()
+                )) {
+                    st.setWarehouse(newWh);
+                    st.setLastUpdate(LocalDate.now());
+                    repoStock.save(st);
+                }
+
+            } else {
+                // Tiene stock en varios depósitos.
+                // Por ahora no hacemos magia: lo ideal es manejar la redistribución desde la pantalla de Stock.
+                // Si querés ser explícito, podés descomentar la excepción:
+                //
+                // throw new IllegalStateException(
+                //        "El material tiene stock en más de un depósito; " +
+                //        "cambiá la ubicación desde la pantalla de Stock.");
+            }
         }
 
         repoMat.save(material);

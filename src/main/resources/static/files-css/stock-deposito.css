@@ -1,0 +1,77 @@
+/* /static/files-css/stock-deposito.css */
+
+/* Encabezado de la página */
+.page-stock-deposito .page-head {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+
+.page-stock-deposito .page-head h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.page-stock-deposito .page-head .acciones a {
+  text-decoration: none;
+  font-size: 1rem;
+    color: #333;
+    border: 1px solid #ccc;
+    padding: .4rem .8rem;
+    border-radius: 6px;
+}
+
+/* Info del depósito */
+.page-stock-deposito #whName {
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.page-stock-deposito #whInfo {
+  margin-bottom: 1rem;
+  font-size: .9rem;
+  color: #555;
+}
+
+/* Tabla de materiales del depósito */
+.page-stock-deposito .tabla.materiales {
+  margin-top: .5rem;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.page-stock-deposito .tabla.materiales .fila {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  padding: 1.2rem 1rem;
+  border-bottom: 1px solid #e3e6ee;
+}
+
+.page-stock-deposito .tabla.materiales .fila.encabezado {
+  font-weight: 600;
+  background: #f5f7fb;
+}
+
+.page-stock-deposito .tabla.materiales .fila:nth-child(even):not(.encabezado) {
+  background: #fafbff;
+}
+
+.page-stock-deposito .tabla.materiales .acciones {
+  display: flex;
+  justify-content:center;
+  gap: .5rem;
+}
+
+.page-stock-deposito .tabla.materiales .btn-small {
+  padding: .5rem .7rem;
+  font-size: .85rem;
+}
+
+.page-stock-deposito #msgEmpty {
+  margin-top: 1rem;
+  text-align: center;
+}

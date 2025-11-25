@@ -178,29 +178,48 @@ async function onSave(e){
   e.preventDefault();
   if(!getToken()){ notify('Debes iniciar sesión','error'); go('login.html'); return; }
 
-  const btn=$('#btnSave'); if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
+  const btn=$('#btnSave'); 
+  if(btn){ 
+    btn.disabled=true; 
+    btn.textContent='Guardando…'; 
+  }
+
+  const famVal = $('#familyId').value;
+  const whVal  = $('#warehouseId').value;
 
   // MaterialUpdateDTO del back (vía DTO al endpoint PUT /materials)
-  const payload={
-    idMaterial: parseInt(materialId,10),
+  const payload = {
+    idMaterial: parseInt(materialId, 10),
     name:  $('#name').value.trim(),
     brand: $('#brand').value.trim(),
-    priceArs: parseFloat($('#priceArs').value||'0'),
-    familyId: ($('#familyId').value ? parseInt($('#familyId').value,10) : null)
+    priceArs: parseFloat($('#priceArs').value || '0'),
+    familyId: (famVal ? parseInt(famVal, 10) : null),
+    // 🔹 NUEVO: mandamos el depósito elegido
+    warehouseId: (whVal ? parseInt(whVal, 10) : null)
   };
 
+  // limpiamos nulos / NaN / string vacío
   Object.keys(payload).forEach(k=>{
-    if(payload[k]===null || payload[k]==='' || Number.isNaN(payload[k])) delete payload[k];
+    if (payload[k] === null || payload[k] === '' || Number.isNaN(payload[k])) {
+      delete payload[k];
+    }
   });
 
   try{
-    const r=await authFetch(API_URL_MAT,{ method:'PUT', body: JSON.stringify(payload) });
+    const r = await authFetch(API_URL_MAT, {
+      method:'PUT',
+      body: JSON.stringify(payload)
+    });
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     flashAndGo('✅ Material actualizado con éxito','materiales.html');
   }catch(err){
     console.error(err);
     notify('Error actualizando material','error');
   }finally{
-    if(btn){ btn.disabled=false; btn.textContent='Guardar cambios'; }
+    if(btn){ 
+      btn.disabled=false; 
+      btn.textContent='Guardar cambios'; 
+    }
   }
 }
+

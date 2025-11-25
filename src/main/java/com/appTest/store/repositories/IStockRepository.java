@@ -44,5 +44,7 @@ public interface IStockRepository extends JpaRepository<Stock, Long> {
     """)
     List<Object[]> availableByMaterial();
 
+    List<Stock> findByWarehouse_IdWarehouse(Long warehouseId);
+
 }
 

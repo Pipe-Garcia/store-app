@@ -69,8 +69,15 @@ function getPendingUnits(v){
  *  - PENDING_DELIVERY
  */
 function getDeliveryStateCode(v){
+  // 0) Venta directa (sin presupuesto): la consideramos "entregada"
+  const hasOrder =
+    !!(v.orderId ??
+       v.ordersId ??
+       v.order_id);
+  if (!hasOrder) return 'DELIVERED';
+
   const explicit = (v.deliveryStatus ?? v.deliveryState ?? '').toString().toUpperCase();
-  if (['DELIVERED','COMPLETED','FULL','ENTREGADA'].includes(explicit)) return 'DELIVERED';
+  if (['DELIVERED','COMPLETED','FULL','ENTREGADA','DIRECT'].includes(explicit)) return 'DELIVERED';
   if (['PENDING','PARTIAL','IN_PROGRESS','PENDIENTE'].includes(explicit)) return 'PENDING_DELIVERY';
 
   const fully = v.fullyDelivered ?? v.allDelivered ?? v.deliveryCompleted;
@@ -92,6 +99,7 @@ function getDeliveryStateCode(v){
 
   return 'PENDING_DELIVERY';
 }
+
 
 const UI_DELIVERY_STATUS = {
   DELIVERED:        'ENTREGADA',
@@ -374,6 +382,9 @@ async function renderEntregasVenta(id){
       const date   = (d.deliveryDate ?? '').toString().slice(0,10) || '—';
       const units  = Number(d.deliveredUnits ?? 0) || 0;
       const status = (d.status ?? '').toString().toUpperCase();
+      const labelEnt = (d.itemsSummary && d.itemsSummary.trim())
+      ? d.itemsSummary.trim()
+      : (units ? `${units} unid.` : '—');
 
       let pillCls   = 'pill pending';
       if (status === 'COMPLETED') pillCls = 'pill completed';
@@ -386,7 +397,7 @@ async function renderEntregasVenta(id){
       row.innerHTML = `
         <div>#${idDel}</div>
         <div>${date}</div>
-        <div>${units} unid.</div>
+        <div>${labelEnt}</div>
         <div><span class="${pillCls}">${pillLabel}</span></div>
         <div>
           <a href="ver-entrega.html?id=${idDel}" class="btn outline btn-small">

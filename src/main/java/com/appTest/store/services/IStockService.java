@@ -23,4 +23,5 @@ public interface IStockService {
     BigDecimal availability(Long materialId, Long warehouseId);
     BigDecimal reserved(Long materialId, Long warehouseId);
     BigDecimal availableForReservation(Long materialId, Long warehouseId);
+    List<Stock> getStocksByWarehouse(Long warehouseId);
 }

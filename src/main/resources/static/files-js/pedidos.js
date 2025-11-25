@@ -70,11 +70,12 @@ function getEstadoCode(o){
 }
 function pill(code){
   const txt = (code === 'SOLD_OUT')
-    ? 'SIN PENDIENTE (todo vendido)'
-    : 'CON PENDIENTE por vender';
+    ? 'SIN PENDIENTE (todo entregado)'
+    : 'CON PENDIENTE por entregar';
   const cls = (code === 'SOLD_OUT') ? 'completed' : 'pending';
   return `<span class="pill ${cls}">${txt}</span>`;
 }
+
 
 // estado global
 let PRESUPUESTOS = [];

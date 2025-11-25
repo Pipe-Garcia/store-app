@@ -15,6 +15,14 @@ import com.appTest.store.models.DeliveryItem;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Objects;
+import java.util.Set;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -51,6 +59,94 @@ public class SaleService implements ISaleService{
 
     @Autowired
     private IStockReservationRepository repoReservation;
+
+    @Autowired
+    private AuditService audit;
+
+    /* ============ Helpers de auditoría (Sale) ============ */
+
+    private Map<String, Object> snap(Sale sale) {
+        if (sale == null) return null;
+        Map<String, Object> m = new LinkedHashMap<>();
+
+        // Reutilizamos tu mapper para no repetir lógica
+        SaleDTO dto = convertSaleToDto(sale);
+
+        m.put("id", dto.getIdSale());
+        m.put("dateSale", dto.getDateSale());
+        m.put("clientId", dto.getClientId());
+        m.put("clientName", dto.getClientName());
+        m.put("total", dto.getTotal());
+        m.put("paid", dto.getPaid());
+        m.put("balance", dto.getBalance());
+        m.put("paymentStatus", dto.getPaymentStatus());
+        m.put("totalUnits", dto.getTotalUnits());
+        m.put("deliveredUnits", dto.getDeliveredUnits());
+        m.put("pendingUnits", dto.getPendingUnits());
+        m.put("orderId", dto.getOrderId());
+        return m;
+    }
+
+    private record Change(String field, Object from, Object to) {}
+
+    private List<Change> diff(Map<String,Object> a, Map<String,Object> b){
+        List<Change> out = new ArrayList<>();
+        Set<String> keys = new LinkedHashSet<>();
+        if (a != null) keys.addAll(a.keySet());
+        if (b != null) keys.addAll(b.keySet());
+        for (String k : keys){
+            Object va = (a != null) ? a.get(k) : null;
+            Object vb = (b != null) ? b.get(k) : null;
+            if (!Objects.equals(va, vb)){
+                out.add(new Change(k, va, vb));
+            }
+        }
+        return out;
+    }
+
+    private String humanField(String k){
+        return switch (k){
+            case "dateSale"       -> "Fecha";
+            case "clientId", "clientName" -> "Cliente";
+            case "total"          -> "Total";
+            case "paid"           -> "Pagado";
+            case "balance"        -> "Saldo";
+            case "paymentStatus"  -> "Estado pago";
+            case "totalUnits"     -> "Unidades vendidas";
+            case "deliveredUnits" -> "Unidades entregadas";
+            case "pendingUnits"   -> "Unidades pendientes";
+            case "orderId"        -> "Presupuesto";
+            default -> k;
+        };
+    }
+
+    private String fmt(Object v){
+        if (v == null || (v instanceof String s && s.isBlank())) return "—";
+        if (v instanceof BigDecimal bd) return bd.stripTrailingZeros().toPlainString();
+        return String.valueOf(v);
+    }
+
+    private String summarize(List<Change> changes){
+        if (changes == null || changes.isEmpty()) return "OK";
+        return changes.stream()
+                .limit(3)
+                .map(c -> humanField(c.field()) + ": " + fmt(c.from()) + " → " + fmt(c.to()))
+                .collect(Collectors.joining(" · "))
+                + (changes.size() > 3 ? " +" + (changes.size()-3) + " más" : "");
+    }
+
+    private void afterCommit(Runnable r){
+        if (TransactionSynchronizationManager.isSynchronizationActive()){
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override public void afterCommit() { r.run(); }
+                    }
+            );
+        } else {
+            r.run();
+        }
+    }
+
 
     @Override
     public List<Sale> getAllSales() {
@@ -91,7 +187,7 @@ public class SaleService implements ISaleService{
 
         String paymentStatus = computePaymentStatus(total, paid);
 
-        // (compat) primer metodo de pago si existe
+        // (compat) primer método de pago si existe
         String paymentMethod = (sale.getPaymentList() != null && !sale.getPaymentList().isEmpty())
                 ? sale.getPaymentList().get(0).getMethodPayment()
                 : null;
@@ -126,6 +222,17 @@ public class SaleService implements ISaleService{
             deliveredUnits = totalUnits;
         }
 
+        // ===== Lógica especial: venta directa (mostrador) =====
+        boolean isDirectSale =
+                (sale.getOrders() == null) &&
+                (sale.getDeliveries() == null || sale.getDeliveries().isEmpty());
+
+        if (isDirectSale && totalUnits.compareTo(BigDecimal.ZERO) > 0) {
+            // Consideramos que se entregó todo en el momento
+            deliveredUnits = totalUnits;
+        }
+
+        // ===== Pendientes y estado de entrega =====
         BigDecimal pendingUnits = totalUnits.subtract(deliveredUnits);
         if (pendingUnits.compareTo(BigDecimal.ZERO) < 0) {
             pendingUnits = BigDecimal.ZERO;
@@ -134,6 +241,9 @@ public class SaleService implements ISaleService{
         String deliveryStatus;
         if (totalUnits.compareTo(BigDecimal.ZERO) <= 0) {
             deliveryStatus = "NO_ITEMS";
+        } else if (isDirectSale) {
+            // Venta sin pedido y sin entregas registradas ⇒ venta directa
+            deliveryStatus = "DIRECT";
         } else if (deliveredUnits.compareTo(BigDecimal.ZERO) <= 0) {
             deliveryStatus = "PENDING";
         } else if (deliveredUnits.compareTo(totalUnits) < 0) {
@@ -175,12 +285,18 @@ public class SaleService implements ISaleService{
     }
 
 
+
     @Transactional(readOnly = true)
     public List<SaleDetailLiteDTO> getSaleDetailsLite(Long saleId) {
         Sale sale = repoSale.findById(saleId)
                 .orElseThrow(() -> new EntityNotFoundException("Sale not found with ID: " + saleId));
 
         List<SaleDetailLiteDTO> result = new ArrayList<>();
+
+        // Venta directa: sin pedido y sin entregas asociadas
+        boolean isDirectSale =
+                (sale.getOrders() == null) &&
+                (sale.getDeliveries() == null || sale.getDeliveries().isEmpty());
 
         // Mapa: materialId -> total entregado en TODAS las entregas de esta venta
         Map<Long, BigDecimal> deliveredByMaterial = new HashMap<>();
@@ -208,9 +324,15 @@ public class SaleService implements ISaleService{
                 Long matId = sd.getMaterial().getIdMaterial();
                 BigDecimal qty = sd.getQuantity() != null ? sd.getQuantity() : BigDecimal.ZERO;
 
-                BigDecimal delivered = deliveredByMaterial.getOrDefault(matId, BigDecimal.ZERO);
-                if (delivered.compareTo(qty) > 0) {
-                    delivered = qty; // cap de seguridad
+                BigDecimal delivered;
+                if (isDirectSale) {
+                    // Venta directa: consideramos entregado todo lo vendido
+                    delivered = qty;
+                } else {
+                    delivered = deliveredByMaterial.getOrDefault(matId, BigDecimal.ZERO);
+                    if (delivered.compareTo(qty) > 0) {
+                        delivered = qty; // cap de seguridad
+                    }
                 }
 
                 BigDecimal pending = qty.subtract(delivered);
@@ -232,6 +354,7 @@ public class SaleService implements ISaleService{
 
         return result;
     }
+
 
     private BigDecimal calculateTotal(Sale sale) {
         return sale.getSaleDetailList().stream()
@@ -308,10 +431,8 @@ public class SaleService implements ISaleService{
         return list.isEmpty() ? null : list.get(0);
     }
 
-
     @Override
     @Transactional
-    @Auditable(entity="Sale", action="CREATE")
     public SaleDTO createSale(SaleCreateDTO dto) {
         if (dto.getMaterials() == null || dto.getMaterials().isEmpty()) {
             throw new IllegalArgumentException("At least one item is required.");
@@ -363,7 +484,7 @@ public class SaleService implements ISaleService{
             Long warehouseId = item.getWarehouseId();
             BigDecimal qty   = item.getQuantity();
 
-            // === NUEVO: si la venta viene de un presupuesto, respetar lo pendiente de ese presupuesto ===
+            // === Si la venta viene de un presupuesto, respetar lo pendiente de ese presupuesto ===
             if (isOrderSale) {
                 BigDecimal pendingForMat = pendingByMaterial.get(matId);
 
@@ -417,7 +538,6 @@ public class SaleService implements ISaleService{
             saleDetailList.add(d);
         }
 
-
         sale.setSaleDetailList(saleDetailList);
 
         // Total calculado de la venta (para validar pagos)
@@ -460,8 +580,44 @@ public class SaleService implements ISaleService{
             savedSale.getPaymentList().add(p);
         }
 
-        return convertSaleToDto(savedSale);
+        // Por las dudas, recargamos la venta ya completa
+        savedSale = repoSale.findById(savedSale.getIdSale())
+                .orElseThrow(() -> new EntityNotFoundException("Sale not found after creation"));
+
+        // DTO final
+        SaleDTO dtoOut = convertSaleToDto(savedSale);
+
+        // === Auditoría CREATE ===
+        final Long sid = dtoOut.getIdSale();
+        final Map<String,Object> after = snap(savedSale);
+
+        final String clientName = dtoOut.getClientName() != null ? dtoOut.getClientName() : "—";
+        final BigDecimal total = dtoOut.getTotal() != null ? dtoOut.getTotal() : BigDecimal.ZERO;
+        final BigDecimal paid  = dtoOut.getPaid()  != null ? dtoOut.getPaid()  : BigDecimal.ZERO;
+        final String payStatus = dtoOut.getPaymentStatus();
+
+        StringBuilder msg = new StringBuilder();
+        msg.append("Cliente: ").append(clientName)
+                .append(" · Total: ").append(fmt(total))
+                .append(" · Pagado: ").append(fmt(paid))
+                .append(" · Estado pago: ").append(payStatus);
+        if (dtoOut.getOrderId() != null) {
+            msg.append(" · Presupuesto #").append(dtoOut.getOrderId());
+        }
+        final String message = msg.toString();
+
+        afterCommit(() -> {
+            Long evId = audit.success("CREATE", "Sale", sid, message);
+            Map<String,Object> diffPayload = Map.of(
+                    "created", true,
+                    "fields",  after
+            );
+            audit.attachDiff(evId, null, after, diffPayload);
+        });
+
+        return dtoOut;
     }
+
 
 
 
@@ -480,10 +636,12 @@ public class SaleService implements ISaleService{
 
     @Override
     @Transactional
-    @Auditable(entity="Sale", action="UPDATE", idParam="dto.idSale")
     public void updateSale(SaleUpdateDTO dto) {
         Sale sale = repoSale.findById(dto.getIdSale())
                 .orElseThrow(() -> new EntityNotFoundException("Sale not found"));
+
+        Map<String,Object> before = snap(sale);
+
         if (dto.getDateSale() != null) sale.setDateSale(dto.getDateSale());
         if (dto.getClientId() != null) {
             Client client = repoClient.findById(dto.getClientId())
@@ -491,7 +649,26 @@ public class SaleService implements ISaleService{
             sale.setClient(client);
         }
         repoSale.save(sale);
+
+        Map<String,Object> after = snap(sale);
+        List<Change> changes = diff(before, after);
+        String message = summarize(changes);
+        final Long sid = sale.getIdSale();
+
+        afterCommit(() -> {
+            Long evId = audit.success("UPDATE", "Sale", sid, message);
+            var changed = changes.stream()
+                    .map(c -> Map.<String,Object>of(
+                            "field", c.field(),
+                            "from",  c.from(),
+                            "to",    c.to()
+                    ))
+                    .collect(Collectors.toList());
+            Map<String,Object> diffPayload = Map.of("changed", changed);
+            audit.attachDiff(evId, before, after, diffPayload);
+        });
     }
+
 
     @Override
     @Transactional
@@ -499,6 +676,7 @@ public class SaleService implements ISaleService{
     public void deleteSaleById(Long idSale) {
         repoSale.deleteById(idSale);
     }
+
 
     @Override
     @Transactional

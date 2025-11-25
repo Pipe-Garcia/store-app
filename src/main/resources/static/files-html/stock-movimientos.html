@@ -12,7 +12,8 @@
 
   <div class="page">
     <h1>Histórico de Stock</h1>
-    <hr><br> <div class="filters card">
+    <hr><br>
+    <div class="filters card">
       <div class="row">
         <label>Desde
           <input type="date" id="f-desde">
@@ -30,8 +31,7 @@
           <select id="f-reason">
             <option value="">(todos)</option>
             <option value="SALE">Venta</option>
-            <option value="DELIVERY">Entrega</option>
-            <option value="RESERVATION">Reserva</option>
+            <option value="PURCHASE">Compra</option>
             <option value="ADJUST">Ajuste</option>
           </select>
         </label>
@@ -39,7 +39,10 @@
           <input type="text" id="f-user" placeholder="Ej.: admin">
         </label>
         <label>Tamaño pág.
-          <select id="f-size"><option>50</option><option>100</option></select>
+          <select id="f-size">
+            <option>50</option>
+            <option>100</option>
+          </select>
         </label>
         <button class="btn" id="btn-aplicar">Buscar</button>
         <button class="btn" id="btn-limpiar">Limpiar</button>
@@ -47,7 +50,8 @@
     </div>  
 
     <div class="card">
-      <div class="tabla" id="lista-stock-movimientos"> <div class="fila encabezado">
+      <div class="tabla" id="lista-stock-movimientos">
+        <div class="fila encabezado">
           <div>Fecha/Hora</div>
           <div>Material</div>
           <div>Depósito</div>
@@ -59,7 +63,7 @@
           <div>Usuario</div>
           <div>Nota</div>
         </div>
-        </div>
+      </div>
 
       <div class="pager">
         <div class="info" id="pg-info"></div>

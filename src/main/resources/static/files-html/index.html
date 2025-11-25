@@ -23,7 +23,7 @@
     <!-- Índice de secciones (sticky) -->
     <nav class="section-nav" aria-label="Atajos de secciones">
       <a href="#sec-ventas"    class="active">Ventas</a>
-      <a href="#sec-pedidos">Pedidos & Entregas</a>
+      <a href="#sec-pedidos">Presupuestos & Entregas</a>
       <a href="#sec-stock">Stock & Materiales</a>
       <a href="#sec-clientes">Clientes</a>
       <a href="#sec-auditoria">Auditoría</a>
@@ -70,12 +70,6 @@
 
       <!-- KPIs CRM -->
       <section class="kpi-grid" id="kpi-crm">
-        <div class="card kpi" id="kpiReceivables" data-drill="ventas.html?status=PENDING,PARTIAL">
-          <div class="kpi-title">Cuentas por cobrar</div>
-          <div class="kpi-value" id="kpiRecvTotal">$ 0</div>
-          <div class="kpi-sub"><span id="kpiRecvCount">0</span> ventas con saldo</div>
-        </div>
-
         <div class="card kpi">
           <div class="kpi-title">Ticket promedio por venta (hoy)</div>
           <div class="kpi-delta" id="kpiAOVDelta">—</div>
@@ -111,11 +105,11 @@
     <hr>
     <!-- ============== PEDIDOS & ENTREGAS ============== -->
     <section class="area" id="sec-pedidos">
-      <header class="area-head"><h2>Pedidos & Entregas</h2></header>
+      <header class="area-head"><h2>Presupuestos & Entregas</h2></header>
 
       <section class="kpi-grid">
         <div class="card kpi" id="kpiBacklog" data-drill="pedidos.html?estado=pendiente">
-          <div class="kpi-title">Pedidos sin convertir</div>
+          <div class="kpi-title">Presupuestos sin convertir</div>
           <div class="kpi-value" id="kpiOpenValue">$ 0</div>
           <div class="kpi-sub"><span id="kpiOpenCount">0</span> pedidos</div>
         </div>
@@ -125,32 +119,16 @@
           <div class="kpi-value"><span id="kpiDelToday">0</span> / <span id="kpiDelTomorrow">0</span></div>
           <div class="kpi-sub">no completadas</div>
         </div>
-
-        <div class="card kpi" id="kpiStockout" data-drill="materiales.html?risk=stockout">
-          <div class="kpi-title">Riesgo de stockout</div>
-          <div class="kpi-value" id="kpiStockoutCount">0</div>
-          <div class="kpi-sub">materiales comprometidos</div>
-        </div>
       </section>
 
       <section class="cards cards-3" id="cards-resumen">
-        <div class="card">
-          <div class="card-head"><h3>Reservas activas</h3></div>
-          <div class="kpi" id="kpiReservas">—</div>
-          <small class="muted">Stock separado para pedidos/clientes</small>
-          <div><a class="btn" href="../files-html/reservas.html" style="margin-top:.5rem;">Ver reservas</a></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Pedidos con reserva</h3></div>
-          <div class="kpi" id="kpiPedidosReservados">—</div>
-          <small class="muted">Pedidos que ya tienen stock reservado</small>
-        </div>
         <div class="card">
           <div class="card-head"><h3>Entregas próximas (7 días)</h3></div>
           <div class="kpi" id="kpiEntregas">—</div>
           <small class="muted">Pendientes o parciales</small>
         </div>
       </section>
+
 
       <section class="cards-section" id="sec-entregas">
         <div class="cards-grid">

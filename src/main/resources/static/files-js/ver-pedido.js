@@ -54,17 +54,41 @@ const getDetBudgeted = d =>
     0
   );
 
-const getDetSold = d =>
-  Number(
+const getDetSold = d => {
+  // 1) Si viene un campo explícito de "vendidas desde este presupuesto", lo usamos.
+  const direct =
     d.quantitySoldFromBudget ??
     d.soldFromBudget ??
     d.soldUnitsFromBudget ??
     d.soldUnits ??
     d.unitsSold ??
     d.qtySold ??
-    d.soldFromOrder ??
+    d.soldFromOrder;
+
+  if (direct != null) return Number(direct) || 0;
+
+  // 2) Modelo nuevo: committed = vendidas NO entregadas, delivered = entregadas
+  const committed = Number(
+    d.committedUnits ??
+    d.unitsCommitted ??
     0
   );
+  const delivered = Number(
+    d.deliveredUnits ??
+    d.unitsDelivered ??
+    0
+  );
+  const sum = committed + delivered;
+  if (sum > 0) return sum;
+
+  // 3) Fallback: vendidas ≈ presupuestadas - pendiente
+  const q   = getDetBudgeted(d);
+  const rem = getDetRemaining(d);
+  if (q && rem >= 0 && rem <= q) return q - rem;
+
+  return 0;
+};
+
 
 const getDetRemaining = d => {
   const exp =
@@ -139,13 +163,28 @@ const getMatName = d =>
 
 // Estado por soldOut
 function estadoFromHeader(h){
-  const soldOut = !!(h?.soldOut);
+  // remainingUnits = pendiente de ENTREGA
+  const remaining = Number(
+    h?.remainingUnits ??
+    h?.unitsRemaining ??
+    h?.totalRemainingUnits ??
+    0
+  );
+
+  const soldOut =
+    (typeof h?.soldOut === 'boolean')
+      ? h.soldOut
+      : (remaining <= 0);
+
   return {
     code: soldOut ? 'SOLD_OUT' : 'PENDING',
-    label: soldOut ? 'SIN PENDIENTE (todo vendido)' : 'CON PENDIENTE por vender',
+    label: soldOut
+      ? 'SIN PENDIENTE (todo entregado)'
+      : 'CON PENDIENTE por entregar',
     cls: soldOut ? 'completed' : 'pending'
   };
 }
+
 
 document.addEventListener('DOMContentLoaded', init);
 
@@ -234,43 +273,87 @@ function renderHeader(orderId, header, details){
   }
   $('#total').textContent = fmtARS.format(total);
 
-  // agregados de unidades (vendidas / pendientes)
-  let soldUnits = Number(header.soldUnits ?? header.deliveredUnits ?? header.unitsSold ?? NaN);
-  let remainingUnits = Number(header.remainingUnits ?? header.unitsRemaining ?? header.pendingUnits ?? NaN);
+  // ======== UNIDADES VENDIDAS / PENDIENTES =========
+
+  // Vendidas (modelo nuevo): totalSoldUnits
+  let soldUnits = Number(
+    header.totalSoldUnits ??
+    header.soldUnits ??
+    NaN
+  );
+
+  // Pendiente de ENTREGA (no de venta): remainingUnits
+  let remainingToDeliver = Number(
+    header.remainingUnits ??
+    header.unitsRemaining ??
+    NaN
+  );
+
+  // Pendiente de VENDER: totalPendingToSellUnits (solo para lógica del botón)
+  let pendingToSell = Number(
+    header.totalPendingToSellUnits ??
+    header.totalPendingSellUnits ??
+    header.pendingToSellUnits ??
+    NaN
+  );
 
   if (Array.isArray(details) && details.length){
-    const sumSold = details.reduce((a,d)=> a + getDetSold(d), 0);
     const sumRem  = details.reduce((a,d)=> a + getDetRemaining(d), 0);
-    if (Number.isNaN(soldUnits))     soldUnits     = sumSold;
-    if (Number.isNaN(remainingUnits)) remainingUnits = sumRem;
-  }else{
-    if (Number.isNaN(soldUnits))     soldUnits     = 0;
-    if (Number.isNaN(remainingUnits)) remainingUnits = 0;
+
+    // Si el back no mandó remaining, lo reconstruimos desde detalles
+    if (Number.isNaN(remainingToDeliver)) remainingToDeliver = sumRem;
+
+    // Si no vino totalSoldUnits, intentamos deducirlo desde detalles
+    if (Number.isNaN(soldUnits)) {
+      const sumSold = details.reduce((a,d)=> a + getDetSold(d), 0);
+      if (sumSold > 0) soldUnits = sumSold;
+    }
+
+    // Si no vino pendiente por vender, lo estimamos como presupuestado - vendido
+    if (Number.isNaN(pendingToSell)) {
+      const totalBudgeted = details.reduce((a,d)=> a + getDetBudgeted(d), 0);
+      if (!Number.isNaN(soldUnits)) {
+        pendingToSell = Math.max(0, totalBudgeted - soldUnits);
+      } else {
+        // último recurso: igualar a lo pendiente de entrega
+        pendingToSell = sumRem;
+      }
+    }
   }
 
+  if (Number.isNaN(soldUnits))         soldUnits         = 0;
+  if (Number.isNaN(remainingToDeliver)) remainingToDeliver = 0;
+  if (Number.isNaN(pendingToSell))     pendingToSell     = 0;
+
+  // Etiquetas user-friendly
   const vendidasLabel  = buildUnitsLabel(soldUnits, details, getDetSold);
-  const pendienteLabel = buildUnitsLabel(remainingUnits, details, getDetRemaining);
+  const pendienteLabel = buildUnitsLabel(remainingToDeliver, details, getDetRemaining);
 
   $('#vendidas').textContent  = vendidasLabel;
   $('#pendiente').textContent = pendienteLabel;
 
-  const est = estadoFromHeader(header);
+  // Estado lógico (respecto de ENTREGA)
+  const est = estadoFromHeader({
+    ...header,
+    remainingUnits: remainingToDeliver
+  });
   const pill = $('#estado');
   pill.textContent = est.label;
   pill.className = `pill ${est.cls}`;
 
+  // ======== Botón "Crear venta" =========
   const btnVenta = $('#btnCrearVenta');
   if (btnVenta) {
-    // remainingUnits ya lo calculamos más arriba
-    const noPending   = remainingUnits <= 0;
-    const soldOutFlag = (est.code === 'SOLD_OUT') || noPending;
+    const fullySold =
+      (typeof header.fullySold === 'boolean')
+        ? header.fullySold
+        : (pendingToSell <= 0);
 
-    if (soldOutFlag) {
-      // visualmente desactivado
+    if (fullySold) {
+      // Presupuesto completamente VENDIDO ⇒ no tiene sentido crear otra venta desde acá
       btnVenta.classList.add('btn-disabled');
       btnVenta.title = 'Este presupuesto ya no tiene unidades pendientes por vender';
 
-      // si igual lo clickean, solo mostramos aviso y NO vamos a crear-venta
       btnVenta.onclick = (ev)=>{
         ev.preventDefault();
         notify(
@@ -280,7 +363,7 @@ function renderHeader(orderId, header, details){
         );
       };
     } else {
-      // presupuesto con pendientes: botón activo
+      // Quedan unidades por vender ⇒ botón activo
       btnVenta.classList.remove('btn-disabled');
       btnVenta.title = 'Crear venta a partir de este presupuesto';
       btnVenta.onclick = (ev)=>{
@@ -292,6 +375,7 @@ function renderHeader(orderId, header, details){
 }
 
 
+
 function renderDetails(details){
   const cont = $('#tablaMateriales');
   const msg  = $('#msgMateriales');
@@ -301,11 +385,12 @@ function renderDetails(details){
     <div class="fila encabezado">
       <div>Material</div>
       <div>Presupuestado</div>
-      <div>Pendiente por vender</div>
+      <div>Pendiente por entregar</div>
       <div>Precio unitario</div>
       <div>Subtotal</div>
     </div>
   `;
+
 
   if (!Array.isArray(details) || !details.length){
     if (msg){

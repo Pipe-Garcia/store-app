@@ -216,10 +216,22 @@ function getPendingUnits(v){
  *  - 'PENDING_DELIVERY' → PENDIENTE A ENTREGAR
  */
 function getDeliveryStateCode(v){
-  // 1) Si el back ya manda un estado de entrega explícito, lo usamos
+  // 0) Si es una VENTA DIRECTA (sin presupuesto asociado),
+  //    la consideramos "ENTREGADA" a efectos logísticos.
+  const hasOrder =
+    !!(v.orderId ??
+       v.ordersId ??
+       v.order_id);
+  if (!hasOrder) return 'DELIVERED';
+
+  // 1) Si el back ya manda un estado de entrega/logístico explícito, lo usamos
   const explicit = (v.deliveryStatus ?? v.deliveryState ?? '').toString().toUpperCase();
-  if (['DELIVERED','COMPLETED','FULL','ENTREGADA'].includes(explicit)) return 'DELIVERED';
-  if (['PENDING','PARTIAL','IN_PROGRESS','PENDIENTE'].includes(explicit)) return 'PENDING_DELIVERY';
+  if (['DELIVERED','COMPLETED','FULL','ENTREGADA','DIRECT'].includes(explicit)) {
+    return 'DELIVERED';
+  }
+  if (['PENDING','PARTIAL','IN_PROGRESS','PENDIENTE'].includes(explicit)) {
+    return 'PENDING_DELIVERY';
+  }
 
   // 2) Flags booleanos tipo fullyDelivered / allDelivered
   const fully = v.fullyDelivered ?? v.allDelivered ?? v.deliveryCompleted;
@@ -233,9 +245,10 @@ function getDeliveryStateCode(v){
   const pending   = getPendingUnits(v);
 
   if (sold > 0){
-    if (pending > 0) return 'PENDING_DELIVERY';
+    if (pending > 0)       return 'PENDING_DELIVERY';
     if (delivered >= sold) return 'DELIVERED';
-    if (delivered > 0 && delivered < sold) return 'PENDING_DELIVERY';
+    if (delivered > 0 &&
+        delivered < sold) return 'PENDING_DELIVERY';
     // vendidas > 0, entregadas = 0 y pending no viene → asumimos pendiente
     return 'PENDING_DELIVERY';
   }
@@ -247,6 +260,7 @@ function getDeliveryStateCode(v){
   // Sin información → por defecto consideramos que falta entregar
   return 'PENDING_DELIVERY';
 }
+
 
 const UI_DELIVERY_STATUS = {
   DELIVERED:        'ENTREGADA',

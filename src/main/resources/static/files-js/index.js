@@ -259,29 +259,23 @@ let chart7d = null;
 
 async function cargarKPIs(){
   try{
-    // 1) Reservas activas
-    const r1 = await authFetch('/stock-reservations/search?status=ACTIVE');
-    const reservas = r1.ok ? await r1.json() : [];
-    $('#kpiReservas').textContent = reservas.length;
+    const r2   = await authFetch('/deliveries'); // si luego tenés /search, mejor
+    const dels = r2.ok ? await safeJson(r2) : [];
 
-    // 2) Pedidos con reserva (distintos orderId)
-    const ids = new Set(reservas.filter(x=>x.orderId!=null).map(x=>x.orderId));
-    $('#kpiPedidosReservados').textContent = ids.size;
-
-    // 3) Entregas próximas 7 días (pend/partial)
-    const r2 = await authFetch('/deliveries'); // si tenés /search mejor
-    const dels = r2.ok ? await r2.json() : [];
     const today = new Date(); today.setHours(0,0,0,0);
-    const in7   = new Date(today); in7.setDate(today.getDate()+7);
+    const in7   = new Date(today); in7.setDate(today.getDate() + 7);
 
-    const prox = (dels||[]).filter(d=>{
-      if(!d.deliveryDate) return false;
-      const dd=new Date(d.deliveryDate+'T00:00:00');
-      const st=(d.status||'').toUpperCase();
-      return dd>=today && dd<=in7 && st!=='COMPLETED';
+    const prox = (dels || []).filter(d => {
+      if (!d.deliveryDate) return false;
+      const dd = new Date(d.deliveryDate + 'T00:00:00');
+      const st = (d.status || '').toUpperCase();
+      return dd >= today && dd <= in7 && st !== 'COMPLETED';
     });
+
     renderDel30Donut(dels);
-    $('#kpiEntregas').textContent = prox.length;
+
+    const kpiEnt = document.getElementById('kpiEntregas');
+    if (kpiEnt) kpiEnt.textContent = prox.length;
   }catch(e){
     console.warn(e);
   }
@@ -571,20 +565,13 @@ async function renderChartSales7d(){
 
 
 function renderOverview(o){
-  // Cuentas por cobrar
-  $('#kpiRecvTotal').textContent = fmtARS.format(Number(o.receivablesTotal||0));
-  $('#kpiRecvCount').textContent = Number(o.receivablesCount||0);
-
-  // Backlog de pedidos
+   // Backlog de pedidos (presupuestos sin convertir)
   $('#kpiOpenValue').textContent = fmtARS.format(Number(o.openOrdersValue||0));
   $('#kpiOpenCount').textContent = Number(o.openOrdersCount||0);
 
   // Entregas hoy / mañana
   $('#kpiDelToday').textContent    = Number(o.deliveriesToday||0);
   $('#kpiDelTomorrow').textContent = Number(o.deliveriesTomorrow||0);
-
-  // Riesgo stockout
-  $('#kpiStockoutCount').textContent = Number(o.stockoutRiskCount||0);
 
   // Top clientes (mes)
   const host = $('#tablaTopClients');
@@ -870,7 +857,7 @@ const ACTION_I18N = {
   SUPPLIER_CREATE:   'Proveedor: crear',
   WAREHOUSE_CREATE:  'Almacén: crear',
   PURCHASE_CREATE:   'Compra: crear',
-  BULK_CREATE:       'Reserva: Crear',
+  BULK_CREATE:       'Carga masiva: Crear',
 };
 
 // Fallback elegante si aparece una acción nueva
@@ -885,7 +872,7 @@ function tAction(k=''){
     if (w==='supplier') return 'proveedor';
     if (w==='warehouse') return 'almacén';
     if (w==='purchase') return 'compra';
-    if (w==='bulk') return 'reserva';
+    if (w==='bulk') return 'carga masiva';
     return w;
   });
   // Capitaliza primera palabra

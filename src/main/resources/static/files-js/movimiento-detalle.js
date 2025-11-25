@@ -15,11 +15,16 @@
     BULK_CREATE:'Alta masiva', LOGIN:'Inicio de sesión', LOGOUT:'Cierre de sesión'
   };
   const LABEL_ENTITY = {
-    Sale:'Venta', Orders:'Pedido', Delivery:'Entrega',
-    Stock:'Stock', Material:'Material', Client:'Cliente',
-    User:'Usuario', Payment:'Pago', Reservation:'Reserva',
-    Supplier:'Supplier'
-  };
+    Sale:      'Venta',
+    Orders:    'Presupuesto',
+    Delivery:  'Entrega',
+    Stock:     'Stock',
+    Material:  'Material',
+    Client:    'Cliente',
+    User:      'Usuario',
+    Payment:   'Pago',
+    Supplier:  'Proveedor'
+};
   function humanAction(a){
     if (!a) return '—';
     if (LABEL_ACTION[a]) return LABEL_ACTION[a];
@@ -109,18 +114,16 @@
       ].join('');
 
       const changes = e.changes || [];
-      if(!changes.length){
-        details.innerHTML = `<div class="block">Sin diffs adjuntos.</div>`;
+      if (!changes.length) {
+        details.innerHTML = `<div class="block muted">Sin detalles técnicos adicionales.</div>`;
         return;
       }
-      details.innerHTML = changes.map((c, i)=>`
-        <div class="block">
-          <h3>Diff #${i+1}</h3>
-          ${c.diffJson ? `<pre>${syntax(c.diffJson)}</pre>` : ''}
-          <details><summary>Old</summary><pre>${syntax(c.oldJson||'')}</pre></details>
-          <details><summary>New</summary><pre>${syntax(c.newJson||'')}</pre></details>
+      details.innerHTML = `
+        <div class="block muted">
+          Los detalles técnicos del cambio se registran internamente,
+          pero no se muestran aquí para simplificar la vista.
         </div>
-      `).join('');
+      `;
     }catch(e){
       console.error(e);
       meta.innerHTML = row('Error', esc(e.message));

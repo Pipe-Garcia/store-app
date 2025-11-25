@@ -1,0 +1,56 @@
+<!-- /static/files-html/stock-deposito.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>🏬 Stock del depósito</title>
+  <link rel="stylesheet" href="../files-css/style.css">
+  <link rel="stylesheet" href="../files-css/almacenes.css">
+  <link rel="stylesheet" href="../files-css/stock-deposito.css">
+  <link rel="stylesheet" href="../files-css/nav.css">
+</head>
+<body class="page-stock-deposito">
+
+  <!-- NAV -->
+  <div id="app-header"></div>
+
+  <main class="page">
+    <div class="page-head">
+      <h1>Stock del depósito</h1>
+      <div class="acciones">
+        <a href="../files-html/almacen.html">←  Volver</a>
+      </div>
+    </div>
+
+    <section class="card">
+       <div class="wh-info">
+        <span id="whName">...</span>
+        <p id="whInfo" class="field-hint"></p>
+       </div> 
+
+      <div class="tabla materiales">
+        <div class="fila encabezado">
+          <div>Material</div>
+          <div>Cantidad disponible</div>
+          <div>Última actualización</div>
+          <div>Acciones</div>
+        </div>
+        <div id="lista-stock"></div>
+      </div>
+
+      <p id="msgEmpty" class="field-hint" style="display:none;">
+        Este depósito no tiene stock cargado todavía.
+      </p>
+    </section>
+  </main>
+
+  <!-- núcleo + base URL + header -->
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+  <script src="../files-js/header.js"></script>
+  <script src="../files-js/menu-guard.js"></script>
+  <!-- script de la página -->
+  <script type="module" src="../files-js/stock-deposito.js"></script>
+</body>
+</html>

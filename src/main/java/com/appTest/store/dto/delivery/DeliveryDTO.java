@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.Serializable;
-import java.math.BigDecimal;      // ⬅️ NUEVO
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter @Setter
@@ -17,7 +17,8 @@ import java.time.LocalDate;
         "deliveryDate",
         "status",
         "clientName",
-        "deliveredUnits"
+        "deliveredUnits",
+        "itemsSummary"
 })
 public class DeliveryDTO implements Serializable {
 
@@ -33,11 +34,14 @@ public class DeliveryDTO implements Serializable {
     private String status;
     private String clientName;
 
-    //  total de unidades entregadas en ESTA entrega
+    // total de unidades entregadas en ESTA entrega
     private BigDecimal deliveredUnits;
 
-    public DeliveryDTO() {}
+    // NUEVO: resumen amigable de materiales entregados
+    // Ej: "Regador automático - 1 unidad"
+    private String itemsSummary;
 
+    public DeliveryDTO() {}
 
     public DeliveryDTO(Long idDelivery,
                        Long ordersId,
@@ -50,7 +54,6 @@ public class DeliveryDTO implements Serializable {
         this.status = status;
         this.clientName = clientName;
     }
-
 
     public DeliveryDTO(Long idDelivery,
                        Long saleId,
@@ -66,3 +69,4 @@ public class DeliveryDTO implements Serializable {
         this.clientName = clientName;
     }
 }
+

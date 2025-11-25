@@ -13,6 +13,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -33,6 +36,7 @@ public class DeliveryService implements IDeliveryService {
     // Dependencias de stock / reservas (ajusta si el nombre o firma difiere en tu proyecto)
     private final IStockService stockService;
     private final IStockReservationService reservationService;
+    private final AuditService audit;
 
     // Lectura de venta/pagos para “gatear” la entrega (opcional)
     private final ISaleRepository repoSale;
@@ -57,7 +61,121 @@ public class DeliveryService implements IDeliveryService {
         return repoDelivery.search(status, saleId, clientId, from, to);
     }
 
+    /* ============ Helpers de auditoría (Delivery) ============ */
+
+    private Map<String,Object> snap(Delivery d){
+        if (d == null) return null;
+        Map<String,Object> m = new LinkedHashMap<>();
+        DeliveryDTO dto = convertDeliveryToDto(d);
+        m.put("id", dto.getIdDelivery());
+        m.put("saleId", dto.getSaleId());
+        m.put("deliveryDate", dto.getDeliveryDate());
+        m.put("status", dto.getStatus());
+        m.put("clientName", dto.getClientName());
+        m.put("deliveredUnits", dto.getDeliveredUnits());
+        return m;
+    }
+
+    private record Change(String field, Object from, Object to) {}
+
+    private List<Change> diff(Map<String,Object> a, Map<String,Object> b){
+        List<Change> out = new ArrayList<>();
+        Set<String> keys = new LinkedHashSet<>();
+        if (a != null) keys.addAll(a.keySet());
+        if (b != null) keys.addAll(b.keySet());
+        for (String k : keys){
+            Object va = (a != null) ? a.get(k) : null;
+            Object vb = (b != null) ? b.get(k) : null;
+            if (!Objects.equals(va, vb)){
+                out.add(new Change(k, va, vb));
+            }
+        }
+        return out;
+    }
+
+    private String humanField(String k){
+        return switch (k){
+            case "deliveryDate"   -> "Fecha entrega";
+            case "status"         -> "Estado";
+            case "clientName"     -> "Cliente";
+            case "deliveredUnits" -> "Unidades entregadas";
+            case "saleId"         -> "Venta";
+            default -> k;
+        };
+    }
+
+    private String fmt(Object v){
+        if (v == null || (v instanceof String s && s.isBlank())) return "—";
+        if (v instanceof BigDecimal bd) return bd.stripTrailingZeros().toPlainString();
+        return String.valueOf(v);
+    }
+
+    private String summarize(List<Change> changes){
+        if (changes == null || changes.isEmpty()) return "OK";
+        return changes.stream()
+                .limit(3)
+                .map(c -> humanField(c.field()) + ": " + fmt(c.from()) + " → " + fmt(c.to()))
+                .collect(Collectors.joining(" · "))
+                + (changes.size() > 3 ? " +" + (changes.size()-3) + " más" : "");
+    }
+
+    private void afterCommit(Runnable r){
+        if (TransactionSynchronizationManager.isSynchronizationActive()){
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override public void afterCommit() { r.run(); }
+                    }
+            );
+        } else {
+            r.run();
+        }
+    }
+
+
     /* ==================== DTO mappers ==================== */
+
+    private String buildItemsSummary(Delivery delivery, BigDecimal deliveredUnits) {
+        if (delivery.getItems() == null || delivery.getItems().isEmpty()) {
+            if (deliveredUnits == null || deliveredUnits.signum() == 0) {
+                return "—";
+            }
+            String u = deliveredUnits.compareTo(BigDecimal.ONE) == 0 ? "unidad" : "unidades";
+            return deliveredUnits.stripTrailingZeros().toPlainString() + " " + u;
+        }
+
+        Map<String, BigDecimal> qtyByMaterial = new LinkedHashMap<>();
+        for (DeliveryItem di : delivery.getItems()) {
+            if (di.getMaterial() == null) continue;
+            String name = di.getMaterial().getName();
+            BigDecimal q = di.getQuantityDelivered() != null ? di.getQuantityDelivered() : BigDecimal.ZERO;
+            qtyByMaterial.merge(name, q, BigDecimal::add);
+        }
+
+        if (qtyByMaterial.isEmpty()) {
+            if (deliveredUnits == null || deliveredUnits.signum() == 0) {
+                return "—";
+            }
+            String u = deliveredUnits.compareTo(BigDecimal.ONE) == 0 ? "unidad" : "unidades";
+            return deliveredUnits.stripTrailingZeros().toPlainString() + " " + u;
+        }
+
+        // Un solo material
+        if (qtyByMaterial.size() == 1) {
+            Map.Entry<String, BigDecimal> e = qtyByMaterial.entrySet().iterator().next();
+            BigDecimal q = e.getValue() != null ? e.getValue() : BigDecimal.ZERO;
+            String u = q.compareTo(BigDecimal.ONE) == 0 ? "unidad" : "unidades";
+            return e.getKey() + " - " + q.stripTrailingZeros().toPlainString() + " " + u;
+        }
+
+        // Varios materiales
+        BigDecimal total = BigDecimal.ZERO;
+        for (BigDecimal q : qtyByMaterial.values()) {
+            if (q != null) total = total.add(q);
+        }
+        return qtyByMaterial.size() + " materiales (" +
+                total.stripTrailingZeros().toPlainString() + " unid.)";
+    }
+
 
     @Override
     public DeliveryDTO convertDeliveryToDto(Delivery delivery) {
@@ -99,7 +217,10 @@ public class DeliveryService implements IDeliveryService {
             deliveredUnits = java.math.BigDecimal.ZERO;
         }
 
-        // 5) Usamos el constructor NUEVO de DeliveryDTO (con saleId + ordersId)
+        // 5) Resumen amigable de materiales
+        String itemsSummary = buildItemsSummary(delivery, deliveredUnits);
+
+        // 6) Usamos el constructor con saleId + ordersId
         DeliveryDTO dto = new DeliveryDTO(
                 delivery.getIdDelivery(),
                 saleId,
@@ -109,8 +230,10 @@ public class DeliveryService implements IDeliveryService {
                 clientName
         );
         dto.setDeliveredUnits(deliveredUnits);
+        dto.setItemsSummary(itemsSummary);
         return dto;
     }
+
 
     @Override
     public DeliveryDetailDTO getDeliveryDetail(Long id) {
@@ -268,7 +391,6 @@ public class DeliveryService implements IDeliveryService {
 
     @Override
     @Transactional
-    @Auditable(entity = "Delivery", action = "CREATE")
     public DeliveryDTO createDelivery(DeliveryCreateDTO dto) {
 
         if (dto.getDeliveryDate() == null) {
@@ -449,7 +571,34 @@ public class DeliveryService implements IDeliveryService {
         saved.setStatus(status);
         repoDelivery.save(saved);
 
-        return convertDeliveryToDto(saved);
+        DeliveryDTO dtoOut = convertDeliveryToDto(saved);
+
+        // === Auditoría CREATE ===
+        final Long did = dtoOut.getIdDelivery();
+        final Map<String,Object> after = snap(saved);
+
+        final String clientName = dtoOut.getClientName() != null ? dtoOut.getClientName() : "—";
+        final BigDecimal units = dtoOut.getDeliveredUnits() != null ? dtoOut.getDeliveredUnits() : BigDecimal.ZERO;
+        final Long saleId = dtoOut.getSaleId();
+        final Long orderId = (saved.getOrders() != null ? saved.getOrders().getIdOrders() : null);
+
+        StringBuilder msg = new StringBuilder();
+        msg.append("Cliente: ").append(clientName)
+                .append(" · Unidades: ").append(fmt(units));
+        if (saleId != null)  msg.append(" · Venta #").append(saleId);
+        if (orderId != null) msg.append(" · Presupuesto #").append(orderId);
+        final String message = msg.toString();
+
+        afterCommit(() -> {
+            Long evId = audit.success("CREATE", "Delivery", did, message);
+            Map<String,Object> diffPayload = Map.of(
+                    "created", true,
+                    "fields",  after
+            );
+            audit.attachDiff(evId, null, after, diffPayload);
+        });
+
+        return dtoOut;
     }
 
 
@@ -458,10 +607,11 @@ public class DeliveryService implements IDeliveryService {
 
     @Override
     @Transactional
-    @Auditable(entity="Delivery", action="UPDATE", idParam="dto.idDelivery")
     public void updateDelivery(DeliveryUpdateDTO dto) {
         Delivery delivery = repoDelivery.findByIdWithGraph(dto.getIdDelivery())
                 .orElseThrow(() -> new EntityNotFoundException("Delivery not found with id: " + dto.getIdDelivery()));
+
+        Map<String,Object> before = snap(delivery);
 
         // Si la entrega está completada, solo permitimos cambiar fecha
         if (delivery.getStatus() == DeliveryStatus.COMPLETED) {
@@ -473,6 +623,24 @@ public class DeliveryService implements IDeliveryService {
                 delivery.setDeliveryDate(dto.getDeliveryDate());
             }
             repoDelivery.save(delivery);
+
+            Map<String,Object> after = snap(delivery);
+            List<Change> changes = diff(before, after);
+            String message = summarize(changes);
+            final Long did = delivery.getIdDelivery();
+
+            afterCommit(() -> {
+                Long evId = audit.success("UPDATE", "Delivery", did, message);
+                var changed = changes.stream()
+                        .map(c -> Map.<String,Object>of(
+                                "field", c.field(),
+                                "from",  c.from(),
+                                "to",    c.to()
+                        ))
+                        .collect(Collectors.toList());
+                Map<String,Object> diffPayload = Map.of("changed", changed);
+                audit.attachDiff(evId, before, after, diffPayload);
+            });
             return;
         }
 
@@ -607,6 +775,23 @@ public class DeliveryService implements IDeliveryService {
         delivery.setStatus(status);
 
         repoDelivery.save(delivery);
+        Map<String,Object> after = snap(delivery);
+        List<Change> changes = diff(before, after);
+        String message = summarize(changes);
+        final Long did = delivery.getIdDelivery();
+
+        afterCommit(() -> {
+            Long evId = audit.success("UPDATE", "Delivery", did, message);
+            var changed = changes.stream()
+                    .map(c -> Map.<String,Object>of(
+                            "field", c.field(),
+                            "from",  c.from(),
+                            "to",    c.to()
+                    ))
+                    .collect(Collectors.toList());
+            Map<String,Object> diffPayload = Map.of("changed", changed);
+            audit.attachDiff(evId, before, after, diffPayload);
+        });
     }
 
 

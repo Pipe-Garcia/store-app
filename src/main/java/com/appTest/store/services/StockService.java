@@ -79,6 +79,11 @@ public class StockService implements IStockService {
     }
 
     @Override
+    public List<Stock> getStocksByWarehouse(Long warehouseId) {
+        return repoStock.findByWarehouse_IdWarehouse(warehouseId);
+    }
+
+    @Override
     @Transactional
     @Auditable(entity="Stock", action="CREATE")
     public StockDTO createStock(StockCreateDTO dto) {
