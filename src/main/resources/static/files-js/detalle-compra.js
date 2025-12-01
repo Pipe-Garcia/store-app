@@ -1,19 +1,14 @@
-// ========= Endpoints =========
+// /static/files-js/detalle-compra.js
+const { authFetch, getToken } = window.api;
+
+// Endpoints
 const API_BASE = "http://localhost:8088";
 const API_URL_PURCHASES        = `${API_BASE}/purchases`;
 const API_URL_PURCHASE_DETAILS = `${API_BASE}/purchase-details/purchase`;
 
-// ========= Helpers =========
 const $  = (s,r=document)=>r.querySelector(s);
-const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 
-function getToken(){ return localStorage.getItem("accessToken") || localStorage.getItem("token"); }
-function authHeaders(json=true){
-  const t = getToken();
-  return { ...(json?{"Content-Type":"application/json"}:{}), ...(t?{"Authorization":`Bearer ${t}`}:{}) };
-}
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 function notify(msg,type='info'){
   const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg;
   document.body.appendChild(n); setTimeout(()=>n.remove(),3500);
@@ -21,82 +16,103 @@ function notify(msg,type='info'){
 function getParam(name){ const p=new URLSearchParams(location.search); return p.get(name); }
 function go(page){ const base = location.pathname.replace(/[^/]+$/, ''); location.href = `${base}${page}`; }
 
-// ========= Estado =========
-let compra = null;   // PurchaseDTO
-let detalles = [];   // [PurchaseDetailDTO]
+// Estado
+let compra = null;
+let detalles = [];
 
-// ========= Init =========
 window.addEventListener("DOMContentLoaded", async ()=>{
   if(!getToken()){ go("login.html"); return; }
+  
   const id = Number(getParam("id"));
-  if(!id){ notify("Falta el parámetro ?id","error"); go("compras.html"); return; }
+  if(!id){ notify("Falta el parámetro ?id","error"); setTimeout(()=>go("compras.html"),1000); return; }
+
+  // Botón editar
+  const btnEdit = $('#btnEditar');
+  if(btnEdit) btnEdit.href = `editar-compra.html?id=${id}`;
 
   await cargarCabecera(id);
   await cargarDetalles(id);
-  renderCabecera();
-  renderDetalles();
 });
 
-// ========= Cargas =========
 async function cargarCabecera(id){
   try{
     const r = await authFetch(`${API_URL_PURCHASES}/${id}`);
     if(!r.ok){
       if(r.status===404){ notify("Compra no encontrada","error"); go("compras.html"); return; }
-      if(r.status===401 || r.status===403){ notify("Sesión inválida o sin permisos","error"); go("login.html"); return; }
       throw new Error(`HTTP ${r.status}`);
     }
     compra = await r.json();
-  }catch(err){ console.error(err); notify("No se pudo cargar la compra","error"); }
+    renderCabecera();
+  }catch(err){ 
+    console.error(err); 
+    notify("No se pudo cargar la compra","error"); 
+  }
 }
 
 async function cargarDetalles(id){
   try{
     const r = await authFetch(`${API_URL_PURCHASE_DETAILS}/${id}`);
-    if(!r.ok){
-      if(r.status===401 || r.status===403){ notify("Sesión inválida o sin permisos","error"); go("login.html"); return; }
-      throw new Error(`HTTP ${r.status}`);
-    }
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
     detalles = await r.json() || [];
-  }catch(err){ console.error(err); notify("No se pudieron cargar los detalles","error"); }
+    renderDetalles();
+  }catch(err){ 
+    console.error(err); 
+    notify("No se pudieron cargar los detalles","error"); 
+  }
 }
 
-// ========= Render =========
 function renderCabecera(){
   if(!compra) return;
   $("#c_id").textContent        = compra.idPurchase ?? "-";
-  $("#c_fecha").textContent     = compra.datePurchase ?? "-";
+  
+  // Fecha formateada si es posible
+  let fecha = compra.datePurchase ?? "-";
+  if(fecha !== "-" && fecha.length >= 10) {
+      // simple iso slice
+      fecha = fecha.slice(0, 10).split('-').reverse().join('/'); 
+  }
+  $("#c_fecha").textContent     = fecha;
   $("#c_proveedor").textContent = compra.supplierName ?? "-";
+  
+  // El total se actualiza mejor sumando detalles para precisión visual, 
+  // o usamos el de cabecera si confiamos
   $("#c_total").textContent     = fmtARS.format(Number(compra.totalAmount||0));
 }
 
 function renderDetalles(){
   const cont = $("#tabla-detalles");
-  cont.querySelectorAll(".fila:not(.encabezado)").forEach(n => n.remove());
+  const msg  = $("#msgDetalles");
+
+  // Limpiar filas viejas (.trow)
+  cont.querySelectorAll(".trow").forEach(n => n.remove());
 
   if(!detalles.length){
-    const empty = document.createElement("div");
-    empty.className = "fila";
-    empty.style.gridTemplateColumns = "1fr";
-    empty.textContent = "Esta compra no tiene renglones.";
-    cont.appendChild(empty);
+    if(msg) { msg.textContent = "Esta compra no tiene renglones."; msg.style.display = 'block'; }
     return;
   }
+  if(msg) msg.style.display = 'none';
+
+  let totalCalc = 0;
 
   for(const d of detalles){
     const unit = Number(d.priceUni||0);
     const qty  = Number(d.quantity||0);
     const sub  = unit * qty;
+    totalCalc += sub;
 
     const row = document.createElement("div");
-    row.className = "fila";
-    row.style.gridTemplateColumns = "2fr 1fr 1fr 1fr";
+    row.className = "trow";
+    // Grid: Material (2) | Cantidad (1) | Precio (1) | Subtotal (1)
+    
     row.innerHTML = `
-      <div>${d.materialName || "-"}</div>
-      <div>${fmtARS.format(unit)}</div>
-      <div>${qty}</div>
-      <div>${fmtARS.format(sub)}</div>
+      <div style="flex: 2;" class="strong-text">${d.materialName || "-"}</div>
+      <div class="text-center">${qty}</div>
+      <div class="text-right">${fmtARS.format(unit)}</div>
+      <div class="text-right strong-text">${fmtARS.format(sub)}</div>
     `;
     cont.appendChild(row);
   }
+  
+  // Actualizamos el total con la suma real de renglones para consistencia
+  $("#c_total").textContent = fmtARS.format(totalCalc);
 }

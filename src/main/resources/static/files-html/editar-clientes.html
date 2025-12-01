@@ -1,77 +1,82 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../files-css/style.css">
-    <link rel="stylesheet" href="../files-css/clientes.css">
     <title>👤 - Editar Cliente</title>
+    <link rel="stylesheet" href="../files-css/style.css">
+    <link rel="stylesheet" href="../files-css/clientes.css"> 
     <link rel="stylesheet" href="../files-css/nav.css">
-    <link rel="stylesheet" href="../files-css/editar-clientes.css">
 </head>
 <body>
     <div id="app-header"></div>
 
-    <div class="form-editar">
-      <h2>Editar Cliente</h2>
-        <form id="formEditarCliente">
-            <div class="field">
-                <label for="name">Nombre:</label>
-                <input class="control" type="text" id="name" name="name" autocomplete="given-name" maxlength="60" required />
-            </div>
+    <main class="page form-page narrow">
+        <div class="page-head">
+            <h1>Editar Cliente</h1>
+        </div>
 
-            <div class="field">
-                <label for="surname">Apellido:</label>
-                <input class="control" type="text" id="surname" name="surname" autocomplete="family-name" maxlength="60" required>
-            </div>
+        <section class="card">
+            <form id="formEditarCliente">
+                
+                <div class="grid">
+                    <div>
+                        <label for="name">Nombre</label>
+                        <input type="text" id="name" name="name" autocomplete="given-name" maxlength="60" required />
+                    </div>
 
-            <div class="field">
-                <label for="dni">DNI:</label>
-                <input class="control" type="text" id="dni" name="dni" inputmode="numeric" maxlength="8" placeholder="solo números" required>
-            </div>
+                    <div>
+                        <label for="surname">Apellido</label>
+                        <input type="text" id="surname" name="surname" autocomplete="family-name" maxlength="60" required>
+                    </div>
 
-            <div class="field">
-                <label for="email">Email:</label>
-                <input class="control" type="email" id="email" name="email" autocomplete="email" maxlength="120">
-            </div>
+                    <div>
+                        <label for="dni">DNI</label>
+                        <input type="text" id="dni" name="dni" inputmode="numeric" maxlength="8" placeholder="Solo números" required>
+                    </div>
 
-            <div class="field">
-                <label for="address">Dirección:</label>
-                <input class="control" type="text" id="address" name="address" autocomplete="address-line1" maxlength="120" required>
-            </div>
+                    <div>
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" autocomplete="email" maxlength="120">
+                    </div>
 
-            <div class="field">
-                <label for="locality">Localidad:</label>
-                <input class="control" type="text" id="locality" name="locality" autocomplete="address-level2" maxlength="60" required>
-            </div>
+                    <div>
+                        <label for="address">Dirección</label>
+                        <input type="text" id="address" name="address" autocomplete="address-line1" maxlength="120" required>
+                    </div>
 
-            <div class="field">
-                <label for="phoneNumber">Teléfono:</label>
-                <input class="control" type="text" id="phoneNumber" name="phoneNumber" inputmode="tel" placeholder="+54 9 351-555-1234" maxlength="20" required>
-            </div>
+                    <div>
+                        <label for="locality">Localidad</label>
+                        <input type="text" id="locality" name="locality" autocomplete="address-level2" maxlength="60" required>
+                    </div>
 
-            <div class="field">
-                <label for="status">Estado:</label>
-                <select class="control" id="status" required>
-                <option value="ACTIVE">Activo</option>
-                <option value="INACTIVE">Inactivo</option>
-                </select>
-            </div>
+                    <div>
+                        <label for="phoneNumber">Teléfono</label>
+                        <input type="text" id="phoneNumber" name="phoneNumber" inputmode="tel" placeholder="+54 9..." maxlength="20" required>
+                    </div>
 
-            <div class="form-actions">
-                <a class="btn outline" href="../files-html/clientes.html">Cancelar</a>
-                <button type="submit" class="btn primary">Guardar Cambios</button>
-            </div>
-        </form>
-    </div>
+                    <div>
+                        <label for="status">Estado</label>
+                        <select id="status" required>
+                            <option value="ACTIVE">Activo</option>
+                            <option value="INACTIVE">Inactivo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn primary">Guardar Cambios</button>
+                    <a class="btn outline" href="../files-html/clientes.html">Cancelar</a>
+                </div>
+            </form>
+        </section>
+    </main>
     
-<!-- núcleo + base URL + header -->
-<script src="../files-js/core/api.js"></script>
-<script>window.api.setBaseUrl('http://localhost:8088');</script>
-<script src="../files-js/header.js"></script>
-<script src="../files-js/menu-guard.js"></script>
-<!-- tu script (plural) -->
-<script type="module" src="../files-js/editar-clientes.js"></script>
+    <script src="../files-js/core/api.js"></script>
+    <script>window.api.setBaseUrl('http://localhost:8088');</script>
+    <script src="../files-js/header.js"></script>
+    <script src="../files-js/menu-guard.js"></script>
+    <script type="module" src="../files-js/editar-clientes.js"></script>
 
 </body>
 </html>

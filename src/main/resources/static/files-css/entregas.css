@@ -1,347 +1,329 @@
-/* =================== Variables base (alineado con pedidos.css) =================== */
-:root{
+/* ==========================================================
+   ENTREGAS.CSS (COMPLETO Y ESTANDARIZADO)
+   ========================================================== */
+
+/* ====== Variables Base ====== */
+:root {
   --gap: 14px;
   --radius: 12px;
   --card-pad: 14px 16px;
-  --shadow: 0 1px 2px rgba(0,0,0,.06);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 
-  --c-text:#212529;
-  --c-muted:#6b7280;
-  --c-border:#e9ecef;
-
-  --c-primary:#1c7ed6;
-  --c-primary-600:#1864ab;
-  --c-green:#3ac654;
-  --c-red:#dc3545;
-  --c-bg:#ffffff;
-  --c-bg-soft:#f8f9fa;
+  --c-text: #212529;
+  --c-muted: #6b7280;
+  --c-border: #e9ecef;
+  --c-primary: #1c7ed6;
+  --c-primary-600: #1864ab;
+  --c-green: #3ac654;
+  --c-red: #dc3545;
+  --c-bg: #ffffff;
 }
 
-*{ box-sizing:border-box; }
+* { box-sizing: border-box; }
 
-.page{ max-width:1900px; margin:0 auto; padding:24px; }
-.page-head{ display:flex; align-items:center; gap:44px; margin-bottom:12px; }
-.page-head h1{ margin:0 0 0 6px; }
+/* ====== Layout Base ====== */
+.page { 
+  max-width: 1900px; 
+  margin: 0 auto; 
+  padding: 24px; 
+}
 
-/* =================== Cards =================== */
-.card{
+
+
+.page-head { 
+  display: flex; 
+  align-items: center; 
+  margin-bottom: 12px; 
+  gap: 35px;
+}
+.page-head h1 { margin-left: 15px; }
+
+/* ====== Cards (Estilo Estándar) ====== */
+.card {
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
-  box-shadow:var(--shadow);
-  border:1px solid var(--c-border);
+  box-shadow: var(--shadow);
+  margin: 10px 0 14px 0;
 }
 
-/* =================== Botones =================== */
-.btn{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:8px 12px; border-radius:8px; border:1px solid transparent;
-  font-weight:500; cursor:pointer; text-decoration:none; line-height:1;
-  transition: background .15s, border-color .15s, transform .02s, filter .15s;
+/* ====== Filtros (Estilo Proveedores) ====== */
+.filters.card {
+  margin-bottom: 20px;
+      padding: var(--card-pad);
 }
-.btn:active{ transform: translateY(1px); }
-.btn.primary { background:var(--c-primary); color:#fff; }
-.btn.primary:hover{ background:var(--c-primary-600); }
-.btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
-.btn.outline:hover{ background:#f1f3f5; }
-.btn.green   { background: rgba(34, 117, 11, 0.92); color:#fff; }
-.btn.green:hover{ filter:brightness(.95); }
-.btn.danger  { background:var(--c-red); color:#fff; }
-.btn.danger:hover{ filter:brightness(.95); }
-.btn.danger.ghost{ background:#fff; color:var(--c-red); border-color:var(--c-red); }
-.btn.blue    { background:#2291f2; color:#fff; }
-.btn.blue:hover{ filter:brightness(.96); }
-.btn.view{ background:var(--c-primary); color:#fff; border-color:transparent; }
-.btn.view:hover{ background:var(--c-primary-600); }
-.btn.back{ background:#fff; color:#212529; border:1px solid #ced4da; }
-.btn.back:hover{ background:#f1f3f5; }
 
-/* =================== Filtros (listar) =================== */
-.filters .row{
-  display:flex; flex-wrap:wrap; align-items:flex-end; gap:28px; margin-bottom: 10px;
+.filters .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
 }
-.filters label{
-  display:flex; flex-direction:column; gap:6px; font-size:.9rem; color:#555; min-width:160px;
-  font-weight:600; text-align:center;
-}
-.filters .in{
-  padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
-}
-.stack{ display:flex; flex-direction:column; gap:6px; }
-.range-2{ display:flex; align-items:center; gap:8px; }
-.subcol{ display:flex; flex-direction:column; gap:4px; }
-.sub{ color:#6b7280; font-size:.8rem; line-height:1; }
-.dash{ color:#191919; }
 
-/* ----- Doble slider de precio ----- */
-.filters label.wide{ min-width:320px; max-width:320px; }
-.price-range{
-  width:100%; height:32px; margin-top:6px; position:relative; display:flex; align-items:center;
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.95rem;
+  color: #555;
+  min-width: 150px;
+  font-weight: normal;
+  text-align: left;
 }
-.price-range input[type="range"]{
-  position:absolute; left:0; right:0; width:100%;
-  pointer-events:none; background:none; height:28px; -webkit-appearance:none; appearance:none;
-  margin:0; padding:0;
-}
-.price-range input[type="range"]::-webkit-slider-thumb{
-  pointer-events:all; -webkit-appearance:none; appearance:none;
-  height:18px; width:18px; border-radius:50%; background:#1c7ed6; border:2px solid #fff;
-  box-shadow:0 0 0 3px rgba(28,126,214,.2);
-}
-.price-range input[type="range"]::-webkit-slider-runnable-track{ background:transparent; height:6px; }
-.price-range input[type="range"]::-moz-range-thumb{
-  pointer-events:all; height:18px; width:18px; border-radius:50%; background:#1c7ed6; border:2px solid #fff;
-}
-.price-range input[type="range"]::-moz-range-track{ background:transparent; height:6px; }
-.price-range::before{
-  content:""; position:absolute; left:0; right:0; height:6px; border-radius:999px;
-  background:linear-gradient(to right,
-    #dfe3e6 var(--a,0%), #1c7ed6 var(--a,0%),
-    #1c7ed6 var(--b,100%), #dfe3e6 var(--b,100%)
-  );
-}
-.price-legend{ position:absolute; top:24px; left:0; right:0; display:flex; justify-content:space-between; font-size:.85rem; color:#000; }
 
-/* =================== Tabla / listado =================== */
-.tabla{ display:grid; gap:8px; min-width:980px; }
-.tabla .fila{
-  display:grid;
-  grid-template-columns: 1.1fr 2.6fr 2.6fr 1.7fr 1.9fr 1.9fr;
-  align-items:center; gap:10px;
-  background:#fff; border-radius:10px; padding:12px 14px;
-  box-shadow:var(--shadow);
-  border:1px solid #f1f3f5;
+/* Inputs dentro de filtros */
+.filters input[type="text"],
+.filters input[type="number"],
+.filters input[type="date"],
+.filters select {
+  padding: 8px 10px;
+  border: 1px solid #dfe3e6;
+  border-radius: 8px;
+  background: #fff;
+  width: 100%;
+  min-width: 140px;
+  font-size: 0.95rem;
+  color: #495057;
 }
-.tabla .fila.encabezado{
-  background:#f1f3f5; font-weight:700; position:sticky; top:0; z-index:1;
-  border:1px solid var(--c-border);
+
+.filters input:focus,
+.filters select:focus {
+  border-color: #3b82f6;
+  outline: none;
 }
-.tabla .fila:not(.encabezado):nth-child(odd){ background:#fcfcfd; }
-.tabla .fila:not(.encabezado):hover{ box-shadow:0 6px 16px rgba(0,0,0,.06); }
 
-/* Alineación numérica */
-.tabla .fila > div:nth-child(1),
-.tabla .fila > div:nth-child(4),
-.tabla .fila > div:nth-child(5),
-
-/* =================== Pills de estado =================== */
-.pill{
-  padding: 4px 10px; border-radius: 999px; font-size:.85rem; font-weight:700; display:inline-block;
-  border:1px solid transparent;
+/* ====== Botones ====== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
 }
-.pill.pending   { background:#fff4d6; color:#7a5600; border-color:#ffe8a1; }
-.pill.partial   { background:#e7f1ff; color:#1b4fa3; border-color:#cfe2ff; }
-.pill.completed { background:#e8f7ee; color:#146c2e; border-color:#a7f3d0; }
 
-/* Acciones */
-.acciones{ display:flex; flex-wrap:wrap; gap:8px; }
+.btn:active { transform: translateY(1px); }
 
-/* =================== RESPONSIVO lista =================== */
-@media (max-width:1100px){
-  .tabla .fila{
-    grid-template-columns: 1.1fr .9fr 1.5fr .7fr .9fr 1.2fr;
+.btn.primary { background: #1c7ed6; color: #fff; }
+.btn.primary:hover { background: #1864ab; }
+
+.btn.outline { background: #fff; color: #212529; border-color: #ced4da; }
+.btn.outline:hover { background: #f1f3f5; }
+
+.btn.danger { background: #f84052; color: #fff; }
+.btn.danger:hover { background: #c92a2a; }
+
+a.btn { text-decoration: none; }
+.acciones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+
+
+/* ====== TABLA DE ENTREGAS (Centrada y 5 Columnas) ====== */
+
+.tabla {
+  display: grid;
+  min-width: 900px;
+  overflow-x: auto;
+}
+
+/* Estilo de filas */
+#lista-entregas .fila,
+.tabla .fila {
+  display: grid;
+  /* 5 Columnas Iguales */
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 18px 14px;
+  box-shadow: var(--shadow);
+  border: 1px solid #f1f3f5;
+  margin-bottom: 0;
+}
+
+/* Encabezado */
+#lista-entregas .fila.encabezado {
+  background: #f1f3f5;
+  font-weight: 800;
+  box-shadow: none;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border: 1px solid #e9ecef;
+  
+  /* Corrección de tamaño de texto */
+  font-size: 1rem; 
+  color: #212529;
+}
+
+/* Centrado TOTAL (Texto y contenido) */
+#lista-entregas .fila > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+/* Zebra y Hover */
+#lista-entregas .fila:not(.encabezado):nth-child(odd) {
+  background: #fcfcfd;
+}
+#lista-entregas .fila:not(.encabezado):hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* ====== Pills de Estado (Etiquetas) ====== */
+.pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: inline-block;
+  border: 1px solid transparent;
+}
+.pill.pending   { background: #fff4d6; color: #7a5600; border-color: #ffe8a1; }
+.pill.partial   { background: #e7f1ff; color: #1b4fa3; border-color: #cfe2ff; }
+.pill.completed { background: #e8f7ee; color: #146c2e; border-color: #a7f3d0; }
+
+
+.form-page.narrow { 
+  max-width: 900px; 
+  margin: 0 auto; 
+}
+.form-page .grid { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap: 12px; 
+}
+
+/* Inputs de formularios de edición/creación */
+.form-page label {
+  display: block; 
+  font-size: 0.9rem; 
+  color: #444; 
+  margin-bottom: 6px;
+}
+.form-page input, 
+.form-page select,
+.tabla input.qty {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #dfe3e6;
+  border-radius: 8px;
+  background: #fff;
+  outline: none;
+}
+.form-page input:focus, 
+.form-page select:focus,
+.tabla input.qty:focus {
+  border: 2px solid #3b82f6;
+  box-shadow: none;
+}
+
+/* Acciones de formulario */
+.form-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+/* Vista de detalle (Ver Entrega) */
+.view-delivery {
+  display: grid; 
+  grid-template-columns: repeat(3, 1fr); 
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+/* Responsive */
+@media (max-width: 1100px){
+  #lista-entregas .fila {
+    font-size: 0.9rem;
   }
 }
-@media (max-width:900px){
-  .page{ padding:16px; }
-  .card{ overflow-x:auto; }
-}
-
-/* ========================================================================== */
-/* ========================== FORM PAGES (crear/editar) ===================== */
-/* ========================================================================== */
-
-.form-page{ max-width:1100px; margin:0 auto; padding:24px; }
-.form-page h1{ margin:0 0 10px 2px; }
-
-/* Grid simple de 2 columnas (colapsa en mobile) */
-.form-page .grid{
-  display:grid; grid-template-columns: 1fr 1fr; gap:18px;
-}
-@media (max-width:900px){
-  .form-page .grid{ grid-template-columns: 1fr; }
-}
-
-/* Campos de formulario */
-.form-page label{ display:block; font-weight:600; color:#444; margin-bottom:6px; }
-.form-page input[type="date"],
-.form-page input[type="number"],
-.form-page input[type="text"],
-.form-page select{
-  width:100%; padding:10px 12px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
-}
-.form-page .hint{ color:var(--c-muted); font-size:.85rem; display:block; margin-top:6px; }
-
-/* Subtítulo dentro de formularios */
-.subhead{ display:flex; align-items:flex-end; gap:12px; margin:18px 2px 10px; }
-.subhead h3{ margin:0; }
-.subhead small{ color:var(--c-muted); }
-
-/* Tabla compacta para renglones de materiales */
-.tabla.compact{ gap:6px; }
-.tabla.compact .fila{ padding:10px 12px; }
-.tabla.compact .fila.encabezado{
-  background:#f1f3f5; border:1px solid var(--c-border);
-}
-
-/* Acciones del formulario */
-.form-actions{
-  display:flex; align-items:center; gap:10px; margin-top:16px;
-}
-
-/* =================== Page Edit (ver/editar) =================== */
-.page-edit{ max-width:1100px; margin:0 auto; padding:24px; }
-
-.view-delivery{
-  display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;
-  font-size:1rem; color:#333;
-}
-.view-delivery > div strong{ color:#111; }
-@media (max-width:900px){
-  .view-delivery{ grid-template-columns: 1fr; }
-}
-
-/* =================== Toasts / Notifications =================== */
-.notification{
-  position:fixed; right:18px; top:18px; z-index:9999;
-  background:#fff; color:#111;
-  border:1px solid var(--c-border);
-  border-left:4px solid var(--c-primary);
-  border-radius:10px; padding:10px 14px;
-  box-shadow:0 8px 24px rgba(0,0,0,.10);
-  min-width:260px; max-width:420px;
-}
-.notification.info{ border-left-color: var(--c-primary); }
-.notification.success{ border-left-color: #2fab4a; }
-.notification.error{ border-left-color: var(--c-red); }
-
-/* =================== Pequeños helpers =================== */
-.hr{ height:1px; background:#e9ecef; border:0; margin:12px 0; }
-
-/* Corrige inputs dentro de la tabla de edición */
-.tabla input.qty{ width:100%; padding:6px 8px; border:1px solid #dfe3e6; border-radius:8px; }
-
-/* Estado “apretado” general en filas de tabla */
-.tabla .fila{ gap:8px; }
-.fila.encabezado{ background:#f1f3f5; border:1px solid #e9ecef; }
-
-/* Evitar que inputs/select se agranden por herencia */
-input, select, button{ font: inherit; }
-
-
-/* ======== PATCH view/edit (ver-entrega / editar-entrega) ======== */
-
-/* El wrapper #items no debe romper la grilla de .tabla */
-.page-edit .tabla #items { display: contents; }
-
-/* Tabla más compacta en ver/editar */
-.page-edit .tabla { min-width: 0; gap: 8px; }
-.page-edit .tabla .fila { padding: 10px 12px; }
-
-/* En vistas de detalle, alineación por defecto a la izquierda */
-.page-edit .tabla .fila > div { text-align: left; }
-/* Alinear números a la derecha solo en columnas de precio/subtotal (4 y 5) */
-.page-edit .tabla .fila > div:nth-child(4),
-.page-edit .tabla .fila > div:nth-child(5) { text-align: right; }
-
-/* Título tipo subtítulo usado como h3.subhead (tolerante) */
-h3.subhead { 
-  margin: 18px 2px 10px; 
-  font-size: 1.05rem; 
-  font-weight: 700; 
-  color: #333;
-}
-
-/* Caja de detalle superior en ver-entrega */
-.view-delivery {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  font-size: 0.98rem;
-  color: #333;
-}
-.view-delivery > div strong { color:#111; }
 @media (max-width: 900px){
+  .filters input[type="text"] { min-width: 150px; }
+  .form-page .grid { grid-template-columns: 1fr; }
   .view-delivery { grid-template-columns: 1fr; }
 }
 
-/* Inputs dentro de celdas (editar) */
-.tabla input.qty{
-  width:100%;
-  padding:6px 8px;
-  border:1px solid #dfe3e6;
-  border-radius:8px;
-  background:#fff;
+.seccion-crearEntrega #items .fila {
+  grid-template-columns: 2fr 1.5fr 0.8fr 1fr; 
 }
 
-/* Pill de estado en ver-entrega (ya estaban, reforzamos por si el orden de css cambia) */
-.pill.pending   { background:#fff4d6; color:#7a5600; border-color:#ffe8a1; }
-.pill.partial   { background:#e7f1ff; color:#1b4fa3; border-color:#cfe2ff; }
-.pill.completed { background:#e8f7ee; color:#146c2e; border-color:#a7f3d0; }
-
-
-.btn{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:8px 12px; border-radius:8px; border:1px solid transparent;
-  font-weight:500; cursor:pointer; text-decoration:none; line-height:1;
-  transition: background .15s, border-color .15s, transform .02s;
-  letter-spacing: .3px;
+/* Alineación específica */
+.seccion-crearEntrega #items .fila > div:nth-child(3) { /* Vendido */
+  justify-content: center;
 }
-.btn:active{ transform: translateY(1px); }
-
-.btn.success {background-color: rgb(0, 203, 0); color: #fff; }
-.btn.primary { background:#1c7ed6; color:#fff; }
-.btn.danger  { background:#f84052; color:#fff; }
-.btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
-
-.btn.primary:hover{ background:#1864ab; }
-.btn.danger:hover { background:#c92a2a; }
-.btn.outline:hover{ background:#f1f3f5; }
-
-a.btn{ text-decoration:none; }
-.acciones{ display:flex; flex-wrap:wrap; gap:8px; }
-
-
-.tabla .fila{
-  display:grid;
-  /* Fecha | Cliente | Venta | Estado | Acciones */
-  grid-template-columns: 1.1fr 2.6fr 1.1fr 1.3fr 1.7fr;
-  align-items:center; gap:10px;
-  background:#fff; border-radius:10px; padding:12px 14px;
-  box-shadow:var(--shadow);
-  border:1px solid #f1f3f5;
+.seccion-crearEntrega #items .fila > div:nth-child(4) { /* A Entregar */
+  justify-content: center;
+}
+.seccion-crearEntrega {
+  max-width: 900px !important; 
+  margin: 0 auto;              
+}
+.seccion-crearEntrega .tabla {
+  min-width: 0 !important;  
+  width: 100%;              
+  overflow-x: visible;    
+}
+.seccion-crearEntrega .tabla .fila.encabezado {
+  padding: 12px 14px !important;
+  background-color: #f1f3f5;
+}
+#form-editar #items .fila {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #e9ecef;
+  padding: 10px 0; /* Padding vertical para aire */
 }
 
-/* Alineación: fecha y #venta a la derecha, resto centrado/izquierda */
-.tabla .fila > div:nth-child(1),
-.tabla .fila > div:nth-child(3){
-  text-align:right;
-}
-.tabla .fila > div:nth-child(4),
-.tabla .fila > div:nth-child(5){
-  text-align:center;
+#form-editar #items .fila > div:nth-child(2),
+#form-editar #items .fila > div:nth-child(3) {
+  justify-content: center;
+  text-align: center;
+  display: flex;
 }
 
-@media (max-width:1100px){
-  .tabla .fila{
-    grid-template-columns: 1.1fr 1.8fr .9fr 1.1fr 1.5fr;
-  }
+#form-editar #items .fila.encabezado {
+  background: #f8f9fa;
+  font-weight: 700;
+  border-bottom: 2px solid #e9ecef;
+}
+#form-editar #items .fila.encabezado > div {
+  justify-content: center;
+}
+#form-editar #items .fila.encabezado > div:first-child {
+  justify-content: flex-start;
+  padding-left: 10px;
+}
+/* ==========================================================
+   CORRECCIÓN FINAL: Input pequeño y siempre visible
+   ========================================================== */
+
+#form-editar .tabla input[type="number"] {
+  border: 1px solid #dfe3e6 !important;  
+  background-color: #fff !important;     
+  border-radius: 6px !important;         
+  height: 34px !important;               
+  padding: 0 5px !important;            
+  width: 80px !important;                
+  
+  margin: 0 auto !important; /* Centrado en la celda */
+  display: block;                        
+  text-align: center;                    
 }
 
-
-.link-venta{
-  font-weight:600;
-  color:#1c7ed6;
-  cursor:pointer;
-  text-decoration:none;
+/* Efecto Focus */
+#form-editar .tabla input[type="number"]:focus {
+  border-color: #3b82f6 !important;      
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
-.link-venta:hover{
-  text-decoration:underline;
-}
-.link-venta.disabled{
-  color:#6c757d;
-  cursor:default;
-  text-decoration:none;
-}
-
-
-/* =================== Fin entregas.css =================== */

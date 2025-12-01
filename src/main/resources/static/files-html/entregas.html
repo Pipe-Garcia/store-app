@@ -1,4 +1,3 @@
-<!-- /static/files-html/entregas.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,92 +6,75 @@
   <title>🚚 - Entregas</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/entregas.css"/>
-  <!-- NAV fijo -->
   <link rel="stylesheet" href="../files-css/nav.css">
 </head>
 <body>
-  <!-- NAV -->
   <div id="app-header"></div>
 
-<main class="page">
-  <div class="page-head">
-    <h1>Entregas</h1>
-    <div class="actions">
-      <a class="btn primary" href="../files-html/crear-entrega.html">+ Nueva entrega</a>
-    </div>
-  </div>
-
-  <hr><br>
-
-  <!-- Filtros: ahora centrados en VENTA -->
-  <section class="card filters" style="margin-bottom:12px;">
-    <div class="row">
-      <label>
-        <span>Venta #</span>
-        <input id="fSaleId" type="number" class="in" placeholder="ID" min="1">
-      </label>
-
-      <label>
-        <span>Cliente</span>
-        <select id="fClient" class="in">
-          <option value="">Todos</option>
-        </select>
-      </label>
-
-      <!-- Fecha Entrega -->
-      <label class="stack">
-        <span>Fecha de entrega</span>
-        <div class="range-2">
-          <div class="subcol">
-            <small class="sub">Desde</small>
-            <input id="fFrom" type="date" class="in" aria-label="Fecha de entrega desde">
-          </div>
-          <span class="dash">—</span>
-          <div class="subcol">
-            <small class="sub">Hasta</small>
-            <input id="fTo" type="date" class="in" aria-label="Fecha de entrega hasta">
-          </div>
-        </div>
-      </label>
-
-      <label>
-        <span>Estado</span>
-        <select id="fStatus" class="in">
-          <option value="">Todos</option>
-          <option value="PENDING">Pendiente</option>
-          <option value="PARTIAL">Parcial</option>
-          <option value="COMPLETED">Completada</option>
-        </select>
-      </label>
-
-      <label>
-        <span>Buscar</span>
-        <input id="fText" type="text" class="in" placeholder="Cliente o #Venta">
-      </label>
-
-      <button id="btnClear" class="btn outline" style="align-self:flex-end;">Limpiar</button>
-    </div>
-  </section>
-
-  <section class="list">
-    <div id="lista-entregas" class="tabla">
-      <div class="fila encabezado">
-        <div>Fecha</div>
-        <div>Cliente</div>
-        <div>Venta</div>
-        <!-- 👇 quitamos columna Presupuesto -->
-        <div>Estado</div>
-        <div>Acciones</div>
+  <main class="page">
+    <div class="page-head">
+      <h1>Entregas</h1>
+      <div class="actions">
+        <a class="btn primary" href="../files-html/crear-entrega.html">+ Nueva entrega</a>
       </div>
-      <!-- filas dinámicas -->
     </div>
-  </section>
-</main>
 
-<script src="../files-js/core/api.js"></script>
-<script>window.api.setBaseUrl('http://localhost:8088');</script>
-<script src="../files-js/header.js"></script>
-<script src="../files-js/menu-guard.js"></script>
-<script type="module" src="../files-js/entregas.js"></script>
+    <hr><br>
+
+    <section class="filters card">
+      <div class="row">
+        <label>Venta #
+          <input id="fSaleId" type="number" class="in" placeholder="ID" min="1">
+        </label>
+
+        <label>Cliente
+          <select id="fClient" class="in">
+            <option value="">Todos</option>
+          </select>
+        </label>
+
+        <label>Desde
+          <input id="fFrom" type="date" class="in">
+        </label>
+
+        <label>Hasta
+          <input id="fTo" type="date" class="in">
+        </label>
+
+        <label>Estado
+          <select id="fStatus" class="in">
+            <option value="">Todos</option>
+            <option value="PENDING">Pendiente</option>
+            <option value="PARTIAL">Parcial</option>
+            <option value="COMPLETED">Completada</option>
+          </select>
+        </label>
+
+        <label>Buscar
+          <input id="fText" type="text" class="in" placeholder="Cliente...">
+        </label>
+
+        <button id="btnClear" class="btn outline">Limpiar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div id="lista-entregas" class="tabla">
+        <div class="fila encabezado">
+          <div>Fecha</div>
+          <div>Cliente</div>
+          <div>Venta</div>
+          <div>Estado</div>
+          <div>Acciones</div>
+        </div>
+        </div>
+    </section>
+  </main>
+
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+  <script src="../files-js/header.js"></script>
+  <script src="../files-js/menu-guard.js"></script>
+  <script type="module" src="../files-js/entregas.js"></script>
 </body>
 </html>

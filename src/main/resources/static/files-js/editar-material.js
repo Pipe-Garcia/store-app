@@ -46,12 +46,12 @@ function updateCurrentHintsWithFallback(famTextFallback, whTextFallback){
   const famSel=$('#familyId'), whSel=$('#warehouseId');
   const famText=famSel?.selectedOptions?.[0]?.textContent || famTextFallback || '—';
   const whText =whSel ?.selectedOptions?.[0]?.textContent || whTextFallback  || '—';
+  
   const famHint=$('#familyCurrent'), whHint=$('#warehouseCurrent');
-  if(famHint) famHint.textContent=`Actual: ${famText}`;
-  if(whHint)  whHint.textContent =`Actual: ${whText}`;
+  if(famHint) famHint.textContent=`Seleccionado: ${famText}`;
+  if(whHint)  whHint.textContent =`Seleccionado: ${whText}`;
 }
 
-/* Preselección robusta */
 function preselectRobusto(selectEl, {id, text}){
   if (!selectEl) return false;
   const idStr = (id!=null && id!=='') ? String(id) : null;
@@ -64,8 +64,6 @@ function preselectRobusto(selectEl, {id, text}){
     const norm = String(text).trim().toLowerCase();
     const byTxt = [...selectEl.options].find(o => o.textContent.trim().toLowerCase() === norm);
     if (byTxt){ selectEl.value = byTxt.value; return true; }
-    const byContains = [...selectEl.options].find(o => o.textContent.trim().toLowerCase().includes(norm));
-    if (byContains){ selectEl.value = byContains.value; return true; }
   }
   if (idStr && text){
     const opt = document.createElement('option');
@@ -79,25 +77,10 @@ function preselectRobusto(selectEl, {id, text}){
   return false;
 }
 
-/* Extraer familia del material con varias formas posibles */
 function extractFamilyFromMaterial(m){
   if (!m) return { id:null, text:null };
-  const id =
-    m.family?.idFamily ??
-    m.family?.id ??
-    m.familyId ??
-    m.family_id ??
-    m.family?.familyId ??
-    null;
-
-  const text =
-    m.family?.typeFamily ??
-    m.family?.name ??
-    m.familyName ??
-    m.family_type ??
-    m.category ??
-    null;
-
+  const id = m.family?.idFamily ?? m.family?.id ?? m.familyId ?? null;
+  const text = m.family?.typeFamily ?? m.family?.name ?? null;
   return { id, text };
 }
 
@@ -132,8 +115,8 @@ async function cargarAlmacenes(){
 document.addEventListener('DOMContentLoaded', init);
 
 async function init(){
-  if(!materialId){ notify('ID de material no especificado','error'); go('materiales.html'); return; }
-  if(!getToken()){ notify('Debes iniciar sesión','error'); go('login.html'); return; }
+  if(!materialId){ notify('ID no especificado','error'); setTimeout(()=>go('materiales.html'), 1000); return; }
+  if(!getToken()){ notify('Iniciá sesión','error'); go('login.html'); return; }
 
   await Promise.all([cargarFamilias(), cargarAlmacenes()]);
 
@@ -146,14 +129,17 @@ async function init(){
     console.error(e); notify('Error al cargar material','error'); go('materiales.html'); return;
   }
 
-  $('#name').value       = m.name  || '';
-  $('#brand').value      = m.brand || '';
-  $('#priceArs').value   = (m.priceArs ?? '') === null ? '' : m.priceArs;
+  // == CARGAR DATOS EN INPUTS ==
+  $('#name').value           = m.name  || '';
+  $('#brand').value          = m.brand || '';
+  $('#priceArs').value       = (m.priceArs ?? '') === null ? '' : m.priceArs;
+  // Nuevos campos:
+  $('#internalNumber').value = m.internalNumber || '';
+  $('#description').value    = m.description || '';
 
   const fam = extractFamilyFromMaterial(m);
   preselectRobusto($('#familyId'), fam);
 
-  // Depósito actual (siempre tomamos el primero)
   let whId=null, whText=null;
   try{
     const rs=await authFetch(`${API_URL_STOCK}?materialId=${materialId}`);
@@ -176,29 +162,28 @@ async function init(){
 /* ================== save ================== */
 async function onSave(e){
   e.preventDefault();
-  if(!getToken()){ notify('Debes iniciar sesión','error'); go('login.html'); return; }
+  if(!getToken()){ notify('Iniciá sesión','error'); go('login.html'); return; }
 
   const btn=$('#btnSave'); 
-  if(btn){ 
-    btn.disabled=true; 
-    btn.textContent='Guardando…'; 
-  }
+  if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
 
   const famVal = $('#familyId').value;
   const whVal  = $('#warehouseId').value;
 
-  // MaterialUpdateDTO del back (vía DTO al endpoint PUT /materials)
   const payload = {
     idMaterial: parseInt(materialId, 10),
-    name:  $('#name').value.trim(),
-    brand: $('#brand').value.trim(),
-    priceArs: parseFloat($('#priceArs').value || '0'),
-    familyId: (famVal ? parseInt(famVal, 10) : null),
-    // 🔹 NUEVO: mandamos el depósito elegido
+    name:           $('#name').value.trim(),
+    brand:          $('#brand').value.trim(),
+    priceArs:       parseFloat($('#priceArs').value || '0'),
+    // Nuevos campos:
+    internalNumber: $('#internalNumber').value.trim(),
+    description:    $('#description').value.trim(),
+    
+    familyId:    (famVal ? parseInt(famVal, 10) : null),
     warehouseId: (whVal ? parseInt(whVal, 10) : null)
   };
 
-  // limpiamos nulos / NaN / string vacío
+  // Limpiar valores nulos/inválidos
   Object.keys(payload).forEach(k=>{
     if (payload[k] === null || payload[k] === '' || Number.isNaN(payload[k])) {
       delete payload[k];
@@ -211,15 +196,11 @@ async function onSave(e){
       body: JSON.stringify(payload)
     });
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    flashAndGo('✅ Material actualizado con éxito','materiales.html');
+    flashAndGo('✅ Material actualizado','materiales.html');
   }catch(err){
     console.error(err);
     notify('Error actualizando material','error');
   }finally{
-    if(btn){ 
-      btn.disabled=false; 
-      btn.textContent='Guardar cambios'; 
-    }
+    if(btn){ btn.disabled=false; btn.textContent='Guardar cambios'; }
   }
 }
-

@@ -176,7 +176,7 @@ function renderTabla(list){
     const t = e.target.closest('button'); if(!t) return;
     const idEdit=t.getAttribute('data-edit');
     const idDel =t.getAttribute('data-del');
-    if(idEdit){ location.href=`../files-html/editar-material.html?id=${Number(idEdit)}`; return; }
+    if(idEdit){ location.href=`../files-html/ver-material.html?id=${Number(idEdit)}`; return; }
     if(idDel ){ eliminarMaterial(Number(idDel)); return; }
   };
 }

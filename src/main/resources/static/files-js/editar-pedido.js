@@ -1,242 +1,303 @@
 // /static/files-js/editar-pedido.js
 const { authFetch, safeJson, getToken } = window.api;
 
-const API_URL_MATERIALES     = '/materials';
-const API_URL_ORDERS         = '/orders';
-const API_URL_ORDER_DETAILS  = '/order-details';
+const API_URL_ORDERS    = '/orders';
+const API_URL_CLIENTS   = '/clients';
+const API_URL_MATERIALS = '/materials';
+
+const $ = (s, r=document) => r.querySelector(s);
+const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
+
+const params = new URLSearchParams(window.location.search);
+const orderId = params.get('id');
+
+function go(page){
+  const base = location.pathname.replace(/[^/]+$/, '');
+  location.href = `${base}${page}`;
+}
+
+function notify(message, type='info'){
+  const div = document.createElement('div');
+  div.className = `notification ${type}`;
+  div.textContent = message;
+  document.body.appendChild(div);
+  setTimeout(()=> div.remove(), 3800);
+}
 
 let listaMateriales = [];
-let pedidoOriginal  = {};
-let detallesOriginales = new Map(); // key: materialId, value: { idDetail, quantity }
+let listaClientes = [];
 
-/* ===== Helpers ===== */
-const $ = (s, r=document) => r.querySelector(s);
+window.addEventListener('DOMContentLoaded', init);
 
-function go(page) {
-  const base = location.pathname.replace(/[^/]+$/, ''); // .../files-html/
-  window.location.href = `${base}${page}`;
-}
+async function init(){
+  if (!getToken()){ go('login.html'); return; }
+  if (!orderId) { notify('ID no especificado','error'); setTimeout(()=>go('pedidos.html'), 1000); return; }
 
-let __toastRoot;
-function ensureToastRoot(){
-  if(!__toastRoot){
-    __toastRoot = document.createElement('div');
-    Object.assign(__toastRoot.style, {
-      position:'fixed',
-      top:'36px',
-      right:'16px',
-      display:'flex',
-      flexDirection:'column',
-      gap:'8px',
-      zIndex:9999,
-      height:'50vh',
-      overflowY:'auto',
-      pointerEvents:'none',
-      maxWidth:'400px',
-      width:'400px'
-    });
-    document.body.appendChild(__toastRoot);
-  }
-}
-function notify(message, type='info'){
-  ensureToastRoot();
-  const n = document.createElement('div');
-  n.className = `notification ${type}`;
-  n.textContent = message;
-  __toastRoot.appendChild(n);
-  setTimeout(()=>n.remove(), 5000);
-}
+  $('#orderIdDisplay').textContent = `#${orderId}`;
 
-const fmtDate = s=>{
-  if (!s) return '—';
-  const iso = (s.length > 10 ? s.slice(0,10) : s);
-  const d = new Date(iso + 'T00:00:00');
-  return isNaN(d) ? '—' : d.toLocaleDateString('es-AR');
-};
-
-document.addEventListener('DOMContentLoaded', bootstrap);
-
-async function bootstrap(){
-  if (!getToken()) {
-    notify('Debes iniciar sesión para editar un presupuesto', 'error');
-    go('login.html');
-    return;
-  }
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const orderId = urlParams.get('id');
-  if (!orderId) {
-    notify('ID de presupuesto no especificado', 'error');
-    go('pedidos.html');
-    return;
-  }
-
-  // boton volver detalle
-  const back = $('#btnVolverDetalle');
-  if (back) back.href = `ver-pedido.html?id=${orderId}`;
-
-  try {
-    const [pedido, materiales, detallesMaybePaged, view] = await Promise.all([
-      authFetch(`${API_URL_ORDERS}/${orderId}`).then(r=> r.ok ? safeJson(r) : null),
-      authFetch(API_URL_MATERIALES).then(r=> r.ok ? safeJson(r) : []),
-      authFetch(`${API_URL_ORDER_DETAILS}?orderId=${orderId}`)
-        .then(r => r.ok ? safeJson(r) : authFetch(API_URL_ORDER_DETAILS).then(x=> x.ok ? safeJson(x) : [])),
-      authFetch(`${API_URL_ORDERS}/${orderId}/view`).then(r=> r.ok ? safeJson(r) : null)
+  try{
+    const [rCli, rMat] = await Promise.all([
+      authFetch(API_URL_CLIENTS),
+      authFetch(API_URL_MATERIALS)
     ]);
 
-    // Preferimos la VIEW para mostrar datos, pero para detalles usamos lo que más info traiga
-    pedidoOriginal  = view || pedido || {};
-    listaMateriales = materiales || [];
+    listaClientes = rCli.ok ? await safeJson(rCli) : [];
+    listaMateriales = rMat.ok ? await safeJson(rMat) : [];
 
-    // Cabecera
-    $('#id-pedido').textContent = pedidoOriginal.idOrders ?? pedidoOriginal.id ?? orderId;
-    const cliente = pedidoOriginal.clientName ??
-      [pedidoOriginal.client?.name, pedidoOriginal.client?.surname].filter(Boolean).join(' ');
-    $('#cliente').textContent = cliente || '—';
-    $('#fecha-creacion').textContent = fmtDate(pedidoOriginal.dateCreate);
-    $('#fecha-entrega').value = (pedidoOriginal.dateDelivery || '').slice(0,10) || '';
+    // 1. Configurar Autocomplete Cliente
+    setupClientAutocomplete();
+    
+    // Eventos
+    $('#btnAdd').onclick = (e) => { e.preventDefault(); addRow(); };
+    $('#btnGuardar').onclick = guardarCambios;
+    document.addEventListener('click', closeAllLists);
 
-    const contenedor = $('#materiales-container');
-    contenedor.innerHTML = '';
+    // 2. Cargar Datos del Presupuesto
+    await loadOrderData();
 
-    const detailsFromView = Array.isArray(view?.details) ? view.details : null;
+  }catch(e){
+    console.error(e);
+    notify('Error al inicializar','error');
+  }
+}
 
-    const detallesFiltrados = detailsFromView ??
-      (Array.isArray(detallesMaybePaged)
-        ? detallesMaybePaged.filter(d => Number(d.ordersId ?? d.orderId) === Number(orderId))
-        : []);
+async function loadOrderData(){
+  try {
+    let r = await authFetch(`${API_URL_ORDERS}/${orderId}/view`);
+    if(!r.ok) r = await authFetch(`${API_URL_ORDERS}/${orderId}`); // Fallback
+    
+    if(!r.ok) throw new Error('No se encontró el presupuesto');
+    const order = await safeJson(r);
 
-    // Mapa de originales
-    detallesOriginales.clear();
-    (detallesFiltrados || []).forEach(d => {
-      const idDetail   = d.idOrderDetail ?? d.idOrderDetails ?? d.id ?? d.orderDetailId;
-      const materialId = d.materialId ?? d.idMaterial;
-      if (materialId) detallesOriginales.set(Number(materialId), { idDetail, quantity: Number(d.quantity || 0) });
-    });
+    // Fecha
+    if(order.dateDelivery) $('#fecha-entrega').value = order.dateDelivery.slice(0,10);
 
-    if ((detallesFiltrados || []).length > 0) {
-      detallesFiltrados.forEach(d => {
-        const selectedId = d.materialId ?? d.idMaterial
-          ?? (listaMateriales.find(m => m.name === d.materialName)?.idMaterial);
-        const qty = Number(d.quantity || 1);
-        contenedor.appendChild(
-          makeFilaMaterial(selectedId, qty, d.idOrderDetail ?? d.idOrderDetails ?? d.id)
-        );
-      });
-    } else {
-      agregarMaterial();
+    // Cliente
+    const cliId = order.clientId || order.client?.idClient;
+    if(cliId){
+      const cli = listaClientes.find(c => (c.idClient??c.id) == cliId);
+      if(cli){
+        $('#cliente-search').value = `${cli.name||''} ${cli.surname||''}`.trim();
+        $('#cliente').value = cliId;
+      }
     }
 
-    $('#form-editar-pedido')?.addEventListener('submit', guardarCambios);
-    // para el botón inline
-    window.agregarMaterial = agregarMaterial;
-  } catch (err) {
-    console.error('Error al cargar datos:', err);
-    notify('Error al cargar el presupuesto para edición', 'error');
-    go('pedidos.html');
+    // Materiales
+    const detalles = order.details || order.items || [];
+    $('#items').querySelectorAll('.fila:not(.encabezado)').forEach(n=>n.remove());
+
+    if(detalles.length > 0){
+      for(const d of detalles){
+        const mid = d.materialId || d.material?.idMaterial;
+        const qty = d.quantity || d.amount;
+        if(mid && qty) addRow({materialId: mid, quantity: qty});
+      }
+    } else {
+      addRow(); 
+    }
+    recalc();
+
+  } catch(e){
+    console.error(e);
+    notify('Error al cargar datos del presupuesto','error');
   }
 }
 
-function makeFilaMaterial(selectedId, qty, detailId){
-  const fila = document.createElement('div');
-  fila.className = 'fila-material';
-  if (detailId) fila.dataset.detailId = String(detailId);
-  fila.innerHTML = `
-    <select class="select-material" required>
-      <option value="">Seleccione material</option>
-      ${(listaMateriales||[]).map(m =>
-        `<option value="${m.idMaterial}" ${Number(selectedId)===Number(m.idMaterial)?'selected':''}>${m.name}</option>`
-      ).join('')}
-    </select>
-    <input type="number" min="1" class="input-cantidad" value="${qty ?? ''}" placeholder="Cantidad" required />
-    <button type="button" class="btn outline" onclick="this.parentElement.remove()">🗑️</button>
-  `;
-  return fila;
-}
+/* ======================================================
+   AUTOCOMPLETE GENÉRICO
+   ====================================================== */
+function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
+  const input = wrapper.querySelector('input[type="text"]');
+  const hidden = wrapper.querySelector('input[type="hidden"]');
+  const list = wrapper.querySelector('.autocomplete-list');
 
-function agregarMaterial() {
-  const cont = $('#materiales-container');
-  if (!cont) return;
-  cont.appendChild(makeFilaMaterial('', ''));
-}
+  input.addEventListener('input', function(e) {
+    const val = this.value.toLowerCase();
+    hidden.value = ''; 
+    closeAllLists(this);
 
-async function guardarCambios(e) {
-  e.preventDefault();
-  if (!getToken()) {
-    notify('Debes iniciar sesión para guardar cambios', 'error');
-    go('login.html');
-    return;
-  }
+    if (!val) {
+      list.classList.remove('active');
+      return;
+    }
 
-  const fechaEntrega = $('#fecha-entrega').value;
-  const filas = Array.from(document.querySelectorAll('.fila-material'));
-  const detalles = filas.map(fila => {
-    const materialId = Number(fila.querySelector('.select-material').value);
-    const quantity   = Number(fila.querySelector('.input-cantidad').value);
-    const idOrderDetail = fila.dataset.detailId ? Number(fila.dataset.detailId) : null;
-    return { idOrderDetail, materialId, quantity };
+    const matches = data.filter(item => {
+      const txt = (item[displayKey] || '').toLowerCase();
+      return txt.includes(val);
+    });
+
+    list.innerHTML = '';
+    list.classList.add('active');
+
+    if (matches.length === 0) {
+      const div = document.createElement('div');
+      div.textContent = 'Sin coincidencias';
+      div.style.color = '#999';
+      list.appendChild(div);
+      return;
+    }
+
+    matches.forEach(item => {
+      const div = document.createElement('div');
+      div.textContent = item[displayKey];
+      div.addEventListener('click', function() {
+        input.value = item[displayKey];
+        hidden.value = item[idKey];
+        list.classList.remove('active');
+        if (onSelect) onSelect(item);
+      });
+      list.appendChild(div);
+    });
   });
+  
+  input.addEventListener('focus', function(){
+    if(this.value) this.dispatchEvent(new Event('input'));
+  });
+}
 
-  if (!fechaEntrega || detalles.length === 0 || detalles.some(d => !d.materialId || d.quantity <= 0)) {
-    notify('Debe completar todos los campos y agregar al menos un material válido.', 'error');
+function closeAllLists(elmnt) {
+  const x = document.getElementsByClassName("autocomplete-list");
+  for (let i = 0; i < x.length; i++) {
+    if (elmnt != x[i] && elmnt != x[i].previousElementSibling) {
+      x[i].classList.remove("active");
+    }
+  }
+}
+
+function setupClientAutocomplete(){
+  const wrapper = $('#ac-cliente-wrapper');
+  if(!wrapper) return;
+  const mapped = listaClientes.map(c => ({
+    id: c.idClient ?? c.id,
+    fullName: `${c.name||''} ${c.surname||''}`.trim()
+  }));
+  setupAutocomplete(wrapper, mapped, null, 'fullName', 'id');
+}
+
+/* ======================================================
+   TABLA DINÁMICA
+   ====================================================== */
+function addRow(prefill){
+  const cont = $('#items');
+  const row  = document.createElement('div');
+  row.className = 'fila';
+  
+  const matCol = document.createElement('div');
+  matCol.innerHTML = `
+    <div class="autocomplete-wrapper">
+      <input type="text" class="in-search" placeholder="Buscar material..." autocomplete="off">
+      <input type="hidden" class="in-mat-id">
+      <div class="autocomplete-list"></div>
+    </div>
+  `;
+  
+  const qtyIn = document.createElement('input');
+  qtyIn.type = 'number'; qtyIn.className = 'in-qty'; 
+  qtyIn.value = prefill?.quantity || 1; 
+  qtyIn.min = 1;
+
+  const priceDiv = document.createElement('div');
+  priceDiv.className = 'price'; priceDiv.textContent = '$ 0,00';
+
+  const subDiv = document.createElement('div');
+  subDiv.className = 'col-subtotal'; subDiv.textContent = '$ 0,00';
+
+  const btnDel = document.createElement('button');
+  btnDel.className = 'btn danger small';
+  btnDel.innerHTML = '🗑️';
+  btnDel.onclick = (e) => { e.preventDefault(); row.remove(); recalc(); };
+
+  const wrapper = matCol.querySelector('.autocomplete-wrapper');
+  
+  const onSelectMat = (selected) => {
+    const price = Number(selected.priceArs || 0);
+    priceDiv.textContent = fmtARS.format(price);
+    priceDiv.dataset.val = price;
+    recalc();
+  };
+
+  setupAutocomplete(wrapper, listaMateriales, onSelectMat, 'name', 'idMaterial');
+
+  // Precarga
+  if(prefill?.materialId){
+    const m = listaMateriales.find(x => x.idMaterial == prefill.materialId);
+    if(m){
+      wrapper.querySelector('input[type="text"]').value = m.name;
+      wrapper.querySelector('input[type="hidden"]').value = m.idMaterial;
+      onSelectMat(m);
+    }
+  }
+
+  qtyIn.oninput = recalc;
+
+  row.append(matCol, wrap(qtyIn), priceDiv, subDiv, btnDel);
+  cont.appendChild(row);
+}
+
+function wrap(el){
+  const d = document.createElement('div');
+  d.appendChild(el);
+  return d;
+}
+
+function recalc(){
+  let total = 0;
+  const rows = document.querySelectorAll('#items .fila:not(.encabezado)');
+  rows.forEach(r => {
+    const q = Number(r.querySelector('.in-qty').value || 0);
+    const p = Number(r.querySelector('.price').dataset.val || 0);
+    const sub = q * p;
+    r.querySelector('.col-subtotal').textContent = fmtARS.format(sub);
+    total += sub;
+  });
+  $('#total').textContent = fmtARS.format(total);
+}
+
+/* ======================================================
+   GUARDAR CAMBIOS (PUT)
+   ====================================================== */
+async function guardarCambios(ev){
+  ev.preventDefault();
+
+  const clientId = Number($('#cliente')?.value || 0); 
+  const fechaEntrega = $('#fecha-entrega')?.value || '';
+
+  if (!clientId || !fechaEntrega){
+    notify('Falta cliente o fecha','error');
     return;
   }
 
-  // 1) actualizar cabecera del presupuesto (sin stock, solo datos)
-  const payloadCab = {
-    idOrders:     pedidoOriginal.idOrders ?? pedidoOriginal.id,
-    dateDelivery: fechaEntrega || null,
-    details,
-    deleteMissingDetails: true
+  const items = [];
+  const rows = document.querySelectorAll('#items .fila:not(.encabezado)');
+  for(const r of rows){
+    const mid = Number(r.querySelector('.in-mat-id').value || 0);
+    const qty = Number(r.querySelector('.in-qty').value || 0);
+    if(mid && qty > 0) items.push({ materialId: mid, quantity: qty });
+  }
+
+  if (!items.length){ notify('Agregá al menos un material válido','error'); return; }
+
+  // Payload PUT
+  const payload = {
+    idOrders: Number(orderId),
+    clientId,
+    dateDelivery: fechaEntrega,
+    materials: items
   };
 
   try{
-    const r = await authFetch(API_URL_ORDERS, { method:'PUT', body: JSON.stringify(payloadCab) });
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-
-    // 2) diff de detalles
-    const nuevos = new Map(detalles.map(d => [Number(d.materialId), Number(d.quantity)]));
-
-    const aCrear = [];
-    const aActualizar = [];
-    const aEliminar = [];
-
-    // a) nuevos o modificados
-    for (const [matId, qty] of nuevos.entries()) {
-      if (!detallesOriginales.has(matId)) {
-        aCrear.push({ ordersId: pedidoOriginal.idOrders ?? pedidoOriginal.id, materialId: matId, quantity: qty });
-      } else {
-        const ori = detallesOriginales.get(matId);
-        if (Number(ori.quantity) !== Number(qty)) {
-          aActualizar.push({ id: ori.idDetail, ordersId: pedidoOriginal.idOrders ?? pedidoOriginal.id, materialId: matId, quantity: qty });
-        }
-      }
-    }
-    // b) eliminados
-    for (const [matId, ori] of detallesOriginales.entries()) {
-      if (!nuevos.has(matId)) {
-        aEliminar.push({ id: ori.idDetail });
-      }
-    }
-
-    // 3) aplicar parches sobre /order-details
-    const postBody = d => JSON.stringify({ ordersId: d.ordersId, materialId: d.materialId, quantity: d.quantity });
-    const putBody  = d => JSON.stringify({
-      idOrderDetail: d.id, ordersId: d.ordersId, materialId: d.materialId, quantity: d.quantity
+    const r = await authFetch(API_URL_ORDERS, {
+      method:'PUT',
+      body: JSON.stringify(payload)
     });
+    
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    
+    localStorage.setItem('flash', JSON.stringify({ message:'✅ Presupuesto actualizado', type:'success' }));
+    go(`ver-pedido.html?id=${orderId}`);
 
-    const ops = [];
-    aCrear.forEach(d     => ops.push(authFetch(API_URL_ORDER_DETAILS,           { method:'POST', body: postBody(d) })));
-    aActualizar.forEach(d=> ops.push(authFetch(API_URL_ORDER_DETAILS,           { method:'PUT',  body: putBody(d)  })));
-    aEliminar.forEach(d  => { if (d.id) ops.push(authFetch(`${API_URL_ORDER_DETAILS}/${d.id}`, { method:'DELETE' })); });
-
-    if (ops.length > 0) await Promise.all(ops);
-
-    notify('✅ Presupuesto actualizado con éxito','success');
-    const idGo = pedidoOriginal.idOrders ?? pedidoOriginal.id;
-    setTimeout(()=> go(`ver-pedido.html?id=${idGo}`), 400);
   }catch(err){
-    console.error('Error en actualización de presupuesto:', err);
-    notify('Error al actualizar el presupuesto', 'error');
+    console.error(err);
+    notify('Error actualizando presupuesto','error');
   }
 }
