@@ -7,7 +7,7 @@
 }
 
 .page{ max-width: 1900px; margin:0 auto; padding:24px; }
-.page-head{ display:flex; align-items:center; margin-bottom:12px; gap: 35px;}
+.page-head{ display:flex; align-items:center;margin: 10px 0 18px 0; gap: 35px;}
 .page-head h1{ margin-left: 15px; }
 
 /* ====== Cards ====== */
@@ -15,6 +15,7 @@
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
   box-shadow: var(--shadow);
+  margin: 10px 0 14px 0;
 }
 
 .card:has(#lista-proveedores){ overflow-x:auto; }

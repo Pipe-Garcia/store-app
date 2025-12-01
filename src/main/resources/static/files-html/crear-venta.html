@@ -1,4 +1,3 @@
-<!-- /static/files-html/crear-venta.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -23,10 +22,16 @@
         <label>Fecha</label>
         <input id="fecha" type="date" required>
       </div>
+      
       <div>
         <label>Cliente</label>
-        <select id="cliente" required></select>
+        <div class="autocomplete-wrapper" id="ac-cliente-wrapper">
+          <input type="text" id="cliente-search" placeholder="Buscar cliente..." autocomplete="off">
+          <input type="hidden" id="cliente">
+          <div class="autocomplete-list"></div>
+        </div>
       </div>
+
       <div>
         <label for="orderSelect">Presupuesto (opcional)</label>
         <div style="display:flex; gap:8px; align-items:center;">
@@ -36,8 +41,7 @@
           <button id="btnClearOrder" class="btn outline" style="display:none;">Limpiar</button>
         </div>
         <small class="hint">
-          Solo se listan presupuestos con unidades pendientes. Si seleccionás uno,
-          se precargan sus renglones y se bloquea el cliente.
+          Solo se listan presupuestos con unidades pendientes.
         </small>
       </div>
     </div>
@@ -52,7 +56,7 @@
         <div>Subtotal</div>
         <div>Quitar</div>
       </div>
-    </div>
+      </div>
     <div class="form-actions">
       <button class="btn outline" id="btnAdd">+ Agregar ítem</button>
     </div>

@@ -33,6 +33,7 @@
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
   box-shadow: var(--shadow);
+  margin: 10px 0 14px 0;
 }
 
 .card:has(#lista-compras){ overflow-x:auto; }
@@ -74,7 +75,7 @@ a.btn{ text-decoration:none; }
 .acciones{ display:flex; flex-wrap:wrap; gap:8px; }
 
 
-#lista-compras{ display:grid; gap:8px; min-width: 720px; }
+#lista-compras{ display:grid; min-width: 720px; }
 #lista-compras .fila{
   display:grid;
   grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr;
@@ -183,4 +184,15 @@ a.btn{ text-decoration:none; }
 
   .acciones{ justify-content:flex-end; grid-column: 1 / -1; }
 }
-
+/* Centrar encabezados de la tabla de detalles */
+#tabla-detalles .fila.encabezado > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+/* Alinear primera columna a la izquierda (Material) */
+#tabla-detalles .fila.encabezado > div:first-child {
+  justify-content: flex-start;
+  padding-left: 10px;
+}

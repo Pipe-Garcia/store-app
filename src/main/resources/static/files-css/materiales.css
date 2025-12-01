@@ -29,11 +29,10 @@
 .encabezado-lista-materiales .enc-actions { display:flex; gap:1rem;}
 
 .card{
-  background:#fff; 
-  border-radius: var(--radius); 
-  padding: var(--card-pad);    
-  box-shadow: var(--shadow);    
-  border: none; 
+  background:#fff; border-radius:var(--radius);
+  padding:var(--card-pad);
+  box-shadow: var(--shadow);
+  margin: 10px 0 14px 0;
 }
 
 .card-head{
@@ -294,8 +293,7 @@ a.btn{ text-decoration:none; }
   min-width: 180px;
 }
 
-/* ====== Botones (de proveedores.css) ====== */
-/* Esto sobreescribe las múltiples definiciones de .btn en tu CSS */
+
 .btn {
   display: inline-flex;
   align-items: center;

@@ -1,4 +1,4 @@
-/* ====== Variables y base (compat con ventas.css) ====== */
+
 :root{
   --gap: 14px;
   --radius: 12px;
@@ -14,42 +14,35 @@
 .page-head{ display:flex; align-items:center; gap:35px; margin-bottom:12px; }
 .page-head h1{ margin-left: 15px; }
 
-/* ====== Cards ====== */
 .card{
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
   box-shadow: var(--shadow);
 }
 
-/* ====== Tabla de presupuestos ====== */
-#lista-presupuestos{ display:grid; gap:8px; min-width: 980px; }
+#lista-presupuestos{ display:grid; min-width: 980px; }
 #lista-presupuestos .fila{
   display:grid;
-  /* 7 columnas: id, cliente, f.crea, f.entrega, total, reserva, acciones */
   grid-template-columns: repeat(5, 1fr);
   align-items:center; gap:10px;
   background:#fff; border-radius:10px; padding:12px 14px;
   box-shadow: var(--shadow);
 }
 #lista-presupuestos .fila.encabezado{
-  background:#f1f3f5; font-weight:700; box-shadow: var(--shadow) ; position:sticky; top:0; z-index:1;
+  background:#f1f3f5; font-weight:800; box-shadow: var(--shadow) ; position:sticky; top:0; z-index:1;
   border:1px solid var(--c-border);
 }
 
-/* Zebra + hover */
 #lista-presupuestos .fila:not(.encabezado):nth-child(odd){ background:#fcfcfd; }
 #lista-presupuestos .fila:not(.encabezado):hover{ box-shadow: 0 6px 16px rgba(0,0,0,.06); }
 
-/* Alineación de números */
 #lista-presupuestos .fila > div:nth-child(3),
 #lista-presupuestos .fila > div:nth-child(4),
 #lista-presupuestos .fila > div:nth-child(5){ text-align:right; }
 
-/* ====== Badge “Reservado” ====== */
 .tag{ display:inline-block; padding:4px 10px; border-radius:999px; font-size:.85rem; font-weight:700; }
 .tag.reservado{ background:#e8f1fd; color:#1b4fa3; border:1px solid #d0e2ff; }
 
-/* ====== Responsivo ====== */
 @media (max-width: 1100px){
   #lista-presupuestos .fila{
     grid-template-columns: .7fr 1.4fr .9fr .9fr .9fr 1fr 1.2fr;
@@ -64,13 +57,16 @@
   height: 100px;
 }
 
-/* Filtros (igual que ventas) */
 .filters .row{
   display:flex; flex-wrap:wrap; align-items:flex-end; gap:28px; margin-bottom: 15px;
 }
 .filters label{
-  display:flex; flex-direction:column; gap:6px; font-size:1.1rem; color:#555; min-width: 160px;
-  text-align: center;
+  display:flex; 
+  flex-direction:column; gap:6px; 
+  font-size:1.1rem; 
+  color:#555; 
+  min-width: 160px;
+
   font-weight: 600;
 }
 .filters input[type="date"],
@@ -80,12 +76,10 @@
   padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
 }
 
-/* Compactos de rango (fecha) */
 .stack { display:flex; flex-direction:column; gap:6px; }
 .range-2 { display:flex; align-items:center; gap:8px; }
 .range-2 .dash { color:#191919; }
 
-/* ===== Doble slider de precio (corregido) ===== */
 .filters label.wide{ min-width:320px; max-width:320px; }
 
 .price-range{
@@ -133,7 +127,6 @@
   border-radius:999px;
 }
 
-/* Leyenda debajo del slider (ya no se superpone con "Total") */
 .price-legend {
   position: absolute; top: 24px; left: 0; right: 0;
   display: flex; justify-content: space-between;
@@ -146,26 +139,18 @@
   .price-range{ width: 200px; }
 }
 
-/* ==== Ajustes del filtro Total (ancho/alto/alineación) ==== */
-
 
 .subcol{ display:flex; flex-direction:column; gap:4px; }
 .sub{ color:#6b7280; font-size:.8rem; line-height:1; }
 
-/* Estado: badges */
 .tag.pendiente{ background:#fff7ed; color:#a16207; border:1px solid #fde68a; }
 .tag.vendido{ background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; }
-
-/* Columna de estado: que no se amontonen */
 .col-estado{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-
-/* Hover de filas un pelín más “elevado” */
 #lista-presupuestos .fila:not(.encabezado):hover{
   transform: translateY(-1px);
   box-shadow: 0 8px 22px rgba(0,0,0,.08);
 }
 
-/* Focus de filtros (feedback visual sutil) */
 .filters input[type="date"],
 .filters input[type="number"],
 .filters select,
@@ -181,19 +166,16 @@
   box-shadow:0 0 0 3px rgba(99,102,241,.15);
 }
 
-/* Centrar el/los badges de estado cuando NO hay link de reservas */
 .col-estado{
   display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   justify-content:center;             /* centrado por defecto */
 }
 
-/* Si existe el link “Reservas”, alineamos a la izquierda */
 .col-estado:has(a.tag.reservado){
   justify-content:flex-start;
 }
 
 
-/* Botones consistentes con Proveedores */
 .btn{
   display:inline-flex; align-items:center; gap:6px;
   padding:8px 12px; border-radius:8px; border:1px solid transparent;
@@ -218,13 +200,12 @@ a.btn{ text-decoration:none; }
 
 #lista-presupuestos{
   display:grid;
-  gap:8px;
+  
   min-width: 980px;
 }
 
 #lista-presupuestos .fila{
   display:grid;
-  /* 5 columnas: Fecha | Cliente | Total | Estado | Acciones */
   grid-template-columns: 130px 2fr 1.1fr 1.6fr 1.8fr;
   align-items:center;
   gap:10px;
@@ -263,4 +244,185 @@ a.btn{ text-decoration:none; }
 .btn-disabled{
   opacity: .55;
   cursor: not-allowed;
+}
+
+.form-page.narrow { 
+  max-width: 900px; 
+  margin: 0 auto; 
+}
+
+.form-page .card {
+  background: #fff;
+  border-radius: 12px; /* Usamos valor fijo si no hay variable */
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: none;
+}
+
+/* 2. Grid Principal (Cliente / Fecha) */
+.form-page .grid { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap: 16px; 
+}
+@media (max-width: 700px){
+  .form-page .grid{ grid-template-columns: 1fr; }
+}
+
+.form-page label { 
+  display: block; 
+  font-size: 0.9rem; 
+  color: #444; 
+  margin-bottom: 6px; 
+  font-weight: normal;
+}
+
+.form-page input:not([type="submit"]):not([type="button"]),
+.form-page select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #dfe3e6;
+  border-radius: 8px;
+  background: #fff;
+  color: #495057;
+  font-size: 0.95rem;
+  outline: none;
+  height: 40px;
+}
+
+.form-page input:focus,
+.form-page select:focus {
+  border: 2px solid ;
+  box-shadow: none;
+}
+
+.fila-material {
+  display: grid;
+  grid-template-columns: 1fr 120px 40px; 
+  gap: 10px;
+  align-items: center;
+}
+
+.fila-material select,
+.fila-material input {
+  margin: 0; /* Reset */
+}
+
+.fila-material button.btn {
+  padding: 0;
+  height: 40px;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border-color: #fee2e2;
+  color: #ef4444; /* Rojo */
+  background: #fff;
+}
+.fila-material button.btn:hover {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+.form-actions {
+  margin-top: 24px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-start;
+}
+
+#items .fila {
+  display: grid;
+  grid-template-columns: 2.5fr 0.8fr 1fr 1fr 0.5fr; 
+  align-items: center;
+  gap: 10px;
+ 
+  border-bottom: 1px solid #ccc;
+  padding: 10px 0;
+}
+
+#items .fila > div {
+  display: flex;
+  align-items: center;
+}
+
+
+#items .fila > div:nth-child(3), /* Precio */
+#items .fila > div:nth-child(4)  /* Subtotal */
+{
+  justify-content: flex-end;
+  text-align: right;
+}
+
+#items .fila > div:nth-child(5) {
+  justify-content: center;
+}
+
+#items .fila.encabezado > div {
+  justify-content: center !important;
+  text-align: center !important;
+  display: flex;
+  align-items: center;
+}
+#items .fila > div {
+  display: flex;
+  align-items: center;     
+  justify-content: center !important; 
+  text-align: center !important;    
+}
+
+.autocomplete-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #dfe3e6;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  display: none; /* Oculto */
+}
+
+.autocomplete-list.active {
+  display: block;
+}
+
+.autocomplete-list div {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f3f5;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.autocomplete-list div:hover {
+  background-color: #f0f7ff;
+  
+}
+.autocomplete-list div:last-child {
+  border-bottom: none;
+}
+
+.fila .autocomplete-wrapper {
+  height: 100%;
+}
+.fila .autocomplete-wrapper input {
+  height: 100%;
+  border: none; 
+  padding: 0 12px;
+  background: transparent;
+}
+.fila .autocomplete-wrapper input:focus {
+  background: #f0f7ff;
+  box-shadow: inset 0 0 0 2px;
 }

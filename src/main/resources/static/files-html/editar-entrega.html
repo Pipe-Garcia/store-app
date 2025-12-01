@@ -1,4 +1,3 @@
-<!-- /static/files-html/editar-entrega.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,62 +5,63 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>🚚 - Editar entrega</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
-  <link rel="stylesheet" href="../files-css/entregas.css">
-  <link rel="stylesheet" href="../files-css/nav.css">
+  <link rel="stylesheet" href="../files-css/entregas.css"/>
+  <link rel="stylesheet" href="../files-css/nav.css"/>
+  <link rel="stylesheet" href="../files-css/crear-pedido.css"/>
 </head>
 <body>
 
-  <!-- NAV -->
   <div id="app-header"></div>
     
-  <div class="page-edit form-page">
-    <div class="page-head">
-      <h1>Editar Entrega</h1>
-      <div class="actions">
-        <a class="btn back" href="entregas.html">Volver</a>
+  <main class="page form-page narrow seccion-crearEntrega">
+    <div class="page-head" style="display: block;">
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 8px;">
+        <h1>Editar Entrega</h1>
       </div>
+      <p style="color: #666; font-size: 0.9rem; margin: 0 0 15px 5px; max-width: 700px; line-height: 1.4;">
+        * Esta pantalla solo está para corregir errores puntuales de carga (fecha o cantidades).
+      </p>
     </div>
 
-    <p class="muted" style="margin: 4px 0 16px;">
-      Usá esta pantalla solo para corregir errores puntuales de carga (fecha o cantidades).
-      El estado de la entrega se recalcula automáticamente según las cantidades entregadas.
-    </p>
-
-    <hr><br>
-
-    <form id="form-editar" class="card">
-      <div class="grid">
-        <div>
-          <label>Venta / Presupuesto</label>
-          <div id="pedidoLabel" style="padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#f8f9fa;">—</div>
+    <section class="card">
+      <form id="form-editar">
+        <div class="grid">
+          <div>
+            <label>Venta / Presupuesto</label>
+            <input type="text" id="pedidoLabel" disabled value="Cargando..." style="background: #f8f9fa; border: 1px solid #e9ecef; color: #495057;">
+          </div>
+          <div>
+            <label for="fecha">Fecha de entrega</label>
+            <input id="fecha" type="date" required />
+          </div>
         </div>
-        <div>
-          <label>Fecha de entrega</label>
-          <input id="fecha" type="date" required />
+        <br>
+        <hr class="hr">
+
+        <div class="subhead" style="margin-bottom: 10px;">
+          <h3 style="margin:0; font-size:1.1rem; color:#333;">Materiales de la entrega</h3>
         </div>
-      </div>
 
-      <h3 class="subhead">Materiales</h3>
-      <div class="tabla">
-        <div class="fila encabezado" style="grid-template-columns: 2fr .8fr .8fr;">
-          <div>Material</div>
-          <div>Cantidad Vendida</div>
-          <div>Cantidad Entregada</div>
+        <div id="items" class="tabla">
+          <div class="fila encabezado">
+            <div>Material</div>
+            <div>Cantidad Vendida</div>
+            <div>Cantidad Entregada</div>
+          </div>
+          </div>
+
+        <div class="form-actions">
+          <button class="btn primary" type="submit">Guardar Cambios</button>
+          <a class="btn outline" href="entregas.html">Cancelar</a>
         </div>
-        <div id="items"></div>
-      </div>
+      </form>
+    </section>
+  </main>
 
-      <div class="form-actions">
-        <button class="btn green" type="submit">Guardar Cambios</button>
-        <a class="btn danger" href="entregas.html">Cancelar</a>
-      </div>
-    </form>
-  </div>
-
-<script src="../files-js/core/api.js"></script>
-<script>window.api.setBaseUrl('http://localhost:8088');</script>
-<script src="../files-js/header.js"></script>
-<script src="../files-js/menu-guard.js"></script>
-<script type="module" src="../files-js/editar-entrega.js"></script>
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+  <script src="../files-js/header.js"></script>
+  <script src="../files-js/menu-guard.js"></script>
+  <script type="module" src="../files-js/editar-entrega.js"></script>
 </body>
 </html>

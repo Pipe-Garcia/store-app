@@ -15,6 +15,7 @@
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
   box-shadow: var(--shadow);
+  margin: 10px 0 14px 0;
 }
 
 /* ====== Filtros / Formularios ====== */
@@ -91,12 +92,7 @@ input[type="text"]{
 @media (max-width: 900px){
   .row input[type="text"]{ min-width: 150px; }
 }
-/* ==========================================================
-   ESTILOS DE FORMULARIO ESTANDARIZADOS
-   (Añadir al final de almacenes.css)
-   ========================================================== */
 
-/* 1. Layout del Formulario (Centrado y ancho limitado) */
 .form-page.narrow { 
   max-width: 900px; 
   margin: 0 auto; 

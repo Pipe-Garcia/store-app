@@ -1,17 +1,12 @@
 // /static/files-js/crear-pedido.js
-// Alta de Presupuesto basado en /orders.
-// El presupuesto es SOLO una cotización: no reserva stock ni genera entregas.
-// Envía clientId, dateDelivery y detalles. Si el backend ignora "details",
-// hace fallback creando renglones vía /order-details.
-
 const { authFetch, safeJson, getToken } = window.api;
 
 const API_URL_ORDERS        = '/orders';
 const API_URL_CLIENTS       = '/clients';
-const API_URL_MATERIALES    = '/materials';
-const API_URL_ORDER_DETAILS = '/order-details';
+const API_URL_MATERIALS     = '/materials';
 
 const $ = (s, r=document) => r.querySelector(s);
+const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 
 function go(page){
   const base = location.pathname.replace(/[^/]+$/, '');
@@ -27,127 +22,234 @@ function notify(message, type='info'){
 }
 
 let listaMateriales = [];
+let listaClientes = [];
 
 window.addEventListener('DOMContentLoaded', init);
 
 async function init(){
-  if (!getToken()){
-    notify('Debes iniciar sesión para crear un presupuesto','error');
-    go('login.html');
-    return;
-  }
+  if (!getToken()){ go('login.html'); return; }
+
+  const d = new Date();
+  const today = d.toISOString().split('T')[0];
+  if($('#fecha-entrega')) $('#fecha-entrega').value = today;
 
   try{
     const [rCli, rMat] = await Promise.all([
       authFetch(API_URL_CLIENTS),
-      authFetch(API_URL_MATERIALES)
+      authFetch(API_URL_MATERIALS)
     ]);
 
-    const clientes = rCli.ok ? await safeJson(rCli) : [];
+    listaClientes = rCli.ok ? await safeJson(rCli) : [];
     listaMateriales = rMat.ok ? await safeJson(rMat) : [];
 
-    renderClientes(clientes);
-    setDefaultFechaEntrega();
+    // 1. Iniciar Autocomplete de Cliente
+    setupClientAutocomplete();
+    
+    // Eventos
+    $('#btnAdd').onclick = (e) => { e.preventDefault(); addRow(); };
+    $('#btnGuardar').onclick = guardarPresupuesto;
 
-    // Primera fila de materiales
-    agregarMaterial();
+    // Cerrar autocompletes al hacer clic fuera
+    document.addEventListener('click', closeAllLists);
 
-    const form = $('#form-crear-pedido');
-    if (form) form.addEventListener('submit', guardarPresupuesto);
+    // Primera fila
+    addRow();
 
-    // para el botón inline onclick
-    window.agregarMaterial = agregarMaterial;
   }catch(e){
     console.error(e);
-    notify('Error al preparar el formulario de presupuesto','error');
+    notify('Error cargando datos iniciales','error');
   }
 }
 
-function setDefaultFechaEntrega(){
-  const el = $('#fecha-entrega');
-  if (!el) return;
-  if (el.value) return;
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm   = String(d.getMonth()+1).padStart(2,'0');
-  const dd   = String(d.getDate()).padStart(2,'0');
-  el.value = `${yyyy}-${mm}-${dd}`;
-}
+function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
+  const input = wrapper.querySelector('input[type="text"]');
+  const hidden = wrapper.querySelector('input[type="hidden"]');
+  const list = wrapper.querySelector('.autocomplete-list');
 
-function renderClientes(clientes){
-  const sel = $('#cliente');
-  if (!sel) return;
+  input.addEventListener('input', function(e) {
+    const val = this.value.toLowerCase();
+    // Reset ID si cambia el texto
+    hidden.value = ''; 
+    
+    // Cerrar otras listas
+    closeAllLists(this);
 
-  sel.innerHTML = `<option value="">Seleccionar cliente</option>`;
-  (clientes || [])
-    .sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
-    .forEach(c=>{
-      const id = c.idClient ?? c.id;
-      const nombre = `${c.name||''} ${c.surname||''}`.trim() || `#${id}`;
-      const opt = document.createElement('option');
-      opt.value = String(id || '');
-      opt.textContent = nombre;
-      sel.appendChild(opt);
+    if (!val) {
+      list.classList.remove('active');
+      return;
+    }
+
+    // Filtrar
+    const matches = data.filter(item => {
+      const txt = (item[displayKey] || '').toLowerCase();
+      return txt.includes(val);
     });
+
+    list.innerHTML = '';
+    list.classList.add('active');
+
+    if (matches.length === 0) {
+      const div = document.createElement('div');
+      div.textContent = 'Sin coincidencias';
+      div.style.cursor = 'default';
+      div.style.color = '#999';
+      list.appendChild(div);
+      return;
+    }
+
+    matches.forEach(item => {
+      const div = document.createElement('div');
+      div.textContent = item[displayKey];
+      
+      div.addEventListener('click', function() {
+        input.value = item[displayKey];
+        hidden.value = item[idKey];
+        list.classList.remove('active');
+        if (onSelect) onSelect(item);
+      });
+      
+      list.appendChild(div);
+    });
+  });
+  
+  // Focus abre la lista si hay texto
+  input.addEventListener('focus', function(){
+    if(this.value) this.dispatchEvent(new Event('input'));
+  });
 }
 
-function makeFilaMaterial(selectedId, qty){
-  const fila = document.createElement('div');
-  fila.className = 'fila-material';
-  fila.innerHTML = `
-    <select class="select-material" required>
-      <option value="">Seleccione material</option>
-      ${(listaMateriales||[]).map(m =>
-        `<option value="${m.idMaterial}" ${Number(selectedId)===Number(m.idMaterial)?'selected':''}>${m.name}</option>`
-      ).join('')}
-    </select>
-    <input type="number" min="1" class="input-cantidad" value="${qty ?? ''}" placeholder="Cantidad" required />
-    <button type="button" class="btn outline" onclick="this.parentElement.remove()">🗑️</button>
+function closeAllLists(elmnt) {
+  const x = document.getElementsByClassName("autocomplete-list");
+  for (let i = 0; i < x.length; i++) {
+    if (elmnt != x[i] && elmnt != x[i].previousElementSibling) {
+      x[i].classList.remove("active");
+    }
+  }
+}
+
+
+function setupClientAutocomplete(){
+  const wrapper = $('#ac-cliente-wrapper');
+  if(!wrapper) return;
+
+  const mapped = listaClientes.map(c => ({
+    id: c.idClient ?? c.id,
+    fullName: `${c.name||''} ${c.surname||''}`.trim()
+  }));
+
+  setupAutocomplete(wrapper, mapped, null, 'fullName', 'id');
+}
+
+
+function addRow(){
+  const cont = $('#items');
+  const row  = document.createElement('div');
+  row.className = 'fila';
+  
+  // 1. Columna Material (HTML de Autocomplete)
+  const matCol = document.createElement('div');
+  matCol.innerHTML = `
+    <div class="autocomplete-wrapper">
+      <input type="text" class="in-search" placeholder="Buscar material..." autocomplete="off">
+      <input type="hidden" class="in-mat-id">
+      <div class="autocomplete-list"></div>
+    </div>
   `;
-  return fila;
+  
+  // 2. Resto de columnas
+  const qtyIn = document.createElement('input');
+  qtyIn.type = 'number'; 
+  qtyIn.className = 'in-qty'; 
+  qtyIn.value = 1; 
+  qtyIn.min = 1;
+
+  const priceDiv = document.createElement('div');
+  priceDiv.className = 'price'; 
+  priceDiv.textContent = '$ 0,00';
+
+  const subDiv = document.createElement('div');
+  subDiv.className = 'col-subtotal'; 
+  subDiv.textContent = '$ 0,00';
+
+  const btnDel = document.createElement('button');
+  btnDel.className = 'btn danger small';
+  btnDel.innerHTML = '🗑️';
+  btnDel.onclick = (e) => { e.preventDefault(); row.remove(); recalc(); };
+
+  // 3. Activar Autocomplete para esta fila
+  const wrapper = matCol.querySelector('.autocomplete-wrapper');
+  setupAutocomplete(wrapper, listaMateriales, (selected) => {
+    // Al seleccionar material
+    const price = Number(selected.priceArs || 0);
+    priceDiv.textContent = fmtARS.format(price);
+    priceDiv.dataset.val = price;
+    recalc();
+  }, 'name', 'idMaterial');
+
+  qtyIn.oninput = recalc;
+
+  row.append(matCol, wrap(qtyIn), priceDiv, subDiv, btnDel);
+  cont.appendChild(row);
 }
 
-function agregarMaterial(){
-  const cont = $('#materiales-container');
-  if (!cont) return;
-  cont.appendChild(makeFilaMaterial('', ''));
+function wrap(el){
+  const d = document.createElement('div');
+  d.appendChild(el);
+  return d;
+}
+
+function recalc(){
+  let total = 0;
+  const rows = document.querySelectorAll('#items .fila:not(.encabezado)');
+  
+  rows.forEach(r => {
+    const q = Number(r.querySelector('.in-qty').value || 0);
+    const p = Number(r.querySelector('.price').dataset.val || 0);
+    const sub = q * p;
+    r.querySelector('.col-subtotal').textContent = fmtARS.format(sub);
+    total += sub;
+  });
+
+  $('#total').textContent = fmtARS.format(total);
 }
 
 async function guardarPresupuesto(ev){
   ev.preventDefault();
 
-  if (!getToken()){
-    notify('Debes iniciar sesión para crear un presupuesto','error');
-    go('login.html');
-    return;
-  }
-
-  const clientId = Number($('#cliente')?.value || 0);
+  // Leemos los IDs de los inputs ocultos
+  const clientId = Number($('#cliente')?.value || 0); 
   const fechaEntrega = $('#fecha-entrega')?.value || '';
 
-  const filas = Array.from(document.querySelectorAll('.fila-material'));
-  const detalles = filas.map(fila => {
-    const materialId = Number(fila.querySelector('.select-material')?.value || 0);
-    const quantity   = Number(fila.querySelector('.input-cantidad')?.value || 0);
-    return (materialId && quantity > 0) ? { materialId, quantity } : null;
-  }).filter(Boolean);
-
-  if (!clientId || !fechaEntrega || !detalles.length){
-    notify('Seleccioná un cliente, una fecha y al menos un material con cantidad válida.','error');
+  if (!clientId || !fechaEntrega){
+    notify('Seleccioná un cliente válido y una fecha','error');
     return;
   }
 
-  const hoy = new Date();
-  const yyyy = hoy.getFullYear();
-  const mm   = String(hoy.getMonth()+1).padStart(2,'0');
-  const dd   = String(hoy.getDate()).padStart(2,'0');
-  const dateCreate = `${yyyy}-${mm}-${dd}`;
+  const items = [];
+  const rows = document.querySelectorAll('#items .fila:not(.encabezado)');
+  
+  for(const r of rows){
+    const mid = Number(r.querySelector('.in-mat-id').value || 0);
+    const qty = Number(r.querySelector('.in-qty').value || 0);
+    
+    if(mid && qty > 0) {
+      items.push({ materialId: mid, quantity: qty });
+    }
+  }
+
+  if (!items.length){
+    notify('Agregá al menos un material válido','error');
+    return;
+  }
+
+  const d = new Date();
+  const dateCreate = d.toISOString().split('T')[0];
 
   const payload = {
     clientId,
-    dateCreate,              // requerido por el DTO
+    dateCreate,
     dateDelivery: fechaEntrega,
-    materials: detalles      // el DTO espera "materials", no "details"
+    materials: items
   };
 
   try{
@@ -155,48 +257,17 @@ async function guardarPresupuesto(ev){
       method:'POST',
       body: JSON.stringify(payload)
     });
-    if (!r.ok){
-      const txt = await r.text().catch(()=> '');
-      console.warn('POST /orders', r.status, txt);
-      throw new Error(`HTTP ${r.status}`);
-    }
-
+    
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    
     const created = await safeJson(r);
-    const orderId = created.idOrders ?? created.idOrder ?? created.id ?? created.orderId;
-    if (!orderId){
-      notify('Se creó el presupuesto pero no pude obtener su ID. Verificá el backend.','error');
-      return;
-    }
+    const orderId = created.idOrders ?? created.id;
 
-    // Fallback: si el backend ignoró "details", creamos los renglones via /order-details
-    let view = null;
-    try{
-      const rv = await authFetch(`${API_URL_ORDERS}/${orderId}/view`);
-      if (rv.ok) view = await safeJson(rv);
-    }catch(_){}
-
-    const tieneDetalles = Array.isArray(view?.details) && view.details.length > 0;
-    if (!tieneDetalles && detalles.length){
-      const ops = detalles.map(d =>
-        authFetch(API_URL_ORDER_DETAILS, {
-          method:'POST',
-          body: JSON.stringify({
-            ordersId:  orderId,
-            materialId: d.materialId,
-            quantity:   d.quantity
-          })
-        })
-      );
-      await Promise.all(ops);
-    }
-
-    localStorage.setItem('flash', JSON.stringify({
-      message:'✅ Presupuesto creado correctamente',
-      type:'success'
-    }));
+    localStorage.setItem('flash', JSON.stringify({ message:'✅ Presupuesto creado', type:'success' }));
     go(`ver-pedido.html?id=${orderId}`);
+
   }catch(err){
-    console.error('Error al crear presupuesto:', err);
-    notify('No se pudo crear el presupuesto. Revisá los datos e intentá nuevamente.','error');
+    console.error(err);
+    notify('Error creando presupuesto','error');
   }
 }

@@ -9,16 +9,15 @@
   <link rel="stylesheet" href="../files-css/nav.css"/>
 </head>
 <body>
-  <!-- NAV -->
   <div id="app-header"></div>
 
-  <main class="page">
-    <div class="page-head-editar">
+  <main class="page form-page narrow">
+    <div class="page-head">
       <h1>Editar compra</h1>  
     </div>
 
-    <section class="form-page narrow">
-      <div class="card">
+    <section class="card">
+      <form id="form-editar">
         <div class="grid">
           <div>
             <label for="datePurchase">Fecha de compra</label>
@@ -26,32 +25,34 @@
           </div>
           <div>
             <label>Proveedor</label>
-            <input type="text" id="supplierName" disabled>
+            <input type="text" id="supplierName" disabled style="background-color: #f8f9fa;">
           </div>
         </div>
-      </div>
 
-      <div class="card">
-        <div class="subhead"><strong>Detalles</strong></div>
-        <div id="lista-detalles" class="tabla">
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+
+        <div class="subhead" style="margin-bottom:10px;">
+          <h3 style="margin:0; font-size:1.1rem; color:#333;">Detalles de la compra</h3>
+        </div>
+
+        <div id="tabla-detalles" class="tabla">
           <div class="fila encabezado" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
             <div>Material</div>
             <div>Cantidad</div>
             <div>Precio Unit.</div>
             <div>Subtotal</div>
           </div>
-          <!-- filas dinámicas -->
-        </div>
+          </div>
 
         <div class="subtotales">
           <div><strong>Total:&nbsp;</strong><span id="totalCompra">$0,00</span></div>
         </div>
-      </div>
 
-      <div class="form-actions">
-        <button id="btnGuardar" class="btn green">Guardar cambios</button>
-        <a class="btn outline" href="../files-html/compras.html">Cancelar</a>
-      </div>
+        <div class="form-actions">
+          <button id="btnGuardar" class="btn primary">Guardar cambios</button>
+          <a class="btn outline" href="../files-html/compras.html">Cancelar</a>
+        </div>
+      </form>
     </section>
   </main>
 

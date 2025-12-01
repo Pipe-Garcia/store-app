@@ -15,7 +15,10 @@
 
 <main class="page form-page seccion-crearEntrega">
   <h1>Crear entrega</h1>
-
+   <small class="hint">
+          * Solo se listan ventas con materiales pendientes de entregar.
+          Si la lista está vacía, podés buscar por número de venta abajo.
+        </small>
   <form id="form-entrega" class="card">
     <div class="grid">
       <div>
@@ -23,12 +26,9 @@
         <select id="venta" required>
           <option value="">Seleccionar venta</option>
         </select>
-        <small class="hint">
-          Solo se listan ventas con materiales pendientes de entregar.
-          Si la lista está vacía, podés buscar por número de venta abajo.
-        </small>
+       
       </div>
-
+     
       <div>
         <label for="fecha">Fecha de entrega</label>
         <input id="fecha" type="date" required />
@@ -37,7 +37,7 @@
 
     <div class="grid" style="margin-top:8px;">
       <div>
-        <label for="ventaLookup">O buscar venta por número</label>
+        <label for="ventaLookup">Buscar venta por número</label>
         <div style="display:flex; gap:8px;">
           <input id="ventaLookup" type="number" min="1" placeholder="Ej: 14" />
           <button type="button" class="btn outline" id="btnBuscarVenta">Buscar</button>
@@ -48,15 +48,17 @@
         <input id="pedidoAsociado" type="text" disabled value="—"/>
       </div>
     </div>
-
-    <div class="subhead">
+<br>
+<hr class="hr">
+<div class="subhead">
       <h3>Materiales de la venta</h3>
       <small>
-        Se muestran las cantidades vendidas en la venta y lo pendiente por entregar.
+       * Se muestran las cantidades vendidas en la venta y lo pendiente por entregar.
         El presupuesto es solo referencia: el stock ya se descontó en la venta.
       </small>
     </div>
-
+   
+<br>
     <div id="items" class="tabla compact">
       <div class="fila encabezado" style="grid-template-columns: 2fr 1.3fr .8fr .8fr;">
         <div>Material</div>

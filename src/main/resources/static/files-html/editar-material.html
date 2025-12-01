@@ -9,46 +9,70 @@
   <link rel="stylesheet" href="../files-css/nav.css">
 </head>
 <body>
-  <!-- NAV -->
   <div id="app-header"></div>
 
-  <section class="form-editar">
-    <h2>Editar Material</h2>
-    <form id="formEditarMaterial">
-      <label for="name">Nombre</label>
-      <input type="text" id="name" required>
+  <main class="page form-page narrow">
+    <div class="page-head">
+      <h1>Editar Material</h1>
+    </div>
 
-      <label for="brand">Proveedor</label>
-      <input type="text" id="brand" required>
+    <section class="card">
+      <form id="formEditarMaterial">
+        <div class="grid">
+          
+          <div>
+            <label for="internalNumber">Código interno</label>
+            <input type="text" id="internalNumber" required>
+          </div>
 
-      <label for="priceArs">Precio</label>
-      <input type="number" step="0.01" id="priceArs" required>
+          <div>
+            <label for="name">Nombre</label>
+            <input type="text" id="name" required>
+          </div>
 
-      <label for="familyId">Familia</label>
-      <select id="familyId" required></select>
-      <small id="familyCurrent" class="field-hint"></small>
+          <div>
+            <label for="brand">Proveedor</label>
+            <input type="text" id="brand" required>
+          </div>
 
-      <label for="warehouseId">Almacén</label>
-      <select id="warehouseId" required>
-        <option value=""></option>
-      </select>
-      <small id="warehouseCurrent" class="field-hint"></small>
+          <div>
+            <label for="priceArs">Precio</label>
+            <input type="number" step="0.01" id="priceArs" required>
+          </div>
 
-      <br><br>
+          <div>
+            <label for="familyId">Familia</label>
+            <select id="familyId" required></select>
+            <small id="familyCurrent" class="field-hint"></small>
+          </div>
 
-      <div class="actions">
-        <button type="submit" class="btn" id="btnSave">Guardar cambios</button>
-        <a href="../files-html/materiales.html" class="btn outline">Cancelar</a>
-      </div>
-    </form>
-  </section>
+          <div>
+            <label for="warehouseId">Almacén (Ubicación)</label>
+            <select id="warehouseId" required>
+              <option value=""></option>
+            </select>
+            <small id="warehouseCurrent" class="field-hint"></small>
+          </div>
 
-  <!-- núcleo + base URL + header -->
+          <div style="grid-column: 1 / -1;">
+            <label for="description">Detalle / Descripción</label>
+            <textarea id="description" rows="3"></textarea>
+          </div>
+
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="btnSave">Guardar cambios</button>
+          <a href="../files-html/materiales.html" class="btn outline">Cancelar</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
   <script src="../files-js/menu-guard.js"></script>
-  <!-- script de la página -->
   <script type="module" src="../files-js/editar-material.js"></script>
 </body>
 </html>

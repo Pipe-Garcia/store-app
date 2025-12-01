@@ -8,10 +8,10 @@ const clientId = params.get('id');
 const $ = (s, r=document)=>r.querySelector(s);
 
 function go(page){
-  const base = location.pathname.replace(/[^/]+$/,''); // deja .../files-html/
+  const base = location.pathname.replace(/[^/]+$/,''); 
   location.href = `${base}${page}`;
 }
-function notify(msg, type='success'){
+function notify(msg, type='info'){
   const n = document.createElement('div');
   n.className = `notification ${type}`;
   n.textContent = msg;
@@ -22,49 +22,30 @@ function flash(message){
   localStorage.setItem('flash', JSON.stringify({ message, type:'success' }));
 }
 
-// ==== Patrones de validación ====
-// Unicode: cualquier letra + espacio + apóstrofo + guion
+// ==== Validaciones ====
 const reName     = /^[\p{L}’' -]{2,60}$/u;
-const reLocality = /^[\p{L}’' .-]{2,60}$/u;  // letras + espacio + punto + apóstrofo + guion
-const reDni      = /^[0-9]{7,8}$/;           // 7 u 8 dígitos
-const reEmail    = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/; // email simple y efectivo
-const rePhone    = /^[+]?[\d\s\-().]{6,20}$/;       // +, dígitos, espacios, -, (), . entre 6 y 20
+const reLocality = /^[\p{L}’' .-]{2,60}$/u;  
+const reDni      = /^[0-9]{7,8}$/;           
+const reEmail    = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/; 
+const rePhone    = /^[+]?[\d\s\-().]{6,20}$/;       
 
 function markValid(el, ok){
-  el.classList.toggle('invalid', !ok);
+  // Borde rojo si es inválido, gris si es válido (o azul si tiene focus)
+  el.style.borderColor = ok ? '' : '#dc3545';
   return ok;
 }
 
-// Recorta y colapsa espacios (se usa en blur/enviar, NO en input)
 function softTrim(s){ return (s||'').replace(/\s+/g,' ').trim(); }
 
-// Limpieza "en vivo": NO recorta bordes; solo filtra caracteres y colapsa dobles espacios
-const liveCleanName = s =>
-  s
-    .normalize('NFC')
-    .replace(/[^\p{L}’' -]/gu, '')  // letras, espacio, apóstrofo, guion
-    .replace(/ {2,}/g, ' ');        // colapsa múltiples espacios
-
-const liveCleanLocality = s =>
-  s
-    .normalize('NFC')
-    .replace(/[^\p{L}’' .-]/gu, '') // letras, espacio, punto, apóstrofo, guion
-    .replace(/ {2,}/g, ' ');
+const liveCleanName = s => s.normalize('NFC').replace(/[^\p{L}’' -]/gu, '').replace(/ {2,}/g, ' ');
+const liveCleanLocality = s => s.normalize('NFC').replace(/[^\p{L}’' .-]/gu, '').replace(/ {2,}/g, ' ');
 
 document.addEventListener('DOMContentLoaded', init);
 
 async function init(){
-  // Guardas básicas
-  if (!clientId){
-    notify('ID de cliente no especificado','error');
-    go('clientes.html'); return;
-  }
-  if (!getToken()){
-    notify('Debes iniciar sesión','error');
-    go('login.html'); return;
-  }
+  if (!clientId){ notify('ID no especificado','error'); setTimeout(()=>go('clientes.html'), 1000); return; }
+  if (!getToken()){ notify('Iniciá sesión','error'); go('login.html'); return; }
 
-  // Cargar datos actuales: GET /clients/{id}
   try{
     const r = await authFetch(`${API_BASE}/${clientId}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -79,23 +60,15 @@ async function init(){
     $('#phoneNumber').value = c.phoneNumber ?? '';
     $('#status').value      = (String(c.status??'').toUpperCase()==='INACTIVE') ? 'INACTIVE' : 'ACTIVE';
 
-    // ===== Filtros de entrada (evitan meter basura) =====
-    // Nombre y Apellido: permitir espacios en vivo (no se recortan a los bordes)
+    // Eventos limpieza
     $('#name').addEventListener('input',    e => { e.target.value = liveCleanName(e.target.value); });
     $('#surname').addEventListener('input', e => { e.target.value = liveCleanName(e.target.value); });
-
-    // Localidad
     $('#locality').addEventListener('input', e => { e.target.value = liveCleanLocality(e.target.value); });
-
-    // DNI (solo dígitos, máx 8)
     $('#dni').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g,'').slice(0,8); });
-
-    // Teléfono (permitidos + dígitos espacios - ( ) .)
     $('#phoneNumber').addEventListener('input', e => {
       e.target.value = e.target.value.replace(/[^0-9+\s\-().]/g,'').slice(0,20);
     });
 
-    // En blur recién recortamos bordes de estos campos
     ['#name', '#surname', '#locality', '#address', '#email', '#phoneNumber'].forEach(sel=>{
       $(sel).addEventListener('blur', e => { e.target.value = softTrim(e.target.value); });
     });
@@ -103,7 +76,6 @@ async function init(){
   }catch(err){
     console.error(err);
     notify('No se pudo cargar el cliente','error');
-    go('clientes.html'); return;
   }
 
   $('#formEditarCliente')?.addEventListener('submit', onSave);
@@ -111,13 +83,8 @@ async function init(){
 
 async function onSave(e){
   e.preventDefault();
+  if (!getToken()){ notify('Sesión vencida','error'); go('login.html'); return; }
 
-  if (!getToken()){
-    notify('Sesión vencida','error');
-    go('login.html'); return;
-  }
-
-  // Armamos el DTO de actualización
   const dto = {
     idClient   : Number(clientId),
     name       : $('#name').value,
@@ -127,10 +94,10 @@ async function onSave(e){
     address    : $('#address').value,
     locality   : $('#locality').value,
     phoneNumber: $('#phoneNumber').value,
-    status     : $('#status').value   // "ACTIVE" | "INACTIVE"
+    status     : $('#status').value
   };
 
-  // ===== Normalización previa (ahora sí recortamos) =====
+  // Normalización final
   dto.name        = softTrim(dto.name);
   dto.surname     = softTrim(dto.surname);
   dto.address     = softTrim(dto.address);
@@ -139,27 +106,26 @@ async function onSave(e){
   dto.phoneNumber = softTrim(dto.phoneNumber);
   dto.dni         = (dto.dni||'').trim();
 
-  // ===== Validar cada campo =====
+  // Validación
   const v = {
     name:     markValid($('#name'),        reName.test(dto.name)),
     surname:  markValid($('#surname'),     reName.test(dto.surname)),
     dni:      markValid($('#dni'),         reDni.test(dto.dni)),
-    email:    markValid($('#email'),       !dto.email || reEmail.test(dto.email)), // email opcional
+    email:    markValid($('#email'),       !dto.email || reEmail.test(dto.email)),
     address:  markValid($('#address'),     dto.address.length >= 3 && dto.address.length <= 120),
     locality: markValid($('#locality'),    reLocality.test(dto.locality)),
     phone:    markValid($('#phoneNumber'), rePhone.test(dto.phoneNumber))
   };
 
-  if (!v.name)     return notify('Nombre inválido (solo letras, 2–60).','error');
-  if (!v.surname)  return notify('Apellido inválido (solo letras, 2–60).','error');
-  if (!v.dni)      return notify('DNI inválido (7–8 dígitos).','error');
+  if (!v.name)     return notify('Nombre inválido.','error');
+  if (!v.surname)  return notify('Apellido inválido.','error');
+  if (!v.dni)      return notify('DNI inválido.','error');
   if (!v.email)    return notify('Email inválido.','error');
-  if (!v.address)  return notify('Dirección inválida (3–120).','error');
-  if (!v.locality) return notify('Localidad inválida (solo letras, 2–60).','error');
-  if (!v.phone)    return notify('Teléfono inválido (6–20, + dígitos espacios - ( ) .).','error');
+  if (!v.address)  return notify('Dirección inválida.','error');
+  if (!v.locality) return notify('Localidad inválida.','error');
+  if (!v.phone)    return notify('Teléfono inválido.','error');
 
   try{
-    // Tu back: @PutMapping SIN path variable → PUT /clients
     const res = await authFetch(API_BASE, {
       method: 'PUT',
       headers: { 'Content-Type':'application/json' },
@@ -167,14 +133,8 @@ async function onSave(e){
     });
 
     if (!res.ok){
-      if (res.status === 401 || res.status === 403){
-        notify('Sesión inválida','error'); go('login.html'); return;
-      }
-      let msg = `Error (${res.status}) al actualizar`;
-      try{
-        const data = await res.json();
-        if (data?.message) msg = data.message;
-      }catch(_){}
+      let msg = `Error (${res.status})`;
+      try{ const data = await res.json(); if (data?.message) msg = data.message; }catch(_){}
       throw new Error(msg);
     }
 

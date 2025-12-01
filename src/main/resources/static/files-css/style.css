@@ -178,7 +178,7 @@ body {
   gap: 5px;
   justify-content: center;
   align-items: center; /* Alinea verticalmente los botones */
-  padding: 5px 0; /* Espacio interno para mejor presentación */
+  padding: 5px ; /* Espacio interno para mejor presentación */
 }
 
 .acciones button {

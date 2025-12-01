@@ -106,13 +106,13 @@ const getDetRemaining = d => {
   return Math.max(0, q - s);
 };
 
-function buildUnitsLabel(units, details, qtySelector){
-  const totalUnits = Number(units || 0);
-  if (!totalUnits) return '0';
+function buildUnitsLabel(units) {
+  const total = Number(units || 0);
+  if (!total) return '0';
+  
+  // Devuelve simple: "11 unidades" o "1 unidad"
+  return total === 1 ? '1 unidad' : `${total} unidades`;
 
-  if (!Array.isArray(details) || !details.length || typeof qtySelector !== 'function') {
-    return String(totalUnits);
-  }
 
   const names = [];
 
@@ -376,21 +376,14 @@ function renderHeader(orderId, header, details){
 
 
 
+
+
 function renderDetails(details){
   const cont = $('#tablaMateriales');
   const msg  = $('#msgMateriales');
 
-  // Sacamos la columna "Vendido desde este presupuesto"
-  cont.innerHTML = `
-    <div class="fila encabezado">
-      <div>Material</div>
-      <div>Presupuestado</div>
-      <div>Pendiente por entregar</div>
-      <div>Precio unitario</div>
-      <div>Subtotal</div>
-    </div>
-  `;
 
+  cont.querySelectorAll('.trow').forEach(e => e.remove());
 
   if (!Array.isArray(details) || !details.length){
     if (msg){
@@ -402,19 +395,19 @@ function renderDetails(details){
   if (msg) msg.style.display = 'none';
 
   for (const det of details){
-    const q  = getDetBudgeted(det);
-    const qr = getDetRemaining(det);
-    const pu = getDetPrice(det);
+    const q   = getDetBudgeted(det);
+    const qr  = getDetRemaining(det);
+    const pu  = getDetPrice(det);
     const sub = q * pu;
 
     const row = document.createElement('div');
-    row.className = 'fila';
+    row.className = 'trow'; // Nueva clase para filas
     row.innerHTML = `
-      <div>${getMatName(det)}</div>
-      <div>${q}</div>
-      <div>${qr}</div>
-      <div>${fmtARS.format(pu)}</div>
-      <div>${fmtARS.format(sub)}</div>
+      <div class="strong-text">${getMatName(det)}</div>
+      <div class="text-center">${q}</div>
+      <div class="text-center">${qr}</div>
+      <div class="text-right">${fmtARS.format(pu)}</div>
+      <div class="text-right strong-text">${fmtARS.format(sub)}</div>
     `;
     cont.appendChild(row);
   }

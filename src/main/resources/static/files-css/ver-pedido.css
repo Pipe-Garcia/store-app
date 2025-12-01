@@ -1,30 +1,191 @@
-:root{
-  --card:#fff; --ink:#0f172a; --muted:#6b7280; --ring:0 0 0 3px rgba(37,99,235,.15);
-  --radius:16px; --surface:#f8fafc;
+.page-detail {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #333;
 }
 
-.seccion-detalle-pedido{
-  max-width:950px; margin:32px auto; padding: 16px;
+/* ====== 1. Cabecera ====== */
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end; /* Alinea los botones abajo con el título */
+  margin-bottom: 20px;
 }
-.info-pedido{
-  background:#f8f8f9; border-radius:var(--radius);
-  box-shadow:0 10px 24px rgba(2,6,23,.06), 0 2px 6px rgba(2,6,23,.05);
-  padding:22px;
-}
-.info-pedido h3{ margin-top:18px; }
-.info-pedido p{ margin:8px 0; color:var(--ink); }
-#estado{
-  display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border-radius:999px; font-weight:700;
-  background:#eef2ff; color:#4338ca;
-}
-#estado.vendido{ background:#ecfdf5; color:#047857; }
-#lista-materiales{ margin:10px 0 0 18px; }
-#lista-materiales li{ margin:6px 0; color:#111827; }
 
-button{
-  margin-top:16px;
-  background:#111827; color:#fff; border:0; border-radius:12px; padding:10px 16px; cursor:pointer;
+.title-group h1 {
+  font-size: 2rem;
+  margin: 0;
+  color: #111;
+  font-weight: 700;
+  display: inline-block;
+  margin-right: 10px;
 }
-button:focus{ outline:none; box-shadow:var(--ring); }
-button:hover{ background:#1f2937; }
-button:active{ background:#374151; }
+
+.muted-label {
+  color: #666;
+  font-size: 1.1rem;
+  font-weight: 300;
+}
+
+/* Botones de Acción */
+.actions-toolbar {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn.primary { background: #3b82f6; color: #fff; } /* Rojo para acción principal (como en ref) o azul si prefieres */
+.btn.primary:hover { background: #3f6094; }
+
+.btn.outline { background: #fff; color: #000; border-color: #ced4da;} 
+.btn.outline:hover { background: #c4cacf; }
+
+.divider {
+  border: 0;
+  border-top: 1px solid #ddd;
+  margin: 0 0 30px 0;
+}
+
+
+.data-section {
+  margin-bottom: 40px;
+}
+
+.data-row {
+  display: grid;
+  grid-template-columns: 200px 1fr; /* Etiqueta ancha | Valor */
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+  align-items: center;
+}
+
+.data-row .label {
+  font-weight: 700;
+  color: #111;
+  font-size: 0.95rem;
+}
+
+.data-row .value {
+  color: #444;
+  font-size: 1rem;
+}
+
+.data-row .value.strong {
+  font-weight: 600;
+  color: #000;
+}
+
+/* Pills de estado */
+.pill {
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-block;
+}
+.pill.pending { background: #3b82f6; color: #fff; } /* Azul para estado */
+.pill.completed { background: #10b981; color: #fff; } /* Verde */
+
+/* ====== 3. Tabla de Materiales (Clean) ====== */
+.items-section h3 {
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.tabla-clean {
+  width: 100%;
+  border-top: 2px solid #333; /* Línea gruesa arriba como en referencia */
+}
+
+/* Encabezado de tabla */
+.tabla-clean .thead {
+  display: grid;
+  grid-template-columns: 3fr 1fr 1fr 1fr 1fr; /* Material ancho */
+  padding: 12px 10px;
+  font-weight: 700;
+  color: #111;
+  border-bottom: 1px solid #ddd;
+  background: #fff;
+}
+
+/* Filas de datos */
+.tabla-clean .trow {
+  display: grid;
+  grid-template-columns: 3fr 1fr 1fr 1fr 1fr;
+  padding: 12px 10px;
+  border-bottom: 1px solid #eee;
+  color: #444;
+  align-items: center;
+}
+
+.tabla-clean .trow:hover {
+  background-color: #f9f9f9;
+}
+
+/* Helpers de alineación */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.strong-text { font-weight: 600; color: #000; }
+
+/* Fila de Total Final */
+.total-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 20px 10px;
+  align-items: center;
+  gap: 20px;
+}
+
+.total-label {
+  font-size: 1.1rem;
+  color: #555;
+}
+
+.total-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #000;
+}
+
+.empty-msg {
+  color: #666;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .data-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .data-row .label { color: #666; font-size: 0.85rem; }
+  
+  .tabla-clean .thead { display: none; } /* Ocultar header en móvil */
+  .tabla-clean .trow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    border-bottom: 2px solid #eee;
+  }
+}

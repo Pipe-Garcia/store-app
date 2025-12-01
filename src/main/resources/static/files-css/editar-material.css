@@ -45,3 +45,79 @@
 .header{ background:#0e1726; border-bottom:1px solid #0e1726; }
 .ul-header a{ color:#c7ced9; }
 .ul-header a.active{ color:#fff; background:#101b2b; }
+/* ==========================================================
+   ESTILOS ESTANDARIZADOS (Igual a Crear Material)
+   Pegar al final de editar-material.css
+   ========================================================== */
+
+/* 1. Layout del Formulario */
+.form-page.narrow { 
+  max-width: 900px; 
+  margin: 0 auto; 
+}
+
+/* 2. Tarjeta del Formulario (Blanca, limpia) */
+.form-page .card {
+  background: #fff;
+  border-radius: 12px; /* Valor fijo por si no hay variable */
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: none;
+  margin: 0;
+}
+
+/* 3. Grid de 2 columnas */
+.form-page .grid { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap: 16px; 
+}
+@media (max-width: 700px){
+  .form-page .grid { grid-template-columns: 1fr; }
+}
+
+/* 4. Labels e Inputs */
+.form-page label { 
+  display: block; 
+  font-size: 0.9rem; 
+  color: #444; 
+  margin-bottom: 6px; 
+  font-weight: normal;
+}
+
+.form-page input[type="text"],
+.form-page input[type="number"],
+.form-page select {
+  width: 100%; 
+  padding: 8px 12px; 
+  border: 1px solid #dfe3e6;
+  border-radius: 8px; 
+  background: #fff;
+  color: #495057;
+  font-size: 0.95rem;
+  outline: none;
+  height: 40px; /* Altura estándar */
+}
+
+/* Efecto Focus (Borde azul) */
+.form-page input:focus,
+.form-page select:focus {
+  border: 2px solid #3b82f6;
+  box-shadow: none;
+}
+
+/* 5. Botones */
+.form-actions { 
+  margin-top: 24px; 
+  display: flex; 
+  gap: 12px; 
+  justify-content: flex-start; 
+}
+
+/* 6. Hint (Texto pequeño de ayuda) */
+.field-hint {
+  color: #6c757d;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  display: block;
+}

@@ -3,57 +3,106 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>📄 Detalle proveedor</title>
+  <title>📄 - Detalle proveedor</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
-  <link rel="stylesheet" href="../files-css/proveedores.css"/>
+  <link rel="stylesheet" href="../files-css/ver-proveedor.css"/>
   <link rel="stylesheet" href="../files-css/nav.css"/>
 </head>
 <body>
 
   <div id="app-header"></div>
 
-<main class="page">
-  <div class="page-head">
-    <h1>Detalle del proveedor</h1>
-    <div class="actions">
-      <a class="btn outline" id="btnEditar" href="#">✏️ Editar</a>
-      <a class="btn outline" id="btnAsignar" href="#">➕ Asignar materiales</a>
-      <a class="btn outline" href="proveedores.html">Volver</a>
-    </div>
-  </div>
-
-  <!-- Info proveedor -->
-  <section class="card">
-    <div class="detail-grid">
-      <div><div class="muted">Nombre</div><div id="dNombre">—</div></div>
-      <div><div class="muted">Empresa</div><div id="dEmpresa">—</div></div>
-      <div><div class="muted">DNI</div><div id="dDni">—</div></div>
-      <div><div class="muted">Email</div><div id="dEmail">—</div></div>
-      <div><div class="muted">Teléfono</div><div id="dTelefono">—</div></div>
-      <div><div class="muted">Dirección</div><div id="dDireccion">—</div></div>
-      <div><div class="muted">Localidad</div><div id="dLocalidad">—</div></div>
-      <div><div class="muted">Estado</div><div id="dEstado">—</div></div>
-    </div>
-  </section>
-
-  <!-- Materiales asociados -->
-  <section class="card">
-    <h3 class="subhead">Materiales que provee</h3>
-    <div class="tabla" id="tabla-materiales">
-      <div class="fila encabezado">
-        <div>Material</div>
-        <div>Precio unitario</div>
-        <div>Entrega (días)</div>
+  <main class="page page-detail">
+    
+    <div class="detail-header">
+      <div class="title-group">
+        <h1>Proveedor <span id="id-prov" class="light-text">...</span></h1>
+        <div class="breadcrumbs">
+        </div>
       </div>
-      <!-- filas dinámicas -->
+      
+      <div class="actions-toolbar">
+        <a id="btnAsignar" class="btn primary">Asignar Material</a>
+        <div class="btn-group">
+          <a id="btnEditar" class="btn primary">Editar</a>
+          <a class="btn outline" href="proveedores.html">Volver</a>
+        </div>
+      </div>
     </div>
-  </section>
-</main>
 
-<script src="../files-js/core/api.js"></script>
-<script>window.api.setBaseUrl('http://localhost:8088');</script>
-<script src="../files-js/header.js"></script>
-<script src="../files-js/menu-guard.js"></script>
-<script type="module" src="../files-js/detalle-proveedor.js"></script>
+    <hr class="divider">
+
+    <div class="content-wrapper">
+      <div class="main-column">
+        
+        <section class="info-list">
+          
+          <div class="info-row">
+            <span class="label">Empresa</span>
+            <span class="value strong text-uppercase" id="dEmpresa">—</span>
+          </div>
+
+          <div class="info-row">
+            <span class="label">Nombre contacto</span>
+            <span class="value" id="dNombre">—</span>
+          </div>
+
+          <div class="info-row">
+            <span class="label">DNI</span>
+            <span class="value" id="dDni">—</span>
+          </div>
+
+          <div class="info-row">
+            <span class="label">Email</span>
+            <span class="value" id="dEmail">—</span>
+          </div>
+
+          <div class="info-row">
+            <span class="label">Teléfono</span>
+            <span class="value" id="dTelefono">—</span>
+          </div>
+
+          <div class="info-row">
+            <span class="label">Dirección</span>
+            <span class="value" id="dDireccion">—</span>
+          </div>
+
+          <div class="info-row">
+            <span class="label">Localidad</span>
+            <span class="value" id="dLocalidad">—</span>
+          </div>
+
+          <div class="info-row" style="border-bottom:none;">
+            <span class="label">Estado</span>
+            <span class="value">
+              <span id="dEstado" class="pill">—</span>
+            </span>
+          </div>
+
+        </section>
+
+        <section class="items-section">
+          <h3>Materiales que provee</h3>
+          
+          <div class="tabla-clean" id="tabla-materiales">
+            <div class="thead">
+              <div style="flex: 2;">Material</div>
+              <div class="text-right">Precio Unitario</div>
+              <div class="text-center">Tiempo Entrega (días)</div>
+            </div>
+            </div>
+          
+          <p id="msgMateriales" class="empty-msg" style="display:none;"></p>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+  <script src="../files-js/header.js"></script>
+  <script src="../files-js/menu-guard.js"></script>
+  <script type="module" src="../files-js/detalle-proveedor.js"></script>
 </body>
 </html>
