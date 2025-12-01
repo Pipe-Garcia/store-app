@@ -16,7 +16,6 @@ const fmtDate = (s) => {
   return isNaN(d) ? '—' : d.toLocaleDateString('es-AR');
 };
 
-
 function getToken(){ return localStorage.getItem("accessToken") || localStorage.getItem("token"); }
 function authHeaders(json=true){
   const t = getToken();
@@ -37,9 +36,36 @@ let compras = [];     // [PurchaseDTO]
 let proveedores = []; // [{idSupplier, nameCompany,...}]
 let provById = new Map();
 
+// 🔹 paginación (front)
+const PAGE_SIZE = 20;
+let page = 0;
+let comprasFiltradas = [];
+let pagerInfo, pagerPrev, pagerNext;
+
 // ========= Init =========
 window.addEventListener("DOMContentLoaded", async ()=>{
   if(!getToken()){ go("login.html"); return; }
+
+  // refs pager
+  pagerInfo = document.getElementById('pg-info');
+  pagerPrev = document.getElementById('pg-prev');
+  pagerNext = document.getElementById('pg-next');
+
+  pagerPrev?.addEventListener('click', ()=>{
+    if (page > 0){
+      page--;
+      renderPaginated();
+    }
+  });
+  pagerNext?.addEventListener('click', ()=>{
+    const totalPages = comprasFiltradas.length
+      ? Math.ceil(comprasFiltradas.length / PAGE_SIZE)
+      : 0;
+    if (page < totalPages - 1){
+      page++;
+      renderPaginated();
+    }
+  });
 
   await cargarDatosBase();
   applyFilters();
@@ -118,11 +144,42 @@ function applyFilters(){
     );
   }
 
-  renderLista(list);
+  // guardamos filtros y arrancamos desde la primera página
+  comprasFiltradas = list;
+  page = 0;
+  renderPaginated();
 }
 
 function displaySupplier(c){
   return c.supplierName || provById.get(Number(c.supplierId)) || "—";
+}
+
+// ========= Paginación (front) =========
+function renderPaginated(){
+  const totalElems = comprasFiltradas.length;
+  const totalPages = totalElems ? Math.ceil(totalElems / PAGE_SIZE) : 0;
+
+  if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
+  if (totalPages === 0) page = 0;
+
+  const from = page * PAGE_SIZE;
+  const to   = from + PAGE_SIZE;
+  const slice = comprasFiltradas.slice(from, to);
+
+  renderLista(slice);
+  renderPager(totalElems, totalPages);
+}
+
+function renderPager(totalElems, totalPages){
+  if (!pagerInfo || !pagerPrev || !pagerNext) return;
+  const current = totalPages ? (page + 1) : 0;
+  const label = (totalElems === 1) ? 'compra' : 'compras';
+
+  pagerInfo.textContent =
+    `Página ${current} de ${totalPages || 0} · ${totalElems || 0} ${label}`;
+
+  pagerPrev.disabled = page <= 0;
+  pagerNext.disabled = page >= (totalPages - 1) || totalPages === 0;
 }
 
 // ========= Render =========

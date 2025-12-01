@@ -25,6 +25,12 @@ function authFetch(url, opts = {}) {
 
 let almacenes = [];
 
+// estado de paginado (solo front)
+let currentPage = 0;
+const pageSize  = 20; // 👈 tamaño fijo de página
+
+let pgInfo, pgPrev, pgNext;
+
 // ------------------------ bootstrap ------------------------
 document.addEventListener('DOMContentLoaded', async () => {
   if (!getToken()) {
@@ -32,8 +38,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  $('#filtroNombre')    ?.addEventListener('input', applyFilters);
-  $('#filtroLocalidad')?.addEventListener('input', applyFilters);
+  // refs paginador
+  pgInfo = document.getElementById('pg-info');
+  pgPrev = document.getElementById('pg-prev');
+  pgNext = document.getElementById('pg-next');
+
+  if (pgPrev) {
+    pgPrev.addEventListener('click', () => {
+      if (currentPage > 0) {
+        currentPage--;
+        applyFilters();
+      }
+    });
+  }
+  if (pgNext) {
+    pgNext.addEventListener('click', () => {
+      currentPage++;
+      applyFilters();
+    });
+  }
+
+  $('#filtroNombre')    ?.addEventListener('input', () => { currentPage = 0; applyFilters(); });
+  $('#filtroLocalidad')?.addEventListener('input', () => { currentPage = 0; applyFilters(); });
   $('#btnLimpiar')      ?.addEventListener('click', limpiarFiltros);
 
   await cargarAlmacenes();
@@ -59,6 +85,7 @@ function limpiarFiltros() {
   const l = $('#filtroLocalidad');
   if (n) n.value = '';
   if (l) l.value = '';
+  currentPage = 0;
   applyFilters();
 }
 
@@ -75,7 +102,40 @@ function applyFilters() {
     list = list.filter(a => (a.location || '').toLowerCase().includes(localidad));
   }
 
-  renderLista(list);
+  const total      = list.length;
+  const totalPages = total ? Math.ceil(total / pageSize) : 0;
+
+  if (!totalPages) {
+    currentPage = 0;
+    renderLista([]);
+    updatePager(total, totalPages);
+    return;
+  }
+
+  if (currentPage >= totalPages) currentPage = totalPages - 1;
+  if (currentPage < 0) currentPage = 0;
+
+  const start = currentPage * pageSize;
+  const slice = list.slice(start, start + pageSize);
+
+  renderLista(slice);
+  updatePager(total, totalPages);
+}
+
+// ------------------------ pager ------------------------
+function updatePager(total, totalPages) {
+  if (!pgInfo || !pgPrev || !pgNext) return;
+
+  if (!total) {
+    pgInfo.textContent = 'Sin resultados.';
+    pgPrev.disabled = true;
+    pgNext.disabled = true;
+    return;
+  }
+
+  pgInfo.textContent = `Página ${currentPage + 1} de ${totalPages} · ${total} almacenes`;
+  pgPrev.disabled = currentPage <= 0;
+  pgNext.disabled = currentPage >= totalPages - 1;
 }
 
 // ------------------------ render ------------------------
@@ -153,6 +213,14 @@ async function eliminarAlmacen(id) {
     almacenes = almacenes.filter(
       a => String(a.idWarehouse ?? a.warehouseId ?? a.id) !== String(id)
     );
+
+    // si borramos el último de la última página, retrocedemos una
+    const total = almacenes.length;
+    const totalPages = total ? Math.ceil(total / pageSize) : 0;
+    if (currentPage >= totalPages && currentPage > 0) {
+      currentPage--;
+    }
+
     applyFilters();
   } catch (err) {
     console.error('Error eliminando almacén:', err);

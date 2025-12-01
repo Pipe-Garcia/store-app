@@ -14,6 +14,12 @@ const norm = (s)=> (s||'').toString().toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
 
+// 🔹 Paginado en front
+const PAGE_SIZE = 20;
+let page = 0;
+let FILTRADOS = [];
+let infoPager, btnPrev, btnNext;
+
 // Fecha → dd/mm/aaaa
 const fmtDate = (s)=>{
   if (!s) return '—';
@@ -83,6 +89,26 @@ let MAX_TOTAL = 1000;
 
 window.addEventListener('DOMContentLoaded', async ()=>{
   if (!getToken()){ go('login.html'); return; }
+
+  // refs del pager
+  infoPager = document.getElementById('pg-info');
+  btnPrev   = document.getElementById('pg-prev');
+  btnNext   = document.getElementById('pg-next');
+
+  btnPrev?.addEventListener('click', ()=>{
+    if (page > 0){
+      page--;
+      renderPaginated();
+    }
+  });
+
+  btnNext?.addEventListener('click', ()=>{
+    const totalPages = FILTRADOS.length ? Math.ceil(FILTRADOS.length / PAGE_SIZE) : 0;
+    if (page < totalPages - 1){
+      page++;
+      renderPaginated();
+    }
+  });
 
   // flash desde crear/editar
   const flash = localStorage.getItem('flash');
@@ -256,7 +282,7 @@ function paintSlider(){
 }
 function onSliderChange(){ paintSlider(); applyFilters(); }
 
-// ===== Aplicar filtros locales + render =====
+// ===== Aplicar filtros locales + paginar + render =====
 function applyFilters(){
   const { orderId, clientId, clientNameSel, from, to, status, text, minT, maxT } = readFilterValues();
   let list = PRESUPUESTOS.slice();
@@ -300,9 +326,41 @@ function applyFilters(){
     return (getId(b)||0) - (getId(a)||0);
   });
 
-  render(list);
+  FILTRADOS = list;
+  page = 0;
+  renderPaginated();
 }
 
+// 🔹 Paginado en front
+function renderPaginated(){
+  const totalElems = FILTRADOS.length;
+  const totalPages = totalElems ? Math.ceil(totalElems / PAGE_SIZE) : 0;
+
+  if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
+  if (totalPages === 0) page = 0;
+
+  const from = page * PAGE_SIZE;
+  const to   = from + PAGE_SIZE;
+  const slice = FILTRADOS.slice(from, to);
+
+  render(slice);
+  renderPager(totalElems, totalPages);
+}
+
+function renderPager(totalElems, totalPages){
+  if (!infoPager || !btnPrev || !btnNext) return;
+
+  const label = totalElems === 1 ? 'presupuesto' : 'presupuestos';
+  const currentPage = totalPages ? (page + 1) : 0;
+
+  infoPager.textContent =
+    `Página ${currentPage} de ${totalPages || 0} · ${totalElems || 0} ${label}`;
+
+  btnPrev.disabled = page <= 0;
+  btnNext.disabled = page >= (totalPages - 1) || totalPages === 0;
+}
+
+// ===== Render de filas =====
 function render(lista){
   const cont = $('#lista-presupuestos');
   if (!cont) return;
@@ -315,6 +373,7 @@ function render(lista){
     row.className='fila row';
     row.innerHTML = `<div style="grid-column:1/-1;color:#666;">Sin resultados.</div>`;
     cont.appendChild(row);
+    cont.onclick = null;
     return;
   }
 
@@ -340,7 +399,6 @@ function render(lista){
     `;
     cont.appendChild(row);
   }
-
 
   cont.onclick = (ev)=>{
     const btn = ev.target.closest('button[data-del]');

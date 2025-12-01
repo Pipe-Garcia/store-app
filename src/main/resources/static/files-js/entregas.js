@@ -13,6 +13,12 @@ const norm = (s)=> (s||'').toString().toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
 
+// 🔹 Paginación en front
+const PAGE_SIZE = 20;
+let page = 0;
+let FILTRADAS = [];
+let infoPager, btnPrev, btnNext;
+
 // Fecha → dd/mm/aaaa
 const fmtDate = (s)=>{
   if (!s) return '—';
@@ -53,6 +59,26 @@ let ENTREGAS = [];
 // bootstrap
 window.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ location.href='../files-html/login.html'; return; }
+
+  // refs pager
+  infoPager = document.getElementById('pg-info');
+  btnPrev   = document.getElementById('pg-prev');
+  btnNext   = document.getElementById('pg-next');
+
+  btnPrev?.addEventListener('click', ()=>{
+    if (page > 0){
+      page--;
+      renderPaginated();
+    }
+  });
+  btnNext?.addEventListener('click', ()=>{
+    const totalPages = FILTRADAS.length ? Math.ceil(FILTRADAS.length / PAGE_SIZE) : 0;
+    if (page < totalPages - 1){
+      page++;
+      renderPaginated();
+    }
+  });
+
   await loadClients();
   wireFilters();
   await loadDeliveries(); // primer dataset
@@ -156,7 +182,7 @@ async function loadDeliveries(){
   }
 }
 
-// aplicar filtros locales + render
+// aplicar filtros locales + render paginado
 function applyFilters(){
   const { status, saleId, clientId, clientNameSel, from, to, text } = readFilterValues();
   let list = ENTREGAS.slice();
@@ -181,12 +207,12 @@ function applyFilters(){
     list = list.filter(e=>{
       const name = getClientName(e).toLowerCase();
       const sid  = String(getSaleId(e)||'');
-      // 👇 sacamos búsqueda por presupuesto
+      // 👇 búsqueda solo por cliente / venta
       return name.includes(text) || sid.includes(text);
     });
   }
 
-  // 👇 Ordenar: más recientes primero (por fecha, luego por id de entrega)
+  // Ordenar: más recientes primero (por fecha, luego por id de entrega)
   list.sort((a,b)=>{
     const da = getDateISO(a) || '';
     const db = getDateISO(b) || '';
@@ -194,9 +220,41 @@ function applyFilters(){
     return (getDeliveryId(b)||0) - (getDeliveryId(a)||0);
   });
 
-  render(list);
+  FILTRADAS = list;
+  page = 0;              // cada vez que cambian filtros, volvemos a la primera página
+  renderPaginated();
 }
 
+// ================== Render paginado ==================
+function renderPaginated(){
+  const totalElems = FILTRADAS.length;
+  const totalPages = totalElems ? Math.ceil(totalElems / PAGE_SIZE) : 0;
+
+  if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
+  if (totalPages === 0) page = 0;
+
+  const from = page * PAGE_SIZE;
+  const to   = from + PAGE_SIZE;
+  const slice = FILTRADAS.slice(from, to);
+
+  render(slice);
+  renderPager(totalElems, totalPages);
+}
+
+function renderPager(totalElems, totalPages){
+  if (!infoPager || !btnPrev || !btnNext) return;
+
+  const label = totalElems === 1 ? 'entrega' : 'entregas';
+  const currentPage = totalPages ? (page + 1) : 0;
+
+  infoPager.textContent =
+    `Página ${currentPage} de ${totalPages || 0} · ${totalElems || 0} ${label}`;
+
+  btnPrev.disabled = page <= 0;
+  btnNext.disabled = page >= (totalPages - 1) || totalPages === 0;
+}
+
+// ================== Render tabla ==================
 function render(lista){
   const cont = $('#lista-entregas');
   if (!cont) return;

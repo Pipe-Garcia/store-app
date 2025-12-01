@@ -42,16 +42,30 @@
     keys.forEach(k=>{ const a=oldObj?.[k], b=newObj?.[k]; if (JSON.stringify(a)!==JSON.stringify(b)) changes.push([k,a,b]); });
     return changes;
   }
-  function stringify(v){
-    if (v==null||v==='') return '—';
-    if (typeof v==='boolean') return v?'sí':'no';
-    return String(v);
+    function formatIsoDateString(str){
+    const s = String(str).trim();
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (!m) return null;
+    const [, y, mo, d] = m;
+    return `${d}/${mo}/${y}`;
   }
-  // 👉 si el “from” es vacío, ocultarlo y dejar solo “→ to”
+
+  function stringify(v){
+    if (v == null || v === '') return '—';
+    if (typeof v === 'boolean') return v ? 'sí' : 'no';
+
+    const sRaw = String(v);
+    const asDate = formatIsoDateString(sRaw);
+    return asDate || sRaw;
+  }
+
+
   function fmtChange(from,to){
     const A = stringify(from), B = stringify(to);
-    return (A==='—') ? `→ ${B}` : `${A} → ${B}`;
+    if (A === '—' || A === B) return B;
+    return `${A} → ${B}`;
   }
+
   function summarizeEvent(detail){
     const parts=[];
     (detail.changes||[]).forEach(ch=>{
@@ -69,21 +83,42 @@
   }
 
   // ====== Zona horaria y formateo seguro ======
-  const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  const dtf = new Intl.DateTimeFormat('es-AR', { dateStyle:'short', timeStyle:'medium', timeZone:userTZ });
-  function parseTs(ts){
-    if (ts == null) return null;
-    if (typeof ts === 'number') return new Date(ts);
-    if (typeof ts === 'string'){
-      if (/^\d+$/.test(ts)) return new Date(Number(ts));
-      const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(ts);
-      const canon = (!hasTZ && ts.includes('T')) ? ts + 'Z' : ts;
-      const d = new Date(canon);
-      return isNaN(d) ? null : d;
-    }
-    return null;
+const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+const dtDate = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  timeZone: userTZ
+});
+
+// Hora 24h manual
+function formatTime24(d){
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  const ss = String(d.getSeconds()).padStart(2,'0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+function parseTs(ts){
+  if (ts == null) return null;
+  if (typeof ts === 'number') return new Date(ts);
+  if (typeof ts === 'string'){
+    if (/^\d+$/.test(ts)) return new Date(Number(ts));
+    const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(ts);
+    const canon = (!hasTZ && ts.includes('T')) ? ts + 'Z' : ts;
+    const d = new Date(canon);
+    return isNaN(d) ? null : d;
   }
-  const formatTs = (ts)=>{ const d=parseTs(ts); return d? dtf.format(d): '—'; };
+  return null;
+}
+
+const formatTs = (ts) => {
+  const d = parseTs(ts);
+  return d ? `${dtDate.format(d)} ${formatTime24(d)}` : '—';
+};
+
+
 
   async function load(){
     const meta = document.getElementById('meta');

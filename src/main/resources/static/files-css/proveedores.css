@@ -186,3 +186,7 @@ a.btn{ text-decoration:none; }
 @media (max-width: 900px){
   .form-page .grid{ grid-template-columns: 1fr; }
 }
+
+.filters select {
+  padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff; min-height: 36px;
+}

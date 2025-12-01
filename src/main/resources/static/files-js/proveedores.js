@@ -32,8 +32,44 @@ const statePill = s=>{
 
 let PROVEEDORES = [];
 
+// estado de paginado (front)
+let currentPage = 0;
+let pageSize    = 20;
+let pgInfo, pgPrev, pgNext, pgSizeSelect;
+
 document.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ notify('Iniciá sesión','error'); return go('login.html'); }
+
+  // refs del paginador
+  pgInfo        = document.getElementById('pg-info');
+  pgPrev        = document.getElementById('pg-prev');
+  pgNext        = document.getElementById('pg-next');
+  pgSizeSelect  = document.getElementById('pg-size');
+
+  if (pgSizeSelect) {
+    pageSize = Number(pgSizeSelect.value || 20);
+    pgSizeSelect.addEventListener('change', ()=>{
+      pageSize    = Number(pgSizeSelect.value || 20);
+      currentPage = 0;
+      aplicarFiltros();
+    });
+  }
+
+  if (pgPrev) {
+    pgPrev.addEventListener('click', ()=>{
+      if (currentPage > 0){
+        currentPage--;
+        aplicarFiltros();
+      }
+    });
+  }
+  if (pgNext) {
+    pgNext.addEventListener('click', ()=>{
+      currentPage++;
+      aplicarFiltros();
+    });
+  }
+
   await cargarProveedores();
   bindFiltros();
   aplicarFiltros();
@@ -53,12 +89,27 @@ async function cargarProveedores(){
 }
 
 function bindFiltros(){
-  const deb = ((fn, d=200)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); };})(aplicarFiltros, 180);
+  const deb = ((fn, d=200)=>{ 
+    let t; 
+    return (...a)=>{ 
+      clearTimeout(t); 
+      t=setTimeout(()=>{
+        currentPage = 0;   // siempre volvemos a la primera página al cambiar filtros
+        fn(...a);
+      },d); 
+    }; 
+  })(aplicarFiltros, 180);
+
   $('#filtroDni')?.addEventListener('input',deb);
   $('#filtroEmpresa')?.addEventListener('input',deb);
   $('#filtroEstado')?.addEventListener('change',deb);
+
   $('#btnLimpiar')?.addEventListener('click', ()=>{
-    ['filtroDni','filtroEmpresa','filtroEstado'].forEach(id=>{ const el=$('#'+id); if(el) el.value=''; });
+    ['filtroDni','filtroEmpresa','filtroEstado'].forEach(id=>{ 
+      const el=$('#'+id); 
+      if(el) el.value=''; 
+    });
+    currentPage = 0;
     aplicarFiltros();
   });
 }
@@ -74,7 +125,39 @@ function aplicarFiltros(){
   if (empresa) list = list.filter(p => String(p.nameCompany||'').toLowerCase().includes(empresa));
   if (estado)  list = list.filter(p => String(p.status||'').toUpperCase() === estado);
 
-  renderLista(list);
+  const total      = list.length;
+  const totalPages = total ? Math.ceil(total / pageSize) : 0;
+
+  if (totalPages === 0){
+    currentPage = 0;
+    renderLista([]);
+    actualizarPager(total, totalPages);
+    return;
+  }
+
+  if (currentPage >= totalPages) currentPage = totalPages - 1;
+  if (currentPage < 0)           currentPage = 0;
+
+  const start = currentPage * pageSize;
+  const pageSlice = list.slice(start, start + pageSize);
+
+  renderLista(pageSlice);
+  actualizarPager(total, totalPages);
+}
+
+function actualizarPager(total, totalPages){
+  if (!pgInfo || !pgPrev || !pgNext) return;
+
+  if (!total){
+    pgInfo.textContent = 'Sin resultados.';
+    pgPrev.disabled = true;
+    pgNext.disabled = true;
+    return;
+  }
+
+  pgInfo.textContent = `Página ${currentPage+1} de ${totalPages} · ${total} proveedores`;
+  pgPrev.disabled = (currentPage <= 0);
+  pgNext.disabled = (currentPage >= totalPages - 1);
 }
 
 function renderLista(lista){
@@ -128,6 +211,10 @@ function renderLista(lista){
       if(!r.ok) throw new Error(`HTTP ${r.status}`);
       notify('Proveedor eliminado','success');
       PROVEEDORES = PROVEEDORES.filter(p => String(p.idSupplier??p.id) !== String(id));
+      // después de eliminar, recomputamos filtros y paginado
+      if (currentPage > 0 && (currentPage * pageSize) >= PROVEEDORES.length){
+        currentPage--;
+      }
       aplicarFiltros();
     }catch(e){ console.error(e); notify('No se pudo eliminar','error'); }
   };

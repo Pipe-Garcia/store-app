@@ -12,21 +12,43 @@
   const $ = (id)=>document.getElementById(id);
 
   // ====== TZ y formateo seguro ======
-  const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  const dtf = new Intl.DateTimeFormat('es-AR', { dateStyle:'short', timeStyle:'medium', timeZone:userTZ });
-  function parseTs(ts){
-    if (ts == null) return null;
-    if (typeof ts === 'number') return new Date(ts);
-    if (typeof ts === 'string'){
-      if (/^\d+$/.test(ts)) return new Date(Number(ts));
-      const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(ts);
-      const canon = (!hasTZ && ts.includes('T')) ? ts + 'Z' : ts;
-      const d = new Date(canon);
-      return isNaN(d) ? null : d;
-    }
-    return null;
+const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+const dtDate = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  timeZone: userTZ
+});
+
+
+function formatTime24(d){
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  const ss = String(d.getSeconds()).padStart(2,'0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+function parseTs(ts){
+  if (ts == null) return null;
+  if (typeof ts === 'number') return new Date(ts);
+  if (typeof ts === 'string'){
+    if (/^\d+$/.test(ts)) return new Date(Number(ts));
+    const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(ts);
+    const canon = (!hasTZ && ts.includes('T')) ? ts + 'Z' : ts;
+    const d = new Date(canon);
+    return isNaN(d) ? null : d;
   }
-  const formatTs = ts => { const d=parseTs(ts); return d ? dtf.format(d) : '—'; };
+  return null;
+}
+
+
+const formatTs = ts => {
+  const d = parseTs(ts);
+  return d ? `${dtDate.format(d)} ${formatTime24(d)}` : '—';
+};
+
+
 
   // ====== Diccionarios ES ======
 const LABEL_ACTION = {
@@ -131,19 +153,41 @@ const LABEL_ENTITY = {
     });
     return changes;
   }
+    // Detecta 'YYYY-MM-DD' y lo pasa a 'DD/MM/YYYY'
+  function formatIsoDateString(str){
+    const s = String(str).trim();
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (!m) return null;
+    const [, y, mo, d] = m;
+    return `${d}/${mo}/${y}`;
+  }
+
   function stringify(v){
     if (v == null || v === '') return '—';
+
     if (typeof v === 'number') return String(v);
     if (typeof v === 'boolean') return v ? 'sí' : 'no';
-    if (typeof v === 'string') return v.length>40 ? v.slice(0,40)+'…' : v;
+
+    if (typeof v === 'string') {
+      // 👇 aquí convertimos la fecha del mensaje
+      const asDate = formatIsoDateString(v);
+      const s = asDate || v;  // si no matchea fecha, usamos el original
+
+      return s.length > 40 ? s.slice(0, 40) + '…' : s;
+    }
+
     return JSON.stringify(v);
   }
-  // ❷ Formato de cambio: si el “from” es vacío, ocultarlo y dejar solo “→ to”
+
+
+  // ❷ Formato de cambio:
   function fmtChange(from, to){
     const A = stringify(from);
     const B = stringify(to);
-    return (A === '—') ? `→ ${B}` : `${A} → ${B}`;
+    if (A === '—' || A === B) return B;
+    return `${A} → ${B}`;
   }
+
   function summarizeEvent(e){
     const parts = [];
     (e.changes||[]).forEach(ch=>{

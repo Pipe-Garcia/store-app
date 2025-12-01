@@ -4,6 +4,12 @@ const API_URL_CLI = '/clients';
 
 let clientes = [];
 
+// 🔹 Paginación en front
+const PAGE_SIZE = 20;
+let page = 0;
+let clientesFiltrados = [];
+let pagerInfo, pagerPrev, pagerNext;
+
 /* ==== Helpers UI (el HTTP/Token ya lo da api.js) ==== */
 const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -82,7 +88,7 @@ function cargarClientes() {
         return;
       }
       clientes = data;
-      filtrarClientes(); // render inmediato con filtros actuales
+      filtrarClientes(); // render inmediato con filtros actuales (paginará)
     })
     .catch(err => {
       console.error('Error al cargar clientes:', err);
@@ -137,7 +143,35 @@ function mostrarClientes(lista) {
   });
 }
 
+/* ========= Paginado en front ========= */
 
+function renderPaginated() {
+  const totalElems = clientesFiltrados.length;
+  const totalPages = totalElems ? Math.ceil(totalElems / PAGE_SIZE) : 0;
+
+  if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
+  if (totalPages === 0) page = 0;
+
+  const from = page * PAGE_SIZE;
+  const to   = from + PAGE_SIZE;
+  const slice = clientesFiltrados.slice(from, to);
+
+  mostrarClientes(slice);
+  renderPager(totalElems, totalPages);
+}
+
+function renderPager(totalElems, totalPages) {
+  if (!pagerInfo || !pagerPrev || !pagerNext) return;
+
+  const current = totalPages ? (page + 1) : 0;
+  const label = totalElems === 1 ? 'cliente' : 'clientes';
+
+  pagerInfo.textContent =
+    `Página ${current} de ${totalPages || 0} · ${totalElems || 0} ${label}`;
+
+  pagerPrev.disabled = page <= 0;
+  pagerNext.disabled = page >= (totalPages - 1) || totalPages === 0;
+}
 
 /* ================== ACCIONES ================== */
 
@@ -237,7 +271,7 @@ function filtrarClientes() {
   const filtroNombre = ($('#filtroNombre')?.value || '').toLowerCase().trim();
   const filtroEstado = ($('#filtroEstado')?.value || 'ALL').toUpperCase(); // ALL | ACTIVE | INACTIVE
 
-  const filtrados = clientes.filter(c => {
+  clientesFiltrados = clientes.filter(c => {
     const dni    = String(c.dni ?? '').toLowerCase();
     const nomApe = `${c.name ?? ''} ${c.surname ?? ''}`.toLowerCase();
     const activo = esActivo(c.status);
@@ -254,7 +288,8 @@ function filtrarClientes() {
     return matchTexto && matchEstado;
   });
 
-  mostrarClientes(filtrados);
+  page = 0;           // siempre volvemos a primera página al cambiar filtros
+  renderPaginated();
 }
 
 function toggleFormulario() {
@@ -282,6 +317,27 @@ window.addEventListener('DOMContentLoaded', () => {
     notify(message, type || 'success');
     localStorage.removeItem('flash');
   }
+
+  // refs pager
+  pagerInfo = document.getElementById('pg-info');
+  pagerPrev = document.getElementById('pg-prev');
+  pagerNext = document.getElementById('pg-next');
+
+  pagerPrev?.addEventListener('click', () => {
+    if (page > 0) {
+      page--;
+      renderPaginated();
+    }
+  });
+  pagerNext?.addEventListener('click', () => {
+    const totalPages = clientesFiltrados.length
+      ? Math.ceil(clientesFiltrados.length / PAGE_SIZE)
+      : 0;
+    if (page < totalPages - 1) {
+      page++;
+      renderPaginated();
+    }
+  });
 
   // Búsqueda en vivo
   const debouncedFilter = debounce(filtrarClientes, 250);

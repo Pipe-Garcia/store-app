@@ -602,3 +602,9 @@ body {
 
 .tag { display:inline-block; padding:.2rem .5rem; border-radius:999px; font-size:.8rem; }
 .tag-ice { background:#e8f1fd; color:#1e63d5; } /* “stock reservado” */
+
+.pager { display:flex; align-items:center; gap:10px; justify-content:flex-end; padding-top:10px; }
+.pager .info { color:#666; font-size:.92rem; }
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:8px; border:1px solid #d0d7de; background:#fff; cursor:pointer; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.btn.primary { background:#1c7ed6; color:#fff; border-color:#1c7ed6; }

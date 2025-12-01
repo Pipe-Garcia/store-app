@@ -22,6 +22,7 @@
 
     <hr><br>
     <!-- Filtros -->
+    
     <section class="filters card">
       <div class="row">
         <label>DNI
@@ -32,7 +33,6 @@
           <input type="text" id="filtroEmpresa" placeholder="Buscar por empresa">
         </label>
 
-        
         <label>Estado
           <select id="filtroEstado">
             <option value="">Todos</option>
@@ -41,9 +41,18 @@
           </select>
         </label>
 
+        <label>Tamaño pág.
+          <select id="pg-size">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+        </label>
+
         <button id="btnLimpiar" class="btn outline">Limpiar</button>
       </div>
     </section>
+
 
     <!-- Lista -->
     <section class="card">
@@ -57,6 +66,12 @@
           <div>Acciones</div>
         </div>
         <!-- filas dinámicas -->
+      </div>
+
+      <div class="pager">
+        <div class="info" id="pg-info"></div>
+        <button class="btn" id="pg-prev">« Anterior</button>
+        <button class="btn" id="pg-next">Siguiente »</button>
       </div>
     </section>
   </main>

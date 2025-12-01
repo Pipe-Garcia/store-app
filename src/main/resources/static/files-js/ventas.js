@@ -29,12 +29,37 @@ function go(page){
   location.href = `${base}${page}`;
 }
 
+// 🔹 Paginación en front
+const PAGE_SIZE = 20;
+let page = 0;
+let FILTRADAS = [];
+let infoPager, btnPrev, btnNext;
+
 let CLIENTS = [];
 let LAST_SALES = [];
 
 // ================== Bootstrap ==================
 window.addEventListener('DOMContentLoaded', async ()=>{
   if (!getToken()){ go('login.html'); return; }
+
+  // refs pager
+  infoPager = document.getElementById('pg-info');
+  btnPrev   = document.getElementById('pg-prev');
+  btnNext   = document.getElementById('pg-next');
+
+  btnPrev?.addEventListener('click', ()=>{
+    if (page > 0){
+      page--;
+      renderPaginated();
+    }
+  });
+  btnNext?.addEventListener('click', ()=>{
+    const totalPages = FILTRADAS.length ? Math.ceil(FILTRADAS.length / PAGE_SIZE) : 0;
+    if (page < totalPages - 1){
+      page++;
+      renderPaginated();
+    }
+  });
 
   // flash (desde crear/editar)
   const flash = localStorage.getItem('flash');
@@ -121,7 +146,7 @@ async function fetchSalesFromServer(){
   let data = [];
 
   try{
-    const url = qs ? `${API_URL_SEARCH}?${qs}` : API_URL_SEARCH;
+    const url = qs ? `${API_URL_SEARCH}?${qs}` : `${API_URL_SEARCH}`;
     const r = await authFetch(url);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     data = await safeJson(r);
@@ -171,11 +196,15 @@ async function reloadFromFilters(){
       return (b.idSale || b.saleId || 0) - (a.idSale || a.saleId || 0);
     });
 
-    renderLista(view);
+    FILTRADAS = view;
+    page = 0;
+    renderPaginated();
   }catch(e){
     console.error(e);
     notify('No se pudieron cargar las ventas','error');
-    renderLista([]);
+    FILTRADAS = [];
+    page = 0;
+    renderPaginated();
   }
 }
 
@@ -273,6 +302,35 @@ function deliveryPillHtml(code){
   return `<span class="pill ${cls}">${label}</span>`;
 }
 
+// ================== Render paginado ==================
+function renderPaginated(){
+  const totalElems = FILTRADAS.length;
+  const totalPages = totalElems ? Math.ceil(totalElems / PAGE_SIZE) : 0;
+
+  if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
+  if (totalPages === 0) page = 0;
+
+  const from = page * PAGE_SIZE;
+  const to   = from + PAGE_SIZE;
+  const slice = FILTRADAS.slice(from, to);
+
+  renderLista(slice);
+  renderPager(totalElems, totalPages);
+}
+
+function renderPager(totalElems, totalPages){
+  if (!infoPager || !btnPrev || !btnNext) return;
+
+  const label = totalElems === 1 ? 'venta' : 'ventas';
+  const currentPage = totalPages ? (page + 1) : 0;
+
+  infoPager.textContent =
+    `Página ${currentPage} de ${totalPages || 0} · ${totalElems || 0} ${label}`;
+
+  btnPrev.disabled = page <= 0;
+  btnNext.disabled = page >= (totalPages - 1) || totalPages === 0;
+}
+
 // ================== Render ==================
 function renderListSkeleton(){
   const cont = $('#lista-ventas');
@@ -314,6 +372,7 @@ function renderLista(lista){
     row.className = 'fila';
     row.innerHTML = `<div style="grid-column:1/-1;color:#666;">Sin resultados.</div>`;
     cont.appendChild(row);
+    cont.onclick = null;
     return;
   }
 
