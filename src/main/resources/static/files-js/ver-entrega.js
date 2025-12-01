@@ -1,8 +1,6 @@
 // /static/files-js/ver-entrega.js
 const { authFetch, safeJson, getToken } = window.api;
-
 const API_DELIVERIES = '/deliveries';
-
 const $ = (s, r = document) => r.querySelector(s);
 
 function notify(msg, type = 'info') {
@@ -13,7 +11,6 @@ function notify(msg, type = 'info') {
   setTimeout(() => n.remove(), 3500);
 }
 
-// Mapear status lógico a la pill
 const UI_DELIVERY_STATUS = {
   DELIVERED: 'ENTREGADA',
   COMPLETED: 'ENTREGADA',
@@ -24,17 +21,16 @@ const UI_DELIVERY_STATUS = {
 window.addEventListener('DOMContentLoaded', init);
 
 async function init() {
-  if (!getToken()) {
-    location.href = '../files-html/login.html';
-    return;
-  }
+  if (!getToken()) { location.href = '../files-html/login.html'; return; }
 
   const qs = new URLSearchParams(location.search);
   const id = qs.get('id');
-  if (!id) {
-    notify('ID de entrega no especificado', 'error');
-    location.href = 'entregas.html';
-    return;
+  if (!id) { notify('ID no especificado', 'error'); setTimeout(() => (location.href = 'entregas.html'), 1000); return; }
+
+  const btnEdit = $('#btnEditarEntrega');
+  if (btnEdit) {
+     btnEdit.href = `editar-entrega.html?id=${id}`;
+     // btnEdit.style.display = 'inline-flex'; // Descomentar para habilitar
   }
 
   try {
@@ -43,150 +39,94 @@ async function init() {
     const dto = await safeJson(res);
 
     renderHeader(dto);
-    renderItems(dto.items || []);
-
-    // Si en el futuro querés editar entrega, acá seteamos el href
-    const btnEdit = $('#btnEditarEntrega');
-    if (btnEdit) {
-      btnEdit.style.display = 'none'; // por ahora deshabilitado
-      // btnEdit.href = `editar-entrega.html?id=${id}`;
-    }
+    renderItems(dto.items || dto.details || []);
 
   } catch (e) {
     console.error(e);
-    notify('No se pudo cargar la entrega', 'error');
-    setTimeout(() => (location.href = 'entregas.html'), 800);
+    notify('Error al cargar la entrega', 'error');
   }
 }
-
-/* ================= CABECERA ================= */
 
 function renderHeader(d) {
-  // ID / fecha / cliente
   $('#deliveryId').textContent = d.idDelivery ?? d.deliveryId ?? d.id ?? '—';
 
-  const rawDate = (d.deliveryDate ?? d.date ?? d.dateDelivery ?? '').toString();
-  $('#fecha').textContent = rawDate ? rawDate.slice(0, 10) : '—';
+  let rawDate = (d.deliveryDate ?? d.date ?? d.dateDelivery ?? '').toString();
+  if(rawDate.length >= 10) rawDate = rawDate.slice(0, 10).split('-').reverse().join('/');
+  $('#fecha').textContent = rawDate || '—';
 
-  $('#cliente').textContent = d.clientName
-    ?? d.client?.name
-    ?? '—';
+  $('#cliente').textContent = d.clientName ?? d.client?.name ?? '—';
 
-  // ======================= VENTA ASOCIADA =======================
-  const saleId =
-    d.saleId ??
-    d.idSale ??
-    d.sale_id ??
-    (d.sale && (d.sale.idSale ?? d.sale.saleId ?? d.sale.id)) ??
-    null;
-
+  // Venta
+  const saleId = d.saleId ?? d.idSale ?? d.sale?.idSale ?? null;
   const ventaLink = $('#ventaAsociada');
-  if (ventaLink) {
-    if (saleId) {
-      ventaLink.textContent = `#${saleId}`;
-      ventaLink.classList.remove('disabled');
-      ventaLink.href = `ver-venta.html?id=${saleId}`;
-      ventaLink.onclick = null; // ya con href alcanza
-    } else {
-      ventaLink.textContent = '—';
-      ventaLink.classList.add('disabled');
-      ventaLink.removeAttribute('href');
-    }
+  if (saleId) {
+    ventaLink.textContent = `#${saleId}`;
+    ventaLink.href = `ver-venta.html?id=${saleId}`;
+    ventaLink.classList.remove('disabled');
+  } else {
+    ventaLink.textContent = '—';
+    ventaLink.removeAttribute('href');
+    ventaLink.classList.add('disabled');
   }
 
-  const ventaSpan = $('#ventaAsociada');
-  if (ventaSpan) {
-    if (saleId) {
-      // Texto más explícito
-      ventaSpan.textContent = `#${saleId} — Ver venta sociada`;
-      ventaSpan.style.cursor = 'pointer';
-      ventaSpan.title = 'Ver venta asociada';
-      ventaSpan.onclick = () => {
-        location.href = `ver-venta.html?id=${saleId}`;
-      };
-    } else {
-      ventaSpan.textContent = '—';
-      ventaSpan.onclick = null;
-      ventaSpan.style.cursor = 'default';
-      ventaSpan.title = '';
-    }
-  }
-
-
-  // ======================= PRESUPUESTO ASOCIADO =================
-  const orderId =
-    d.ordersId ??
-    d.orderId ??
-    d.idOrders ??
-    (d.orders && (d.orders.idOrders ?? d.orders.id)) ??
-    null;
-
+  // Presupuesto
+  const orderId = d.ordersId ?? d.orderId ?? d.idOrders ?? (d.orders && d.orders.idOrders) ?? null;
   $('#pedidoAsociado').textContent = orderId ? `#${orderId}` : '—';
 
-  // ======================= ESTADO ENTREGA =======================
-  const pill = $('#estadoEntrega');
+  // Estado
   const raw = (d.status || '').toString().toUpperCase();
-  const code =
-    raw === 'COMPLETED' || raw === 'DELIVERED'
-      ? 'DELIVERED'
-      : raw === 'PARTIAL'
-      ? 'PARTIAL'
-      : 'PENDING';
-
+  const code = (raw === 'COMPLETED' || raw === 'DELIVERED') ? 'DELIVERED' : (raw === 'PARTIAL' ? 'PARTIAL' : 'PENDING');
+  const pill = $('#estadoEntrega');
   pill.className = `pill ${code === 'DELIVERED' ? 'completed' : 'pending'}`;
-  pill.textContent = UI_DELIVERY_STATUS[code] || raw || 'PENDIENTE A ENTREGAR';
+  pill.textContent = UI_DELIVERY_STATUS[code] || raw;
 }
-
-
-/* ================= ÍTEMS ================= */
 
 function renderItems(items) {
   const cont = $('#tablaItems');
-  cont.innerHTML = `
-    <div class="fila encabezado">
-      <div>Material</div>
-      <div>Vendido (ref.)</div>
-      <div>Entregado</div>
-      <div>Pendiente</div>
-    </div>
-  `;
+  const msg  = $('#msgItems');
+  
+  // Limpiar filas .trow (Estilo nuevo)
+  cont.querySelectorAll('.trow').forEach(e => e.remove());
 
   if (!Array.isArray(items) || !items.length) {
-    const msg = $('#msgItems');
-    msg.textContent = 'Sin ítems en esta entrega.';
-    msg.style.display = 'block';
+    if(msg) { msg.textContent = 'Sin ítems.'; msg.style.display = 'block'; }
     return;
   }
+  if(msg) msg.style.display = 'none';
 
   for (const it of items) {
-    // Vendido: usamos primero un campo específico de venta si algún día lo agregamos;
-    // si no, caemos a quantityOrdered (del pedido) como referencia.
-    const sold =
-      Number(
-        it.quantitySoldForSale ??
-          it.quantitySold ??
-          it.quantityOrdered ??
-          it.orderedQty ??
-          0
-      ) || 0;
+    // Lógica robusta para encontrar "Vendido"
+    const sold = Number(
+        it.quantitySoldForSale ?? 
+        it.quantitySold ?? 
+        it.soldUnits ?? 
+        it.quantityOrdered ?? 
+        it.orderedQty ?? 
+        it.saleDetail?.quantity ?? // <--- Busca en objeto anidado
+        it.totalUnits ??
+        0
+    );
 
-    const delivered =
-      Number(
-        it.quantityDelivered ??
-          it.deliveredQty ??
-          it.qty ??
-          0
-      ) || 0;
+    // Lógica para "Entregado" (en esta entrega)
+    const delivered = Number(
+        it.quantityDelivered ?? 
+        it.deliveredQty ?? 
+        it.qty ?? 
+        it.quantity ?? // A veces quantity es lo entregado en este contexto
+        0
+    );
 
     const pending = Math.max(0, sold - delivered);
 
     const row = document.createElement('div');
-    row.className = 'fila';
+    row.className = 'trow'; // Clase nueva
+    
+    // Grid: Material (2) | Vendido (1) | Entregado (1) | Pendiente (1)
     row.innerHTML = `
-      <div>${it.materialName || '—'}</div>
-      <div>${sold}</div>
-      <div>${delivered}</div>
-      <div>${pending}</div>
+      <div style="flex: 2;" class="strong-text">${it.materialName || it.name || '—'}</div>
+      <div class="text-center">${sold}</div>
+      <div class="text-center strong-text">${delivered}</div>
+      <div class="text-center">${pending}</div>
     `;
     cont.appendChild(row);
   }

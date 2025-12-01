@@ -6,91 +6,97 @@
   <link rel="stylesheet" href="../files-css/style.css" />
   <link rel="stylesheet" href="../files-css/ventas.css" />
   <link rel="stylesheet" href="../files-css/nav.css" />
+  <link rel="stylesheet" href="../files-css/crear-pedido.css"/>
 </head>
 <body>
 
   <div id="app-header"></div>
 
-<main class="page form-page narrow">
+<main class="page form-page narrow seccion-crearEntrega">
   <div class="page-head">
     <h1>Nueva venta</h1>
   </div>
 
   <section class="card">
-    <div class="grid">
-      <div>
-        <label>Fecha</label>
-        <input id="fecha" type="date" required>
+    <form id="form-venta"> <div class="grid">
+        <div>
+          <label>Fecha</label>
+          <input id="fecha" type="date" required>
+        </div>
+        
+        <div>
+          <label>Cliente</label>
+          <div class="autocomplete-wrapper" id="ac-cliente-wrapper">
+            <input type="text" id="cliente-search" placeholder="Buscar cliente..." autocomplete="off">
+            <input type="hidden" id="cliente">
+            <div class="autocomplete-list"></div>
+          </div>
+        </div>
+
+        <div>
+          <label for="orderSelect">Presupuesto (opcional)</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select id="orderSelect">
+              <option value="">—</option>
+            </select>
+            <button type="button" id="btnClearOrder" class="btn outline" style="display:none;">Limpiar</button>
+          </div>
+          <small class="field-hint">
+            Solo se listan presupuestos con unidades pendientes.
+          </small>
+        </div>
+      </div>
+
+      <hr class="hr">
+
+      <h3 class="subhead">Ítems</h3>
+      <div class="tabla" id="items">
+        <div class="fila encabezado">
+          <div>Material</div>
+          <div>Depósito</div>
+          <div>Cantidad</div>
+          <div>Precio</div>
+          <div>Subtotal</div>
+          <div>Quitar</div>
+        </div>
       </div>
       
-      <div>
-        <label>Cliente</label>
-        <div class="autocomplete-wrapper" id="ac-cliente-wrapper">
-          <input type="text" id="cliente-search" placeholder="Buscar cliente..." autocomplete="off">
-          <input type="hidden" id="cliente">
-          <div class="autocomplete-list"></div>
-        </div>
+      <div class="form-actions" style="margin-top: 10px;">
+        <button class="btn outline" id="btnAdd">+ Agregar ítem</button>
       </div>
 
-      <div>
-        <label for="orderSelect">Presupuesto (opcional)</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <select id="orderSelect">
-            <option value="">—</option>
+      <div class="subtotales">
+        <div>Total: <strong id="total">$ 0,00</strong></div>
+      </div>
+
+      <hr class="hr">
+
+      <h3 class="subhead">Pago</h3>
+      <div class="grid">
+        <div>
+          <label>Importe</label>
+          <input id="pagoImporte" type="number" min="0.01" step="0.01" required>
+        </div>
+        <div>
+          <label>Fecha de Pago</label>
+          <input id="pagoFecha" type="date" required>
+        </div>
+        <div>
+          <label>Método</label>
+          <select id="pagoMetodo" required>
+            <option value="">Seleccionar...</option> <option>Efectivo</option>
+            <option>Transferencia</option>
+            <option>Débito Mastercard</option>
+            <option>Crédito Visa</option>
           </select>
-          <button id="btnClearOrder" class="btn outline" style="display:none;">Limpiar</button>
         </div>
-        <small class="hint">
-          Solo se listan presupuestos con unidades pendientes.
-        </small>
       </div>
-    </div>
 
-    <h3 class="subhead">Ítems</h3>
-    <div class="tabla" id="items">
-      <div class="fila encabezado">
-        <div>Material</div>
-        <div>Depósito</div>
-        <div>Cantidad</div>
-        <div>Precio</div>
-        <div>Subtotal</div>
-        <div>Quitar</div>
+      <div class="form-actions main-actions">
+        <button type="button" class="btn primary" id="btnGuardar">Crear venta</button>
+        <a class="btn outline" href="../files-html/ventas.html">Cancelar</a>
       </div>
-      </div>
-    <div class="form-actions">
-      <button class="btn outline" id="btnAdd">+ Agregar ítem</button>
-    </div>
-
-    <div class="subtotales">
-      <div>Total: <strong id="total">$ 0,00</strong></div>
-    </div>
-
-    <h3 class="subhead">Pago inicial (opcional)</h3>
-    <div class="grid">
-      <div>
-        <label>Importe</label>
-        <input id="pagoImporte" type="number" min="0" step="1">
-      </div>
-      <div>
-        <label>Fecha</label>
-        <input id="pagoFecha" type="date">
-      </div>
-      <div>
-        <label>Método</label>
-        <select id="pagoMetodo">
-          <option value="">Sin pago</option>
-          <option>Efectivo</option>
-          <option>Transferencia</option>
-          <option>Débito Mastercard</option>
-          <option>Crédito Visa</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="form-actions">
-      <button class="btn primary" id="btnGuardar">Crear venta</button>
-      <a class="btn outline" href="../files-html/ventas.html">Cancelar</a>
-    </div>
+    </form>
   </section>
 </main>
 

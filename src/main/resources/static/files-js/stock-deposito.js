@@ -109,7 +109,7 @@ async function loadStock(warehouseId) {
         <div>${last}</div>
         <div class="acciones">
           <a class="btn outline btn-small"
-             href="../files-html/editar-material.html?id=${s.idMaterial ?? s.materialId ?? ''}">
+             href="../files-html/ver-material.html?id=${s.idMaterial ?? s.materialId ?? ''}">
             Ver material
           </a>
         </div>

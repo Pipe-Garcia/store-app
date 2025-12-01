@@ -15,14 +15,15 @@
     
     <div class="detail-header">
       <div class="title-group">
-        <h1>Venta <span id="saleId">...</span></h1>
+        <h1>Venta <span id="saleId">...</span> </h1>
         <div class="breadcrumbs">
         </div>
       </div>
+      
       <div class="actions-toolbar">
         <a id="btnCrearEntrega" class="btn primary" style="display:none;">Crear entrega</a>
         <div class="btn-group">
-          <a id="btnEditar" class="btn primary">Editar</a>
+          <a id="btnEditar" class="btn outline">Editar</a>
           <a class="btn outline" href="ventas.html">Volver</a>
         </div>
       </div>
@@ -69,24 +70,15 @@
             <span class="value" id="entregasResumen">—</span>
           </div>
 
-          <div class="info-row highlight-row">
+          <div class="info-row highlight-row" style="border-bottom:none;">
             <span class="label">Total Venta</span>
             <span class="value strong" id="total">$ 0,00</span>
           </div>
-          <div class="info-row">
-            <span class="label">Pagado</span>
-            <span class="value" id="pagado">$ 0,00</span>
-          </div>
-          <div class="info-row" style="border-bottom:none;">
-            <span class="label">Saldo Pendiente</span>
-            <span class="value strong text-danger" id="saldo">$ 0,00</span>
-          </div>
-
-        </section>
+          
+          </section>
 
         <section class="items-section">
-          <h3>Artículos de la venta</h3>
-          
+          <h3>Ítems de la venta</h3>
           <div class="tabla-clean" id="tablaItems">
             <div class="thead">
               <div style="flex: 2;">Material</div>
@@ -121,7 +113,6 @@
             <h3>Pagos registrados</h3>
             <a id="btnRegistrarPago2" class="btn outline small">+ Registrar pago</a>
           </div>
-          
           <div class="tabla-clean" id="tablaPagos">
             <div class="thead">
               <div>Fecha</div>
