@@ -1,21 +1,33 @@
 // /static/files-js/ver-venta.js
 const { authFetch, safeJson, getToken } = window.api;
 
-const API_SALES           = '/sales';
-const API_PAY             = '/payments';
-const API_ITEMS1          = (id)=> `/sales/${id}/details`; 
-const API_ITEMS2          = (id)=> `/sale-details/by-sale/${id}`;
+const API_SALES            = '/sales';
+const API_PAY              = '/payments';
+const API_ITEMS1           = (id)=> `/sales/${id}/details`; 
+const API_ITEMS2           = (id)=> `/sale-details/by-sale/${id}`;
 const API_DELIVERIES_BY_SALE = (id)=> `/deliveries/by-sale/${id}`; 
 
 const $  = (s,r=document)=>r.querySelector(s);
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
+
+/* =========================================
+   HELPER DE FECHA (YYYY-MM-DD -> DD/MM/AAAA)
+   ========================================= */
+const fmtDate = (s) => {
+  if (!s) return '—';
+  // Tomamos los primeros 10 caracteres (2025-12-01)
+  const iso = s.toString().slice(0, 10);
+  // Dividimos y damos vuelta
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+};
 
 // Estados
 const UI_PAY_STATUS = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', PAID:'PAGADO' };
 const UI_PAYSTATE   = { APPLIED:'Aplicado', PENDING:'Pendiente', REJECTED:'Rechazado', VOID:'Anulado', PAID:'Aplicado' };
 const UI_DELIVERY_STATUS = { DELIVERED: 'ENTREGADA', PENDING_DELIVERY: 'PENDIENTE A ENTREGAR' };
 
-// Helpers de unidades (igual que antes)
+// Helpers de unidades
 function getSoldUnits(v){ return Number(v.totalUnits ?? v.unitsSold ?? v.soldUnits ?? 0); }
 function getDeliveredUnits(v){ return Number(v.deliveredUnits ?? v.unitsDelivered ?? 0); }
 function getPendingUnits(v){ return Number(v.pendingToDeliver ?? v.pendingUnits ?? 0); }
@@ -23,14 +35,11 @@ function getPendingUnits(v){ return Number(v.pendingToDeliver ?? v.pendingUnits 
 function getDeliveryStateCode(v){
   const hasOrder = !!(v.orderId ?? v.ordersId);
   if (!hasOrder) return 'DELIVERED';
-  
   const explicit = (v.deliveryStatus || '').toString().toUpperCase();
   if (['DELIVERED','COMPLETED'].includes(explicit)) return 'DELIVERED';
-  
   const sold = getSoldUnits(v);
   const delivered = getDeliveredUnits(v);
   const pending = getPendingUnits(v);
-
   if (sold > 0 && delivered >= sold) return 'DELIVERED';
   if (pending > 0) return 'PENDING_DELIVERY';
   return 'PENDING_DELIVERY';
@@ -73,10 +82,8 @@ async function init(){
       setupCrearEntrega(saleDTO);
       await renderEntregasVenta(Number(saleId));
     } else {
-      const btn = document.getElementById('btnCrearEntrega');
-      if (btn) btn.style.display = 'none';
-      const cardEnt = document.getElementById('cardEntregasVenta');
-      if (cardEnt) cardEnt.style.display = 'none';
+      $('#btnCrearEntrega').style.display = 'none';
+      $('#cardEntregasVenta').style.display = 'none';
     }
 
     await renderItems(saleId);
@@ -92,7 +99,10 @@ async function init(){
 /* =================== CABECERA =================== */
 function renderCabecera(s){
   $('#saleId').textContent = s.idSale ?? s.saleId ?? s.id ?? '-';
-  $('#fecha').textContent = (s.dateSale ?? '').slice(0,10) || '—';
+  
+  // CAMBIO: Usamos fmtDate aquí
+  $('#fecha').textContent = fmtDate(s.dateSale);
+  
   $('#cliente').textContent = s.clientName ?? '—';
 
   const orderId = s.orderId ?? null;
@@ -100,20 +110,17 @@ function renderCabecera(s){
 
   if (!orderId) {
     ['rowPedido','rowEntregas','rowEstadoEntrega'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.style.display = 'none';
+       const el = document.getElementById(id);
+       if(el) el.style.display = 'none';
     });
   }
 
-  // Totales
   SALE_TOTAL = Number(s.total ?? s.totalArs ?? 0);
   const initialPaid = Number(s.paid ?? s.totalPaid ?? 0);
   PAID_SUM = initialPaid;
 
-  // Render Totales
-  refreshHeaderTotals(); // Llama a pintar total, pagado, saldo y estado pago
+  refreshHeaderTotals();
 
-  // Resumen Entregas
   const sold = getSoldUnits(s);
   const delivered = getDeliveredUnits(s);
   let pending = getPendingUnits(s);
@@ -124,7 +131,6 @@ function renderCabecera(s){
       ? 'Sin datos' 
       : `${delivered} / ${sold} unid. (${pending} pendiente${pending===1?'':'s'})`;
 
-  // Estado Entrega
   const delState = getDeliveryStateCode(s);
   const pillEnt = $('#estadoEntrega');
   if(pillEnt){
@@ -136,11 +142,8 @@ function renderCabecera(s){
 function refreshHeaderTotals(){
   const saldoNum = Math.max(0, SALE_TOTAL - (PAID_SUM||0));
   
-  $('#total').textContent  = fmtARS.format(SALE_TOTAL); // Total abajo
-  $('#pagado').textContent = fmtARS.format(PAID_SUM||0);
-  $('#saldo').textContent  = fmtARS.format(saldoNum);
+  $('#total').textContent  = fmtARS.format(SALE_TOTAL);
 
-  // Estado Pago Pill
   const payState = (PAID_SUM||0) <= 0 
     ? 'PENDING' 
     : (saldoNum <= 0.01 ? 'PAID' : 'PARTIAL');
@@ -149,7 +152,7 @@ function refreshHeaderTotals(){
   if(pillPago){
       let cls = 'pending';
       if(payState === 'PAID') cls = 'completed';
-      if(payState === 'PARTIAL') cls = 'partial'; // Necesitas definir estilo .partial en CSS o usar pending
+      if(payState === 'PARTIAL') cls = 'partial';
       pillPago.className = `pill ${cls}`;
       pillPago.textContent = UI_PAY_STATUS[payState];
   }
@@ -160,10 +163,9 @@ function refreshHeaderTotals(){
   const btnPay = document.getElementById('btnRegistrarPago2');
   if(btnPay) {
       if(saldoNum <= 0.01) {
-          btnPay.classList.add('disabled');
-          btnPay.onclick = (e) => { e.preventDefault(); notify('Venta saldada','info'); };
+          btnPay.style.display = 'none';
       } else {
-          btnPay.classList.remove('disabled');
+          btnPay.style.display = 'inline-flex';
           btnPay.onclick = openPayDialog;
       }
   }
@@ -188,7 +190,6 @@ function setupCrearEntrega(s){
 /* =================== ÍTEMS =================== */
 async function renderItems(id){
   const cont = $('#tablaItems');
-  // Limpiar filas .trow
   cont.querySelectorAll('.trow').forEach(n=>n.remove());
 
   let items=[];
@@ -209,7 +210,6 @@ async function renderItems(id){
     
     const row = document.createElement('div');
     row.className = 'trow';
-    // Grid: Material | Cantidad | Precio | Subtotal
     row.innerHTML = `
       <div style="flex: 2;" class="strong-text">${it.materialName || it.name || '—'}</div>
       <div class="text-center">${q}</div>
@@ -240,7 +240,10 @@ async function renderEntregasVenta(id){
 
     for (const d of list){
       const idDel  = d.idDelivery ?? d.id ?? '-';
-      const date   = (d.deliveryDate ?? '').slice(0,10);
+      
+      // CAMBIO: Usamos fmtDate aquí
+      const date = fmtDate(d.deliveryDate);
+      
       const units  = Number(d.deliveredUnits ?? 0);
       const status = (d.status ?? '').toUpperCase();
       
@@ -256,7 +259,7 @@ async function renderEntregasVenta(id){
         <div style="flex: 2;">${labelEnt}</div>
         <div class="text-center"><span class="pill ${pillClass}" style="font-size:0.75rem;">${labelStatus}</span></div>
         <div class="text-right">
-          <a href="ver-entrega.html?id=${idDel}" class="btn outline" style="padding:4px 8px; font-size:0.8rem;">Ver</a>
+          <a href="ver-entrega.html?id=${idDel}" class="btn outline small">Ver</a>
         </div>
       `;
       cont.appendChild(row);
@@ -289,10 +292,14 @@ async function renderPagos(id){
   
   for(const p of list){
     const rawState = p.status || 'APPLIED';
+    
+    // CAMBIO: Usamos fmtDate aquí
+    const dateP = fmtDate(p.datePayment);
+
     const row = document.createElement('div');
     row.className = 'trow';
     row.innerHTML = `
-      <div>${p.datePayment ?? '-'}</div>
+      <div>${dateP}</div>
       <div>${methodMap[p.methodPayment] ?? p.methodPayment}</div>
       <div class="text-center">${UI_PAYSTATE[rawState] || rawState}</div>
       <div class="text-right strong-text">${fmtARS.format(Number(p.amount||0))}</div>`;

@@ -1,4 +1,3 @@
-<!-- /static/files-html/ver-entrega.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,76 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>🚚 - Entrega | Detalle</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
-  <link rel="stylesheet" href="../files-css/entregas.css"/>
+  <link rel="stylesheet" href="../files-css/ver-entrega.css"/>
   <link rel="stylesheet" href="../files-css/nav.css"/>
 </head>
 <body>
   <div id="app-header"></div>
 
-  <main class="page">
-    <div class="page-head">
-      <h1>Detalle de entrega</h1>
-      <div class="acciones">
-        <!-- Dejamos el botón de editar por si en el futuro lo reusamos -->
-        <a id="btnEditarEntrega" class="btn outline" style="display:none;">✏️ Editar</a>
+  <main class="page page-detail">
+    
+    <div class="detail-header">
+      <div class="title-group">
+        <h1>Entrega <span id="deliveryId">...</span></h1>
+        <div class="breadcrumbs">
+        </div>
+      </div>
+      
+      <div class="actions-toolbar">
+        <a id="btnEditarEntrega" class="btn outline" style="display:none;">Editar</a>
         <a class="btn outline" href="entregas.html">Volver</a>
       </div>
     </div>
 
-    <!-- Cabecera -->
-    <section class="card">
-      <div class="detail-grid">
-        <div><span class="muted">ID Entrega:</span> <strong id="deliveryId">—</strong></div>
-        <div><span class="muted">Fecha de entrega:</span> <strong id="fecha">—</strong></div>
-        <div><span class="muted">Cliente:</span> <strong id="cliente">—</strong></div>
+    <hr class="divider">
 
-        <div>
-          <span class="muted">Venta asociada:</span>
-          <a id="ventaAsociada" class="link-venta">—</a>
-        </div>
-        <div>
-          <span class="muted">Presupuesto (referencia):</span>
-          <strong id="pedidoAsociado">—</strong>
-        </div>
+    <div class="content-wrapper">
+      <div class="main-column">
+        
+        <section class="info-list">
+          
+          <div class="info-row">
+            <span class="label">Fecha de entrega</span>
+            <span class="value" id="fecha">—</span>
+          </div>
 
-        <div>
-          <span class="muted">Estado de entrega:</span>
-          <span id="estadoEntrega" class="pill pending">PENDIENTE A ENTREGAR</span>
-        </div>
+          <div class="info-row">
+            <span class="label">Cliente</span>
+            <span class="value strong text-uppercase" id="cliente">—</span>
+          </div>
+
+          <div class="info-row">
+            <span class="label">Venta asociada</span>
+            <span class="value"><a id="ventaAsociada" class="link-ref">—</a></span>
+          </div>
+
+          <div class="info-row">
+            <span class="label">Presupuesto</span>
+            <span class="value" id="pedidoAsociado">—</span>
+          </div>
+
+          <div class="info-row" style="border-bottom:none;">
+            <span class="label">Estado</span>
+            <span class="value">
+              <span id="estadoEntrega" class="pill">—</span>
+            </span>
+          </div>
+
+        </section>
+
+        <section class="items-section">
+          <h3>Materiales de la entrega</h3>
+          
+          <div class="tabla-clean" id="tablaItems">
+            <div class="thead">
+              <div style="flex: 2;">Material</div>
+              <div class="text-center">Vendido</div>
+              <div class="text-center">Entregado</div>
+              <div class="text-center">Pendiente</div>
+            </div>
+            </div>
+          
+          <p id="msgItems" class="empty-msg" style="display:none;"></p>
+        </section>
+
       </div>
-    </section>
-
-    <!-- Ítems -->
-    <section class="card">
-      <div class="card-head">
-        <h2>Materiales de la entrega</h2>
-        <p class="muted" style="margin-top:4px;">
-          Se muestra la cantidad <strong>vendida</strong> (referencia), lo
-          <strong>entregado en esta entrega</strong> y lo
-          <strong>pendiente</strong> según esa referencia.
-        </p>
-      </div>
-
-      <div class="tabla" id="tablaItems">
-        <div class="fila encabezado">
-          <div>Material</div>
-          <div>Vendido (ref.)</div>
-          <div>Entregado</div>
-          <div>Pendiente</div>
-        </div>
-        <!-- filas dinámicas -->
-      </div>
-      <p id="msgItems" class="muted" style="margin-top:8px; display:none;"></p>
-    </section>
+    </div>
   </main>
 
-  <!-- núcleo + base URL + header -->
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
   <script src="../files-js/menu-guard.js"></script>
-
-  <!-- lógica -->
   <script src="../files-js/ver-entrega.js"></script>
 </body>
 </html>

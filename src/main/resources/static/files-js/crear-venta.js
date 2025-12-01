@@ -32,6 +32,7 @@ function todayStr(){
 }
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 const sleep = (ms)=> new Promise(r=>setTimeout(r,ms));
+
 function maybeSetDefaultPaymentDate(){
   const pf = $('#pagoFecha');
   if (pf && !pf.value) pf.value = todayStr();
@@ -52,9 +53,8 @@ async function init(){
   if(!getToken()){ go('login.html'); return; }
   $('#fecha').value = todayStr();
   
-  $('#pagoImporte')?.addEventListener('input',  maybeSetDefaultPaymentDate);
-  $('#pagoMetodo') ?.addEventListener('change', maybeSetDefaultPaymentDate);
-  $('#pagoFecha')  ?.addEventListener('focus',  maybeSetDefaultPaymentDate);
+  // Inicializar fecha de pago también al hoy por defecto
+  $('#pagoFecha').value = todayStr();
 
   const [rM, rW, rC] = await Promise.all([
     authFetch(API_URL_MATERIALS),
@@ -68,10 +68,10 @@ async function init(){
   // Configurar Autocomplete Cliente
   setupClientAutocomplete();
 
-  // Cargar presupuestos iniciales (sin filtro)
+  // Cargar presupuestos iniciales
   await loadOrdersForClient('');
 
-  // Chequear Query Params (venir desde "Facturar Presupuesto")
+  // Chequear Query Params
   const qs = new URLSearchParams(location.search);
   const orderIdFromQS = qs.get('orderId');
   if (orderIdFromQS){
@@ -82,7 +82,6 @@ async function init(){
         sel.value = opt.value;
         await onOrderChange();
       } else {
-        // Fallback si no está en la lista inicial
         try{
           const rView = await authFetch(`/orders/${orderIdFromQS}/view`);
           if (rView.ok){
@@ -90,7 +89,6 @@ async function init(){
             if (view.clientId){
               setClientLocked(view.clientId);
               await loadOrdersForClient(view.clientId);
-              // Reintentar selección
               const opt2 = Array.from(sel.options).find(o => o.value === String(orderIdFromQS));
               if(opt2) { sel.value = opt2.value; await onOrderChange(); }
             }
@@ -101,8 +99,6 @@ async function init(){
   }
 
   // Eventos
-  // El evento de cambio de cliente ahora se maneja en el callback del autocomplete
-
   $('#orderSelect').addEventListener('change', onOrderChange);
   $('#btnClearOrder')?.addEventListener('click', (e)=>{
     e.preventDefault();
@@ -112,7 +108,6 @@ async function init(){
   $('#btnAdd').onclick = (e)=>{ e.preventDefault(); addRow(); };
   $('#btnGuardar').onclick = guardar;
 
-  // Cerrar listas al hacer clic fuera
   document.addEventListener('click', closeAllLists);
 
   if (!orderIdFromQS) {
@@ -130,7 +125,7 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
 
   input.addEventListener('input', function() {
     const val = this.value.toLowerCase();
-    hidden.value = ''; // Reset ID si cambia texto
+    hidden.value = ''; 
     closeAllLists(this);
     if (!val) return;
 
@@ -189,7 +184,6 @@ function setupClientAutocomplete(){
   }));
 
   setupAutocomplete(wrapper, mapped, async (selected) => {
-    // Al seleccionar cliente
     if (lockedClientId != null || suppressClientChange) return;
     await loadOrdersForClient(selected.id);
   }, 'fullName', 'id');
@@ -197,15 +191,12 @@ function setupClientAutocomplete(){
 
 function setClientLocked(id){
   lockedClientId = Number(id);
-  
-  // Buscar nombre del cliente
   const cli = clients.find(c => (c.idClient ?? c.id) == id);
   const name = cli ? `${cli.name} ${cli.surname}` : `ID ${id}`;
 
-  // Fijar valor en inputs y deshabilitar
   $('#cliente-search').value = name;
   $('#cliente').value = id;
-  $('#cliente-search').disabled = true; // Bloqueado visualmente
+  $('#cliente-search').disabled = true; 
 
   const btn = $('#btnClearOrder');
   if (btn) btn.style.display = 'inline-flex';
@@ -217,12 +208,10 @@ function clearOrderAndUnlockClient(){
   currentOrderId = null;
   ORDER_REMAIN.clear();
   
-  // Desbloquear input
   $('#cliente-search').value = '';
   $('#cliente').value = '';
   $('#cliente-search').disabled = false;
   
-  // Recargar presupuestos (todos)
   loadOrdersForClient('');
 
   $('#btnClearOrder') && ($('#btnClearOrder').style.display = 'none');
@@ -292,9 +281,8 @@ function addRow(prefill){
   const cont = $('#items');
   const row  = document.createElement('div');
   row.className='fila';
-  // Grid: Material | Depósito | Cantidad | Precio | Subtotal | Quitar
   
-  // 1. MATERIAL (Autocomplete)
+  // 1. MATERIAL
   const matCol = document.createElement('div');
   matCol.innerHTML = `
     <div class="autocomplete-wrapper">
@@ -304,7 +292,7 @@ function addRow(prefill){
     </div>
   `;
 
-  // 2. DEPÓSITO (Select normal, se llena al elegir material)
+  // 2. DEPÓSITO
   const whSel = document.createElement('select');
   whSel.className='in-wh';
   whSel.innerHTML = `<option value="">(Seleccione material)</option>`;
@@ -329,16 +317,13 @@ function addRow(prefill){
 
   if (prefill?.orderBound) row.dataset.orderBound = '1';
 
-  // LOGICA MATERIAL
   const wrapper = matCol.querySelector('.autocomplete-wrapper');
   
-  // Función para cargar depósitos cuando se elige material
   const onMaterialSelect = async (selectedMat) => {
     const priceVal = Number(selectedMat.priceArs || 0);
     price.textContent = fmtARS.format(priceVal);
     price.dataset.val = priceVal;
 
-    // Cargar Stock
     whSel.innerHTML = `<option value="">Cargando...</option>`;
     try{
       const r = await authFetch(API_URL_STOCKS_BY_MAT(selectedMat.idMaterial));
@@ -352,49 +337,40 @@ function addRow(prefill){
         o.dataset.available = String(w.quantityAvailable || 0);
         whSel.appendChild(o);
       });
-      
-      // Auto-seleccionar si hay prefill
       if(prefill?.warehouseId) whSel.value = prefill.warehouseId;
 
     }catch(e){
       whSel.innerHTML = `<option value="">Error stock</option>`;
     }
 
-    // Validar cantidad máxima si es presupuesto
     validateMaxQty();
     recalc();
   };
 
   setupAutocomplete(wrapper, materials, onMaterialSelect, 'name', 'idMaterial');
 
-  // Precarga inicial si viene del presupuesto
   if(prefill?.materialId){
     const m = materials.find(x => x.idMaterial == prefill.materialId);
     if(m) {
-      // Seteamos valores manuales en el autocomplete
       wrapper.querySelector('input[type="text"]').value = m.name;
       wrapper.querySelector('input[type="hidden"]').value = m.idMaterial;
-      onMaterialSelect(m); // Disparamos la carga de depósitos
+      onMaterialSelect(m); 
     }
   }
 
-  // Eventos de inputs
   const validateMaxQty = () => {
     const mid = Number(wrapper.querySelector('.in-mat-id').value || 0);
     const opt = whSel.selectedOptions[0];
     const avail = Number(opt?.dataset?.available || 0);
     
-    // Máximo = Mínimo entre (Stock Disponible) y (Pendiente Presupuesto)
     let cap = avail > 0 ? avail : Infinity;
     
     if (currentOrderId && ORDER_REMAIN.has(mid)){
       cap = Math.min(cap, ORDER_REMAIN.get(mid));
     }
     
-    // Si la cantidad supera el tope, ajustamos
     if (isFinite(cap) && Number(qty.value) > cap) {
       qty.value = String(cap);
-      // notify(`Cantidad ajustada al máximo disponible: ${cap}`, 'warning');
     }
   };
 
@@ -426,14 +402,15 @@ function recalc(){
   CURRENT_TOTAL = total;
   $('#total').textContent = fmtARS.format(total);
 
+  // CAMBIO: Autocompletar SIEMPRE el importe del pago con el total calculado
   const payInput = $('#pagoImporte');
   if (payInput) {
-    if (total > 0) payInput.max = String(total);
-    else payInput.removeAttribute('max');
+    payInput.value = total > 0 ? total : '';
+    // No pongo max para permitir sobrepago (cambio), pero validaremos que no sea menos
   }
 }
 
-/* ===== PRECARGA DE PRESUPUESTO (Lógica View) ===== */
+/* ===== PRECARGA ===== */
 async function preloadFromOrderView(view){
   const lines = (view.details || []).filter(d => Number(d.remainingUnits || 0) > 0);
   if (!lines.length){
@@ -455,7 +432,6 @@ async function preloadFromOrderView(view){
     const materialId = Number(det.materialId);
     const qty        = Number(det.remainingUnits || 0);
     
-    // Sugerir depósito con más stock
     let wh = null;
     try{
       const rs = await authFetch(API_URL_STOCKS_BY_MAT(materialId));
@@ -463,7 +439,7 @@ async function preloadFromOrderView(view){
       wh = (list||[]).sort((a,b)=> Number(b.quantityAvailable)-Number(a.quantityAvailable))[0]?.warehouseId;
     }catch(_){}
 
-    await sleep(10); // Pequeño delay para no saturar UI
+    await sleep(10); 
     addRow({ materialId, warehouseId: wh, qty, orderBound: true });
   }
   recalc();
@@ -471,12 +447,14 @@ async function preloadFromOrderView(view){
   notify('Ítems cargados desde el presupuesto','success');
 }
 
-/* ===== GUARDAR ===== */
+/* ======================================================
+   GUARDAR VENTA (Pago Obligatorio == Total)
+   ====================================================== */
 async function guardar(e){
   e.preventDefault();
 
   const date = $('#fecha').value;
-  const clientId = Number($('#cliente').value || 0); // Leer del hidden
+  const clientId = Number($('#cliente').value || 0); 
   
   if (!date || !clientId) { notify('Fecha y cliente son obligatorios','error'); return; }
 
@@ -491,37 +469,39 @@ async function guardar(e){
 
     if (matId && whId && qty>0) {
       items.push({ materialId: matId, warehouseId: whId, quantity: qty });
-    } else {
-      // row.classList.add('error'); // Opcional visual feedback
     }
   }
 
   if(!items.length){ notify('Agregá al menos un ítem válido','error'); return; }
 
-  // Pago
+  // ===== VALIDACIÓN PAGO =====
   const $imp = $('#pagoImporte');
   const $fec = $('#pagoFecha');
   const $met = $('#pagoMetodo');
+
   const amount = Number($imp.value || 0);
   const method = ($met.value || '').trim();
   const pdate  = $fec.value;
 
-  let payment = null;
-  if (amount > 0 || method || pdate){
-    if (!amount || !method || !pdate){
-      notify('Pago incompleto: llená importe, fecha y método.','error'); return;
-    }
-    if (amount > CURRENT_TOTAL + 1) { // Tolerancia $1
-      notify('El pago supera el total de la venta','error'); return;
-    }
-    payment = { amount, methodPayment: method, datePayment: pdate };
+  if (amount <= 0) { notify('El importe debe ser mayor a 0.', 'error'); $imp.focus(); return; }
+  if (!pdate) { notify('Ingresá la fecha del pago.', 'error'); $fec.focus(); return; }
+  if (!method) { notify('Seleccioná un método de pago.', 'error'); $met.focus(); return; }
+  
+  // CAMBIO: Validar que el pago NO sea menor al total (tolerancia de centavos)
+  if (amount < CURRENT_TOTAL - 0.5) { 
+      notify(`El pago ($${amount}) no puede ser menor al total de la venta (${fmtARS.format(CURRENT_TOTAL)}).`, 'error');
+      // Restauramos el valor correcto para ayudar al usuario
+      $imp.value = CURRENT_TOTAL;
+      return;
   }
+
+  const payment = { amount, methodPayment: method, datePayment: pdate };
 
   const payload = { 
     dateSale: date, 
     clientId, 
     materials: items, 
-    payment, 
+    payment: payment,
     orderId: currentOrderId 
   };
 
