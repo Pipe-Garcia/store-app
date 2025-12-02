@@ -189,3 +189,9 @@
     border-bottom: 2px solid #eee;
   }
 }
+
+.tabla-clean .thead,
+.tabla-clean .trow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr; /* ahora 4 columnas */
+}

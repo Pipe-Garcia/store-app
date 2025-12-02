@@ -173,15 +173,7 @@ html, body, .card, .tabla .fila, .section-nav, .to-top {
 /* Tabla de stock con scroll */
 #tablaLowStock{ max-height:260px; overflow:auto; padding-right:4px; }
 
-/* =======================
-   Cards resumen en grilla
-   ======================= */
-section#cards-resumen.cards.cards-3 {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: var(--gap);
-  margin-bottom: var(--gap);
-}
+
 
 /* =======================
    Botones y links

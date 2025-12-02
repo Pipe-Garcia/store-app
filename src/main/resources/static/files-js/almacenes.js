@@ -176,7 +176,7 @@ function renderLista(lista) {
       <div>${a.location || '—'}</div>
       <div class="acciones">
         <a class="btn outline" href="stock-deposito.html?id=${idWh}">
-          Ver materiales
+         👁️  Ver materiales
         </a>
         <a class="btn outline" href="../files-html/editar-almacen.html?id=${idWh}">
           ✏️ Editar

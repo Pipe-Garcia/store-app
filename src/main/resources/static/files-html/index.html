@@ -20,10 +20,9 @@
     </div>
 
   <div class="dashboard-layout">  
-    <!-- Índice de secciones (sticky) -->
     <nav class="section-nav" aria-label="Atajos de secciones">
       <a href="#sec-ventas"    class="active">Ventas</a>
-      <a href="#sec-pedidos">Presupuestos & Entregas</a>
+      <a href="#sec-pedidos">Entregas</a>
       <a href="#sec-stock">Stock & Materiales</a>
       <a href="#sec-clientes">Clientes</a>
       <a href="#sec-auditoria">Auditoría</a>
@@ -103,33 +102,33 @@
 
     </section>
     <hr>
-    <!-- ============== PEDIDOS & ENTREGAS ============== -->
+    
+        <!-- ============== ENTREGAS ============== -->
     <section class="area" id="sec-pedidos">
-      <header class="area-head"><h2>Presupuestos & Entregas</h2></header>
+      <header class="area-head"><h2>Entregas</h2></header>
 
-      <section class="kpi-grid">
-        <div class="card kpi" id="kpiBacklog" data-drill="pedidos.html?estado=pendiente">
-          <div class="kpi-title">Presupuestos sin convertir</div>
-          <div class="kpi-value" id="kpiOpenValue">$ 0</div>
-          <div class="kpi-sub"><span id="kpiOpenCount">0</span> pedidos</div>
-        </div>
-
+      <!-- ✅ KPI grid con las 2 cards en la misma fila -->
+      <section class="kpi-grid" id="kpi-entregas-grid">
+        <!-- Card 1: Entregas hoy / mañana -->
         <div class="card kpi" id="kpiEntregasHoyMan" data-drill="entregas.html?when=today-tomorrow">
           <div class="kpi-title">Entregas hoy / mañana</div>
-          <div class="kpi-value"><span id="kpiDelToday">0</span> / <span id="kpiDelTomorrow">0</span></div>
+          <div class="kpi-value">
+            <span id="kpiDelToday">0</span> / <span id="kpiDelTomorrow">0</span>
+          </div>
           <div class="kpi-sub">no completadas</div>
         </div>
-      </section>
 
-      <section class="cards cards-3" id="cards-resumen">
+        <!-- Card 2: Entregas próximas (7 días) -->
         <div class="card">
-          <div class="card-head"><h3>Entregas próximas (7 días)</h3></div>
+          <div class="card-head">
+            <h3>Entregas próximas (7 días)</h3>
+          </div>
           <div class="kpi" id="kpiEntregas">—</div>
           <small class="muted">Pendientes o parciales</small>
         </div>
       </section>
 
-
+      <!-- Gráfico donut debajo -->
       <section class="cards-section" id="sec-entregas">
         <div class="cards-grid">
           <section class="card chart-card">
@@ -143,8 +142,8 @@
           </section>
         </div>
       </section>
-
     </section>
+
 
     <hr>
 

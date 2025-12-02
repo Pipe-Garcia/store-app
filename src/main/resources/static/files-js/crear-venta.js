@@ -13,13 +13,31 @@ const API_URL_STOCKS_BY_MAT  = (id)=> `/stocks/by-material/${id}`;
 
 /* ===== Helpers ===== */
 const $ = (s,r=document)=>r.querySelector(s);
+
+let __toastRoot;
 function notify(msg,type='info'){
-  const n=document.createElement('div');
-  n.className=`notification ${type}`;
-  n.textContent=msg;
-  document.body.appendChild(n);
-  setTimeout(()=>n.remove(),3600);
+  if (!__toastRoot){
+    __toastRoot = document.createElement('div');
+    Object.assign(__toastRoot.style,{
+      position: 'fixed',
+      top: '72px',          // debajo del header
+      right: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
+      zIndex: 9999
+    });
+    document.body.appendChild(__toastRoot);
+  }
+
+  const n = document.createElement('div');
+  n.className = `notification ${type}`;
+  n.textContent = msg;
+  __toastRoot.appendChild(n);
+
+  setTimeout(()=> n.remove(), 4200);
 }
+
 function go(page){
   const base = location.pathname.replace(/[^/]+$/, '');
   location.href = `${base}${page}`;
@@ -107,6 +125,8 @@ async function init(){
 
   $('#btnAdd').onclick = (e)=>{ e.preventDefault(); addRow(); };
   $('#btnGuardar').onclick = guardar;
+
+  setupPaymentField();
 
   document.addEventListener('click', closeAllLists);
 
@@ -402,13 +422,63 @@ function recalc(){
   CURRENT_TOTAL = total;
   $('#total').textContent = fmtARS.format(total);
 
-  // CAMBIO: Autocompletar SIEMPRE el importe del pago con el total calculado
   const payInput = $('#pagoImporte');
   if (payInput) {
+    // Por defecto igualamos el importe al total para evitar errores de tipeo
     payInput.value = total > 0 ? total : '';
-    // No pongo max para permitir sobrepago (cambio), pero validaremos que no sea menos
+    validatePaymentField(); 
+  }
+
+}
+
+function setupPaymentField(){
+  const $imp = $('#pagoImporte');
+  if (!$imp) return;
+
+  // Mensaje de ayuda debajo del input
+  let help = document.getElementById('pagoImporteHelp');
+  if (!help){
+    help = document.createElement('small');
+    help.id = 'pagoImporteHelp';
+    help.className = 'field-hint error';
+    help.style.display = 'none';
+    $imp.insertAdjacentElement('afterend', help);
+  }
+
+  // Validar mientras escribe
+  $imp.addEventListener('input', validatePaymentField);
+}
+
+// Revisa si el importe coincide con el total (tolerancia de 0.5)
+function validatePaymentField(){
+  const $imp  = $('#pagoImporte');
+  const help  = $('#pagoImporteHelp');
+  if (!$imp || !help) return;
+
+  const total = Number(CURRENT_TOTAL || 0);
+  const val   = Number($imp.value || 0);
+
+  // Sin total o sin valor → sin error
+  if (!total || !val){
+    $imp.classList.remove('input-error');
+    help.style.display = 'none';
+    help.textContent   = '';
+    return;
+  }
+
+  const diff = Math.abs(val - total);
+
+  if (diff > 0.5){ // más de ~50 centavos de diferencia
+    $imp.classList.add('input-error');
+    help.style.display = 'block';
+    help.textContent = `El importe debe coincidir con el total de la venta (${fmtARS.format(total)}).`;
+  } else {
+    $imp.classList.remove('input-error');
+    help.style.display = 'none';
+    help.textContent   = '';
   }
 }
+
 
 /* ===== PRECARGA ===== */
 async function preloadFromOrderView(view){
@@ -483,17 +553,32 @@ async function guardar(e){
   const method = ($met.value || '').trim();
   const pdate  = $fec.value;
 
-  if (amount <= 0) { notify('El importe debe ser mayor a 0.', 'error'); $imp.focus(); return; }
-  if (!pdate) { notify('Ingresá la fecha del pago.', 'error'); $fec.focus(); return; }
-  if (!method) { notify('Seleccioná un método de pago.', 'error'); $met.focus(); return; }
-  
-  // CAMBIO: Validar que el pago NO sea menor al total (tolerancia de centavos)
-  if (amount < CURRENT_TOTAL - 0.5) { 
-      notify(`El pago ($${amount}) no puede ser menor al total de la venta (${fmtARS.format(CURRENT_TOTAL)}).`, 'error');
-      // Restauramos el valor correcto para ayudar al usuario
-      $imp.value = CURRENT_TOTAL;
-      return;
+  if (amount <= 0) { 
+    notify('El importe debe ser mayor a 0.', 'error'); 
+    $imp.focus(); 
+    return; 
   }
+  if (!pdate) { 
+    notify('Ingresá la fecha del pago.', 'error'); 
+    $fec.focus(); 
+    return; 
+  }
+  if (!method) { 
+    notify('Seleccioná un método de pago.', 'error'); 
+    $met.focus(); 
+    return; 
+  }
+  
+  // Nuevo: el importe debe coincidir con el total (ni mucho menor ni mucho mayor)
+  const diff = Math.abs(amount - CURRENT_TOTAL);
+  if (diff > 0.5) {
+    notify(`El importe del pago debe coincidir con el total de la venta (${fmtARS.format(CURRENT_TOTAL)}).`, 'error');
+    $imp.value = CURRENT_TOTAL;
+    validatePaymentField();
+    $imp.focus();
+    return;
+  }
+
 
   const payment = { amount, methodPayment: method, datePayment: pdate };
 

@@ -563,15 +563,10 @@ async function renderChartSales7d(){
   }));
 }
 
-
 function renderOverview(o){
-   // Backlog de pedidos (presupuestos sin convertir)
-  $('#kpiOpenValue').textContent = fmtARS.format(Number(o.openOrdersValue||0));
-  $('#kpiOpenCount').textContent = Number(o.openOrdersCount||0);
-
   // Entregas hoy / mañana
-  $('#kpiDelToday').textContent    = Number(o.deliveriesToday||0);
-  $('#kpiDelTomorrow').textContent = Number(o.deliveriesTomorrow||0);
+  $('#kpiDelToday').textContent    = Number(o.deliveriesToday    || 0);
+  $('#kpiDelTomorrow').textContent = Number(o.deliveriesTomorrow || 0);
 
   // Top clientes (mes)
   const host = $('#tablaTopClients');
@@ -597,7 +592,7 @@ function renderOverview(o){
   }
 
   // Drill-down (click en los KPIs nuevos)
-  ['kpiReceivables','kpiBacklog','kpiEntregasHoyMan','kpiStockout'].forEach(id=>{
+  ['kpiReceivables','kpiEntregasHoyMan','kpiStockout'].forEach(id=>{
     const el = document.getElementById(id);
     if (!el) return;
     el.style.cursor = 'pointer';
@@ -607,6 +602,7 @@ function renderOverview(o){
     });
   });
 }
+
 
 function renderTodayDeltaAndSparkline(results){
   // results = [{label:'MM-DD', amount:Number}, ...] últimos 7 días

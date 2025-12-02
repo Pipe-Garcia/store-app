@@ -374,15 +374,11 @@ function renderHeader(orderId, header, details){
   }
 }
 
-
-
-
-
 function renderDetails(details){
   const cont = $('#tablaMateriales');
   const msg  = $('#msgMateriales');
 
-
+  // limpiar filas viejas
   cont.querySelectorAll('.trow').forEach(e => e.remove());
 
   if (!Array.isArray(details) || !details.length){
@@ -395,21 +391,18 @@ function renderDetails(details){
   if (msg) msg.style.display = 'none';
 
   for (const det of details){
-    const q   = getDetBudgeted(det);
-    const qr  = getDetRemaining(det);
-    const pu  = getDetPrice(det);
-    const sub = q * pu;
+    const q   = getDetBudgeted(det);   // presupuestado
+    const pu  = getDetPrice(det);      // precio unitario
+    const sub = q * pu;                // total
 
     const row = document.createElement('div');
-    row.className = 'trow'; // Nueva clase para filas
+    row.className = 'trow';
     row.innerHTML = `
       <div class="strong-text">${getMatName(det)}</div>
       <div class="text-center">${q}</div>
-      <div class="text-center">${qr}</div>
       <div class="text-right">${fmtARS.format(pu)}</div>
       <div class="text-right strong-text">${fmtARS.format(sub)}</div>
     `;
     cont.appendChild(row);
   }
 }
-

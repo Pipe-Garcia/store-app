@@ -50,7 +50,6 @@ const getClientName= o => (
 const getDateISO   = o => (o?.dateCreate ?? o?.date ?? '').toString().slice(0,10) || '';
 const getTotal     = o => Number(o?.total ?? o?.totalArs ?? o?.grandTotal ?? 0);
 
-// Unidades vendidas desde este presupuesto (no entregas físicas)
 const getSoldUnits = o => Number(
   o?.soldUnits ??
   o?.deliveredUnits ??      // compat vieja
@@ -59,7 +58,6 @@ const getSoldUnits = o => Number(
   0
 );
 
-// Unidades que aún NO se vendieron de lo presupuestado
 const getRemainingUnits = o => Number(
   o?.remainingUnits ??
   o?.unitsRemaining ??
@@ -70,14 +68,22 @@ const getRemainingUnits = o => Number(
 
 const isSoldOut    = o => !!(o?.soldOut);
 
-// Estado lógico desde soldOut
 function getEstadoCode(o){
+  const remain = getRemainingUnits(o);
+
+  if (typeof remain === 'number' && !Number.isNaN(remain)) {
+    // 0 o menos = nada pendiente de vender
+    return remain <= 0 ? 'SOLD_OUT' : 'PENDING';
+  }
+
+  // Fallback histórico: usamos el flag soldOut si existiera
   return isSoldOut(o) ? 'SOLD_OUT' : 'PENDING';
 }
+
 function pill(code){
   const txt = (code === 'SOLD_OUT')
-    ? 'SIN PENDIENTE (todo entregado)'
-    : 'CON PENDIENTE por entregar';
+    ? 'SIN PENDIENTE (todo vendido)'
+    : 'CON PENDIENTE por vender';
   const cls = (code === 'SOLD_OUT') ? 'completed' : 'pending';
   return `<span class="pill ${cls}">${txt}</span>`;
 }

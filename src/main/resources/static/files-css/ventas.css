@@ -291,3 +291,18 @@ input:disabled {
   cursor: not-allowed;
   border-color: #e9ecef;
 }
+
+/* Inputs con error (ej: importe de pago en crear venta) */
+.input-error{
+  border-color: var(--bad) !important;
+  box-shadow: 0 0 0 1px rgba(239,68,68,.25);
+  background: rgba(239,68,68,.02);
+}
+
+/* Mensaje de ayuda en rojo */
+.field-hint.error{
+  color: var(--bad);
+  font-size: .85rem;
+  margin-top: 4px;
+  display: block;
+}
