@@ -62,6 +62,10 @@
 
   <script src="../files-js/core/api.js"></script>
   <script src="../files-js/header.js"></script>
+  <script src="../files-js/role-guard.js"></script>
+  <script>
+    guard.onlyAllow(['owner','admin'], '../files-html/index-emp.html');
+  </script>
   <script src="../files-js/menu-guard.js"></script>
   <script src="../files-js/compras.js"></script>
 </body>

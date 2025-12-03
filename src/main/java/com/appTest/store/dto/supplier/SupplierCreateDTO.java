@@ -19,8 +19,11 @@ public class SupplierCreateDTO implements Serializable {
     @Size(max = 100, message = "The surname cannot exceed 100 characters.")
     private String surname;
 
-    @NotNull(message = "DNI is required.")
+    @NotBlank(message = "DNI is required.")
+    @Size(min = 7, max = 10, message = "DNI must be between 7 and 10 digits")
+    @Pattern(regexp = "^[0-9]+$", message = "DNI must contain only digits")
     private String dni;
+
 
     @Email(message = "The email must be valid.")
     private String email;
@@ -36,8 +39,14 @@ public class SupplierCreateDTO implements Serializable {
     @Size(min = 2, max = 100, message = "The company name must be between 2 and 100 characters.")
     private String nameCompany;
 
-    @NotNull(message = "Phone number is required.")
+    @NotBlank(message = "Phone number is required.")
+    @Size(min = 6, max = 30, message = "Phone number must be between 6 and 30 characters")
+    @Pattern(
+            regexp = "^\\+?[0-9\\s-]{6,30}$",
+            message = "Phone number format is invalid"
+    )
     private String phoneNumber;
+
 
     @NotNull(message = "Status is required")
     @Pattern(regexp = "ACTIVE|INACTIVE", message = "The status must be ACTIVE or INACTIVE")

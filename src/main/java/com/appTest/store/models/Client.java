@@ -8,12 +8,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_client_dni",   columnNames = "dni"),
+                @UniqueConstraint(name = "uk_client_email", columnNames = "email")
+        }
+)
 @Getter @Setter
 public class Client {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idClient;
+
     private String name;
     private String surname;
     private String dni;
@@ -42,3 +49,4 @@ public class Client {
         this.status = status;
     }
 }
+

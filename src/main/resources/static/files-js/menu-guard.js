@@ -10,16 +10,27 @@
     const role = (document.documentElement.getAttribute('data-role')||'').toLowerCase();
     if (role !== 'employee') return;
 
-    // 1) Cambiar “Inicio” → index-emp.html
-    const aHome = document.querySelector('a[href$="index.html"]');
-    if (aHome) aHome.setAttribute('href','index-emp.html');
+    // 1) Cambiar TODOS los links a “index.html” → index-emp.html
+    document.querySelectorAll('a[href$="index.html"]').forEach(a => {
+      a.setAttribute('href', 'index-emp.html');
+    });
 
-    // 2) Ocultar entradas sensibles
+    // 2) Ocultar entradas sensibles del header para EMPLEADO
     const hideByHref = (end)=> {
       document.querySelectorAll(`a[href$="${end}"]`).forEach(a=>{
-        (a.closest('li') || a).style.display = 'none';
+        const li = a.closest('li');
+        if (li) li.style.display = 'none';
+        else a.style.display = 'none';
       });
     };
-    ['index.html', 'movimientos.html', 'stock-movimientos.html', 'auditorias.html'].forEach(hideByHref);
+
+    [
+      // ya existentes
+      'movimientos.html',
+      'stock-movimientos.html',
+      'auditorias.html',
+      'proveedores.html',
+      'compras.html'
+    ].forEach(hideByHref);
   });
 })();

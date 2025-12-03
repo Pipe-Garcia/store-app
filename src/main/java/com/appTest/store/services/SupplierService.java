@@ -13,10 +13,12 @@ import com.appTest.store.repositories.IMaterialSupplierRepository;
 import com.appTest.store.repositories.ISupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -96,6 +98,35 @@ public class SupplierService implements ISupplierService {
         } else r.run();
     }
 
+    /* ==================== Reglas de unicidad ==================== */
+
+    private void validateUniqueSupplier(String dni, String email, Long currentId){
+        String normalizedDni = (dni != null) ? dni.trim() : null;
+        String normalizedEmail = (email != null) ? email.trim() : null;
+
+        if (normalizedDni != null && !normalizedDni.isBlank()){
+            repoSupplier.findByDni(normalizedDni).ifPresent(existing -> {
+                if (currentId == null || !Objects.equals(existing.getIdSupplier(), currentId)) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "A supplier with DNI " + normalizedDni + " already exists"
+                    );
+                }
+            });
+        }
+
+        if (normalizedEmail != null && !normalizedEmail.isBlank()){
+            repoSupplier.findByEmail(normalizedEmail).ifPresent(existing -> {
+                if (currentId == null || !Objects.equals(existing.getIdSupplier(), currentId)) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "A supplier with email " + normalizedEmail + " already exists"
+                    );
+                }
+            });
+        }
+    }
+
     /* ==================== API existente ==================== */
 
     @Override
@@ -132,11 +163,12 @@ public class SupplierService implements ISupplierService {
         return dto;
     }
 
-    /* ==================== CREATE (sin @Auditable) ==================== */
-
     @Override
     @Transactional
     public SupplierDTO createSupplier(SupplierCreateDTO dto) {
+
+        validateUniqueSupplier(dto.getDni(), dto.getEmail(), null);
+
         Supplier supplier = new Supplier(
                 dto.getName(), dto.getSurname(), dto.getDni(), dto.getEmail(),
                 dto.getAddress(), dto.getLocality(), dto.getNameCompany(),
@@ -158,7 +190,6 @@ public class SupplierService implements ISupplierService {
             }
         }
 
-        // auditoría
         int afterCount = matSupRepo.findBySupplier(saved).size();
         final Long sid = saved.getIdSupplier();
         final String display = (saved.getNameCompany()!=null && !saved.getNameCompany().isBlank())
@@ -176,12 +207,15 @@ public class SupplierService implements ISupplierService {
         return convertSupplierToDto(saved);
     }
 
-    /* ==================== UPDATE (sin @Auditable) ==================== */
 
     @Override
     @Transactional
     public SupplierDTO updateSupplier(Long id, SupplierCreateDTO dto) {
         Supplier supplier = getSupplierById(id);
+
+        String newDni = dto.getDni();
+        String newEmail = dto.getEmail();
+        validateUniqueSupplier(newDni, newEmail, supplier.getIdSupplier());
 
         int prevCount = matSupRepo.findBySupplier(supplier).size();
         Map<String,Object> before = snap(supplier, prevCount);
@@ -198,7 +232,6 @@ public class SupplierService implements ISupplierService {
 
         Supplier saved = repoSupplier.save(supplier);
 
-        // Reemplazás asociaciones
         matSupRepo.deleteBySupplier(saved);
         if (dto.getMaterials() != null) {
             for (MaterialSupplierCreateDTO matDTO : dto.getMaterials()) {
@@ -233,7 +266,6 @@ public class SupplierService implements ISupplierService {
         return convertSupplierToDto(saved);
     }
 
-    /* ==================== DELETE (puede quedar con @Auditable) ==================== */
 
     @Override
     @Transactional

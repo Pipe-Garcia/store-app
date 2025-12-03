@@ -10,9 +10,11 @@ import com.appTest.store.repositories.IClientRepository;
 import com.appTest.store.repositories.IOrdersRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -78,6 +80,35 @@ public class ClientService implements IClientService{
         } else r.run();
     }
 
+    /* ===== Reglas de unicidad ===== */
+
+    private void validateUniqueClient(String dni, String email, Long currentId){
+        String normalizedDni = (dni != null) ? dni.trim() : null;
+        String normalizedEmail = (email != null) ? email.trim() : null;
+
+        if (normalizedDni != null && !normalizedDni.isBlank()){
+            repoClient.findByDni(normalizedDni).ifPresent(existing -> {
+                if (currentId == null || !Objects.equals(existing.getIdClient(), currentId)) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "A client with DNI " + normalizedDni + " already exists"
+                    );
+                }
+            });
+        }
+
+        if (normalizedEmail != null && !normalizedEmail.isBlank()){
+            repoClient.findByEmail(normalizedEmail).ifPresent(existing -> {
+                if (currentId == null || !Objects.equals(existing.getIdClient(), currentId)) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "A client with email " + normalizedEmail + " already exists"
+                    );
+                }
+            });
+        }
+    }
+
     /* ===== API ===== */
 
     @Override
@@ -108,11 +139,13 @@ public class ClientService implements IClientService{
         return repoClient.findById(idClient).orElse(null);
     }
 
-    /* ===== CREATE (sin @Auditable) ===== */
 
     @Override
     @Transactional
     public ClientDTO createClient(ClientCreateDTO dto) {
+
+        validateUniqueClient(dto.getDni(), dto.getEmail(), null);
+
         Client client = new Client();
         client.setName(dto.getName());
         client.setSurname(dto.getSurname());
@@ -139,13 +172,16 @@ public class ClientService implements IClientService{
         return convertClientToDto(client);
     }
 
-    /* ===== UPDATE (sin @Auditable) ===== */
 
     @Override
     @Transactional
     public void updateClient(ClientUpdateDTO dto) {
         Client client = repoClient.findById(dto.getIdClient()).orElse(null);
         if (client == null) return;
+
+        String newDni = (dto.getDni() != null) ? dto.getDni() : client.getDni();
+        String newEmail = (dto.getEmail() != null) ? dto.getEmail() : client.getEmail();
+        validateUniqueClient(newDni, newEmail, client.getIdClient());
 
         Map<String,Object> before = snap(client);
 
@@ -175,8 +211,6 @@ public class ClientService implements IClientService{
             audit.attachDiff(ev, before, after, payload);
         });
     }
-
-    /* ===== DELETE (puede quedar con @Auditable) ===== */
 
     @Override
     @Transactional
