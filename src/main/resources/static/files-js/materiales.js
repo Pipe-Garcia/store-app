@@ -268,7 +268,7 @@ function renderTabla(list){
       <div>${stock}</div>
       <div>${fmtARS.format(price||0)}</div>
       <div class="acciones">
-        <button class="btn outline" data-edit="${m.idMaterial}" title="Ver">👁️ Ver</button>
+        <button class="btn outline" data-view="${m.idMaterial}" title="Ver">👁️ Ver</button>
         <button class="btn outline" data-edit="${m.idMaterial}" title="Editar">✏️ Editar</button>
         <button class="btn danger" data-del="${m.idMaterial}" title="Eliminar">🗑️ Eliminar</button>
       </div>
@@ -278,9 +278,11 @@ function renderTabla(list){
 
   cont.onclick = (e)=>{
     const t = e.target.closest('button'); if(!t) return;
+    const idView=t.getAttribute('data-view');
     const idEdit=t.getAttribute('data-edit');
     const idDel =t.getAttribute('data-del');
-    if(idEdit){ location.href=`../files-html/ver-material.html?id=${Number(idEdit)}`; return; }
+    if(idView){ location.href=`../files-html/ver-material.html?id=${Number(idView)}`; return; }
+    if(idEdit){ location.href=`../files-html/editar-material.html?id=${Number(idEdit)}`; return; }
     if(idDel ){ eliminarMaterial(Number(idDel)); return; }
   };
 }

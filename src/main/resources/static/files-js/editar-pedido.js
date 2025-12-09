@@ -61,6 +61,20 @@ async function init(){
   }
 }
 
+const getDetBudgeted = d =>
+  Number(
+    d.quantity ??
+    d.quantityOrdered ??
+    d.budgetedUnits ??
+    d.budgetUnits ??
+    d.qty ??
+    0
+  );
+
+const getDetPrice = d =>
+  Number(d.priceUni ?? d.unitPrice ?? d.priceUnit ?? d.priceArs ?? d.price ?? 0);
+
+
 async function loadOrderData(){
   try {
     let r = await authFetch(`${API_URL_ORDERS}/${orderId}/view`);
@@ -82,26 +96,51 @@ async function loadOrderData(){
       }
     }
 
-    // Materiales
+    // === Detalles ===
     const detalles = order.details || order.items || [];
-    $('#items').querySelectorAll('.fila:not(.encabezado)').forEach(n=>n.remove());
+    $('#items').querySelectorAll('.fila:not(.encabezado)').forEach(n => n.remove());
 
-    if(detalles.length > 0){
-      for(const d of detalles){
-        const mid = d.materialId || d.material?.idMaterial;
-        const qty = d.quantity || d.amount;
-        if(mid && qty) addRow({materialId: mid, quantity: qty});
+    if (detalles.length > 0) {
+      for (const d of detalles) {
+        const mid = d.materialId || d.material?.idMaterial || d.idMaterial;
+
+        const qty = Number(
+          d.quantity ??
+          d.quantityOrdered ??
+          d.budgetedUnits ??
+          d.budgetUnits ??
+          d.qty ??
+          d.amount ??
+          d.ordered ??
+          0
+        );
+
+        const price = Number(
+          d.priceUni  ??
+          d.priceUnit ??
+          d.unitPrice ??
+          d.priceArs  ??
+          d.price     ??
+          0
+        );
+
+        if (mid && qty > 0) {
+          addRow({ materialId: mid, quantity: qty, price });
+        }
       }
     } else {
-      addRow(); 
+      addRow();
     }
+
     recalc();
+
 
   } catch(e){
     console.error(e);
     notify('Error al cargar datos del presupuesto','error');
   }
 }
+
 
 /* ======================================================
    AUTOCOMPLETE GENÉRICO
@@ -192,15 +231,19 @@ function addRow(prefill){
   `;
   
   const qtyIn = document.createElement('input');
-  qtyIn.type = 'number'; qtyIn.className = 'in-qty'; 
-  qtyIn.value = prefill?.quantity || 1; 
+  qtyIn.type = 'number';
+  qtyIn.className = 'in-qty';
+  qtyIn.value = prefill?.quantity ?? 1;   
   qtyIn.min = 1;
 
   const priceDiv = document.createElement('div');
-  priceDiv.className = 'price'; priceDiv.textContent = '$ 0,00';
+  priceDiv.className = 'price';
+  priceDiv.textContent = '$ 0,00';
+  priceDiv.dataset.val = prefill?.price != null ? Number(prefill.price) : 0;
 
   const subDiv = document.createElement('div');
-  subDiv.className = 'col-subtotal'; subDiv.textContent = '$ 0,00';
+  subDiv.className = 'col-subtotal';
+  subDiv.textContent = '$ 0,00';
 
   const btnDel = document.createElement('button');
   btnDel.className = 'btn danger small';
@@ -218,13 +261,18 @@ function addRow(prefill){
 
   setupAutocomplete(wrapper, listaMateriales, onSelectMat, 'name', 'idMaterial');
 
-  // Precarga
-  if(prefill?.materialId){
+  // Precarga desde el pedido
+  if (prefill?.materialId) {
     const m = listaMateriales.find(x => x.idMaterial == prefill.materialId);
-    if(m){
-      wrapper.querySelector('input[type="text"]').value = m.name;
-      wrapper.querySelector('input[type="hidden"]').value = m.idMaterial;
-      onSelectMat(m);
+    if (m) {
+      const txt = wrapper.querySelector('input[type="text"]');
+      const hid = wrapper.querySelector('input[type="hidden"]');
+      txt.value = m.name;
+      hid.value = m.idMaterial;
+
+      const basePrice = prefill?.price != null ? Number(prefill.price) : Number(m.priceArs || 0);
+      priceDiv.dataset.val = basePrice;
+      priceDiv.textContent = fmtARS.format(basePrice);
     }
   }
 
@@ -232,7 +280,9 @@ function addRow(prefill){
 
   row.append(matCol, wrap(qtyIn), priceDiv, subDiv, btnDel);
   cont.appendChild(row);
+  recalc();
 }
+
 
 function wrap(el){
   const d = document.createElement('div');
@@ -269,21 +319,27 @@ async function guardarCambios(ev){
 
   const items = [];
   const rows = document.querySelectorAll('#items .fila:not(.encabezado)');
-  for(const r of rows){
+  for (const r of rows) {
     const mid = Number(r.querySelector('.in-mat-id').value || 0);
     const qty = Number(r.querySelector('.in-qty').value || 0);
-    if(mid && qty > 0) items.push({ materialId: mid, quantity: qty });
+    if (mid && qty > 0) {
+      items.push({ materialId: mid, quantity: qty });
+    }
   }
 
-  if (!items.length){ notify('Agregá al menos un material válido','error'); return; }
+  if (!items.length){
+    notify('Agregá al menos un material válido','error');
+    return;
+  }
 
-  // Payload PUT
   const payload = {
     idOrders: Number(orderId),
     clientId,
     dateDelivery: fechaEntrega,
-    materials: items
+    details: items,              
+    deleteMissingDetails: true 
   };
+
 
   try{
     const r = await authFetch(API_URL_ORDERS, {

@@ -1,12 +1,13 @@
 // /static/files-js/pedidos.js
 // Listado de Presupuestos basado en /orders y /orders/search.
-// Sin reservas ni entregas: solo total, unidades VENDIDAS / PENDIENTES POR VENDER y estado por soldOut.
+// El "Estado" se calcula por VENTAS (pendiente por vender) usando /orders/{id}/view.
 
 const { authFetch, safeJson, getToken } = window.api;
 
 const API_URL_ORDERS        = '/orders';
 const API_URL_ORDERS_SEARCH = '/orders/search';
 const API_URL_CLIENTS       = '/clients';
+const API_URL_ORDER_VIEW    = id => `/orders/${id}/view`;
 
 const $  = (s,r=document)=>r.querySelector(s);
 const fmtARS = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' });
@@ -19,6 +20,9 @@ const PAGE_SIZE = 20;
 let page = 0;
 let FILTRADOS = [];
 let infoPager, btnPrev, btnNext;
+
+// Cache de /orders/{id}/view para no pegarle mil veces
+const VIEW_CACHE = new Map();
 
 // Fecha → dd/mm/aaaa
 const fmtDate = (s)=>{
@@ -50,34 +54,23 @@ const getClientName= o => (
 const getDateISO   = o => (o?.dateCreate ?? o?.date ?? '').toString().slice(0,10) || '';
 const getTotal     = o => Number(o?.total ?? o?.totalArs ?? o?.grandTotal ?? 0);
 
-const getSoldUnits = o => Number(
-  o?.soldUnits ??
-  o?.deliveredUnits ??      // compat vieja
-  o?.unitsSold ??
-  o?.unitsDelivered ??
-  0
-);
-
-const getRemainingUnits = o => Number(
-  o?.remainingUnits ??
-  o?.unitsRemaining ??
-  o?.pendingUnits ??
-  o?.pendingToSell ??
-  0
-);
-
-const isSoldOut    = o => !!(o?.soldOut);
+// 🔹 AHORA: “pendiente por vender” lo tomamos de los datos de VIEW
+const getPendingToSellUnits = o => {
+  const v = Number(
+    o?.totalPendingToSellUnits ??
+    o?.pendingToSellUnits ??
+    o?.pendingToSell
+  );
+  return Number.isNaN(v) ? null : v;
+};
 
 function getEstadoCode(o){
-  const remain = getRemainingUnits(o);
-
-  if (typeof remain === 'number' && !Number.isNaN(remain)) {
-    // 0 o menos = nada pendiente de vender
-    return remain <= 0 ? 'SOLD_OUT' : 'PENDING';
+  const pend = getPendingToSellUnits(o);
+  if (pend == null) {
+    // Si no pudimos calcularlo, asumimos “PENDING” por seguridad
+    return 'PENDING';
   }
-
-  // Fallback histórico: usamos el flag soldOut si existiera
-  return isSoldOut(o) ? 'SOLD_OUT' : 'PENDING';
+  return pend <= 0 ? 'SOLD_OUT' : 'PENDING';
 }
 
 function pill(code){
@@ -209,6 +202,54 @@ function buildSearchQuery(){
   return q.toString();
 }
 
+// 🔹 NUEVO: enriquecer cada presupuesto con info de ventas desde /orders/{id}/view
+async function enrichWithSalesStatus(list){
+  const tasks = list.map(async o => {
+    const id = getId(o);
+    if (!id) return;
+
+    // cache: si ya lo consultamos antes, no pegamos de nuevo
+    if (VIEW_CACHE.has(id)) {
+      Object.assign(o, VIEW_CACHE.get(id));
+      return;
+    }
+
+    try {
+      const r = await authFetch(API_URL_ORDER_VIEW(id));
+      if (!r.ok) return;
+      const v = await safeJson(r);
+
+      const extra = {
+        totalPendingToSellUnits: Number(
+          v.totalPendingToSellUnits ??
+          v.pendingToSellUnits ??
+          0
+        ),
+        totalSoldUnits: Number(
+          v.totalSoldUnits ??
+          v.soldUnits ??
+          0
+        ),
+        fullySold: !!(
+          v.fullySold ??
+          (Number(
+            v.totalPendingToSellUnits ??
+            v.pendingToSellUnits ??
+            0
+          ) <= 0)
+        )
+      };
+
+      VIEW_CACHE.set(id, extra);
+      Object.assign(o, extra);
+    } catch(e){
+      console.warn('view error', id, e);
+    }
+  });
+
+  await Promise.all(tasks);
+}
+
 async function loadPresupuestos(){
   try{
     const qs = buildSearchQuery();
@@ -227,6 +268,9 @@ async function loadPresupuestos(){
       if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
       if (!Array.isArray(data)) data = [];
     }
+
+    // 🔹 Enriquecer con info de ventas (pendiente por vender)
+    await enrichWithSalesStatus(data);
 
     PRESUPUESTOS = data;
 
