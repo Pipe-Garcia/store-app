@@ -214,10 +214,10 @@ function renderLista(lista){
       <div>${displaySupplier(c)}</div>
       <div>${fmtARS.format(total)}</div>
       <div class="acciones">
-        <a class="btn outline" href="detalle-compra.html?id=${c.idPurchase}">👁️ Ver</a>
-        <a class="btn outline" href="editar-compra.html?id=${c.idPurchase}">✏️ Editar</a>
-        <button class="btn outline" style="border 1px black" data-pdf="${c.idPurchase}">📄 PDF</button>
-        <button class="btn danger" data-del="${c.idPurchase}">🗑️ Eliminar</button>
+        <a class="btn outline" href="detalle-compra.html?id=${c.idPurchase}">👁️</a>
+        <a class="btn outline" href="editar-compra.html?id=${c.idPurchase}">✏️</a>
+        <button class="btn outline" style="border 1px black" data-pdf="${c.idPurchase}">📄</button>
+        <button class="btn danger" data-del="${c.idPurchase}">🗑️</button>
       </div>
     `;
     cont.appendChild(row);

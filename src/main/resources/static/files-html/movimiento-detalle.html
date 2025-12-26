@@ -5,32 +5,43 @@
   <title>🧾 | Detalle de Movimiento</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="../files-css/style.css">
-  <link rel="stylesheet" href="../files-css/auditoria.css">
+  <link rel="stylesheet" href="../files-css/ver-movimiento.css">
   <link rel="stylesheet" href="../files-css/nav.css">
 </head>
 <body>
   <div id="app-header"></div>
 
-  <div class="page">
-    <h1>Detalle de movimiento</h1>
-
-    <div class="card">
-      <div class="meta" id="meta"></div>
-      <div class="details" id="details"></div>
-
-      <div style="display:flex; gap:8px; margin-top:10px;">
-        <a class="btn" href="../files-html/movimientos.html">« Volver</a>
-        <button class="btn" id="btn-recargar">Recargar</button>
+  <main class="page page-detail">
+    
+    <div class="detail-header">
+      <div class="title-group">
+        <h1>Movimiento <span id="header-id" class="light-text">...</span></h1>
+        <div class="breadcrumbs">
+        </div>
+      </div>
+      
+      <div class="actions-toolbar">
+        <a class="btn outline" href="../files-html/movimientos.html">Volver</a>
       </div>
     </div>
-  </div>
 
-  <!-- núcleo + base URL + header -->
+    <hr class="divider">
+
+    <div class="content-wrapper">
+      <div class="main-column">
+        
+        <section class="info-list" id="meta-container">
+          <div class="info-row"><span class="label">Cargando...</span></div>
+        </section>
+
+        </div>
+    </div>
+  </main>
+
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
 
-  <!-- lógica -->
   <script src="../files-js/movimiento-detalle.js"></script>
 </body>
 </html>

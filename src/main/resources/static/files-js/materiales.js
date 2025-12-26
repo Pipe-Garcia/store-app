@@ -93,8 +93,6 @@ function bindFiltros(){
   $('#f_max')?.addEventListener('input', deb);
   $('#f_family')?.addEventListener('change', buscarServidor);
   $('#f_stock')?.addEventListener('change', buscarServidor);
-
-  $('#btnBuscar')?.addEventListener('click', ()=>{ if (validateRanges()) buscarServidor(); });
   $('#btnLimpiar')?.addEventListener('click', limpiarFiltros);
 }
 
@@ -121,7 +119,7 @@ function buildParams(){
   const name = $('#f_name')?.value.trim(); if (name) p.set('name', name);
   const min = $('#f_min')?.value; if (min) p.set('minPrice', min);
   const max = $('#f_max')?.value; if (max) p.set('maxPrice', max);
-  const stock = $('#f_stock')?.value; if (stock) p.set('stockMode', stock); // IN_STOCK / OUT_OF_STOCK / LOW
+  const stock = $('#f_stock')?.value; if (stock) p.set('stockMode', stock); 
   return p;
 }
 
@@ -268,9 +266,9 @@ function renderTabla(list){
       <div>${stock}</div>
       <div>${fmtARS.format(price||0)}</div>
       <div class="acciones">
-        <button class="btn outline" data-view="${m.idMaterial}" title="Ver">👁️ Ver</button>
-        <button class="btn outline" data-edit="${m.idMaterial}" title="Editar">✏️ Editar</button>
-        <button class="btn danger" data-del="${m.idMaterial}" title="Eliminar">🗑️ Eliminar</button>
+        <button class="btn outline" data-view="${m.idMaterial}" title="Ver">👁️</button>
+        <button class="btn outline" data-edit="${m.idMaterial}" title="Editar">✏️</button>
+        <button class="btn danger" data-del="${m.idMaterial}" title="Eliminar">🗑️</button>
       </div>
     `;
     cont.appendChild(row);

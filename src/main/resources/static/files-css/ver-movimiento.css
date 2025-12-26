@@ -1,0 +1,115 @@
+/* ==========================================================
+   VER MOVIMIENTO.CSS (Estilo Detalle Unificado - Sin Detalles Técnicos)
+   ========================================================== */
+
+/* ====== Variables Base ====== */
+:root {
+  --c-text: #212529;
+  --c-muted: #6b7280;
+  --c-border: #e9ecef;
+  --c-primary: #1c7ed6;
+}
+
+/* ====== Layout Principal ====== */
+.page-detail {
+  max-width: 1000px; /* Un poco más angosto para lectura cómoda */
+  margin: 0 auto;
+  padding: 40px 20px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #333;
+}
+
+/* ====== 1. Encabezado ====== */
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.title-group h1 {
+  font-size: 2.2rem;
+  margin: 0;
+  color: #1a1a1a;
+  font-weight: 700;
+}
+
+.title-group .light-text {
+  font-weight: 300;
+  color: #888;
+  margin-left: 8px;
+  font-size: 1.5rem;
+}
+
+.breadcrumbs {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 4px;
+}
+.breadcrumbs a { text-decoration: none; color: #666; }
+.breadcrumbs a:hover { text-decoration: underline; }
+
+/* Botones */
+.actions-toolbar { display: flex; gap: 10px; }
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn.outline { background: #fff; color: #333; border-color: #ced4da; }
+.btn.outline:hover { background: #f8f9fa; }
+
+.divider {
+  border: 0;
+  border-top: 1px solid #e0e0e0;
+  margin: 0 0 30px 0;
+}
+
+/* ====== 2. Lista de Datos (Vertical) ====== */
+.info-list { margin-bottom: 40px; }
+
+.info-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  align-items: center;
+}
+
+.info-row .label {
+  font-weight: 700;
+  color: #1a1a1a;
+  font-size: 0.95rem;
+}
+
+.info-row .value {
+  color: #444;
+  font-size: 0.95rem;
+  word-break: break-word; /* Importante para logs largos */
+}
+
+/* Pills */
+.pill {
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-block;
+  color: #fff;
+}
+.pill.completed { background: #10b981; } 
+.pill.pending { background: #f59e0b; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .detail-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+  .info-row { grid-template-columns: 1fr; gap: 4px; }
+}

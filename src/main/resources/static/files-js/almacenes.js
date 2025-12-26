@@ -176,13 +176,13 @@ function renderLista(lista) {
       <div>${a.location || '—'}</div>
       <div class="acciones">
         <a class="btn outline" href="stock-deposito.html?id=${idWh}">
-         👁️  Ver materiales
+         👁️  
         </a>
         <a class="btn outline" href="../files-html/editar-almacen.html?id=${idWh}">
-          ✏️ Editar
+          ✏️
         </a>
         <button class="btn danger" data-del="${idWh}">
-          🗑️ Eliminar
+          🗑️
         </button>
       </div>
     `;

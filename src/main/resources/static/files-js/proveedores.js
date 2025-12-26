@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   pgInfo        = document.getElementById('pg-info');
   pgPrev        = document.getElementById('pg-prev');
   pgNext        = document.getElementById('pg-next');
-  pgSizeSelect  = document.getElementById('pg-size');
+
 
   if (pgSizeSelect) {
     pageSize = Number(pgSizeSelect.value || 20);
@@ -192,10 +192,10 @@ function renderLista(lista){
       <div>${p.email || '—'}</div>
       <div>${statePill(p.status)}</div>
       <div class="acciones">
-        <a class="btn outline" href="editar-proveedor.html?id=${id}">✏️Editar</a>
-        <a class="btn outline" href="detalle-proveedor.html?id=${id}">👁️Ver</a>
-        <a class="btn outline" href="asignar-materiales.html?id=${id}">➕Asignar artículo</a>
-        <button class="btn danger" data-del="${id}">🗑️Eliminar</button>
+        <a class="btn outline" href="editar-proveedor.html?id=${id}">✏️</a>
+        <a class="btn outline" href="detalle-proveedor.html?id=${id}">👁️</a>
+        <a class="btn outline" href="asignar-materiales.html?id=${id}">➕</a>
+        <button class="btn danger" data-del="${id}">🗑️</button>
       </div>
     `;
     cont.appendChild(row);

@@ -188,15 +188,15 @@ function applyFilters(){
     });
   }
 
+  // === ORDENAMIENTO POR ID (DESC) ===
   list.sort((a,b)=>{
-    const da = getDateISO(a) || '';
-    const db = getDateISO(b) || '';
-    if (da !== db) return db.localeCompare(da); 
-    return (getDeliveryId(b)||0) - (getDeliveryId(a)||0);
+    const idA = Number(getDeliveryId(a) || 0);
+    const idB = Number(getDeliveryId(b) || 0);
+    return idB - idA; // Las nuevas arriba
   });
 
   FILTRADAS = list;
-  page = 0;              // cada vez que cambian filtros, volvemos a la primera página
+  page = 0; 
   renderPaginated();
 }
 
@@ -233,6 +233,7 @@ function renderPager(totalElems, totalPages){
 function render(lista){
   const cont = $('#lista-entregas');
   if (!cont) return;
+  // Sin la columna ID en el encabezado
   cont.innerHTML = `
     <div class="fila encabezado">
       <div>Fecha</div>
@@ -259,16 +260,16 @@ function render(lista){
     const cliente = getClientName(e) || '—';
 
     const row = document.createElement('div');
-    row.className='fila'; // CLASE LIMPIA
+    row.className='fila';
+    // Sin la columna ID en el cuerpo
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cliente}</div>
       <div>${saleId ? `#${saleId}` : '—'}</div>
       <div>${pill(st)}</div>
       <div class="acciones">
-        <a class="btn outline" href="../files-html/ver-entrega.html?id=${idDel}">👁️ Ver</a>
-        <a class="btn outline" href="../files-html/editar-entrega.html?id=${idDel}">✏️ Editar</a>
-
+        <a class="btn outline" href="../files-html/ver-entrega.html?id=${idDel}">👁️</a>
+        <a class="btn outline" href="../files-html/editar-entrega.html?id=${idDel}">✏️</a>
       </div>
     `;
     cont.appendChild(row);

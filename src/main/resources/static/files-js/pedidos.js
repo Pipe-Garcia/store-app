@@ -442,9 +442,9 @@ function render(lista){
       <div>${fmtARS.format(total)}</div>
       <div>${pill(est)}</div>
       <div class="acciones">
-        <a class="btn outline" href="ver-pedido.html?id=${id}">👁️ Ver</a>
-        <a class="btn outline" href="editar-pedido.html?id=${id}">✏️ Editar</a>
-        <button class="btn danger" data-del="${id}">🗑️ Eliminar</button>
+        <a class="btn outline" href="ver-pedido.html?id=${id}">👁️</a>
+        <a class="btn outline" href="editar-pedido.html?id=${id}">✏️</a>
+        <button class="btn danger" data-del="${id}">🗑️</button>
       </div>
     `;
     cont.appendChild(row);

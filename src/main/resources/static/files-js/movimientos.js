@@ -445,7 +445,7 @@ const LABEL_ENTITY = {
   }
 
   // Botones y auto-busca
-  $('btn-aplicar').addEventListener('click', ()=>{ page=0; size=Number($('f-size').value||20); load(); });
+  
   $('btn-limpiar').addEventListener('click', ()=>{
     ['f-desde','f-hasta','f-actor','f-action','f-entity','f-status'].forEach(id=>$(id).value='');
     page=0; load();

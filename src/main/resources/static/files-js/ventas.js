@@ -391,10 +391,10 @@ function renderLista(lista){
       <div>${fmtARS.format(total)}</div>
       <div>${deliveryPillHtml(st)}</div>
       <div class="acciones">
-        <a class="btn outline" href="ver-venta.html?id=${id}">👁️ Ver</a>
-        <a class="btn outline" href="editar-venta.html?id=${id}">✏️ Editar</a>
-        <button class="btn outline" data-pdf="${id}">🧾 PDF</button>
-        <button class="btn danger" data-del="${id}">🗑️ Eliminar</button>
+        <a class="btn outline" href="ver-venta.html?id=${id}">👁️</a>
+        <a class="btn outline" href="editar-venta.html?id=${id}">✏️</a>
+        <button class="btn outline" data-pdf="${id}">🧾</button>
+        <button class="btn danger" data-del="${id}">🗑️</button>
       </div>
     `;
     cont.appendChild(row);

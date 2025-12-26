@@ -37,7 +37,7 @@ function escapeHtml(s) {
   }[c]));
 }
 
-// Toasts top-right (usa tus clases .notification.*)
+// Toasts top-right
 let __toastRoot;
 function ensureToastRoot() {
   if (!__toastRoot) {
@@ -134,9 +134,9 @@ function mostrarClientes(lista) {
       <div>${tel || '-'}</div>
       <div>${est}</div>
       <div class="acciones">
-        <a class="btn outline" href="detalle-cliente.html?id=${id}" title="Ver">👁️ Ver</a>
-        <a class="btn outline" href="editar-clientes.html?id=${id}" title="Editar">✏️ Editar</a>
-        <button class="btn danger" data-del="${id}"  title="Eliminar">🗑️ Eliminar</button>
+        <a class="btn outline" href="detalle-cliente.html?id=${id}" title="Ver">👁️</a>
+        <a class="btn outline" href="editar-clientes.html?id=${id}" title="Editar">✏️</a>
+        <button class="btn danger" data-del="${id}"  title="Eliminar">🗑️</button>
       </div>
     `;
     contenedor.appendChild(fila);
@@ -343,7 +343,18 @@ window.addEventListener('DOMContentLoaded', () => {
   const debouncedFilter = debounce(filtrarClientes, 250);
   $('#filtroDni')?.addEventListener('input', debouncedFilter);
   $('#filtroNombre')?.addEventListener('input', debouncedFilter);
-  $('#filtroEstado')?.addEventListener('change', filtrarClientes); // NUEVO: estado
+  $('#filtroEstado')?.addEventListener('change', filtrarClientes); 
+
+  // ============== NUEVA FUNCIÓN: LIMPIAR FILTROS ==============
+  $('#btnLimpiar')?.addEventListener('click', () => {
+    // 1. Resetear inputs
+    const fd = $('#filtroDni'); if(fd) fd.value = '';
+    const fn = $('#filtroNombre'); if(fn) fn.value = '';
+    const fe = $('#filtroEstado'); if(fe) fe.value = 'ALL';
+
+
+    filtrarClientes();
+  });
 
   cargarClientes();
 });

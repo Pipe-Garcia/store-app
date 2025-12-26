@@ -310,12 +310,7 @@
     el.addEventListener(evt, debouncedSearch);
   });
 
-  $('btn-aplicar').addEventListener('click', ()=>{
-    page = 0;
-    size = Number($('f-size').value||50);
-    load();
-  });
-
+ 
   $('btn-limpiar').addEventListener('click', ()=>{
     ['f-desde','f-hasta','f-mat','f-wh','f-reason','f-user'].forEach(id=>$(id).value='');
     page = 0;
