@@ -4,6 +4,7 @@ import com.appTest.store.models.Client;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -14,5 +15,7 @@ public interface IClientRepository extends JpaRepository<Client, Long> {
 
     Optional<Client> findByDni(String dni);
     Optional<Client> findByEmail(String email);
-}
 
+    // NUEVO: Para buscar solo los activos (o inactivos si hiciera falta)
+    List<Client> findByStatus(String status);
+}

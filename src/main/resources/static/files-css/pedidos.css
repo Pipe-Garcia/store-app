@@ -10,7 +10,12 @@
   --c-border:#e9ecef;
 }
 
-.page{ max-width: 1900px; margin:0 auto; padding:24px; }
+.page{ 
+    max-width: none;        
+    width: 100%;            
+    padding: 24px; 
+    box-sizing: border-box; 
+}
 .page-head{ display:flex; align-items:center; gap:35px; margin-bottom:12px; }
 .page-head h1{ margin-left: 15px; }
 
@@ -53,9 +58,7 @@
   .card { overflow-x:auto; }
 }
 
-#lista-presupuestos .fila.row {
-  height: 100px;
-}
+
 
 .filters .row{
   display:flex; flex-wrap:wrap; align-items:flex-end; gap:28px; margin-bottom: 15px;
@@ -206,7 +209,7 @@ a.btn{ text-decoration:none; }
 
 #lista-presupuestos .fila{
   display:grid;
-  grid-template-columns: 130px 2fr 1.1fr 1.6fr 1.8fr;
+  grid-template-columns: 130px 2fr 0.5fr 1.6fr 0.8fr;
   align-items:center;
   gap:10px;
   background:#fff;
@@ -247,8 +250,9 @@ a.btn{ text-decoration:none; }
 }
 
 .form-page.narrow { 
-  max-width: 900px; 
-  margin: 0 auto; 
+  max-width: none;    
+  width: 100%;     
+  margin: 0; 
 }
 
 .form-page .card {

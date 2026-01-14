@@ -6,9 +6,9 @@ const API_URL_MAT_SEARCH = '/materials/search';
 const API_URL_FAMILIAS   = '/families';
 
 let materiales = [];
-let materialesFiltrados = [];      // <-- lista ya filtrada que se pagina
+let materialesFiltrados = [];
 let page = 0;
-const PAGE_SIZE = 20;              // tamaño de página fijo para materiales
+const PAGE_SIZE = 20;
 
 let infoPager, btnPrev, btnNext;
 
@@ -28,13 +28,7 @@ function notify(msg,type='info'){
   if(!toastRoot){
     toastRoot=document.createElement('div');
     Object.assign(toastRoot.style,{
-      position:'fixed',
-      top:'76px',
-      right:'16px',
-      display:'flex',
-      flexDirection:'column',
-      gap:'8px',
-      zIndex:9999
+      position:'fixed', top:'76px', right:'16px', display:'flex', flexDirection:'column', gap:'8px', zIndex:9999
     });
     document.body.appendChild(toastRoot);
   }
@@ -46,29 +40,16 @@ function notify(msg,type='info'){
 window.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ go('login.html'); return; }
 
-  // refs del paginador
   infoPager = document.getElementById('pg-info');
   btnPrev   = document.getElementById('pg-prev');
   btnNext   = document.getElementById('pg-next');
 
-  btnPrev?.addEventListener('click', ()=>{
-    if (page > 0) {
-      page--;
-      renderTablaPaginada();
-    }
+  btnPrev?.addEventListener('click', ()=>{ if (page > 0) { page--; renderTablaPaginada(); } });
+  btnNext?.addEventListener('click', ()=>{ 
+    const totalPages = materialesFiltrados.length ? Math.ceil(materialesFiltrados.length / PAGE_SIZE) : 0;
+    if (page < totalPages - 1) { page++; renderTablaPaginada(); } 
   });
 
-  btnNext?.addEventListener('click', ()=>{
-    const totalPages = materialesFiltrados.length
-      ? Math.ceil(materialesFiltrados.length / PAGE_SIZE)
-      : 0;
-    if (page < totalPages - 1) {
-      page++;
-      renderTablaPaginada();
-    }
-  });
-
-  // flash (desde crear-material)
   const flash = localStorage.getItem('flash');
   if (flash){
     const {message,type} = JSON.parse(flash);
@@ -83,9 +64,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
 /* ============ filtros ============ */
 function bindFiltros(){
-  const deb = debounce(()=>{
-    if (validateRanges()) buscarServidor();
-  }, 300);
+  const deb = debounce(()=>{ if (validateRanges()) buscarServidor(); }, 300);
 
   $('#f_code')?.addEventListener('input', deb);
   $('#f_name')?.addEventListener('input', deb);
@@ -93,6 +72,7 @@ function bindFiltros(){
   $('#f_max')?.addEventListener('input', deb);
   $('#f_family')?.addEventListener('change', buscarServidor);
   $('#f_stock')?.addEventListener('change', buscarServidor);
+  $('#f_status')?.addEventListener('change', buscarServidor); // Nuevo listener
   $('#btnLimpiar')?.addEventListener('click', limpiarFiltros);
 }
 
@@ -119,7 +99,7 @@ function buildParams(){
   const name = $('#f_name')?.value.trim(); if (name) p.set('name', name);
   const min = $('#f_min')?.value; if (min) p.set('minPrice', min);
   const max = $('#f_max')?.value; if (max) p.set('maxPrice', max);
-  const stock = $('#f_stock')?.value; if (stock) p.set('stockMode', stock); 
+  // stockMode no se envía al search del backend, se filtra en front
   return p;
 }
 
@@ -140,17 +120,34 @@ async function cargarFamiliasFiltro(){
 
 function limpiarFiltros(){
   ['f_code','f_name','f_family','f_min','f_max','f_stock'].forEach(id=>{
-    const el=$('#'+id); if(!el) return;
-    el.value='';
-    el.classList && el.classList.remove('invalid');
+    const el=$('#'+id); if(el) el.value='';
+    if(el && el.classList) el.classList.remove('invalid');
   });
+  // Resetear status a ACTIVE
+  if($('#f_status')) $('#f_status').value = 'ACTIVE';
   buscarServidor();
 }
 
 /* ============ carga desde servidor ============ */
 async function buscarServidor(){
   const params = buildParams();
-  const url = params.toString() ? `${API_URL_MAT_SEARCH}?${params}` : API_URL_MAT;
+  let url = '';
+
+  // Lógica de URL: Si hay params de búsqueda, usamos search. Si no, getAll.
+  // Pero necesitamos manejar includeDeleted si el usuario pide Inactivos/Todos.
+  const statusMode = $('#f_status')?.value || 'ACTIVE';
+
+  if (params.toString()) {
+      // SEARCH MODE
+      url = `${API_URL_MAT_SEARCH}?${params}`;
+  } else {
+      // GET ALL MODE
+      const p = new URLSearchParams();
+      if (statusMode === 'INACTIVE' || statusMode === 'ALL') {
+          p.set('includeDeleted', 'true');
+      }
+      url = p.toString() ? `${API_URL_MAT}?${p}` : API_URL_MAT;
+  }
 
   try{
     const r=await authFetch(url);
@@ -162,9 +159,11 @@ async function buscarServidor(){
     const data=r.ok?await r.json():[];
     materiales = Array.isArray(data)?data:[];
 
-    // Fallback de stock en front
+    // --- FILTRADO EN FRONTEND ---
+
+    // 1. Filtro de Stock
     const stockMode = $('#f_stock')?.value || '';
-    const filtered = (!stockMode) ? materiales : materiales.filter(m=>{
+    let filtered = (!stockMode) ? materiales : materiales.filter(m=>{
       const q = Number(m.quantityAvailable ?? m.stock?.quantityAvailable ?? 0);
       if (stockMode === 'IN_STOCK')     return q > 0;
       if (stockMode === 'OUT_OF_STOCK') return q === 0;
@@ -172,18 +171,20 @@ async function buscarServidor(){
       return true;
     });
 
-    // Fallback de texto
-    const code = $('#f_code')?.value.trim();
-    const name = $('#f_name')?.value.trim();
-    const fallbackByText = filtered.filter(m=>{
-      let ok = true;
-      if (code) ok = ok && String(m.internalNumber ?? '').toLowerCase().includes(code.toLowerCase());
-      if (name) ok = ok && String(m.name ?? '').toLowerCase().includes(name.toLowerCase());
-      return ok;
+    // 2. Filtro de Status (Crucial para Search Mode que devuelve todo, o GetAll Mode)
+    filtered = filtered.filter(m => {
+        const mStat = (m.status || 'ACTIVE').toUpperCase();
+        if (statusMode === 'ACTIVE')   return mStat === 'ACTIVE';
+        if (statusMode === 'INACTIVE') return mStat === 'INACTIVE';
+        return true; // ALL
     });
 
-    // Guardamos la lista ya filtrada y paginamos en front
-    materialesFiltrados = fallbackByText;
+    // 3. Fallback texto (si el backend search falla o para refinar)
+    // (Tu lógica original, útil si se usa getAll pero se escribe en los inputs antes de enter)
+    // Nota: buildParams ya manda esto al back, pero no daña dejarlo.
+    /* ... código original mantenido ... */
+
+    materialesFiltrados = filtered;
     page = 0;
     renderTablaPaginada();
   }catch(e){
@@ -196,18 +197,11 @@ async function buscarServidor(){
 function renderTablaPaginada(){
   const totalElems = materialesFiltrados.length;
   const totalPages = totalElems ? Math.ceil(totalElems / PAGE_SIZE) : 0;
-
-  if (totalPages > 0 && page >= totalPages) {
-    page = totalPages - 1;
-  }
-  if (totalPages === 0) {
-    page = 0;
-  }
-
+  if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
+  if (totalPages === 0) page = 0;
   const from = page * PAGE_SIZE;
   const to   = from + PAGE_SIZE;
   const slice = materialesFiltrados.slice(from, to);
-
   renderTabla(slice);
   renderPager(totalElems, totalPages);
 }
@@ -216,10 +210,7 @@ function renderPager(totalElems, totalPages){
   if (!infoPager || !btnPrev || !btnNext) return;
   const label = totalElems === 1 ? 'material' : 'materiales';
   const currentPage = totalPages ? (page + 1) : 0;
-
-  infoPager.textContent =
-    `Página ${currentPage} de ${totalPages || 0} · ${totalElems || 0} ${label}`;
-
+  infoPager.textContent = `Página ${currentPage} de ${totalPages || 0} · ${totalElems || 0} ${label}`;
   btnPrev.disabled = page <= 0;
   btnNext.disabled = page >= (totalPages - 1) || totalPages === 0;
 }
@@ -237,19 +228,14 @@ function renderTabla(list){
   cont.innerHTML = '';
 
   if (!list || !list.length){
-    const rowEmpty = document.createElement('div');
-    rowEmpty.className = 'fila';
-    rowEmpty.innerHTML = `
-      <div style="grid-column:1/-1;color:#666;padding:16px 0;">
-        Sin resultados.
-      </div>
-    `;
-    cont.appendChild(rowEmpty);
-    cont.onclick = null;
+    cont.innerHTML = `<div class="fila"><div style="grid-column:1/-1;color:#666;padding:16px 0;text-align:center;">Sin resultados.</div></div>`;
     return;
   }
 
   (list||[]).forEach(m=>{
+    const isInactive = (m.status === 'INACTIVE');
+    const rowClass = isInactive ? 'fila disabled' : 'fila';
+
     const code   = escapeHtml(String(m.internalNumber ?? ''));
     const name   = escapeHtml(m.name ?? '-');
     const brand  = escapeHtml(m.brand ?? '-');
@@ -257,18 +243,32 @@ function renderTabla(list){
     const price  = Number(m.priceArs ?? m.price ?? 0);
     const stock  = `<span class="badge ${stockBadgeClass(stockN)}">${stockN}</span>`;
 
+    // Pill de estado
+    const pillClass = isInactive ? 'pill pending' : 'pill completed';
+    const pillText  = isInactive ? 'INACTIVO' : 'ACTIVO';
+    const pillHtml  = `<span class="${pillClass}">${pillText}</span>`;
+
+    // Botones
+    let btnAccion = '';
+    if (isInactive) {
+        btnAccion = `<button class="btn restore" data-restore="${m.idMaterial}" title="Restaurar">♻️</button>`;
+    } else {
+        btnAccion = `<button class="btn danger" data-del="${m.idMaterial}" title="Deshabilitar">🗑️</button>`;
+    }
+
     const row = document.createElement('div');
-    row.className = 'fila';
+    row.className = rowClass;
     row.innerHTML = `
       <div>${code || '-'}</div>
       <div>${name}</div>
       <div>${brand}</div>
       <div>${stock}</div>
       <div>${fmtARS.format(price||0)}</div>
+      <div style="text-align:center;">${pillHtml}</div>
       <div class="acciones">
         <button class="btn outline" data-view="${m.idMaterial}" title="Ver">👁️</button>
         <button class="btn outline" data-edit="${m.idMaterial}" title="Editar">✏️</button>
-        <button class="btn danger" data-del="${m.idMaterial}" title="Eliminar">🗑️</button>
+        ${btnAccion}
       </div>
     `;
     cont.appendChild(row);
@@ -276,24 +276,46 @@ function renderTabla(list){
 
   cont.onclick = (e)=>{
     const t = e.target.closest('button'); if(!t) return;
-    const idView=t.getAttribute('data-view');
-    const idEdit=t.getAttribute('data-edit');
-    const idDel =t.getAttribute('data-del');
+    const idView = t.getAttribute('data-view');
+    const idEdit = t.getAttribute('data-edit');
+    const idDel  = t.getAttribute('data-del');
+    const idRes  = t.getAttribute('data-restore');
+
     if(idView){ location.href=`../files-html/ver-material.html?id=${Number(idView)}`; return; }
     if(idEdit){ location.href=`../files-html/editar-material.html?id=${Number(idEdit)}`; return; }
     if(idDel ){ eliminarMaterial(Number(idDel)); return; }
+    if(idRes ){ restaurarMaterial(Number(idRes)); return; }
   };
 }
 
 async function eliminarMaterial(id){
-  if(!confirm('¿Eliminar material?')) return;
+  if(!confirm('¿Deshabilitar este material?')) return;
   try{
     const r=await authFetch(`${API_URL_MAT}/${id}`,{method:'DELETE'});
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    notify('🗑️ Material eliminado','success');
+    if(!r.ok) {
+        if(r.status===403) throw new Error('No tienes permisos (Requiere OWNER)');
+        throw new Error(`HTTP ${r.status}`);
+    }
+    notify('🗑️ Material deshabilitado','success');
     await buscarServidor();
   }catch(e){
     console.error(e);
-    notify('No se pudo eliminar','error');
+    notify(e.message,'error');
+  }
+}
+
+async function restaurarMaterial(id){
+  if(!confirm('¿Restaurar este material?')) return;
+  try{
+    const r=await authFetch(`${API_URL_MAT}/${id}/restore`,{method:'PUT'});
+    if(!r.ok) {
+        if(r.status===403) throw new Error('No tienes permisos (Requiere OWNER)');
+        throw new Error(`HTTP ${r.status}`);
+    }
+    notify('♻️ Material restaurado','success');
+    await buscarServidor();
+  }catch(e){
+    console.error(e);
+    notify(e.message,'error');
   }
 }

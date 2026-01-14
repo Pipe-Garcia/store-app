@@ -9,7 +9,8 @@ import java.util.List;
 
 public interface IClientService {
 
-    public List<Client> getAllClients();
+    // Modificado para aceptar filtro de eliminados
+    public List<Client> getAllClients(Boolean includeDeleted);
 
     public com.appTest.store.dto.client.ClientDTO convertClientToDto (Client client);
 
@@ -20,4 +21,7 @@ public interface IClientService {
     public void updateClient(ClientUpdateDTO dto);
 
     public void deleteClientById(Long idClient);
+
+    // Nuevo método para restaurar
+    public void restoreClient(Long idClient);
 }

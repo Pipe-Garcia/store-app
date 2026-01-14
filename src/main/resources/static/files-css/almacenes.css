@@ -6,7 +6,13 @@
   --shadow: 0 1px 2px rgba(0,0,0,.06);
 }
 
-.page{ max-width: 1900px; margin:0 auto; padding:24px; }
+.page{ 
+  max-width: none;        
+  width: 100%;         
+  padding: 24px; 
+  box-sizing: border-box; 
+}
+
 .page-head{ display:flex; align-items:center; margin-bottom:12px; gap: 35px;}
 .page-head h1{ margin-left: 15px; }
 
@@ -94,8 +100,9 @@ input[type="text"]{
 }
 
 .form-page.narrow { 
-  max-width: 900px; 
-  margin: 0 auto; 
+  max-width: none;    
+  width: 100%;      
+  margin: 0; 
 }
 
 .form-page .card {
