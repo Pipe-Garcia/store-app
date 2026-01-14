@@ -1,6 +1,5 @@
 package com.appTest.store.services;
 
-import com.appTest.store.audit.Auditable;
 import com.appTest.store.dto.client.ClientCreateDTO;
 import com.appTest.store.dto.client.ClientDTO;
 import com.appTest.store.dto.client.ClientUpdateDTO;
@@ -112,7 +111,14 @@ public class ClientService implements IClientService{
     /* ===== API ===== */
 
     @Override
-    public List<Client> getAllClients() { return repoClient.findAll(); }
+    public List<Client> getAllClients(Boolean includeDeleted) {
+        // Lógica de filtrado: Si includeDeleted es true, devuelve todo. Si no, solo ACTIVE.
+        if (Boolean.TRUE.equals(includeDeleted)) {
+            return repoClient.findAll();
+        } else {
+            return repoClient.findByStatus("ACTIVE");
+        }
+    }
 
     @Override
     public ClientDTO convertClientToDto(Client client) {
@@ -154,7 +160,8 @@ public class ClientService implements IClientService{
         client.setAddress(dto.getAddress());
         client.setLocality(dto.getLocality());
         client.setPhoneNumber(dto.getPhoneNumber());
-        client.setStatus(dto.getStatus());
+        // Forzamos ACTIVE al crear si no viene, o usamos el del DTO
+        client.setStatus(dto.getStatus() != null ? dto.getStatus() : "ACTIVE");
 
         repoClient.save(client);
 
@@ -214,8 +221,60 @@ public class ClientService implements IClientService{
 
     @Override
     @Transactional
-    @Auditable(entity="Client", action="DELETE", idParam="id")
+    // Ya no usamos @Auditable automático porque hacemos soft delete manual
     public void deleteClientById(Long idClient) {
-        repoClient.deleteById(idClient);
+        Client client = repoClient.findById(idClient).orElse(null);
+        if (client == null) return;
+
+        // 1. Snapshot antes
+        Map<String,Object> before = snap(client);
+
+        // 2. Soft Delete
+        client.setStatus("INACTIVE");
+        repoClient.save(client);
+
+        // 3. Auditoría Manual
+        Map<String,Object> after = snap(client);
+        final Long cid = client.getIdClient();
+
+        // Calculamos el diff manual solo del status
+        List<Map<String,Object>> changed = List.of(
+                Map.of("field", "status", "from", "ACTIVE", "to", "INACTIVE")
+        );
+        final Map<String,Object> payload = Map.of("changed", changed);
+
+        afterCommit(() -> {
+            Long ev = audit.success("SOFT_DELETE", "Client", cid, "Cliente deshabilitado (Soft Delete)");
+            audit.attachDiff(ev, before, after, payload);
+        });
+    }
+
+    @Override
+    @Transactional
+    public void restoreClient(Long idClient) {
+        Client client = repoClient.findById(idClient).orElse(null);
+        if (client == null) return;
+
+        // 1. Snapshot antes
+        Map<String,Object> before = snap(client);
+
+        // 2. Restore
+        client.setStatus("ACTIVE");
+        repoClient.save(client);
+
+        // 3. Auditoría Manual
+        Map<String,Object> after = snap(client);
+        final Long cid = client.getIdClient();
+
+        // Calculamos el diff manual
+        List<Map<String,Object>> changed = List.of(
+                Map.of("field", "status", "from", "INACTIVE", "to", "ACTIVE")
+        );
+        final Map<String,Object> payload = Map.of("changed", changed);
+
+        afterCommit(() -> {
+            Long ev = audit.success("RESTORE", "Client", cid, "Cliente restaurado");
+            audit.attachDiff(ev, before, after, payload);
+        });
     }
 }

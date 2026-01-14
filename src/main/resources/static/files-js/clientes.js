@@ -1,26 +1,21 @@
 // /static/files-js/clientes.js
-const { authFetch, getToken } = window.api;
+const { authFetch, getToken, safeJson } = window.api;
 const API_URL_CLI = '/clients';
 
-let clientes = [];
-
-// 🔹 Paginación en front
-const PAGE_SIZE = 20;
+/* ==== Variables de Estado ==== */
+let ALL_CLIENTS = [];   
+let FILTRADOS   = [];   
+const PAGE_SIZE = 15;
 let page = 0;
-let clientesFiltrados = [];
-let pagerInfo, pagerPrev, pagerNext;
 
-/* ==== Helpers UI (el HTTP/Token ya lo da api.js) ==== */
+/* ==== Referencias DOM ==== */
 const $  = (s, r=document) => r.querySelector(s);
-const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+let infoPager, btnPrev, btnNext;
 
+/* ==== Helpers UI ==== */
 function go(page) {
-  const base = location.pathname.replace(/[^/]+$/, ''); // deja .../files-html/
+  const base = location.pathname.replace(/[^/]+$/, '');
   window.location.href = `${base}${page}`;
-}
-function flashAndGo(message, page) {
-  localStorage.setItem('flash', JSON.stringify({ message, type: 'success' }));
-  go(page);
 }
 
 function debounce(fn, delay = 250) {
@@ -37,7 +32,7 @@ function escapeHtml(s) {
   }[c]));
 }
 
-// Toasts top-right
+// Sistema de Notificaciones
 let __toastRoot;
 function ensureToastRoot() {
   if (!__toastRoot) {
@@ -58,95 +53,136 @@ function notify(message, type = 'success') {
   __toastRoot.appendChild(div);
   setTimeout(() => div.remove(), 5000);
 }
-// shim para compat
-const showNotification = notify;
 
-/* ================= CARGA INICIAL ================= */
+/* ================= INICIO (Bootstrap) ================= */
 
-function cargarClientes() {
-  const token = getToken();
-  if (!token) {
-    notify('Debes iniciar sesión', 'error');
-    go('login.html');
-    return;
+window.addEventListener('DOMContentLoaded', async () => {
+  if (!getToken()) { go('login.html'); return; }
+
+  // Refs Paginador
+  infoPager = document.getElementById('pg-info');
+  btnPrev   = document.getElementById('pg-prev');
+  btnNext   = document.getElementById('pg-next');
+
+  btnPrev?.addEventListener('click', () => { if (page > 0) { page--; renderPaginated(); } });
+  btnNext?.addEventListener('click', () => { 
+    const totalPages = Math.ceil(FILTRADOS.length / PAGE_SIZE);
+    if (page < totalPages - 1) { page++; renderPaginated(); } 
+  });
+
+  const flash = localStorage.getItem('flash');
+  if (flash) {
+    try {
+      const { message, type } = JSON.parse(flash);
+      notify(message, type || 'success');
+    } catch (_) {}
+    localStorage.removeItem('flash');
   }
 
-  authFetch(API_URL_CLI, { method: 'GET' })
-    .then(res => {
-      if (res.status === 401 || res.status === 403) {
-        throw new Error(String(res.status));
-      }
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      return res.json();
-    })
-    .then(data => {
-      if (!Array.isArray(data)) {
-        console.error('Respuesta inesperada del backend:', data);
-        notify('Error: no se pudo obtener la lista de clientes', 'error');
-        return;
-      }
-      clientes = data;
-      filtrarClientes(); // render inmediato con filtros actuales (paginará)
-    })
-    .catch(err => {
-      console.error('Error al cargar clientes:', err);
-      if (['401','403'].includes(err.message)) {
-        notify('Sesión inválida, redirigiendo a login', 'error');
-        go('login.html');
-      } else {
-        notify('Error al conectar con el servidor', 'error');
-      }
-    });
-}
+  bindFilters();
+  await reloadFromBackend();
+});
 
-function mostrarClientes(lista) {
-  const contenedor = $('#lista-clientes');
-  contenedor.innerHTML = '';
-  if (!lista.length) {
-    const fila = document.createElement('div');
-    fila.className = 'cliente-cont';
-    fila.innerHTML = `<div style="grid-column:1/-1;color:#666;text-align:center;">No hay clientes para los filtros aplicados.</div>`;
-    contenedor.appendChild(fila);
-    return;
-  }
+/* ================= CARGA DE DATOS ================= */
 
-  lista.forEach(c => {
-    const fila = document.createElement('div');
-    fila.className = 'cliente-cont';
+function bindFilters() {
+  const deb = debounce(applyLocalFilters, 300);
 
-    const id   = c.idClient ?? '-';
-    const nom  = escapeHtml(c.name || '');
-    const ape  = escapeHtml(c.surname || '');
-    const full = (nom || ape) ? `${nom} ${ape}`.trim() : '-';
-    const dni  = escapeHtml(String(c.dni ?? ''));
-    const tel  = escapeHtml(c.phoneNumber || '');
+  // Filtros originales
+  $('#filtroDni')?.addEventListener('input', deb);
+  $('#filtroNombre')?.addEventListener('input', deb);
+  
+  // El cambio de estado recarga desde el backend si es necesario
+  $('#filtroEstado')?.addEventListener('change', reloadFromBackend);
 
-    const estUpper = String(c.status ?? '').toUpperCase();
-    const isActive = (estUpper === 'ACTIVE') || c.status === true || c.status === 1;
-    const est  = isActive ? 'Activo' : 'Inactivo';
-
-    fila.innerHTML = `
-      <div>${id}</div>
-      <div>${full}</div>
-      <div>${dni || '-'}</div>
-      <div>${tel || '-'}</div>
-      <div>${est}</div>
-      <div class="acciones">
-        <a class="btn outline" href="detalle-cliente.html?id=${id}" title="Ver">👁️</a>
-        <a class="btn outline" href="editar-clientes.html?id=${id}" title="Editar">✏️</a>
-        <button class="btn danger" data-del="${id}"  title="Eliminar">🗑️</button>
-      </div>
-    `;
-    contenedor.appendChild(fila);
+  $('#btnLimpiar')?.addEventListener('click', () => {
+    if ($('#filtroDni'))    $('#filtroDni').value = '';
+    if ($('#filtroNombre')) $('#filtroNombre').value = '';
+    if ($('#filtroEstado')) $('#filtroEstado').value = 'ACTIVE'; // Volver a defecto
+    reloadFromBackend();
   });
 }
 
-/* ========= Paginado en front ========= */
+async function reloadFromBackend() {
+  const contenedor = $('#lista-clientes');
+  contenedor.innerHTML = `<div class="fila"><div style="grid-column:1/-1; text-align:center;">Cargando...</div></div>`;
+
+  try {
+    const q = new URLSearchParams();
+    
+    // Lógica del filtro de estado para el backend
+    const estadoSeleccionado = $('#filtroEstado')?.value || 'ACTIVE';
+
+    // Si piden INACTIVE o ALL, necesitamos que el backend traiga los eliminados
+    if (estadoSeleccionado === 'INACTIVE' || estadoSeleccionado === 'ALL') {
+      q.set('includeDeleted', 'true');
+    }
+    // Si es ACTIVE, no mandamos nada (el back por defecto trae solo activos)
+
+    const url = q.toString() ? `${API_URL_CLI}?${q.toString()}` : API_URL_CLI;
+    const res = await authFetch(url);
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) go('login.html');
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    ALL_CLIENTS = Array.isArray(data) ? data : (data.content || []);
+
+    applyLocalFilters();
+
+  } catch (err) {
+    console.error(err);
+    notify('Error al cargar clientes', 'error');
+    contenedor.innerHTML = `<div class="fila"><div style="grid-column:1/-1; color:red; text-align:center;">Error de conexión.</div></div>`;
+  }
+}
+
+function applyLocalFilters() {
+  let lista = ALL_CLIENTS.slice();
+
+  // 1. Obtener valores de los inputs
+  const dniTxt    = ($('#filtroDni')?.value || '').toLowerCase().trim();
+  const nomTxt    = ($('#filtroNombre')?.value || '').toLowerCase().trim();
+  const estadoSel = ($('#filtroEstado')?.value || 'ACTIVE');
+
+  // 2. Filtrar
+  lista = lista.filter(c => {
+    const cDni = (c.dni || '').toLowerCase();
+    const cNom = `${c.name} ${c.surname}`.toLowerCase();
+    const cStatus = (c.status || 'ACTIVE').toUpperCase(); // Asegurar string
+
+    // Coincidencia de texto
+    const matchDni = !dniTxt || cDni.includes(dniTxt);
+    const matchNom = !nomTxt || cNom.includes(nomTxt);
+
+    // Coincidencia de estado
+    let matchEstado = true;
+    if (estadoSel === 'ACTIVE')   matchEstado = (cStatus === 'ACTIVE');
+    if (estadoSel === 'INACTIVE') matchEstado = (cStatus === 'INACTIVE');
+    // Si es ALL, matchEstado siempre es true
+
+    return matchDni && matchNom && matchEstado;
+  });
+
+  // 3. Ordenar: Activos primero, luego ID descendente
+  lista.sort((a, b) => {
+    const aAct = (a.status === 'ACTIVE');
+    const bAct = (b.status === 'ACTIVE');
+    if (aAct && !bAct) return -1;
+    if (!aAct && bAct) return 1;
+    return (b.idClient || 0) - (a.idClient || 0);
+  });
+
+  FILTRADOS = lista;
+  page = 0;
+  renderPaginated();
+}
+
+/* ================= RENDERIZADO ================= */
 
 function renderPaginated() {
-  const totalElems = clientesFiltrados.length;
+  const totalElems = FILTRADOS.length;
   const totalPages = totalElems ? Math.ceil(totalElems / PAGE_SIZE) : 0;
 
   if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
@@ -154,212 +190,126 @@ function renderPaginated() {
 
   const from = page * PAGE_SIZE;
   const to   = from + PAGE_SIZE;
-  const slice = clientesFiltrados.slice(from, to);
+  const slice = FILTRADOS.slice(from, to);
 
-  mostrarClientes(slice);
+  renderLista(slice);
   renderPager(totalElems, totalPages);
 }
 
 function renderPager(totalElems, totalPages) {
-  if (!pagerInfo || !pagerPrev || !pagerNext) return;
-
-  const current = totalPages ? (page + 1) : 0;
-  const label = totalElems === 1 ? 'cliente' : 'clientes';
-
-  pagerInfo.textContent =
-    `Página ${current} de ${totalPages || 0} · ${totalElems || 0} ${label}`;
-
-  pagerPrev.disabled = page <= 0;
-  pagerNext.disabled = page >= (totalPages - 1) || totalPages === 0;
+  if (!infoPager) return;
+  infoPager.textContent = `Pág ${page+1} de ${totalPages || 0} · Total: ${totalElems}`;
+  btnPrev.disabled = page <= 0;
+  btnNext.disabled = page >= (totalPages - 1) || totalPages === 0;
 }
 
-/* ================== ACCIONES ================== */
+function renderLista(lista) {
+  const contenedor = $('#lista-clientes');
+  
+  // Encabezado con tus columnas originales
+  contenedor.innerHTML = `
+    <div class="fila encabezado">
+      <div>ID</div>
+      <div>Cliente</div>
+      <div>DNI</div>
+      <div>Teléfono</div>
+      <div>Estado</div>
+      <div>Acciones</div>
+    </div>
+  `;
 
-$('#lista-clientes')?.addEventListener('click', (e) => {
-  const targetBtn = e.target.closest('button');
-  if (!targetBtn) return;
-
-  const idEdit = targetBtn.getAttribute('data-edit');
-  const idDel  = targetBtn.getAttribute('data-del');
-  if (idDel) eliminarCliente(Number(idDel));
-});
-
-function agregarCliente() {
-  const token = getToken();
-  if (!token) {
-    notify('Debes iniciar sesión para agregar un cliente', 'error');
-    go('login.html');
+  if (!lista.length) {
+    const div = document.createElement('div');
+    div.className = 'fila';
+    div.innerHTML = `<div style="grid-column:1/-1; color:#666; text-align:center; padding:15px;">No se encontraron resultados.</div>`;
+    contenedor.appendChild(div);
     return;
   }
 
-  const name        = $('#name')?.value.trim();
-  const surname     = $('#surname')?.value.trim();
-  const dni         = $('#dni')?.value.trim();
-  const email       = $('#email')?.value.trim();
-  const address     = $('#address')?.value.trim();
-  const locality    = $('#locality')?.value.trim();
-  const phoneNumber = $('#phoneNumber')?.value.trim();
+  lista.forEach(c => {
+    const isInactive = (c.status === 'INACTIVE');
+    const rowClass = isInactive ? 'fila disabled' : 'fila';
 
-  if (!name || !surname || !dni || !email || !address || !locality || !phoneNumber) {
-    notify('Todos los campos son obligatorios.', 'error');
-    return;
-  }
+    // Datos
+    const id   = c.idClient;
+    const nom  = escapeHtml(`${c.name} ${c.surname}`);
+    const dni  = escapeHtml(c.dni || '-');
+    const tel  = escapeHtml(c.phoneNumber || '-');
+    
+    // Estado Visual
+    const pillClass = isInactive ? 'pill pending' : 'pill completed';
+    const pillText  = isInactive ? 'INACTIVO' : 'ACTIVO';
+    const pillHtml  = `<span class="${pillClass}">${pillText}</span>`;
 
-  const dniExistente = clientes.some(m => String(m.dni ?? '') === dni);
-  if (dniExistente) {
-    notify('Ya existe un cliente con ese DNI.', 'error');
-    return;
-  }
+    let btnAccion = '';
+    if (isInactive) {
+        btnAccion = `<button class="btn restore" data-restore="${id}" title="Restaurar / Reactivar">Restaurar</button>`;
+    } else {
+        btnAccion = `<button class="btn danger" data-del="${id}" title="Eliminar (Deshabilitar)">🗑️</button>`;
+    }
 
-  const nuevo = {
-    name, surname, dni, email, address, locality, phoneNumber,
-    status: 'ACTIVE'
+    const fila = document.createElement('div');
+    fila.className = rowClass;
+    // Estructura original de columnas: ID, Cliente, DNI, Telefono, Estado, Acciones
+    fila.innerHTML = `
+      <div>#${id}</div>
+      <div style="font-weight:600;">${nom}</div>
+      <div>${dni}</div>
+      <div>${tel}</div>
+      <div style="text-align:center;">${pillHtml}</div>
+      <div class="acciones">
+        <a class="btn outline" href="editar-clientes.html?id=${id}" title="Editar">✏️</a>
+        ${btnAccion}
+      </div>
+    `;
+    contenedor.appendChild(fila);
+  });
+
+  // Clicks
+  contenedor.onclick = (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const delId = btn.getAttribute('data-del');
+    const resId = btn.getAttribute('data-restore');
+
+    if (delId) eliminarCliente(delId);
+    if (resId) restaurarCliente(resId);
   };
-
-  authFetch(API_URL_CLI, {
-    method: 'POST',
-    body: JSON.stringify(nuevo)
-  })
-    .then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      notify('✅ Cliente creado con éxito', 'success');
-      cargarClientes();
-      limpiarFormularioCliente();
-      toggleFormulario();
-    })
-    .catch(err => {
-      console.error(err);
-      notify('Error creando cliente', 'error');
-    });
 }
 
-function eliminarCliente(id) {
-  const token = getToken();
-  if (!token) {
-    notify('Debes iniciar sesión para eliminar un cliente', 'error');
-    go('login.html');
-    return;
-  }
-  if (!id) return;
+/* ================== ACCIONES (API) ================== */
 
-  if (confirm('¿Seguro que querés eliminar este cliente?')) {
-    authFetch(`${API_URL_CLI}/${id}`, { method: 'DELETE' })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        // Actualizamos estado local y re-renderizamos con filtros vigentes
-        clientes = clientes.filter(c => c.idClient !== id);
-        notify('✅ Cliente eliminado', 'success');
-        filtrarClientes();
-      })
-      .catch(err => {
-        console.error(err);
-        notify('Error al eliminar cliente', 'error');
-      });
-  }
-}
+async function eliminarCliente(id) {
+  if (!confirm(`¿Seguro que querés deshabilitar al cliente #${id}?`)) return;
 
-/* ================== FILTROS/FORM ================== */
-
-// Normaliza a boolean "activo"
-function esActivo(status) {
-  const s = String(status ?? '').toUpperCase();
-  return s === 'ACTIVE' || status === true || status === 1;
-}
-
-function filtrarClientes() {
-  const filtroDni    = ($('#filtroDni')?.value || '').toLowerCase().trim();
-  const filtroNombre = ($('#filtroNombre')?.value || '').toLowerCase().trim();
-  const filtroEstado = ($('#filtroEstado')?.value || 'ALL').toUpperCase(); // ALL | ACTIVE | INACTIVE
-
-  clientesFiltrados = clientes.filter(c => {
-    const dni    = String(c.dni ?? '').toLowerCase();
-    const nomApe = `${c.name ?? ''} ${c.surname ?? ''}`.toLowerCase();
-    const activo = esActivo(c.status);
-
-    const matchTexto =
-      (!filtroDni || dni.includes(filtroDni)) &&
-      (!filtroNombre || nomApe.includes(filtroNombre));
-
-    const matchEstado =
-      filtroEstado === 'ALL' ||
-      (filtroEstado === 'ACTIVE'   && activo) ||
-      (filtroEstado === 'INACTIVE' && !activo);
-
-    return matchTexto && matchEstado;
-  });
-
-  page = 0;           // siempre volvemos a primera página al cambiar filtros
-  renderPaginated();
-}
-
-function toggleFormulario() {
-  const formulario = $('#formularioNuevo');
-  if (!formulario) return;
-  const isHidden = (formulario.style.display === 'none' || formulario.style.display === '');
-  formulario.style.display = isHidden ? 'flex' : 'none';
-}
-
-function limpiarFormularioCliente() {
-  ['name','surname','dni','email','address','locality','phoneNumber'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-}
-
-/* ============== Eventos y bootstrap ============== */
-
-window.addEventListener('DOMContentLoaded', () => {
-
-  // flash (desde editar)
-  const flash = localStorage.getItem('flash');
-  if (flash) {
-    const { message, type } = JSON.parse(flash);
-    notify(message, type || 'success');
-    localStorage.removeItem('flash');
-  }
-
-  // refs pager
-  pagerInfo = document.getElementById('pg-info');
-  pagerPrev = document.getElementById('pg-prev');
-  pagerNext = document.getElementById('pg-next');
-
-  pagerPrev?.addEventListener('click', () => {
-    if (page > 0) {
-      page--;
-      renderPaginated();
+  try {
+    const res = await authFetch(`${API_URL_CLI}/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      if (res.status === 403) throw new Error('Requiere permisos de OWNER');
+      throw new Error(`HTTP ${res.status}`);
     }
-  });
-  pagerNext?.addEventListener('click', () => {
-    const totalPages = clientesFiltrados.length
-      ? Math.ceil(clientesFiltrados.length / PAGE_SIZE)
-      : 0;
-    if (page < totalPages - 1) {
-      page++;
-      renderPaginated();
+    notify('Cliente deshabilitado (Inactivo)', 'success');
+    // Recargamos manteniendo el filtro actual
+    reloadFromBackend(); 
+  } catch (err) {
+    console.error(err);
+    notify(err.message, 'error');
+  }
+}
+
+async function restaurarCliente(id) {
+  if (!confirm(`¿Reactivar al cliente #${id}?`)) return;
+
+  try {
+    const res = await authFetch(`${API_URL_CLI}/${id}/restore`, { method: 'PUT' });
+    if (!res.ok) {
+      if (res.status === 403) throw new Error('Requiere permisos de OWNER');
+      throw new Error(`HTTP ${res.status}`);
     }
-  });
-
-  // Búsqueda en vivo
-  const debouncedFilter = debounce(filtrarClientes, 250);
-  $('#filtroDni')?.addEventListener('input', debouncedFilter);
-  $('#filtroNombre')?.addEventListener('input', debouncedFilter);
-  $('#filtroEstado')?.addEventListener('change', filtrarClientes); 
-
-  // ============== NUEVA FUNCIÓN: LIMPIAR FILTROS ==============
-  $('#btnLimpiar')?.addEventListener('click', () => {
-    // 1. Resetear inputs
-    const fd = $('#filtroDni'); if(fd) fd.value = '';
-    const fn = $('#filtroNombre'); if(fn) fn.value = '';
-    const fe = $('#filtroEstado'); if(fe) fe.value = 'ALL';
-
-
-    filtrarClientes();
-  });
-
-  cargarClientes();
-});
-
-// Exportar para onclicks del HTML
-window.agregarCliente   = agregarCliente;
-window.toggleFormulario = toggleFormulario;
-window.filtrarClientes  = filtrarClientes;
+    notify('Cliente restaurado exitosamente', 'success');
+    reloadFromBackend();
+  } catch (err) {
+    console.error(err);
+    notify(err.message, 'error');
+  }
+}

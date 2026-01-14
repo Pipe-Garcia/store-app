@@ -366,7 +366,7 @@ a.btn {
 
 .tabla.materiales .fila {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr 0.8fr 1fr 1fr;
+  grid-template-columns: 1fr 2fr 1fr 0.5fr 1fr 0.8fr 1fr;
   align-items: center;
   gap: 10px;
   background: #fff;

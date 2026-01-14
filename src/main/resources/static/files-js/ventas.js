@@ -1,20 +1,16 @@
 // /static/files-js/ventas.js
-// Listado de Ventas.
-// Ahora el estado de la venta es LOGÍSTICO:
-//   - ENTREGADA        (DELIVERED)
-//   - PENDIENTE A ENTREGAR (PENDING_DELIVERY)
-// Ya no se muestran Pagado / Saldo en la grilla.
 
 const { authFetch, getToken, safeJson } = window.api;
 
 const API_URL_SALES   = '/sales';
 const API_URL_SEARCH  = '/sales/search';
-const API_URL_CLIENTS = '/clients';
+// API_URL_CLIENTS ya no se usa
 
 const $  = (s, r=document) => r.querySelector(s);
 const fmtARS = new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS' });
 const norm = (s)=> (s||'').toString().toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+
 const debounce = (fn,d=250)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); }; };
 
 function notify(msg,type='info'){
@@ -35,7 +31,6 @@ let page = 0;
 let FILTRADAS = [];
 let infoPager, btnPrev, btnNext;
 
-let CLIENTS = [];
 let LAST_SALES = [];
 
 // ================== Bootstrap ==================
@@ -71,54 +66,23 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     localStorage.removeItem('flash');
   }
 
-  await loadClients();
+  // Inicializar filtros y cargar lista
   bindFilters();
   await reloadFromFilters();
 });
-
-// ================== Carga de clientes ==================
-async function loadClients(){
-  try{
-    const r = await authFetch(API_URL_CLIENTS);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-
-    let data = await safeJson(r);
-    if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
-    if (!Array.isArray(data)) data = [];
-
-    CLIENTS = data;
-
-    const sel = $('#filtroCliente');
-    sel.innerHTML = `<option value="">Todos</option>`;
-    (CLIENTS || [])
-      .slice()
-      .sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
-      .forEach(c=>{
-        const id = c.idClient ?? c.id;
-        const nm = `${c.name||''} ${c.surname||''}`.trim() || `#${id}`;
-        const opt = document.createElement('option');
-        opt.value = String(id ?? '');
-        opt.textContent = nm;
-        sel.appendChild(opt);
-      });
-  }catch(e){
-    console.error(e);
-    notify('No se pudo cargar la lista de clientes','error');
-  }
-}
 
 // ================== Filtros ==================
 function bindFilters(){
   const deb = debounce(reloadFromFilters, 280);
 
-  $('#filtroCliente')?.addEventListener('change', deb);
+  // Eliminado el listener de #filtroCliente
   $('#fDesde')       ?.addEventListener('change', deb);
   $('#fHasta')       ?.addEventListener('change', deb);
   $('#fEstadoEntrega')?.addEventListener('change', deb);
   $('#fTexto')       ?.addEventListener('input',  deb);
 
   $('#btnLimpiar')?.addEventListener('click', ()=>{
-    $('#filtroCliente').value = '';
+    // Eliminado el reset de #filtroCliente
     $('#fDesde').value = '';
     $('#fHasta').value = '';
     $('#fEstadoEntrega').value = '';
@@ -131,11 +95,11 @@ function buildQueryFromFilters(){
   const q = new URLSearchParams();
   const from = $('#fDesde').value;
   const to   = $('#fHasta').value;
-  const cid  = $('#filtroCliente').value;
+  
+  // Eliminado clientId del query param
 
   if (from) q.set('from', from);
   if (to)   q.set('to',   to);
-  if (cid)  q.set('clientId', cid);
 
   // NOTA: no mandamos estado al back; el estado de entrega se calcula en front.
   return q.toString();
@@ -172,13 +136,13 @@ async function reloadFromFilters(){
     LAST_SALES = data;
     let view = data.slice();
 
-    // Texto libre: ID o cliente
+    // Texto libre: SOLO por Nombre de cliente
     const text = norm($('#fTexto').value || '');
     if (text){
       view = view.filter(v=>{
-        const idStr = String(v.idSale || v.saleId || v.id || '');
-        const cli   = norm(v.clientName || '');
-        return idStr.includes(text) || cli.includes(text);
+        const cli = norm(v.clientName || '');
+        // Solo buscamos si el nombre contiene el texto. Ignoramos ID.
+        return cli.includes(text);
       });
     }
 
@@ -209,51 +173,32 @@ async function reloadFromFilters(){
 }
 
 // ================== Estado de entrega ==================
-// Helpers tolerantes: intentan leer distintos nombres de campos del DTO.
 function getSoldUnits(v){
   return Number(
-    v.totalUnits ??
-    v.unitsSold ??
-    v.totalQuantity ??
-    v.quantityTotal ??
-    v.unitsTotal ??
-    0
+    v.totalUnits ?? v.unitsSold ?? v.totalQuantity ?? 
+    v.quantityTotal ?? v.unitsTotal ?? 0
   );
 }
 function getDeliveredUnits(v){
   return Number(
-    v.deliveredUnits ??
-    v.unitsDelivered ??
-    v.deliveryUnits ??
-    v.totalDelivered ??
-    0
+    v.deliveredUnits ?? v.unitsDelivered ?? v.deliveryUnits ?? 
+    v.totalDelivered ?? 0
   );
 }
 function getPendingUnits(v){
   return Number(
-    v.pendingToDeliver ??
-    v.pendingUnits ??
-    v.unitsPending ??
-    v.toDeliver ??
-    0
+    v.pendingToDeliver ?? v.pendingUnits ?? v.unitsPending ?? 
+    v.toDeliver ?? 0
   );
 }
 
-/**
- * Devuelve un código lógico de estado de entrega:
- *  - 'DELIVERED'        → ENTREGADA
- *  - 'PENDING_DELIVERY' → PENDIENTE A ENTREGAR
- */
 function getDeliveryStateCode(v){
   // 0) Si es una VENTA DIRECTA (sin presupuesto asociado),
   //    la consideramos "ENTREGADA" a efectos logísticos.
-  const hasOrder =
-    !!(v.orderId ??
-       v.ordersId ??
-       v.order_id);
+  const hasOrder = !!(v.orderId ?? v.ordersId ?? v.order_id);
   if (!hasOrder) return 'DELIVERED';
 
-  // 1) Si el back ya manda un estado de entrega/logístico explícito, lo usamos
+  // 1) Si el back ya manda un estado explícito
   const explicit = (v.deliveryStatus ?? v.deliveryState ?? '').toString().toUpperCase();
   if (['DELIVERED','COMPLETED','FULL','ENTREGADA','DIRECT'].includes(explicit)) {
     return 'DELIVERED';
@@ -262,7 +207,7 @@ function getDeliveryStateCode(v){
     return 'PENDING_DELIVERY';
   }
 
-  // 2) Flags booleanos tipo fullyDelivered / allDelivered
+  // 2) Flags booleanos
   const fully = v.fullyDelivered ?? v.allDelivered ?? v.deliveryCompleted;
   if (typeof fully === 'boolean'){
     return fully ? 'DELIVERED' : 'PENDING_DELIVERY';
@@ -276,20 +221,15 @@ function getDeliveryStateCode(v){
   if (sold > 0){
     if (pending > 0)       return 'PENDING_DELIVERY';
     if (delivered >= sold) return 'DELIVERED';
-    if (delivered > 0 &&
-        delivered < sold) return 'PENDING_DELIVERY';
-    // vendidas > 0, entregadas = 0 y pending no viene → asumimos pendiente
+    if (delivered > 0 && delivered < sold) return 'PENDING_DELIVERY';
     return 'PENDING_DELIVERY';
   }
 
-  // Sin info de vendidas, pero hay pending/delivered
   if (pending > 0)   return 'PENDING_DELIVERY';
   if (delivered > 0) return 'DELIVERED';
 
-  // Sin información → por defecto consideramos que falta entregar
   return 'PENDING_DELIVERY';
 }
-
 
 const UI_DELIVERY_STATUS = {
   DELIVERED:        'ENTREGADA',

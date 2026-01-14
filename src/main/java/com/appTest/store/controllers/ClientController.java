@@ -27,18 +27,24 @@ public class ClientController {
     @Autowired
     private IClientRepository repoClient;
 
+    // 1. GET con Filtro de Eliminados
+    // Usamos hasAnyAuthority para evitar problemas con el prefijo "ROLE_"
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<List<ClientDTO>> getAllClients() {
-        List<Client> clientList = servClient.getAllClients();
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
+    public ResponseEntity<List<ClientDTO>> getAllClients(
+            @RequestParam(required = false) Boolean includeDeleted
+    ) {
+        // Pasamos el parámetro al servicio
+        List<Client> clientList = servClient.getAllClients(includeDeleted);
+
         List<ClientDTO> clientDTOList = clientList.stream()
-                                        .map(client -> servClient.convertClientToDto(client))
-                                        .collect(Collectors.toList());
+                .map(client -> servClient.convertClientToDto(client))
+                .collect(Collectors.toList());
         return ResponseEntity.ok(clientDTOList);
     }
 
     @GetMapping ("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<ClientDTO> getClientById(@PathVariable Long id) {
         Client client = servClient.getClientById(id);
 
@@ -52,14 +58,14 @@ public class ClientController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<ClientDTO> createClient(@RequestBody @Valid ClientCreateDTO dto) {
         ClientDTO createdClient = servClient.createClient(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdClient);
     }
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<ClientDTO> updateClient(@RequestBody @Valid ClientUpdateDTO dto) {
         servClient.updateClient(dto);
         Client client = repoClient.findById(dto.getIdClient())
@@ -67,14 +73,31 @@ public class ClientController {
         return ResponseEntity.ok(servClient.convertClientToDto(client));
     }
 
+    // 2. DELETE (Soft Delete)
+    // Corregido: hasAuthority en lugar de hasRole para evitar el error 403
     @DeleteMapping ("/{id}")
-    @PreAuthorize("hasRole('ROLE_OWNER')")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
     public ResponseEntity<String> deleteClientById(@PathVariable Long id) {
         Client client = servClient.getClientById(id);
 
         if (client != null) {
             servClient.deleteClientById(id);
-            return ResponseEntity.ok().body("The client has been successfully eliminated.");
+            return ResponseEntity.ok().body("The client has been disabled (Soft Delete).");
+        }
+
+        return ResponseEntity.notFound().build();
+    }
+
+    // 3. RESTORE (Nuevo Endpoint)
+    // Corregido: hasAuthority en lugar de hasRole
+    @PutMapping("/{id}/restore")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
+    public ResponseEntity<String> restoreClientById(@PathVariable Long id) {
+        Client client = servClient.getClientById(id);
+
+        if (client != null) {
+            servClient.restoreClient(id);
+            return ResponseEntity.ok().body("The client has been restored successfully.");
         }
 
         return ResponseEntity.notFound().build();

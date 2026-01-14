@@ -7,12 +7,11 @@
 }
 
 .page{ 
-  max-width:
-  1900px;
-  margin:0 auto; 
-  padding:24px; 
+  max-width: none;        /* ELIMINA EL LÍMITE */
+  width: 100%;            /* Ocupa todo el ancho */
+  padding: 24px; 
+  box-sizing: border-box; /* Evita el scroll horizontal */
 }
-
 .page-head {
   display: flex;
   align-items: center;
@@ -23,9 +22,9 @@
   margin-left: 15px;
 }
  .page-head-editar{ 
-    max-width: 850px;
-    margin: 0 auto;
-   
+    max-width: none; 
+    width: 100%;     
+    margin: 0;
 }
 
 
@@ -78,9 +77,9 @@ a.btn{ text-decoration:none; }
 #lista-compras{ display:grid; min-width: 720px; }
 #lista-compras .fila{
   display:grid;
-  grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr;
+  grid-template-columns: 0.7fr 1fr 1fr 1.5fr 1fr;
   align-items:center; gap:10px;
-  background:#fff; border-radius:10px; padding:12px 14px;
+  background:#fff; border-radius:10px; padding:10px 14px;
   box-shadow: var(--shadow);
 }
 #lista-compras .fila.encabezado{
@@ -91,7 +90,6 @@ a.btn{ text-decoration:none; }
 #lista-compras .fila:not(.encabezado):hover{ box-shadow: 0 6px 16px rgba(0,0,0,.06); }
 
 
-#lista-compras .fila > div:nth-child(3){ text-align:right; }
 
 
 .form-page.narrow { max-width: 900px; margin: 0 auto; }
