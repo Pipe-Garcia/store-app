@@ -1,3 +1,4 @@
+// /static/files-js/clientes.js
 const { authFetch, getToken, safeJson } = window.api;
 const API_URL_CLI = '/clients';
 
@@ -31,18 +32,29 @@ function escapeHtml(s) {
   }[c]));
 }
 
-// Sistema de Notificaciones
+// ===== Sistema de Notificaciones (toasts) =====
 let __toastRoot;
 function ensureToastRoot() {
   if (!__toastRoot) {
     __toastRoot = document.createElement('div');
     Object.assign(__toastRoot.style, {
-      position: 'fixed', top: '80px', right: '16px', left: 'auto', bottom: 'auto',
-      display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 9999,
-      height: '50vh', overflowY: 'auto', pointerEvents: 'none', maxWidth: '400px', width: '400px'
+      position: 'fixed',
+      top: '80px',
+      right: '16px',
+      left: 'auto',
+      bottom: 'auto',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
+      zIndex: 9999,
+      height: '50vh',
+      overflowY: 'auto',
+      pointerEvents: 'none',
+      maxWidth: '400px',
+      width: '400px'
     });
     document.body.appendChild(__toastRoot);
- }
+  }
 }
 function notify(message, type = 'success') {
   ensureToastRoot();
@@ -53,7 +65,7 @@ function notify(message, type = 'success') {
   setTimeout(() => div.remove(), 5000);
 }
 
-/* ================= INICIO ================= */
+/* ================= INICIO (Bootstrap) ================= */
 
 window.addEventListener('DOMContentLoaded', async () => {
   if (!getToken()) { go('login.html'); return; }
@@ -63,26 +75,36 @@ window.addEventListener('DOMContentLoaded', async () => {
   btnPrev   = document.getElementById('pg-prev');
   btnNext   = document.getElementById('pg-next');
 
-  btnPrev?.addEventListener('click', () => { if (page > 0) { page--; renderPaginated(); } });
-  btnNext?.addEventListener('click', () => { 
-    const totalPages = Math.ceil(FILTRADOS.length / PAGE_SIZE);
-    if (page < totalPages - 1) { page++; renderPaginated(); } 
+  btnPrev?.addEventListener('click', () => {
+    if (page > 0) {
+      page--;
+      renderPaginated();
+    }
   });
 
+  btnNext?.addEventListener('click', () => {
+    const totalPages = Math.ceil(FILTRADOS.length / PAGE_SIZE);
+    if (page < totalPages - 1) {
+      page++;
+      renderPaginated();
+    }
+  });
+
+  // Flash desde crear/editar
   const flash = localStorage.getItem('flash');
   if (flash) {
     try {
       const { message, type } = JSON.parse(flash);
-      if(type === 'success') {
-          Swal.fire({ 
-              title: '¡Éxito!', 
-              text: message, 
-              icon: 'success', 
-              timer: 2000, 
-              showConfirmButton: false 
-          });
+      if (type === 'success' && window.Swal) {
+        Swal.fire({
+          title: '¡Éxito!',
+          text: message,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
       } else {
-          notify(message, type || 'success');
+        notify(message, type || 'success');
       }
     } catch (_) {}
     localStorage.removeItem('flash');
@@ -97,29 +119,32 @@ window.addEventListener('DOMContentLoaded', async () => {
 function bindFilters() {
   const deb = debounce(applyLocalFilters, 300);
 
-  // Filtros originales
   $('#filtroDni')?.addEventListener('input', deb);
   $('#filtroNombre')?.addEventListener('input', deb);
   
-  // El cambio de estado recarga desde el backend
+  // Cambiar estado recarga desde backend (para incluir/excluir inactivos)
   $('#filtroEstado')?.addEventListener('change', reloadFromBackend);
 
   $('#btnLimpiar')?.addEventListener('click', () => {
     if ($('#filtroDni'))    $('#filtroDni').value = '';
     if ($('#filtroNombre')) $('#filtroNombre').value = '';
-    if ($('#filtroEstado')) $('#filtroEstado').value = 'ACTIVE'; 
+    if ($('#filtroEstado')) $('#filtroEstado').value = 'ACTIVE';
     reloadFromBackend();
   });
 }
 
 async function reloadFromBackend() {
   const contenedor = $('#lista-clientes');
-  contenedor.innerHTML = `<div class="fila"><div style="grid-column:1/-1; text-align:center;">Cargando...</div></div>`;
+  contenedor.innerHTML = `
+    <div class="fila">
+      <div style="grid-column:1/-1; text-align:center;">Cargando...</div>
+    </div>`;
 
   try {
     const q = new URLSearchParams();
     const estadoSeleccionado = $('#filtroEstado')?.value || 'ACTIVE';
 
+    // Si pide INACTIVE o ALL => pedimos includeDeleted=true al back
     if (estadoSeleccionado === 'INACTIVE' || estadoSeleccionado === 'ALL') {
       q.set('includeDeleted', 'true');
     }
@@ -139,7 +164,12 @@ async function reloadFromBackend() {
   } catch (err) {
     console.error(err);
     notify('Error al cargar clientes', 'error');
-    contenedor.innerHTML = `<div class="fila"><div style="grid-column:1/-1; color:red; text-align:center;">Error de conexión.</div></div>`;
+    contenedor.innerHTML = `
+      <div class="fila">
+        <div style="grid-column:1/-1; color:red; text-align:center;">
+          Error de conexión.
+        </div>
+      </div>`;
   }
 }
 
@@ -151,8 +181,8 @@ function applyLocalFilters() {
   const estadoSel = ($('#filtroEstado')?.value || 'ACTIVE');
 
   lista = lista.filter(c => {
-    const cDni = (c.dni || '').toLowerCase();
-    const cNom = `${c.name} ${c.surname}`.toLowerCase();
+    const cDni    = (c.dni || '').toLowerCase();
+    const cNom    = `${c.name} ${c.surname}`.toLowerCase();
     const cStatus = (c.status || 'ACTIVE').toUpperCase();
 
     const matchDni = !dniTxt || cDni.includes(dniTxt);
@@ -165,6 +195,7 @@ function applyLocalFilters() {
     return matchDni && matchNom && matchEstado;
   });
 
+  // Activos primero, luego inactivos; dentro de cada grupo, ID desc
   lista.sort((a, b) => {
     const aAct = (a.status === 'ACTIVE');
     const bAct = (b.status === 'ACTIVE');
@@ -187,8 +218,8 @@ function renderPaginated() {
   if (totalPages > 0 && page >= totalPages) page = totalPages - 1;
   if (totalPages === 0) page = 0;
 
-  const from = page * PAGE_SIZE;
-  const to   = from + PAGE_SIZE;
+  const from  = page * PAGE_SIZE;
+  const to    = from + PAGE_SIZE;
   const slice = FILTRADOS.slice(from, to);
 
   renderLista(slice);
@@ -198,8 +229,8 @@ function renderPaginated() {
 function renderPager(totalElems, totalPages) {
   if (!infoPager) return;
   infoPager.textContent = `Pág ${page+1} de ${totalPages || 0} · Total: ${totalElems}`;
-  btnPrev.disabled = page <= 0;
-  btnNext.disabled = page >= (totalPages - 1) || totalPages === 0;
+  if (btnPrev) btnPrev.disabled = page <= 0;
+  if (btnNext) btnNext.disabled = page >= (totalPages - 1) || totalPages === 0;
 }
 
 function renderLista(lista) {
@@ -219,31 +250,45 @@ function renderLista(lista) {
   if (!lista.length) {
     const div = document.createElement('div');
     div.className = 'fila';
-    div.innerHTML = `<div style="grid-column:1/-1; color:#666; text-align:center; padding:15px;">No se encontraron resultados.</div>`;
+    div.innerHTML = `
+      <div style="grid-column:1/-1; color:#666; text-align:center; padding:15px;">
+        No se encontraron resultados.
+      </div>`;
     contenedor.appendChild(div);
     return;
   }
 
   lista.forEach(c => {
     const isInactive = (c.status === 'INACTIVE');
-    const rowClass = isInactive ? 'fila disabled' : 'fila';
+    const rowClass   = isInactive ? 'fila disabled' : 'fila';
 
-    const id   = c.idClient;
-    const nom  = escapeHtml(`${c.name} ${c.surname}`); // <-- ESTE ES EL NOMBRE QUE QUEREMOS
-    const dni  = escapeHtml(c.dni || '-');
-    const tel  = escapeHtml(c.phoneNumber || '-');
-    
+    const id  = c.idClient;
+    const nom = escapeHtml(`${c.name} ${c.surname}`);
+    const dni = escapeHtml(c.dni || '-');
+    const tel = escapeHtml(c.phoneNumber || '-');
+
     const pillClass = isInactive ? 'pill pending' : 'pill completed';
     const pillText  = isInactive ? 'INACTIVO' : 'ACTIVO';
     const pillHtml  = `<span class="${pillClass}">${pillText}</span>`;
 
-    let btnAccion = '';
-    // AGREGAMOS data-name="${nom}" AQUÍ ABAJO
-    if (isInactive) {
-        btnAccion = `<button class="btn restore" data-restore="${id}" data-name="${nom}" title="Restaurar / Reactivar">Restaurar</button>`;
-    } else {
-        btnAccion = `<button class="btn danger" data-del="${id}" data-name="${nom}" title="Eliminar (Deshabilitar)">🗑️</button>`;
-    }
+    // Botones con data-name para SweetAlert
+    const btnDisable = `
+      <button
+        class="btn outline"
+        data-del="${id}"
+        data-name="${nom}"
+        title="Deshabilitar cliente"
+      >🚫</button>
+    `;
+    const btnRestore = `
+      <button
+        class="btn outline"
+        data-restore="${id}"
+        data-name="${nom}"
+        title="Restaurar cliente"
+      >↩️</button>
+    `;
+    const btnAccion = isInactive ? btnRestore : btnDisable;
 
     const fila = document.createElement('div');
     fila.className = rowClass;
@@ -254,7 +299,12 @@ function renderLista(lista) {
       <div>${tel}</div>
       <div style="text-align:center;">${pillHtml}</div>
       <div class="acciones">
-        <a class="btn outline" href="editar-clientes.html?id=${id}" title="Editar">✏️</a>
+        <a class="btn outline"
+           href="editar-clientes.html?id=${id}"
+           title="Editar cliente">✏️</a>
+        <a class="btn outline"
+           href="detalle-cliente.html?id=${id}"
+           title="Ver detalle del cliente">👁️</a>
         ${btnAccion}
       </div>
     `;
@@ -266,87 +316,114 @@ function renderLista(lista) {
     if (!btn) return;
     const delId = btn.getAttribute('data-del');
     const resId = btn.getAttribute('data-restore');
-    const name  = btn.getAttribute('data-name'); // <-- CAPTURAMOS EL NOMBRE
+    const name  = btn.getAttribute('data-name') || '';
 
-    // PASAMOS (ID, NOMBRE) A LAS FUNCIONES
     if (delId) eliminarCliente(delId, name);
     if (resId) restaurarCliente(resId, name);
   };
 }
 
-/* ================== ACCIONES (CON SWEETALERT2) ================== */
+/* ================== ACCIONES (API + SweetAlert2) ================== */
 
 function eliminarCliente(id, name) {
-  // Usamos el nombre en el texto
+  if (!window.Swal) {
+    // Fallback si por alguna razón no cargó SweetAlert2
+    if (!confirm(`¿Seguro que querés deshabilitar al cliente ${name || ('#'+id)}?`)) return;
+    return eliminarClienteSimple(id);
+  }
+
   Swal.fire({
     title: '¿Estás seguro?',
-    text: `Vas a deshabilitar al cliente ${name}. Podrás reactivarlo luego.`,
+    text: `Vas a deshabilitar al cliente ${name || ('#' + id)}. Podrás reactivarlo luego.`,
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonColor: '#d33',   
-    cancelButtonColor: '#3085d6', 
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
     confirmButtonText: 'Deshabilitar',
     cancelButtonText: 'Cancelar'
   }).then(async (result) => {
-    if (result.isConfirmed) {
-      try {
-        const res = await authFetch(`${API_URL_CLI}/${id}`, { method: 'DELETE' });
-        
-        if (!res.ok) {
-           if (res.status === 403) throw new Error('No tienes permisos de OWNER');
-           throw new Error(`Error HTTP ${res.status}`);
-        }
-
-        Swal.fire(
-          '¡Deshabilitado!',
-          `El cliente ${name} ha pasado a estado Inactivo.`,
-          'success'
-        );
-
-        reloadFromBackend();
-
-      } catch (err) {
-        console.error(err);
-        Swal.fire('Error', err.message, 'error');
-      }
-    }
+    if (!result.isConfirmed) return;
+    await eliminarClienteSimple(id, name);
   });
 }
 
-function restaurarCliente(id, name) { 
+async function eliminarClienteSimple(id, name) {
+  try {
+    const res = await authFetch(`${API_URL_CLI}/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      if (res.status === 403) throw new Error('Requiere permisos de OWNER');
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    if (window.Swal) {
+      Swal.fire(
+        '¡Deshabilitado!',
+        `El cliente ${name || ('#' + id)} ha pasado a estado Inactivo.`,
+        'success'
+      );
+    } else {
+      notify('Cliente deshabilitado (Inactivo)', 'success');
+    }
+
+    reloadFromBackend();
+  } catch (err) {
+    console.error(err);
+    if (window.Swal) {
+      Swal.fire('Error', err.message, 'error');
+    } else {
+      notify(err.message, 'error');
+    }
+  }
+}
+
+function restaurarCliente(id, name) {
+  if (!window.Swal) {
+    if (!confirm(`¿Reactivar al cliente ${name || ('#'+id)}?`)) return;
+    return restaurarClienteSimple(id, name);
+  }
+
   Swal.fire({
     title: '¿Reactivar cliente?',
-    text: `El cliente ${name} volverá a estar Activo.`,
+    text: `El cliente ${name || ('#' + id)} volverá a estar Activo.`,
     icon: 'question',
     showCancelButton: true,
-    confirmButtonColor: '#28a745', 
+    confirmButtonColor: '#28a745',
     cancelButtonColor: '#d33',
     confirmButtonText: 'Restaurar',
     cancelButtonText: 'Cancelar'
   }).then(async (result) => {
-    if (result.isConfirmed) {
-      try {
-        const res = await authFetch(`${API_URL_CLI}/${id}/restore`, { method: 'PUT' });
-        
-        if (!res.ok) {
-           if (res.status === 403) throw new Error('No tienes permisos de OWNER');
-           throw new Error(`Error HTTP ${res.status}`);
-        }
-
-        Swal.fire({
-            title: '¡Restaurado!',
-            text: `El cliente ${name} está activo nuevamente.`,
-            icon: 'success',
-            timer: 2000,
-            showConfirmButton: false
-        });
-
-        reloadFromBackend();
-
-      } catch (err) {
-        console.error(err);
-        Swal.fire('Error', err.message, 'error');
-      }
-    }
+    if (!result.isConfirmed) return;
+    await restaurarClienteSimple(id, name);
   });
+}
+
+async function restaurarClienteSimple(id, name) {
+  try {
+    const res = await authFetch(`${API_URL_CLI}/${id}/restore`, { method: 'PUT' });
+    if (!res.ok) {
+      if (res.status === 403) throw new Error('Requiere permisos de OWNER');
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    if (window.Swal) {
+      Swal.fire({
+        title: '¡Restaurado!',
+        text: `El cliente ${name || ('#' + id)} está activo nuevamente.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } else {
+      notify('Cliente restaurado exitosamente', 'success');
+    }
+
+    reloadFromBackend();
+  } catch (err) {
+    console.error(err);
+    if (window.Swal) {
+      Swal.fire('Error', err.message, 'error');
+    } else {
+      notify(err.message, 'error');
+    }
+  }
 }
