@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping ("/materials")
+@RequestMapping("/materials")
 public class MaterialController {
 
     @Autowired
@@ -25,20 +25,23 @@ public class MaterialController {
     @Autowired
     private IMaterialRepository repoMat;
 
+    // GET con filtro de eliminados (igual que clientes/proveedores)
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<List<MaterialDTO>> getAllMaterials() {
-        List<Material> materialList = servMat.getAllMaterials();
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
+    public ResponseEntity<List<MaterialDTO>> getAllMaterials(
+            @RequestParam(required = false) Boolean includeDeleted
+    ) {
+        List<Material> materialList = servMat.getAllMaterials(includeDeleted);
 
         List<MaterialDTO> materialDTOList = materialList.stream()
-                                            .map(material -> servMat.convertMaterialToDto(material))
-                                            .collect(Collectors.toList());
+                .map(servMat::convertMaterialToDto)
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(materialDTOList);
     }
 
-    @GetMapping ("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<MaterialDTO> getMaterialById(@PathVariable Long id) {
         Material material = servMat.getMaterialById(id);
         if (material == null) {
@@ -48,55 +51,80 @@ public class MaterialController {
         return ResponseEntity.ok(materialDTO);
     }
 
-    @GetMapping ("/stock-alert")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @GetMapping("/stock-alert")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<MaterialStockAlertDTO>> getMaterialsWithLowStock() {
         List<MaterialStockAlertDTO> materialStockAlertDTOList = servMat.getMaterialsWithLowStock();
         return ResponseEntity.ok(materialStockAlertDTOList);
     }
 
-    @GetMapping ("/most-expensive")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @GetMapping("/most-expensive")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<MaterialMostExpensiveDTO> getMaterialByHighestPrice() {
         MaterialMostExpensiveDTO materialMostExpensiveDTO = servMat.getMaterialByHighestPrice();
         return ResponseEntity.ok(materialMostExpensiveDTO);
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<MaterialDTO>> search(
-            @RequestParam(required=false) String q,
-            @RequestParam(required=false) Long familyId,
-            @RequestParam(required=false) BigDecimal minPrice,
-            @RequestParam(required=false) BigDecimal maxPrice
-    ){
-        var list = repoMat.search((q!=null && !q.isBlank())? q : null, familyId, minPrice, maxPrice);
-        return ResponseEntity.ok(list.stream().map(servMat::convertMaterialToDto).toList());
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long familyId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false, defaultValue = "false") boolean includeDeleted
+    ) {
+        var list = repoMat.search(
+                (q != null && !q.isBlank()) ? q : null,
+                familyId,
+                minPrice,
+                maxPrice,
+                includeDeleted
+        );
+
+        return ResponseEntity.ok(
+                list.stream()
+                        .map(servMat::convertMaterialToDto)
+                        .toList()
+        );
     }
 
+
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<MaterialDTO> createMaterial(@RequestBody @Valid MaterialCreateDTO dto) {
         MaterialDTO createdMaterial =  servMat.createMaterial(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdMaterial);
     }
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<MaterialDTO> updateMaterial(@RequestBody @Valid MaterialUpdateDTO dto) {
         servMat.updateMaterial(dto);
         Material material = servMat.getMaterialById(dto.getIdMaterial());
         return ResponseEntity.ok(servMat.convertMaterialToDto(material));
     }
 
+    // Soft delete
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_OWNER')")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
     public ResponseEntity<String> deleteMaterialById(@PathVariable Long id) {
         boolean deleted = servMat.deleteMaterialById(id);
         if (deleted) {
-            return ResponseEntity.ok("The material has been successfully deleted.");
+            return ResponseEntity.ok("The material has been disabled (Soft Delete).");
         }
         return ResponseEntity.notFound().build();
     }
 
+    // RESTORE
+    @PutMapping("/{id}/restore")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
+    public ResponseEntity<String> restoreMaterial(@PathVariable Long id) {
+        Material material = servMat.getMaterialById(id);
+        if (material == null) {
+            return ResponseEntity.notFound().build();
+        }
+        servMat.restoreMaterial(id);
+        return ResponseEntity.ok("The material has been restored successfully.");
+    }
 }

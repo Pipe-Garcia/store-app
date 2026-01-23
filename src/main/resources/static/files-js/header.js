@@ -80,17 +80,31 @@ function initHeaderUser(){
   // Dropdown
   const btn = document.getElementById('userBtn');
   const menu = document.getElementById('userMenu');
-  btn?.addEventListener('click', ()=>{
-    const open = menu.hidden;
-    menu.hidden = !open;
-    btn.setAttribute('aria-expanded', String(open));
-  });
-  document.addEventListener('click', (e)=>{
-    if (!menu.hidden && !menu.contains(e.target) && e.target!==btn) {
-      menu.hidden = true;
-      btn.setAttribute('aria-expanded', 'false');
-    }
-  });
+
+  if (btn && menu) {
+    // Abrir/cerrar menú
+    btn.addEventListener('click', (ev)=>{
+      // Evita que el click llegue al listener global y lo cierre
+      ev.stopPropagation();
+      const open = menu.hidden;
+      menu.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+    });
+
+    // Cerrar al hacer click fuera
+    document.addEventListener('click', (e)=>{
+      // Si el menú está abierto y el click no fue ni dentro del menú
+      // ni en ninguna parte del botón (ni sus hijos), lo cerramos
+      if (
+        !menu.hidden &&
+        !menu.contains(e.target) &&
+        !btn.contains(e.target)
+      ) {
+        menu.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
 
   // Logout unificado
   document.getElementById('logoutBtn')?.addEventListener('click', ()=>{

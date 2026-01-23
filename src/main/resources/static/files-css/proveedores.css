@@ -57,11 +57,11 @@
 
 .btn.success {background-color: rgb(0, 203, 0); color: #fff; }
 .btn.primary { background:#1c7ed6; color:#fff; }
-.btn.danger  { background:#f84052; color:#fff; }
+.btn.danger  { background:#fff; color:#212529; border-color:#ced4da;}
 .btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
 
 .btn.primary:hover{ background:#1864ab; }
-.btn.danger:hover { background:#c92a2a; }
+.btn.danger:hover { background:#f1f3f5; }
 .btn.outline:hover{ background:#f1f3f5; }
 
 a.btn{ text-decoration:none; }

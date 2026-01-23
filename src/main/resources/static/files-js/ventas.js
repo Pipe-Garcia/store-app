@@ -26,7 +26,7 @@ function go(page){
 }
 
 // 🔹 Paginación en front
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 8;
 let page = 0;
 let FILTRADAS = [];
 let infoPager, btnPrev, btnNext;

@@ -21,50 +21,154 @@
   --shadow-2: 0 6px 18px rgba(0,0,0,.35);
 }
 
-/* Header & nav */
-.site-header{position:sticky;top:0;z-index:1000;background:var(--nav-bg)!important;border-bottom:1px solid var(--nav-border)}
-.site-nav{max-width:1600px;margin:0 auto;height:56px;display:flex;align-items:center;gap:18px;padding:0 20px;color:var(--nav-text)}
-.site-nav .brand{font-weight:700;color:#e8edf6;white-space:nowrap;text-decoration:none}
-.site-nav .menu{display:flex;gap:12px;list-style:none;margin:0;padding:0;overflow:auto}
-.site-nav .menu a{display:inline-block;padding:6px 12px;border-radius:999px;color:var(--nav-link);text-decoration:none;transition:background .15s,color .15s}
-.site-nav .menu a:hover{background:var(--nav-hover);color:#e9eef8}
-.site-nav .menu a.is-active{background:var(--nav-active);color:#fff;border:1px solid #27466f}
+/* ================== HEADER & NAV ================== */
 
-/* Layout header */
-.site-nav{ display:flex; align-items:center; gap:12px; }
-.site-nav .menu{ margin-left:14px; display:flex; gap:12px; flex-wrap:wrap; }
+.site-header{
+  position:sticky;
+  top:0;
+  z-index:1000;
+  background:var(--nav-bg)!important;
+  border-bottom:1px solid var(--nav-border);
+}
 
-/* Botón de tema */
-.theme-toggle{margin-left:auto;background:transparent;border:none;cursor:pointer;font-size:18px;padding:6px 8px;border-radius:8px;color:var(--nav-text)}
-.theme-toggle:hover{background:rgba(255,255,255,.06)}
-.theme-toggle:focus{outline:none;box-shadow:0 0 0 2px rgba(100,150,250,.6)}
+/* Contenedor principal del nav */
+.site-nav{
+  max-width:1600px;
+  margin:0 auto;
+  height:56px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 20px;
+  color:var(--nav-text);
+  flex-wrap:nowrap;           /* todo en una sola línea */
+}
+
+/* Marca */
+.site-nav .brand{
+  font-weight:700;
+  color:#e8edf6;
+  white-space:nowrap;
+  text-decoration:none;
+}
+
+/* Menú principal */
+.site-nav .menu{
+  margin-left:14px;
+  list-style:none;
+  display:flex;
+  gap:12px;
+  padding:0;
+  /* clave para que no se baje de renglón */
+  flex-wrap:nowrap;
+  white-space:nowrap;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:thin;
+  scrollbar-color:#4b5563 transparent;
+  flex:1 1 auto;        /* ocupa el espacio central entre brand y user */
+  min-width:0;          /* permite que haga scroll si falta ancho */
+}
+
+/* Scrollbar (WebKit) */
+.site-nav .menu::-webkit-scrollbar{
+  height:6px;
+}
+.site-nav .menu::-webkit-scrollbar-track{
+  background:transparent;
+}
+.site-nav .menu::-webkit-scrollbar-thumb{
+  background:#4b5563;
+  border-radius:999px;
+}
+
+/* Links del menú */
+.site-nav .menu a{
+  display:inline-block;
+  padding:6px 12px;
+  border-radius:999px;
+  color:var(--nav-link);
+  text-decoration:none;
+  transition:background .15s,color .15s;
+}
+.site-nav .menu a:hover{
+  background:var(--nav-hover);
+  color:#e9eef8;
+}
+.site-nav .menu a.is-active{
+  background:var(--nav-active);
+  color:#fff;
+  border:1px solid #27466f;
+}
+
+/* ===== Botón de tema ===== */
+.theme-toggle{
+  margin-left:auto;           /* empuja tema + user hacia la derecha */
+  background:transparent;
+  border:none;
+  cursor:pointer;
+  font-size:18px;
+  padding:6px 8px;
+  border-radius:8px;
+  color:var(--nav-text);
+}
+.theme-toggle:hover{
+  background:rgba(255,255,255,.06);
+}
+.theme-toggle:focus{
+  outline:none;
+  box-shadow:0 0 0 2px rgba(100,150,250,.6);
+}
 
 /* ===== User chip / dropdown ===== */
-.header-user{ margin-left:auto; position:relative; z-index:1200; }
+.header-user{
+  margin-left:8px;            /* ya NO auto, queda pegado al theme-toggle */
+  position:relative;
+  z-index:1200;
+}
 
 .user-btn{
   border:1px solid var(--grid, #e5e7eb);
   background: var(--card, #ffffff);
   color: var(--text, #111827);
-  padding:6px 10px; border-radius:999px; cursor:pointer;
-  display:flex; align-items:center; gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
 .user-btn:hover{
   background: color-mix(in oklab, var(--bg, #f5f6f8) 85%, transparent);
 }
 
 .user-menu{
-  position:absolute; right:0; top:calc(100% + 8px);
-  background: var(--card, #ffffff); color: var(--text, #111827);
-  border:1px solid var(--grid, #e5e7eb); border-radius:12px;
-  min-width:200px; box-shadow: var(--shadow-2, 0 6px 16px rgba(0,0,0,.14)); padding:10px;
+  position:absolute;
+  right:0;
+  top:calc(100% + 8px);
+  background: var(--card, #ffffff);
+  color: var(--text, #111827);
+  border:1px solid var(--grid, #e5e7eb);
+  border-radius:12px;
+  min-width:200px;
+  box-shadow: var(--shadow-2, 0 6px 16px rgba(0,0,0,.14));
+  padding:10px;
 }
-.user-menu a, .user-menu button{
-  display:block; width:100%; text-align:left; padding:8px 10px;
-  border:none; background:transparent; color:var(--text, #111827);
-  text-decoration:none; border-radius:8px; cursor:pointer;
+.user-menu a,
+.user-menu button{
+  display:block;
+  width:100%;
+  text-align:left;
+  padding:8px 10px;
+  border:none;
+  background:transparent;
+  color:var(--text, #111827);
+  text-decoration:none;
+  border-radius:8px;
+  cursor:pointer;
 }
-.user-menu a:hover, .user-menu button:hover{
+.user-menu a:hover,
+.user-menu button:hover{
   background: color-mix(in oklab, var(--bg, #f5f6f8) 80%, transparent);
 }
 .user-menu .danger{ color:#b91c1c; }
@@ -72,3 +176,59 @@
 
 /* Enlaces visibles sólo para OWNER */
 .only-owner { display: none !important; }
+
+/* ================== RESPONSIVE NAV ================== */
+
+/* Ajustes suaves en anchos medios */
+@media (max-width: 900px){
+  .site-nav{
+    padding:0 12px;
+    gap:8px;
+  }
+
+  .site-nav .brand{
+    font-size:0.95rem;
+  }
+
+  .site-nav .menu{
+    gap:8px;
+  }
+
+  .site-nav .menu a{
+    padding:4px 9px;
+    font-size:0.9rem;
+  }
+
+  .theme-toggle{
+    padding:4px 6px;
+    font-size:16px;
+  }
+
+  .user-btn{
+    padding:4px 8px;
+  }
+}
+
+/* Ventanas muy chicas / móvil horizontal */
+@media (max-width: 700px){
+  .site-nav{
+    padding:0 8px;
+    gap:6px;
+  }
+
+  .site-nav .brand{
+    font-size:0.85rem;
+    max-width:120px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .site-nav .menu{
+    gap:6px;
+  }
+
+  .site-nav .menu a{
+    padding:4px 8px;
+    font-size:0.85rem;
+  }
+}

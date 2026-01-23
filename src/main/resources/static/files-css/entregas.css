@@ -120,20 +120,21 @@ a.btn { text-decoration: none; }
 .acciones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 
 
-/* ====== TABLA DE ENTREGAS (Centrada y 5 Columnas) ====== */
+
+/* ====== TABLA DE ENTREGAS (5 columnas en desktop) ====== */
 
 .tabla {
-  display: grid;
-  min-width: 900px;
-  overflow-x: auto;
+  width: 100%;
+  display: block;
+  overflow-x: auto; /* por si alguna columna crece mucho */
 }
 
-/* Estilo de filas */
+/* Fila tipo tabla (desktop ≥ ~900px) */
 #lista-entregas .fila,
 .tabla .fila {
   display: grid;
-  /* 5 Columnas Iguales */
-  grid-template-columns: 130px 2fr 0.5fr 1.6fr 0.8fr;
+  /* Fecha | Cliente | Venta | Estado | Acciones */
+  grid-template-columns: 130px 2fr 0.6fr 1.4fr 1fr;
   align-items: center;
   gap: 10px;
   background: #fff;
@@ -143,6 +144,7 @@ a.btn { text-decoration: none; }
   border: 1px solid #f1f3f5;
   margin-bottom: 0;
 }
+
 
 /* Encabezado */
 #lista-entregas .fila.encabezado {
@@ -240,17 +242,102 @@ a.btn { text-decoration: none; }
   margin-bottom: 20px;
 }
 
-/* Responsive */
+/* ====== Responsive tabla / filtros / header local ====== */
+
+/* Pantallas medianas: tipografía y padding un poco más chicos */
 @media (max-width: 1100px){
+  .page { padding: 16px; }
+
   #lista-entregas .fila {
     font-size: 0.9rem;
   }
 }
+
+/* Tablets / ventanas ~900px: seguimos en 5 columnas, pero más compactas */
 @media (max-width: 900px){
-  .filters input[type="text"] { min-width: 150px; }
+  .filters .row {
+    gap: 8px;
+  }
+
+  #lista-entregas .fila,
+  .tabla .fila {
+    grid-template-columns: 110px 2fr 0.6fr 1.2fr 0.9fr;
+    padding: 8px 10px;
+  }
+
+  /* Cliente alineado a la izquierda para no apretar tanto el texto */
+  #lista-entregas .fila > div:nth-child(2){
+    justify-content: flex-start;
+    text-align: left;
+  }
+
   .form-page .grid { grid-template-columns: 1fr; }
   .view-delivery { grid-template-columns: 1fr; }
 }
+
+/* Mobile / ventana chica (~≤700px): pasamos a “cards” apiladas */
+@media (max-width: 700px){
+  .page { padding: 12px; }
+
+  /* Header local: título arriba, botón abajo */
+  .page-head{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .page-head h1{
+    margin-left: 0;
+  }
+
+  /* Encabezado tipo tabla deja de tener sentido → lo ocultamos */
+  #lista-entregas .fila.encabezado {
+    display: none;
+  }
+
+  /* Cada entrega:
+       Fecha   | Estado
+       Cliente | Cliente
+       Venta   | Acciones
+  */
+  #lista-entregas .fila,
+  .tabla .fila {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "fecha estado"
+      "cliente cliente"
+      "venta acciones";
+    align-items: flex-start;
+    padding: 10px 12px;
+  }
+
+  #lista-entregas .fila > div {
+    width: 100%;
+  }
+
+  #lista-entregas .fila > div:nth-child(1){ /* Fecha */
+    grid-area: fecha;
+    justify-content: flex-start;
+  }
+  #lista-entregas .fila > div:nth-child(2){ /* Cliente */
+    grid-area: cliente;
+    justify-content: flex-start;
+    text-align: left;
+  }
+  #lista-entregas .fila > div:nth-child(3){ /* Venta */
+    grid-area: venta;
+    justify-content: flex-start;
+  }
+  #lista-entregas .fila > div:nth-child(4){ /* Estado */
+    grid-area: estado;
+    justify-content: flex-end;
+  }
+  #lista-entregas .fila > div:nth-child(5){ /* Acciones */
+    grid-area: acciones;
+    justify-content: flex-end;
+  }
+}
+
 
 .seccion-crearEntrega #items .fila {
   grid-template-columns: 2fr 1.5fr 0.8fr 1fr; 

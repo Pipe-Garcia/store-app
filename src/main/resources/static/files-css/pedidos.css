@@ -1,3 +1,6 @@
+/* ==========================================================
+   PRESUPUESTOS / PEDIDOS - RESPONSIVE
+   ========================================================== */
 
 :root{
   --gap: 14px;
@@ -10,73 +13,110 @@
   --c-border:#e9ecef;
 }
 
+/* Reset suave */
+* { box-sizing: border-box; }
+
+/* ====== Layout base ====== */
 .page{ 
-    max-width: none;        
-    width: 100%;            
-    padding: 24px; 
-    box-sizing: border-box; 
+  max-width: none;        
+  width: 100%;            
+  padding: 24px; 
+  box-sizing: border-box; 
 }
-.page-head{ display:flex; align-items:center; gap:35px; margin-bottom:12px; }
+
+.page-head{
+  display:flex;
+  align-items:center;
+  gap:35px;
+  margin-bottom:12px;
+}
 .page-head h1{ margin-left: 15px; }
 
 .card{
-  background:#fff; border-radius:var(--radius);
+  background:#fff;
+  border-radius:var(--radius);
   padding:var(--card-pad);
   box-shadow: var(--shadow);
 }
 
-#lista-presupuestos{ display:grid; min-width: 980px; }
-#lista-presupuestos .fila{
-  display:grid;
-  grid-template-columns: repeat(5, 1fr);
-  align-items:center; gap:10px;
-  background:#fff; border-radius:10px; padding:12px 14px;
-  box-shadow: var(--shadow);
+/* ====== Botones + acciones ====== */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 12px;
+  border-radius:8px;
+  border:1px solid transparent;
+  font-weight:500;
+  cursor:pointer;
+  text-decoration:none;
+  line-height:1;
+  transition: background .15s, border-color .15s, transform .02s;
+  letter-spacing: .3px;
 }
-#lista-presupuestos .fila.encabezado{
-  background:#f1f3f5; font-weight:800; box-shadow: var(--shadow) ; position:sticky; top:0; z-index:1;
-  border:1px solid var(--c-border);
+.btn:active{ transform: translateY(1px); }
+
+.btn.success {background-color: rgb(0, 203, 0); color: #fff; }
+.btn.primary { background:#1c7ed6; color:#fff; }
+.btn.danger  { background:#f84052; color:#fff; }
+.btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
+
+.btn.primary:hover{ background:#1864ab; }
+.btn.danger:hover { background:#c92a2a; }
+.btn.outline:hover{ background:#f1f3f5; }
+
+a.btn{ text-decoration:none; }
+.acciones{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
 }
 
-#lista-presupuestos .fila:not(.encabezado):nth-child(odd){ background:#fcfcfd; }
-#lista-presupuestos .fila:not(.encabezado):hover{ box-shadow: 0 6px 16px rgba(0,0,0,.06); }
+/* ==========================================================
+   FILTROS
+   ========================================================== */
 
-#lista-presupuestos .fila > div:nth-child(3),
-#lista-presupuestos .fila > div:nth-child(4),
-#lista-presupuestos .fila > div:nth-child(5){ text-align:right; }
-
-.tag{ display:inline-block; padding:4px 10px; border-radius:999px; font-size:.85rem; font-weight:700; }
-.tag.reservado{ background:#e8f1fd; color:#1b4fa3; border:1px solid #d0e2ff; }
-
-@media (max-width: 1100px){
-  #lista-presupuestos .fila{
-    grid-template-columns: .7fr 1.4fr .9fr .9fr .9fr 1fr 1.2fr;
-  }
+.filters.card{
+  margin-bottom: 16px;
 }
-@media (max-width: 900px){
-  .page { padding:16px; }
-  .card { overflow-x:auto; }
-}
-
-
 
 .filters .row{
-  display:flex; flex-wrap:wrap; align-items:flex-end; gap:28px; margin-bottom: 15px;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-end;
+  gap:28px;
+  margin-bottom: 15px;
 }
+
 .filters label{
   display:flex; 
-  flex-direction:column; gap:6px; 
-  font-size:1.1rem; 
+  flex-direction:column;
+  gap:6px; 
+  font-size:0.95rem; 
   color:#555; 
   min-width: 160px;
-
   font-weight: 600;
 }
+
 .filters input[type="date"],
 .filters input[type="number"],
 .filters select,
 .filters input[type="text"]{
-  padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
+  padding:8px 10px;
+  border:1px solid #dfe3e6;
+  border-radius:8px;
+  background:#fff;
+  transition: box-shadow .15s, border-color .15s;
+  outline:none;
+}
+
+.filters input[type="date"]:focus,
+.filters input[type="number"]:focus,
+.filters select:focus,
+.filters input[type="text"]:focus{
+  border-color:#a5b4fc;
+  box-shadow:0 0 0 3px rgba(99,102,241,.15);
 }
 
 .stack { display:flex; flex-direction:column; gap:6px; }
@@ -85,12 +125,14 @@
 
 .filters label.wide{ min-width:320px; max-width:320px; }
 
+/* Slider de precio (lo mantenemos por si lo usás después) */
 .price-range{
   width: 100%;
-  height: 32px;       /* más bajito para no “sobresalir” */
-  margin-top: 6px;    /* baja levemente la barra para alinear con inputs */
+  height: 32px;
+  margin-top: 6px;
   position: relative;
-  display: flex; align-items: center;
+  display: flex;
+  align-items: center;
 }
 
 .price-range input[type="range"]{
@@ -131,123 +173,125 @@
 }
 
 .price-legend {
-  position: absolute; top: 24px; left: 0; right: 0;
-  display: flex; justify-content: space-between;
-  font-size: .85rem; color: black;
-}
-@media (max-width: 980px){
-  .price-range{ width: 260px; }
-}
-@media (max-width: 600px){
-  .price-range{ width: 200px; }
-}
-
-
-.subcol{ display:flex; flex-direction:column; gap:4px; }
-.sub{ color:#6b7280; font-size:.8rem; line-height:1; }
-
-.tag.pendiente{ background:#fff7ed; color:#a16207; border:1px solid #fde68a; }
-.tag.vendido{ background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; }
-.col-estado{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-#lista-presupuestos .fila:not(.encabezado):hover{
-  transform: translateY(-1px);
-  box-shadow: 0 8px 22px rgba(0,0,0,.08);
+  position: absolute;
+  top: 24px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: .85rem;
+  color: black;
 }
 
-.filters input[type="date"],
-.filters input[type="number"],
-.filters select,
-.filters input[type="text"]{
-  transition: box-shadow .15s, border-color .15s;
-  outline:none;
-}
-.filters input[type="date"]:focus,
-.filters input[type="number"]:focus,
-.filters select:focus,
-.filters input[type="text"]:focus{
-  border-color:#a5b4fc;
-  box-shadow:0 0 0 3px rgba(99,102,241,.15);
+/* ==========================================================
+   LISTA DE PRESUPUESTOS
+   ========================================================== */
+
+/* El <section class="list"> se comporta como una card que hace scroll horizontal en pantallas chicas */
+.list{
+  background:#fff;
+  border-radius:var(--radius);
+  padding:var(--card-pad);
+  box-shadow: var(--shadow);
+  overflow-x:auto;
 }
 
-.col-estado{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  justify-content:center;             /* centrado por defecto */
-}
-
-.col-estado:has(a.tag.reservado){
-  justify-content:flex-start;
-}
-
-
-.btn{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:8px 12px; border-radius:8px; border:1px solid transparent;
-  font-weight:500; cursor:pointer; text-decoration:none; line-height:1;
-  transition: background .15s, border-color .15s, transform .02s;
-  letter-spacing: .3px;
-}
-.btn:active{ transform: translateY(1px); }
-
-.btn.success {background-color: rgb(0, 203, 0); color: #fff; }
-.btn.primary { background:#1c7ed6; color:#fff; }
-.btn.danger  { background:#f84052; color:#fff; }
-.btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
-
-.btn.primary:hover{ background:#1864ab; }
-.btn.danger:hover { background:#c92a2a; }
-.btn.outline:hover{ background:#f1f3f5; }
-
-a.btn{ text-decoration:none; }
-.acciones{ display:flex; flex-wrap:wrap; gap:8px; }
-
-
+/* Contenedor de filas */
 #lista-presupuestos{
   display:grid;
-  
-  min-width: 980px;
+  min-width: 900px;   /* como entregas: en pantallas <900px, se podrá hacer scroll horizontal */
 }
 
+/* Fila genérica (encabezado + datos)
+   Columnas: Fecha | Cliente | Total | Estado | Acciones */
 #lista-presupuestos .fila{
   display:grid;
-  grid-template-columns: 130px 2fr 0.5fr 1.6fr 0.8fr;
+  grid-template-columns: 130px 2fr 0.8fr 1.6fr 0.9fr;
   align-items:center;
   gap:10px;
   background:#fff;
   border-radius:10px;
   padding:12px 14px;
   box-shadow: var(--shadow);
+  border:1px solid var(--c-border);
 }
 
-@media (max-width: 1100px){
-  #lista-presupuestos .fila{
-    /* un poco más comprimido pero siempre 5 columnas */
-    grid-template-columns: 100px 1.8fr 1.1fr 1.6fr 1.6fr;
-  }
+#lista-presupuestos .fila.encabezado{
+  background:#f1f3f5;
+  font-weight:800;
+  box-shadow:none;
+  position:sticky;
+  top:0;
+  z-index:1;
 }
 
-/* Alineación de números: solo la columna Total (3ª) */
+/* Zebra + hover */
+#lista-presupuestos .fila:not(.encabezado):nth-child(odd){
+  background:#fcfcfd;
+}
+#lista-presupuestos .fila:not(.encabezado):hover{
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(0,0,0,.08);
+}
+
+/* Alineación de columnas:
+   3ª (Total) derecha, 4ª y 5ª centradas */
 #lista-presupuestos .fila > div:nth-child(3){
   text-align:right;
 }
-
-/* Estado y Acciones centrados */
 #lista-presupuestos .fila > div:nth-child(4),
 #lista-presupuestos .fila > div:nth-child(5){
   text-align:center;
 }
 
-
-.acciones{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  justify-content:center;   /* <--- nuevo */
+/* ====== Tags de estado ====== */
+.tag{
+  display:inline-block;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:.85rem;
+  font-weight:700;
 }
 
+.tag.reservado{
+  background:#e8f1fd;
+  color:#1b4fa3;
+  border:1px solid #d0e2ff;
+}
+.tag.pendiente{
+  background:#fff7ed;
+  color:#a16207;
+  border:1px solid #fde68a;
+}
+.tag.vendido{
+  background:#ecfdf5;
+  color:#047857;
+  border:1px solid #a7f3d0;
+}
+
+/* Columna de estado con tags */
+.col-estado{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+
+/* Si tiene “reservado”, lo alineamos a la izquierda */
+.col-estado:has(a.tag.reservado){
+  justify-content:flex-start;
+}
+
+/* Deshabilitado (por si lo usás más adelante) */
 .btn-disabled{
   opacity: .55;
   cursor: not-allowed;
 }
+
+/* ==========================================================
+   FORMULARIOS (crear/editar presupuesto)
+   ========================================================== */
 
 .form-page.narrow { 
   max-width: none;    
@@ -257,20 +301,17 @@ a.btn{ text-decoration:none; }
 
 .form-page .card {
   background: #fff;
-  border-radius: 12px; /* Usamos valor fijo si no hay variable */
+  border-radius: 12px;
   padding: 24px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   border: none;
 }
 
-/* 2. Grid Principal (Cliente / Fecha) */
+/* Grid principal (Cliente / Fecha) */
 .form-page .grid { 
   display: grid; 
   grid-template-columns: 1fr 1fr; 
   gap: 16px; 
-}
-@media (max-width: 700px){
-  .form-page .grid{ grid-template-columns: 1fr; }
 }
 
 .form-page label { 
@@ -296,10 +337,11 @@ a.btn{ text-decoration:none; }
 
 .form-page input:focus,
 .form-page select:focus {
-  border: 2px solid ;
+  border: 2px solid;
   box-shadow: none;
 }
 
+/* Fila para selector de material en crear/editar */
 .fila-material {
   display: grid;
   grid-template-columns: 1fr 120px 40px; 
@@ -309,7 +351,7 @@ a.btn{ text-decoration:none; }
 
 .fila-material select,
 .fila-material input {
-  margin: 0; /* Reset */
+  margin: 0;
 }
 
 .fila-material button.btn {
@@ -321,7 +363,7 @@ a.btn{ text-decoration:none; }
   justify-content: center;
   border-radius: 8px;
   border-color: #fee2e2;
-  color: #ef4444; /* Rojo */
+  color: #ef4444;
   background: #fff;
 }
 .fila-material button.btn:hover {
@@ -336,12 +378,12 @@ a.btn{ text-decoration:none; }
   justify-content: flex-start;
 }
 
+/* Tabla de ítems dentro del presupuesto */
 #items .fila {
   display: grid;
   grid-template-columns: 2.5fr 0.8fr 1fr 1fr 0.5fr; 
   align-items: center;
   gap: 10px;
- 
   border-bottom: 1px solid #ccc;
   padding: 10px 0;
 }
@@ -350,7 +392,6 @@ a.btn{ text-decoration:none; }
   display: flex;
   align-items: center;
 }
-
 
 #items .fila > div:nth-child(3), /* Precio */
 #items .fila > div:nth-child(4)  /* Subtotal */
@@ -369,12 +410,10 @@ a.btn{ text-decoration:none; }
   display: flex;
   align-items: center;
 }
-#items .fila > div {
-  display: flex;
-  align-items: center;     
-  justify-content: center !important; 
-  text-align: center !important;    
-}
+
+/* ==========================================================
+   AUTOCOMPLETE (materiales en línea)
+   ========================================================== */
 
 .autocomplete-wrapper {
   position: relative;
@@ -394,7 +433,7 @@ a.btn{ text-decoration:none; }
   overflow-y: auto;
   z-index: 1000;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  display: none; /* Oculto */
+  display: none;
 }
 
 .autocomplete-list.active {
@@ -411,7 +450,6 @@ a.btn{ text-decoration:none; }
 
 .autocomplete-list div:hover {
   background-color: #f0f7ff;
-  
 }
 .autocomplete-list div:last-child {
   border-bottom: none;
@@ -429,4 +467,65 @@ a.btn{ text-decoration:none; }
 .fila .autocomplete-wrapper input:focus {
   background: #f0f7ff;
   box-shadow: inset 0 0 0 2px;
+}
+
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
+
+/* Tablets / monitores un poco más chicos */
+@media (max-width: 1100px){
+  #lista-presupuestos .fila{
+    grid-template-columns: 110px 1.7fr 0.8fr 1.4fr 0.9fr;
+    font-size: 0.95rem;
+    padding: 10px 10px;
+  }
+}
+
+/* <= 900px: menos padding y tabla scrollable (como entregas) */
+@media (max-width: 900px){
+  .page {
+    padding: 16px 12px;
+  }
+
+  .page-head{
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .list{
+    padding: 10px;
+  }
+
+  .form-page .grid{
+    grid-template-columns: 1fr;
+  }
+}
+
+/* <= 700px: filtros apilados y layout más compacto */
+@media (max-width: 700px){
+  .page{
+    padding: 12px 8px;
+  }
+
+  .page-head{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .filters .row{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .filters label{
+    min-width: 100%;
+  }
+
+  /* El slider no quede demasiado ancho en pantallas pequeñas */
+  .price-range{
+    width: 100%;
+  }
 }

@@ -4,6 +4,7 @@ import com.appTest.store.models.Supplier;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -14,4 +15,7 @@ public interface ISupplierRepository extends JpaRepository<Supplier, Long> {
 
     Optional<Supplier> findByDni(String dni);
     Optional<Supplier> findByEmail(String email);
+
+    // NUEVO: para listar sólo activos/inactivos
+    List<Supplier> findByStatus(String status);
 }

@@ -1,9 +1,9 @@
 // /static/files-js/ver-material.js
 const { authFetch, safeJson, getToken } = window.api;
 
-const API_MAT       = '/materials';
-const API_STOCK     = (id) => `/stocks/by-material/${id}`;
-const API_WAREHOUSES = '/warehouses';           // 👈 NUEVO
+const API_MAT        = '/materials';
+const API_STOCK      = (id) => `/stocks/by-material/${id}`;
+const API_WAREHOUSES = '/warehouses';
 
 const $ = (s, r=document) => r.querySelector(s);
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
@@ -26,9 +26,13 @@ function notify(msg, type='info'){
 
 document.addEventListener('DOMContentLoaded', async ()=>{
   if(!getToken()){ go('login.html'); return; }
-  if(!id){ notify('ID no especificado','error'); setTimeout(()=>go('materiales.html'),1000); return; }
+  if(!id){
+    notify('ID no especificado','error');
+    setTimeout(()=>go('materiales.html'),1000);
+    return;
+  }
 
-  // Configurar botón editar
+  // botón editar
   $('#btnEditar').href = `editar-material.html?id=${id}`;
 
   await cargarDatos();
@@ -44,7 +48,7 @@ async function cargarDatos(){
     // Cabecera
     $('#mat-id').textContent = m.internalNumber ? `#${m.internalNumber}` : `#${m.idMaterial}`;
 
-    // Lista de datos
+    // Datos principales
     $('#dCodigo').textContent = m.internalNumber || '—';
     $('#dNombre').textContent = m.name || '—';
     $('#dMarca').textContent  = m.brand || '—';
@@ -57,23 +61,30 @@ async function cargarDatos(){
     
     $('#dDescripcion').textContent = m.description || 'Sin descripción';
 
+    // 🔹 Estado
+    const up = String(m.status ?? 'ACTIVE').toUpperCase();
+    const isActive = (up === 'ACTIVE');
+    const elEstado = document.getElementById('dEstado');
+    if (elEstado){
+      elEstado.textContent = isActive ? 'Activo' : 'Inactivo';
+      elEstado.className = `pill ${isActive ? 'completed' : 'pending'}`;
+    }
+
   }catch(e){
     console.error(e);
     notify('Error al cargar el material','error');
   }
 }
 
-// ====== NUEVO cargarStock con lookup de almacenes ======
+// ====== Stock por depósito ======
 async function cargarStock(){
   const cont    = $('#tabla-stock');
   const msg     = $('#msgStock');
   const totalEl = $('#stockTotal');
 
-  // Limpiar filas viejas
   cont.querySelectorAll('.trow').forEach(e => e.remove());
 
   try{
-    // 1) Stock por material
     const r = await authFetch(API_STOCK(id));
     let list = r.ok ? await safeJson(r) : [];
     if (!Array.isArray(list)) list = [];
@@ -88,7 +99,7 @@ async function cargarStock(){
     }
     if(msg) msg.style.display = 'none';
 
-    // 2) Traer todos los almacenes y armar un mapa por ID
+    // Almacenes
     let whMap = {};
     try{
       const rWh = await authFetch(API_WAREHOUSES);
