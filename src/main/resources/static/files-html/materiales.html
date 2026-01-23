@@ -23,44 +23,53 @@
     </div>
     <hr><br>
 
-    <section class="filtros card">
-      <div class="row">
+      <section class="filtros card">
+        <div class="row">
 
-        <label>Familia
-          <select id="f_family" class="in">
-            <option value="">Familia (todas)</option>
-          </select>
-        </label>
+          <label>Familia
+            <select id="f_family" class="in">
+              <option value="">Familia (todas)</option>
+            </select>
+          </label>
 
-        <label>Código
-          <input id="f_code" class="in" placeholder="Código interno">
-        </label>
+          <label>Código
+            <input id="f_code" class="in" placeholder="Código interno">
+          </label>
 
-        <label>Nombre
-          <input id="f_name" class="in" placeholder="Nombre">
-        </label>
+          <label>Nombre
+            <input id="f_name" class="in" placeholder="Nombre">
+          </label>
 
-        <label>Precio Mín.
-          <input id="f_min" class="in" type="number" min="0" step="1" placeholder="ARS">
-        </label>
+          <label>Precio Mín.
+            <input id="f_min" class="in" type="number" min="0" step="1" placeholder="ARS">
+          </label>
 
-        <label>Precio Máx.
-          <input id="f_max" class="in" type="number" min="0" step="1" placeholder="ARS">
-        </label>
+          <label>Precio Máx.
+            <input id="f_max" class="in" type="number" min="0" step="1" placeholder="ARS">
+          </label>
 
-        <label>Stock
-          <select id="f_stock" class="in" title="Filtro de stock">
-            <option value="">Stock (todos)</option>
-            <option value="IN_STOCK">Con stock (&gt; 0)</option>
-            <option value="OUT_OF_STOCK">Sin stock (= 0)</option>
-            <option value="LOW">Bajo (≤ 10)</option>
-          </select>
-        </label>
+          <label>Estado
+            <select id="f_status" class="in" title="Estado del material">
+              <option value="ACTIVE" selected>Activos</option>
+              <option value="INACTIVE">Inactivos</option>
+              <option value="ALL">Todos</option>
+            </select>
+          </label>
 
-        <button id="btnLimpiar" class="btn outline">Limpiar</button>
+          <label>Stock
+            <select id="f_stock" class="in" title="Filtro de stock">
+              <option value="">Stock (todos)</option>
+              <option value="IN_STOCK">Con stock (&gt; 0)</option>
+              <option value="OUT_OF_STOCK">Sin stock (= 0)</option>
+              <option value="LOW">Bajo (≤ 10)</option>
+            </select>
+          </label>
 
-      </div>
-    </section>
+          <button id="btnLimpiar" class="btn outline">Limpiar</button>
+
+        </div>
+      </section>
+
 
     <div class="tabla materiales">
       <div class="fila encabezado">
@@ -69,12 +78,13 @@
         <div>Marca</div>
         <div>Stock</div>
         <div>Precio</div>
+        <div>Estado</div>
         <div>Acciones</div>
       </div>
       <div id="lista-materiales"></div>
     </div>
 
-    <!-- 🔹 NUEVO: paginador al final del listado -->
+    <!-- Paginador -->
     <div class="pager">
       <div class="info" id="pg-info"></div>
       <button class="btn" id="pg-prev">« Anterior</button>
@@ -95,7 +105,7 @@
       const role = document.documentElement.getAttribute('data-role');
       if (role === 'employee') {     
         document.querySelectorAll('.btn-edit-stock').forEach(btn => {
-          btn.remove();;
+          btn.remove();
         });
       }
     });

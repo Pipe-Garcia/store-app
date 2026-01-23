@@ -11,7 +11,7 @@ const norm = (s)=> (s||'').toString().toLowerCase()
 const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
 
 // 🔹 Paginación en front
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 8;
 let page = 0;
 let FILTRADAS = [];
 let infoPager, btnPrev, btnNext;

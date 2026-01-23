@@ -1,3 +1,4 @@
+// /static/files-js/pedidos.js
 // Listado de Presupuestos basado en /orders y /orders/search.
 // El "Estado" se calcula por VENTAS (pendiente por vender) usando /orders/{id}/view.
 
@@ -15,7 +16,7 @@ const norm = (s)=> (s||'').toString().toLowerCase()
 const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
 
 // 🔹 Paginado en front
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 8;
 let page = 0;
 let FILTRADOS = [];
 let infoPager, btnPrev, btnNext;
@@ -45,7 +46,6 @@ const Toast = Swal.mixin({
 });
 
 function notify(msg, type='info'){
-  // Mapeamos los tipos: 'error', 'success', 'warning', 'info'
   const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
   Toast.fire({ icon: icon, title: msg });
 }
@@ -65,7 +65,7 @@ const getClientName= o => (
 const getDateISO   = o => (o?.dateCreate ?? o?.date ?? '').toString().slice(0,10) || '';
 const getTotal     = o => Number(o?.total ?? o?.totalArs ?? o?.grandTotal ?? 0);
 
-// 🔹 AHORA: “pendiente por vender” lo tomamos de los datos de VIEW
+// 🔹 “pendiente por vender” desde los datos de VIEW
 const getPendingToSellUnits = o => {
   const v = Number(
     o?.totalPendingToSellUnits ??
@@ -78,7 +78,6 @@ const getPendingToSellUnits = o => {
 function getEstadoCode(o){
   const pend = getPendingToSellUnits(o);
   if (pend == null) {
-    // Si no pudimos calcularlo, asumimos “PENDING” por seguridad
     return 'PENDING';
   }
   return pend <= 0 ? 'SOLD_OUT' : 'PENDING';
@@ -120,7 +119,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     }
   });
 
-  // flash desde crear/editar (Mensaje bonito al volver)
+  // flash desde crear/editar (mensaje bonito al volver)
   const flash = localStorage.getItem('flash');
   if (flash){
     try{
@@ -213,7 +212,6 @@ function readFilterValues(){
 }
 
 function buildSearchQuery(){
-  // Solo mandamos filtros “baratos” al back: fecha + cliente + ID
   const { orderId, clientId, from, to } = readFilterValues();
   const q = new URLSearchParams();
   if (orderId) q.set('id', orderId);
@@ -223,13 +221,12 @@ function buildSearchQuery(){
   return q.toString();
 }
 
-// 🔹 NUEVO: enriquecer cada presupuesto con info de ventas desde /orders/{id}/view
+// 🔹 Enriquecer cada presupuesto con info de ventas desde /orders/{id}/view
 async function enrichWithSalesStatus(list){
   const tasks = list.map(async o => {
     const id = getId(o);
     if (!id) return;
 
-    // cache: si ya lo consultamos antes, no pegamos de nuevo
     if (VIEW_CACHE.has(id)) {
       Object.assign(o, VIEW_CACHE.get(id));
       return;
@@ -290,7 +287,6 @@ async function loadPresupuestos(){
       if (!Array.isArray(data)) data = [];
     }
 
-    // 🔹 Enriquecer con info de ventas (pendiente por vender)
     await enrichWithSalesStatus(data);
 
     PRESUPUESTOS = data;
@@ -390,7 +386,6 @@ function applyFilters(){
     return tot >= minT && tot <= maxT;
   });
 
-  // ordenar: fecha desc, luego id desc
   list.sort((a,b)=>{
     const da = getDateISO(a), db = getDateISO(b);
     if (da !== db) return db.localeCompare(da);
@@ -436,7 +431,6 @@ function render(lista){
   const cont = $('#lista-presupuestos');
   if (!cont) return;
 
-  // borrar filas viejas (no la cabecera)
   cont.querySelectorAll('.fila.row').forEach(n=>n.remove());
 
   if (!lista.length){
@@ -453,13 +447,12 @@ function render(lista){
     const fecha = fmtDate(getDateISO(o));
     const cli   = getClientName(o) || '—';
     const total = getTotal(o);
-    const totalStr = fmtARS.format(total); // Guardamos formateado para el modal
+    const totalStr = fmtARS.format(total);
     const est   = getEstadoCode(o);
 
     const row = document.createElement('div');
     row.className='fila row';
     
-    // AGREGAMOS data-desc PARA EL CARTEL DE BORRADO
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cli}</div>
@@ -477,8 +470,8 @@ function render(lista){
   cont.onclick = (ev)=>{
     const btn = ev.target.closest('button[data-del]');
     if (!btn) return;
-    const id = Number(btn.dataset.del);
-    const desc = btn.dataset.desc; // Leemos la descripción
+    const id   = Number(btn.dataset.del);
+    const desc = btn.dataset.desc;
     borrarPresupuesto(id, desc);
   };
 }
@@ -486,7 +479,6 @@ function render(lista){
 /* ================== ACCIONES (SweetAlert2) ================== */
 
 async function borrarPresupuesto(id, descripcion){
-  // Modal de confirmación mejorado
   Swal.fire({
     title: '¿Eliminar presupuesto?',
     text: `Vas a eliminar el presupuesto #${id} de ${descripcion}. Esta acción es irreversible.`,
@@ -509,7 +501,6 @@ async function borrarPresupuesto(id, descripcion){
           throw new Error(`HTTP ${r.status}`);
         }
         
-        // Eliminamos localmente
         PRESUPUESTOS = PRESUPUESTOS.filter(o => getId(o) !== id);
         
         Swal.fire(
