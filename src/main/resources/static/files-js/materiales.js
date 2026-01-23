@@ -1,3 +1,4 @@
+// /static/files-js/materiales.js
 const { authFetch, getToken } = window.api;
 
 const API_URL_MAT        = '/materials';
@@ -5,9 +6,9 @@ const API_URL_MAT_SEARCH = '/materials/search';
 const API_URL_FAMILIAS   = '/families';
 
 let materiales = [];
-let materialesFiltrados = [];      // <-- lista ya filtrada que se pagina
+let materialesFiltrados = [];      // lista filtrada que se pagina
 let page = 0;
-const PAGE_SIZE = 20;              // tamaño de página fijo para materiales
+const PAGE_SIZE = 20;
 
 let infoPager, btnPrev, btnNext;
 
@@ -18,11 +19,24 @@ function go(page){
   const i = p.indexOf(SEG);
   location.href = (i>=0 ? p.slice(0,i+SEG.length) : p.replace(/[^/]+$/,'') ) + page;
 }
-function debounce(fn,delay=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; }
-function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function debounce(fn,delay=300){
+  let t;
+  return (...a)=>{
+    clearTimeout(t);
+    t=setTimeout(()=>fn(...a),delay);
+  };
+}
+
+function escapeHtml(s){
+  return String(s??'').replace(/[&<>"']/g,c=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 
-/* ================== TOASTS (SweetAlert2) ================== */
+/* ============ Notificaciones con SweetAlert2 (Toast) ============ */
 const Toast = Swal.mixin({
   toast: true,
   position: 'top-end',
@@ -30,14 +44,14 @@ const Toast = Swal.mixin({
   timer: 3000,
   timerProgressBar: true,
   didOpen: (toast) => {
-    toast.addEventListener('mouseenter', Swal.stopTimer)
-    toast.addEventListener('mouseleave', Swal.resumeTimer)
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
   }
 });
 
-function notify(msg, type='info'){
+function notify(msg,type='info'){
   const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
-  Toast.fire({ icon: icon, title: msg });
+  Toast.fire({ icon, title: msg });
 }
 
 /* ============ bootstrap ============ */
@@ -66,22 +80,22 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     }
   });
 
-  // flash (desde crear-material)
+  // flash (desde crear/editar material)
   const flash = localStorage.getItem('flash');
   if (flash){
     try {
-        const {message, type} = JSON.parse(flash);
-        if(type === 'success') {
-            Swal.fire({
-                title: '¡Éxito!',
-                text: message,
-                icon: 'success',
-                timer: 2000,
-                showConfirmButton: false
-            });
-        } else {
-            notify(message, type||'info');
-        }
+      const {message, type} = JSON.parse(flash);
+      if (type === 'success') {
+        Swal.fire({
+          title: '¡Éxito!',
+          text: message,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } else {
+        notify(message, type || 'success');
+      }
     } catch(_) {}
     localStorage.removeItem('flash');
   }
@@ -97,12 +111,15 @@ function bindFiltros(){
     if (validateRanges()) buscarServidor();
   }, 300);
 
-  $('#f_code')?.addEventListener('input', deb);
-  $('#f_name')?.addEventListener('input', deb);
-  $('#f_min')?.addEventListener('input', deb);
-  $('#f_max')?.addEventListener('input', deb);
+  $('#f_code') ?.addEventListener('input', deb);
+  $('#f_name') ?.addEventListener('input', deb);
+  $('#f_min')  ?.addEventListener('input', deb);
+  $('#f_max')  ?.addEventListener('input', deb);
+
   $('#f_family')?.addEventListener('change', buscarServidor);
-  $('#f_stock')?.addEventListener('change', buscarServidor);
+  $('#f_stock') ?.addEventListener('change', buscarServidor);
+  $('#f_status')?.addEventListener('change', buscarServidor);
+
   $('#btnLimpiar')?.addEventListener('click', limpiarFiltros);
 }
 
@@ -110,21 +127,23 @@ function validateRanges(){
   const min = Number($('#f_min')?.value || 0);
   const max = Number($('#f_max')?.value || 0);
   const elMin = $('#f_min'), elMax = $('#f_max');
-  elMin?.classList.remove('invalid'); elMax?.classList.remove('invalid');
+  elMin?.classList.remove('invalid');
+  elMax?.classList.remove('invalid');
 
-  if (elMin?.value && min < 0) { 
-      elMin.classList.add('invalid'); 
-      notify('Precio mínimo inválido', 'error'); 
-      return false; 
+  if (elMin?.value && min < 0) {
+    elMin.classList.add('invalid');
+    notify('Precio mínimo inválido', 'error');
+    return false;
   }
-  if (elMax?.value && max < 0) { 
-      elMax.classList.add('invalid'); 
-      notify('Precio máximo inválido', 'error'); 
-      return false; 
+  if (elMax?.value && max < 0) {
+    elMax.classList.add('invalid');
+    notify('Precio máximo inválido', 'error');
+    return false;
   }
   if (elMin?.value && elMax?.value && min > max) {
-    elMin.classList.add('invalid'); elMax.classList.add('invalid');
-    notify('El mínimo no puede ser mayor que el máximo', 'warning');
+    elMin.classList.add('invalid');
+    elMax.classList.add('invalid');
+    notify('El mínimo no puede ser mayor que el máximo', 'error');
     return false;
   }
   return true;
@@ -132,12 +151,25 @@ function validateRanges(){
 
 function buildParams(){
   const p = new URLSearchParams();
-  const fam = $('#f_family')?.value; if (fam) p.set('familyId', fam);
-  const code = $('#f_code')?.value.trim(); if (code) p.set('internalNumber', code);
-  const name = $('#f_name')?.value.trim(); if (name) p.set('name', name);
-  const min = $('#f_min')?.value; if (min) p.set('minPrice', min);
-  const max = $('#f_max')?.value; if (max) p.set('maxPrice', max);
-  const stock = $('#f_stock')?.value; if (stock) p.set('stockMode', stock); 
+
+  const fam = $('#f_family')?.value;
+  if (fam) p.set('familyId', fam);
+
+  const code = $('#f_code')?.value.trim();
+  if (code) p.set('internalNumber', code);
+
+  const name = $('#f_name')?.value.trim();
+  if (name) p.set('name', name);
+
+  const min = $('#f_min')?.value;
+  if (min) p.set('minPrice', min);
+
+  const max = $('#f_max')?.value;
+  if (max) p.set('maxPrice', max);
+
+  const stock = $('#f_stock')?.value;
+  if (stock) p.set('stockMode', stock);
+
   return p;
 }
 
@@ -153,13 +185,17 @@ async function cargarFamiliasFiltro(){
       o.textContent=f.typeFamily;
       sel.appendChild(o);
     });
-  }catch(e){ console.warn(e); }
+  }catch(e){
+    console.warn(e);
+  }
 }
 
 function limpiarFiltros(){
-  ['f_code','f_name','f_family','f_min','f_max','f_stock'].forEach(id=>{
-    const el=$('#'+id); if(!el) return;
-    el.value='';
+  ['f_code','f_name','f_family','f_min','f_max','f_stock','f_status'].forEach(id=>{
+    const el=$('#'+id);
+    if(!el) return;
+    if (id === 'f_status') el.value = 'ACTIVE';
+    else el.value = '';
     el.classList && el.classList.remove('invalid');
   });
   buscarServidor();
@@ -168,7 +204,16 @@ function limpiarFiltros(){
 /* ============ carga desde servidor ============ */
 async function buscarServidor(){
   const params = buildParams();
-  const url = params.toString() ? `${API_URL_MAT_SEARCH}?${params}` : API_URL_MAT;
+
+  // Estado → decide si pedimos también inactivos al backend
+  const estadoSel = ($('#f_status')?.value || 'ACTIVE').toUpperCase();
+  if (estadoSel === 'INACTIVE' || estadoSel === 'ALL') {
+    params.set('includeDeleted', 'true');
+  }
+
+  const url = params.toString()
+    ? `${API_URL_MAT_SEARCH}?${params.toString()}`
+    : API_URL_MAT;
 
   try{
     const r=await authFetch(url);
@@ -177,33 +222,54 @@ async function buscarServidor(){
       go('login.html');
       return;
     }
-    const data=r.ok?await r.json():[];
-    materiales = Array.isArray(data)?data:[];
 
-    // Fallback de stock en front
+    const data=r.ok ? await r.json() : [];
+    materiales = Array.isArray(data) ? data : (data.content || []);
+
+    // ==== filtros locales adicionales ====
+
+    // 1) filtro por stock (front)
     const stockMode = $('#f_stock')?.value || '';
-    const filtered = (!stockMode) ? materiales : materiales.filter(m=>{
-      const q = Number(m.quantityAvailable ?? m.stock?.quantityAvailable ?? 0);
-      if (stockMode === 'IN_STOCK')     return q > 0;
-      if (stockMode === 'OUT_OF_STOCK') return q === 0;
-      if (stockMode === 'LOW')          return q <= 10;
-      return true;
-    });
+    let filtered = (!stockMode)
+      ? materiales.slice()
+      : materiales.filter(m=>{
+          const q = Number(m.quantityAvailable ?? m.stock?.quantityAvailable ?? 0);
+          if (stockMode === 'IN_STOCK')     return q > 0;
+          if (stockMode === 'OUT_OF_STOCK') return q === 0;
+          if (stockMode === 'LOW')          return q <= 10;
+          return true;
+        });
 
-    // Fallback de texto
+    // 2) fallback de texto (código + nombre)
     const code = $('#f_code')?.value.trim();
     const name = $('#f_name')?.value.trim();
     const fallbackByText = filtered.filter(m=>{
       let ok = true;
-      if (code) ok = ok && String(m.internalNumber ?? '').toLowerCase().includes(code.toLowerCase());
-      if (name) ok = ok && String(m.name ?? '').toLowerCase().includes(name.toLowerCase());
+      if (code) {
+        ok = ok && String(m.internalNumber ?? '')
+          .toLowerCase()
+          .includes(code.toLowerCase());
+      }
+      if (name) {
+        ok = ok && String(m.name ?? '')
+          .toLowerCase()
+          .includes(name.toLowerCase());
+      }
       return ok;
     });
 
-    // Guardamos la lista ya filtrada y paginamos en front
-    materialesFiltrados = fallbackByText;
+    // 3) filtro por estado (front)
+    const withEstado = fallbackByText.filter(m=>{
+      const s = String(m.status || 'ACTIVE').toUpperCase();
+      if (estadoSel === 'ACTIVE')   return s === 'ACTIVE';
+      if (estadoSel === 'INACTIVE') return s === 'INACTIVE';
+      return true; // ALL
+    });
+
+    materialesFiltrados = withEstado;
     page = 0;
     renderTablaPaginada();
+
   }catch(e){
     console.error(e);
     notify('No se pudo cargar materiales','error');
@@ -268,79 +334,153 @@ function renderTabla(list){
   }
 
   (list||[]).forEach(m=>{
-    const code   = escapeHtml(String(m.internalNumber ?? ''));
-    const name   = escapeHtml(m.name ?? '-');
-    const brand  = escapeHtml(m.brand ?? '-');
-    const stockN = Number(m.quantityAvailable ?? m.stock?.quantityAvailable ?? 0);
-    const price  = Number(m.priceArs ?? m.price ?? 0);
-    const stock  = `<span class="badge ${stockBadgeClass(stockN)}">${stockN}</span>`;
+    const id       = m.idMaterial;
+    const status   = String(m.status || 'ACTIVE').toUpperCase();
+    const isInactive = status === 'INACTIVE';
+
+    const rawName = m.name ?? '-';
+    const code    = escapeHtml(String(m.internalNumber ?? ''));
+    const name    = escapeHtml(rawName);
+    const brand   = escapeHtml(m.brand ?? '-');
+    const stockN  = Number(m.quantityAvailable ?? m.stock?.quantityAvailable ?? 0);
+    const price   = Number(m.priceArs ?? m.price ?? 0);
+    const stock   = `<span class="badge ${stockBadgeClass(stockN)}">${stockN}</span>`;
+
+    const pillStatus =
+      status === 'ACTIVE'
+        ? '<span class="pill completed" style="font-size:0.9rem;">ACTIVO</span>'
+        : '<span class="pill pending" style="font-size:0.9rem;">INACTIVO</span>';
+
+    const btnDisable = `
+      <button class="btn outline"
+              data-del="${id}"
+              data-name="${name}"
+              title="Deshabilitar material">🚫</button>
+    `;
+    const btnRestore = `
+      <button class="btn outline"
+              data-restore="${id}"
+              data-name="${name}"
+              title="Restaurar material">↩️</button>
+    `;
 
     const row = document.createElement('div');
-    row.className = 'fila';
-    
-    // Agregamos data-name al botón de eliminar para el cartel
+    row.className = isInactive ? 'fila disabled' : 'fila';
+
     row.innerHTML = `
       <div>${code || '-'}</div>
       <div>${name}</div>
       <div>${brand}</div>
       <div>${stock}</div>
-      <div>${fmtARS.format(price||0)}</div>
+      <div>${fmtARS.format(price || 0)}</div>
+      <div class="estado-cell">${pillStatus}</div>
       <div class="acciones">
-        <button class="btn outline" data-view="${m.idMaterial}" title="Ver">👁️</button>
-        <button class="btn outline" data-edit="${m.idMaterial}" title="Editar">✏️</button>
-        <button class="btn danger" data-del="${m.idMaterial}" data-name="${name}" title="Eliminar">🗑️</button>
+        <button class="btn outline"
+                data-view="${id}"
+                title="Ver material">👁️</button>
+        <button class="btn outline"
+                data-edit="${id}"
+                title="Editar material">✏️</button>
+        ${isInactive ? btnRestore : btnDisable}
       </div>
     `;
     cont.appendChild(row);
   });
 
+  // Delegación de eventos
   cont.onclick = (e)=>{
-    const t = e.target.closest('button'); if(!t) return;
-    const idView=t.getAttribute('data-view');
-    const idEdit=t.getAttribute('data-edit');
-    const idDel =t.getAttribute('data-del');
-    const name  =t.getAttribute('data-name'); // Capturamos nombre para la alerta
+    const t = e.target.closest('button');
+    if(!t) return;
 
-    if(idView){ location.href=`../files-html/ver-material.html?id=${Number(idView)}`; return; }
-    if(idEdit){ location.href=`../files-html/editar-material.html?id=${Number(idEdit)}`; return; }
-    if(idDel ){ eliminarMaterial(Number(idDel), name); return; }
+    const idView = t.getAttribute('data-view');
+    const idEdit = t.getAttribute('data-edit');
+    const idDel  = t.getAttribute('data-del');
+    const idRes  = t.getAttribute('data-restore');
+    const name   = t.getAttribute('data-name') || '';
+
+    if(idView){
+      location.href=`../files-html/ver-material.html?id=${Number(idView)}`;
+      return;
+    }
+    if(idEdit){
+      location.href=`../files-html/editar-material.html?id=${Number(idEdit)}`;
+      return;
+    }
+    if(idDel){
+      eliminarMaterial(Number(idDel), name);
+      return;
+    }
+    if(idRes){
+      restaurarMaterial(Number(idRes), name);
+      return;
+    }
   };
 }
 
-/* ============ Acciones (SweetAlert2) ============ */
+/* ============ acciones: deshabilitar / restaurar (SweetAlert2) ============ */
 
 async function eliminarMaterial(id, name){
-  // Modal de confirmación
   Swal.fire({
-    title: '¿Eliminar material?',
-    text: `Estás a punto de borrar "${name}". Esta acción no se puede deshacer.`,
+    title: '¿Deshabilitar material?',
+    text: `El material "${name}" pasará a estado Inactivo. Podrás restaurarlo luego.`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#d33',
     cancelButtonColor: '#3085d6',
-    confirmButtonText: 'Sí, eliminar',
+    confirmButtonText: 'Deshabilitar',
     cancelButtonText: 'Cancelar'
   }).then(async (result) => {
-    
-    if (result.isConfirmed) {
-      try{
-        const r=await authFetch(`${API_URL_MAT}/${id}`,{method:'DELETE'});
-        if(!r.ok) throw new Error(`HTTP ${r.status}`);
-        
-        // Alerta de éxito
-        Swal.fire(
-            '¡Eliminado!',
-            'El material ha sido eliminado.',
-            'success'
-        );
-        
-        await buscarServidor();
-        
-      }catch(e){
-        console.error(e);
-        // Error más amigable
-        Swal.fire('Error', 'No se pudo eliminar el material (puede que tenga stock o ventas asociadas).', 'error');
+    if (!result.isConfirmed) return;
+
+    try{
+      const r=await authFetch(`${API_URL_MAT}/${id}`,{method:'DELETE'});
+      if(!r.ok){
+        if (r.status === 403) throw new Error('Requiere permisos de OWNER');
+        throw new Error(`HTTP ${r.status}`);
       }
+      Swal.fire(
+        '¡Deshabilitado!',
+        `El material "${name}" ahora está Inactivo.`,
+        'success'
+      );
+      await buscarServidor();
+    }catch(e){
+      console.error(e);
+      Swal.fire('Error', e.message || 'No se pudo deshabilitar el material.', 'error');
+    }
+  });
+}
+
+async function restaurarMaterial(id, name){
+  Swal.fire({
+    title: '¿Restaurar material?',
+    text: `El material "${name}" volverá a estar Activo.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#28a745',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Restaurar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    if (!result.isConfirmed) return;
+
+    try{
+      const r=await authFetch(`${API_URL_MAT}/${id}/restore`,{method:'PUT'});
+      if(!r.ok){
+        if (r.status === 403) throw new Error('Requiere permisos de OWNER');
+        throw new Error(`HTTP ${r.status}`);
+      }
+      Swal.fire({
+        title: '¡Restaurado!',
+        text: `El material "${name}" está activo nuevamente.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
+      await buscarServidor();
+    }catch(e){
+      console.error(e);
+      Swal.fire('Error', e.message || 'No se pudo restaurar el material.', 'error');
     }
   });
 }

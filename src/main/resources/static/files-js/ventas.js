@@ -1,3 +1,5 @@
+// /static/files-js/ventas.js
+
 const { authFetch, getToken, safeJson } = window.api;
 
 const API_URL_SALES   = '/sales';
@@ -11,7 +13,6 @@ const norm = (s)=> (s||'').toString().toLowerCase()
 const debounce = (fn,d=250)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); }; };
 
 /* ================== TOASTS (SweetAlert2) ================== */
-// Configuración base para notificaciones pequeñas en la esquina
 const Toast = Swal.mixin({
   toast: true,
   position: 'top-end',
@@ -19,15 +20,17 @@ const Toast = Swal.mixin({
   timer: 3000,
   timerProgressBar: true,
   didOpen: (toast) => {
-    toast.addEventListener('mouseenter', Swal.stopTimer)
-    toast.addEventListener('mouseleave', Swal.resumeTimer)
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
   }
 });
 
 function notify(msg, type='info') {
-  // Mapeamos los tipos de tu código a los iconos de SweetAlert
-  const icon = type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info');
-  Toast.fire({ icon: icon, title: msg });
+  const icon =
+    type === 'error'   ? 'error'   :
+    type === 'success' ? 'success' :
+    type === 'warning' ? 'warning' : 'info';
+  Toast.fire({ icon, title: msg });
 }
 
 function go(page){
@@ -35,8 +38,8 @@ function go(page){
   location.href = `${base}${page}`;
 }
 
-// 🔹 Paginación en front
-const PAGE_SIZE = 20;
+// 🔹 Paginación en front (solo últimas 8 por página)
+const PAGE_SIZE = 8;
 let page = 0;
 let FILTRADAS = [];
 let infoPager, btnPrev, btnNext;
@@ -70,20 +73,19 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   const flash = localStorage.getItem('flash');
   if (flash){
     try{
-      const {message, type} = JSON.parse(flash);
+      const {message,type} = JSON.parse(flash);
       if (message) {
-          // Si es éxito, mostramos un cartel central más bonito
-          if(type === 'success') {
-              Swal.fire({
-                  icon: 'success',
-                  title: '¡Éxito!',
-                  text: message,
-                  timer: 2000,
-                  showConfirmButton: false
-              });
-          } else {
-              notify(message, type||'success');
-          }
+        if (type === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: '¡Éxito!',
+            text: message,
+            timer: 2000,
+            showConfirmButton: false
+          });
+        } else {
+          notify(message, type || 'success');
+        }
       }
     }catch(_){}
     localStorage.removeItem('flash');
@@ -98,10 +100,10 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 function bindFilters(){
   const deb = debounce(reloadFromFilters, 280);
 
-  $('#fDesde')       ?.addEventListener('change', deb);
-  $('#fHasta')       ?.addEventListener('change', deb);
+  $('#fDesde')        ?.addEventListener('change', deb);
+  $('#fHasta')        ?.addEventListener('change', deb);
   $('#fEstadoEntrega')?.addEventListener('change', deb);
-  $('#fTexto')       ?.addEventListener('input',  deb);
+  $('#fTexto')        ?.addEventListener('input',  deb);
 
   $('#btnLimpiar')?.addEventListener('click', ()=>{
     $('#fDesde').value = '';
@@ -116,10 +118,11 @@ function buildQueryFromFilters(){
   const q = new URLSearchParams();
   const from = $('#fDesde').value;
   const to   = $('#fHasta').value;
-  
+
   if (from) q.set('from', from);
   if (to)   q.set('to',   to);
 
+  // Estado de entrega se calcula en front.
   return q.toString();
 }
 
@@ -210,6 +213,7 @@ function getPendingUnits(v){
 }
 
 function getDeliveryStateCode(v){
+  // VENTA DIRECTA (sin presupuesto asociado) → la consideramos ENTREGADA.
   const hasOrder = !!(v.orderId ?? v.ordersId ?? v.order_id);
   if (!hasOrder) return 'DELIVERED';
 
@@ -333,12 +337,12 @@ function renderLista(lista){
     const fecha = fmtDate(v.dateSale || v.date);
     const cli   = v.clientName || '—';
     const total = Number(v.total ?? v.totalArs ?? v.amount ?? 0);
-    const totalStr = fmtARS.format(total); // Formateamos aquí para usarlo en el data-desc
+    const totalStr = fmtARS.format(total);
     const st    = getDeliveryStateCode(v);
 
     const row = document.createElement('div');
     row.className = 'fila';
-    // AGREGAMOS data-desc PARA EL CARTEL DE BORRADO
+    // data-desc para mostrar en el cartel de borrado
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cli}</div>
@@ -357,9 +361,9 @@ function renderLista(lista){
   cont.onclick = (ev)=>{
     const target = ev.target.closest('button, a');
     if (!target) return;
-    const delId  = target.getAttribute('data-del');
-    const pdfId  = target.getAttribute('data-pdf');
-    const desc   = target.getAttribute('data-desc'); // Capturamos la descripción
+    const delId = target.getAttribute('data-del');
+    const pdfId = target.getAttribute('data-pdf');
+    const desc  = target.getAttribute('data-desc');
 
     if (delId){
       borrarVenta(Number(delId), desc);
@@ -369,10 +373,8 @@ function renderLista(lista){
   };
 }
 
-// ================== Acciones (Con SweetAlert2) ==================
-
+// ================== Acciones (SweetAlert2) ==================
 async function borrarVenta(id, descripcion){
-  // Cartel de confirmación mejorado
   Swal.fire({
     title: '¿Eliminar venta?',
     text: `Vas a eliminar la venta #${id} de ${descripcion}. Esta acción no se puede deshacer.`,
@@ -383,28 +385,28 @@ async function borrarVenta(id, descripcion){
     confirmButtonText: 'Sí, eliminar',
     cancelButtonText: 'Cancelar'
   }).then(async (result) => {
-    if (result.isConfirmed) {
-      try{
-        const r = await authFetch(`${API_URL_SALES}/${id}`, { method:'DELETE' });
-        if (!r.ok){
-          if (r.status === 403){
-            Swal.fire('Permiso denegado', 'Se requiere rol OWNER para eliminar ventas.', 'error');
-            return;
-          }
-          throw new Error(`HTTP ${r.status}`);
-        }
-        
-        Swal.fire(
-          '¡Eliminada!',
-          'La venta ha sido eliminada correctamente.',
-          'success'
-        );
-        await reloadFromFilters();
+    if (!result.isConfirmed) return;
 
-      }catch(e){
-        console.error(e);
-        Swal.fire('Error', 'No se pudo eliminar la venta. Verifica la consola.', 'error');
+    try{
+      const r = await authFetch(`${API_URL_SALES}/${id}`, { method:'DELETE' });
+      if (!r.ok){
+        if (r.status === 403){
+          Swal.fire('Permiso denegado', 'Se requiere rol OWNER para eliminar ventas.', 'error');
+          return;
+        }
+        throw new Error(`HTTP ${r.status}`);
       }
+
+      Swal.fire(
+        '¡Eliminada!',
+        'La venta ha sido eliminada correctamente.',
+        'success'
+      );
+      await reloadFromFilters();
+
+    }catch(e){
+      console.error(e);
+      Swal.fire('Error', 'No se pudo eliminar la venta.', 'error');
     }
   });
 }
@@ -419,7 +421,7 @@ async function downloadSalePdf(id){
   try{
     if (btn){
       btn.disabled = true;
-      btn.innerHTML = '⏳'; // Icono de carga
+      btn.innerHTML = '⏳';
     }
 
     const r = await authFetch(`${API_URL_SALES}/${id}/pdf`, { method:'GET' });
@@ -434,8 +436,7 @@ async function downloadSalePdf(id){
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    
-    // Notificación discreta de éxito
+
     notify('PDF descargado', 'success');
 
   }catch(e){
