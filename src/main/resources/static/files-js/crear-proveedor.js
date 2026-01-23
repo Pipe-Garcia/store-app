@@ -1,11 +1,12 @@
-// /static/files-js/crear-proveedor.js
 const API_URL_PROVEEDORES = 'http://localhost:8088/suppliers';
 
 const $ = s=>document.querySelector(s);
+// Helpers de autenticación
 function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
 function authHeaders(){ const t=getToken(); return { 'Content-Type':'application/json', ...(t?{'Authorization':`Bearer ${t}`}:{}) }; }
 function go(page){ const base=location.pathname.replace(/[^/]+$/,''); location.href=`${base}${page}`; }
 
+// Mantenemos notify SOLO para errores en esta misma pantalla (validaciones, fallo de red, etc.)
 let __toastRoot;
 function notify(msg,type='info'){
   if(!__toastRoot){
@@ -24,6 +25,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 async function guardarProveedor(e){
   e.preventDefault();
+  
   const proveedor = {
     name       : $('#nombre').value.trim(),
     surname    : $('#apellido').value.trim(),
@@ -36,6 +38,7 @@ async function guardarProveedor(e){
     status     : $('#estado').value
   };
 
+  // Validaciones básicas
   if(!proveedor.name || !proveedor.dni || !proveedor.nameCompany || !proveedor.address){
     notify('Completá Nombre, DNI, Empresa y Dirección','error'); return;
   }
@@ -44,14 +47,23 @@ async function guardarProveedor(e){
     const r = await fetch(API_URL_PROVEEDORES, {
       method:'POST', headers: authHeaders(), body: JSON.stringify(proveedor)
     });
+    
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    const data = await r.json();
-    notify('Proveedor creado','success');
-    // Redirigimos a asignar materiales si vino id
-    const id = data?.idSupplier ?? data?.id;
-    setTimeout(()=>{ location.href = `asignar-materiales.html?id=${id}`; }, 300);
+    
+    // Opcional: obtener respuesta por si necesitaras el ID, aunque aquí no lo usamos
+    // const data = await r.json();
+
+    // ✅ PASO CLAVE: Guardar mensaje flash y redirigir
+    localStorage.setItem('flash', JSON.stringify({
+        message: 'Proveedor creado exitosamente', 
+        type: 'success'
+    }));
+
+    // Redirigimos al listado general (igual que en Clientes)
+    window.location.href = 'proveedores.html';
+
   }catch(e){
     console.error(e);
-    notify('Error al crear proveedor','error');
+    notify('Error al crear proveedor (Verifica que no exista el DNI o la Empresa)','error');
   }
 }

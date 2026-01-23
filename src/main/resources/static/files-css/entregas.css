@@ -190,9 +190,8 @@ a.btn { text-decoration: none; }
 .pill.completed { background: #e8f7ee; color: #146c2e; border-color: #a7f3d0; }
 
 .form-page.narrow { 
-  max-width: none;   
-  width: 100%;       
-  margin: 0; 
+ max-width: 900px;
+    margin: 0 auto;
 }
 .form-page .grid { 
   display: grid; 
@@ -265,9 +264,8 @@ a.btn { text-decoration: none; }
 }
 
 .seccion-crearEntrega {
-  max-width: none !important; 
-  width: 100%;             
-  margin: 0;              
+  max-width: 900px;
+    margin: 0 auto;          
 }
 
 .seccion-crearEntrega .tabla {

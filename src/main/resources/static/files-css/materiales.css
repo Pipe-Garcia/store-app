@@ -17,11 +17,12 @@
   --btn-danger: #ef4444;
 }
 
-.page{     
-  max-width: 1900px;
-  margin: 0 auto;
-  padding: 24px;
-  }
+.page { 
+  max-width: none;       
+  width: 100%;           
+  padding: 24px; 
+  box-sizing: border-box; 
+}
 .encabezado-lista-materiales {
   display:flex; align-items:center; margin:.5rem 0 1rem; flex-direction: row; gap: 45px;
 }
@@ -366,7 +367,7 @@ a.btn {
 
 .tabla.materiales .fila {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr 0.5fr 1fr 0.8fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
   align-items: center;
   gap: 10px;
   background: #fff;

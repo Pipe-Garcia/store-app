@@ -1,38 +1,63 @@
-// /static/files-js/editar-proveedor.js
 const API_URL_PROVEEDORES = 'http://localhost:8088/suppliers';
-const token = localStorage.getItem('token');
+// Asegúrate de usar la misma clave que en el resto de tu app (token o accessToken)
+const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
 const urlParams = new URLSearchParams(window.location.search);
 const id = urlParams.get('id');
 
+// Verificación de seguridad
 if (!token) {
-  alert('Debes iniciar sesión para acceder');
   window.location.href = '../files-html/login.html';
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  // Cargar proveedor existente
+  if(!id) {
+      alert("No se especificó un ID de proveedor");
+      window.location.href = 'proveedores.html';
+      return;
+  }
+
+  // 1. Cargar datos del proveedor existente
   fetch(`${API_URL_PROVEEDORES}/${id}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   })
-    .then(res => res.json())
+    .then(res => {
+        if(!res.ok) throw new Error("Error al cargar datos");
+        return res.json();
+    })
     .then(data => {
-      document.getElementById('nombre').value     = data.name || '';
-      document.getElementById('apellido').value   = data.surname || '';
-      document.getElementById('dni').value        = data.dni || '';
-      document.getElementById('email').value      = data.email || '';
-      document.getElementById('direccion').value  = data.address || '';
-      document.getElementById('localidad').value  = data.locality || '';
-      document.getElementById('empresa').value    = data.nameCompany || '';
-      document.getElementById('telefono').value   = data.phoneNumber || '';
-      document.getElementById('estado').value     = data.status || 'ACTIVE';
+      // Rellenar el formulario
+      const setValue = (id, val) => {
+          const el = document.getElementById(id);
+          if(el) el.value = val || '';
+      };
+
+      setValue('nombre', data.name);
+      setValue('apellido', data.surname);
+      setValue('dni', data.dni);
+      setValue('email', data.email);
+      setValue('direccion', data.address);
+      setValue('localidad', data.locality);
+      setValue('empresa', data.nameCompany);
+      setValue('telefono', data.phoneNumber);
+      setValue('estado', data.status || 'ACTIVE');
+    })
+    .catch(err => {
+        console.error(err);
+        alert("No se pudo cargar el proveedor.");
+        window.location.href = 'proveedores.html';
     });
 
-  document.getElementById('form-proveedor').addEventListener('submit', actualizarProveedor);
+  // 2. Escuchar el envío del formulario
+  const form = document.getElementById('form-proveedor');
+  if(form) {
+      form.addEventListener('submit', actualizarProveedor);
+  }
 });
 
 function actualizarProveedor(e) {
   e.preventDefault();
 
+  // Construir el objeto a enviar
   const proveedor = {
     name: document.getElementById('nombre').value,
     surname: document.getElementById('apellido').value,
@@ -45,6 +70,7 @@ function actualizarProveedor(e) {
     status: document.getElementById('estado').value
   };
 
+  // Enviar petición PUT
   fetch(`${API_URL_PROVEEDORES}/${id}`, {
     method: 'PUT',
     headers: {
@@ -53,13 +79,24 @@ function actualizarProveedor(e) {
     },
     body: JSON.stringify(proveedor)
   })
-    .then(res => res.ok ? res.json() : Promise.reject(res))
+    .then(res => {
+        if(res.ok) return res.json();
+        throw new Error(`Error HTTP ${res.status}`);
+    })
     .then(() => {
-      alert('Proveedor actualizado correctamente');
+      // ✅ AQUÍ ESTÁ LA MAGIA:
+      // Guardamos el mensaje en "flash" para que proveedores.html lo muestre
+      localStorage.setItem('flash', JSON.stringify({
+          message: 'Proveedor actualizado correctamente',
+          type: 'success'
+      }));
+      
+      // Redirigimos de inmediato
       window.location.href = 'proveedores.html';
     })
     .catch(err => {
       console.error(err);
-      alert('Error al actualizar proveedor');
+      // Si falla, aquí sí usamos alert porque nos quedamos en la misma página
+      alert('Error al actualizar proveedor. Verifica los datos.');
     });
 }

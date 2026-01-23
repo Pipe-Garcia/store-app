@@ -13,6 +13,7 @@ function go(page){
   location.href = `${base}${page}`;
 }
 
+// Notificaciones locales (solo para errores de validación en esta pantalla)
 function notify(message, type='info'){
   const div = document.createElement('div');
   div.className = `notification ${type}`;
@@ -260,11 +261,13 @@ async function guardarPresupuesto(ev){
     
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     
-    const created = await safeJson(r);
-    const orderId = created.idOrders ?? created.id;
-
-    localStorage.setItem('flash', JSON.stringify({ message:'✅ Presupuesto creado', type:'success' }));
-    go(`ver-pedido.html?id=${orderId}`);
+    // ✅ CAMBIO AQUÍ: Redirección al listado principal con mensaje flash
+    localStorage.setItem('flash', JSON.stringify({ 
+        message:'Presupuesto creado exitosamente', 
+        type:'success' 
+    }));
+    
+    go('pedidos.html'); // <-- Ahora va al listado
 
   }catch(err){
     console.error(err);

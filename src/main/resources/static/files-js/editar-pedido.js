@@ -61,20 +61,6 @@ async function init(){
   }
 }
 
-const getDetBudgeted = d =>
-  Number(
-    d.quantity ??
-    d.quantityOrdered ??
-    d.budgetedUnits ??
-    d.budgetUnits ??
-    d.qty ??
-    0
-  );
-
-const getDetPrice = d =>
-  Number(d.priceUni ?? d.unitPrice ?? d.priceUnit ?? d.priceArs ?? d.price ?? 0);
-
-
 async function loadOrderData(){
   try {
     let r = await authFetch(`${API_URL_ORDERS}/${orderId}/view`);
@@ -349,8 +335,13 @@ async function guardarCambios(ev){
     
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     
-    localStorage.setItem('flash', JSON.stringify({ message:'✅ Presupuesto actualizado', type:'success' }));
-    go(`ver-pedido.html?id=${orderId}`);
+    // ✅ CAMBIO AQUÍ: Redirección al listado principal con mensaje flash
+    localStorage.setItem('flash', JSON.stringify({ 
+        message:'Presupuesto actualizado correctamente', 
+        type:'success' 
+    }));
+    
+    go('pedidos.html'); // <-- Redirección al listado
 
   }catch(err){
     console.error(err);

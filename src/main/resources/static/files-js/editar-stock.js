@@ -1,4 +1,3 @@
-// /static/files-js/editar-stock.js
 const { authFetch, getToken } = window.api;
 
 const API_MAT        = '/materials';
@@ -19,19 +18,23 @@ function go(page){
 }
 function debounce(fn,ms=300){ let h; return (...a)=>{ clearTimeout(h); h=setTimeout(()=>fn(...a),ms); }; }
 
-/* toasts */
-let __toastRoot;
-function toastRoot(){
-  if(!__toastRoot){
-    __toastRoot=document.createElement('div');
-    Object.assign(__toastRoot.style,{position:'fixed',top:'76px',right:'16px',display:'flex',flexDirection:'column',gap:'8px',zIndex:9999});
-    document.body.appendChild(__toastRoot);
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
   }
-  return __toastRoot;
-}
-function notify(msg,type='info'){
-  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg;
-  toastRoot().appendChild(n); setTimeout(()=>n.remove(),3500);
+});
+
+function notify(msg, type='info') {
+  // Mapeo de tipos: 'error'->'error', 'success'->'success', el resto 'info'
+  const icon = (type === 'error' || type === 'success' || type === 'warning') ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
 }
 
 /* -------- bootstrap -------- */
@@ -125,7 +128,7 @@ function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;'
 /* -------- flujo principal -------- */
 async function buscarMaterial(filtro){
   const q = filtro || $('#buscar').value.trim();
-  if(!q){ notify('Ingresá código o nombre','error'); return; }
+  if(!q){ notify('Ingresá código o nombre','warning'); return; }
 
   try{
     let res = await authFetch(`${API_MAT_SEARCH}?q=${encodeURIComponent(q)}`);
@@ -188,30 +191,59 @@ function updatePreview(){
   $('#stockNuevo').value = actual + delta;
 }
 
+/* -------- CONFIRMACIÓN Y ENVÍO -------- */
 async function onSubmit(e){
   e.preventDefault();
   if(!currentStock){ notify('No hay stock para actualizar','error'); return; }
 
   const delta = parseFloat($('#cantidad').value);
-  if (Number.isNaN(delta)){ notify('Ingresá una cantidad válida','error'); return; }
+  if (Number.isNaN(delta)){ notify('Ingresá una cantidad válida','warning'); return; }
 
-  const nuevo = Number(currentStock.quantityAvailable ?? 0) + delta;
+  const actual = Number(currentStock.quantityAvailable ?? 0);
+  const nuevo = actual + delta;
+
   if (nuevo < 0){ notify('El stock no puede quedar negativo','error'); return; }
 
-  const dto = { idStock: currentStock.idStock, quantityAvailable: nuevo };
+  // CONFIRMACIÓN CON SWEETALERT
+  Swal.fire({
+    title: '¿Confirmar actualización?',
+    html: `
+      <div style="text-align:left; font-size:1.1em;">
+        <p><strong>Material:</strong> ${escapeHtml(currentMaterial?.name)}</p>
+        <p>Stock Actual: <b>${actual}</b></p>
+        <p>Cambio: <b style="color:${delta>=0?'green':'red'}">${delta > 0 ? '+'+delta : delta}</b></p>
+        <hr>
+        <p>Nuevo Stock: <b>${nuevo}</b></p>
+      </div>
+    `,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Sí, actualizar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    
+    if (result.isConfirmed) {
+      const dto = { idStock: currentStock.idStock, quantityAvailable: nuevo };
+      const btn = e.submitter || $('.actions .btn.primary');
+      btn.disabled = true; btn.classList.add('loading');
 
-  const btn = e.submitter || $('.actions .btn.primary');
-  btn.disabled = true; btn.classList.add('loading');
+      try{
+        const r = await authFetch(API_STOCK, { method:'PUT', body: JSON.stringify(dto) });
+        if(!r.ok) throw new Error(`HTTP ${r.status}`);
+        
+        // Guardamos mensaje flash para la pantalla de materiales
+        localStorage.setItem('flash', JSON.stringify({message:'✅ Stock actualizado con éxito', type:'success'}));
+        
+        // Redirigimos
+        go('materiales.html');
 
-  try{
-    const r = await authFetch(API_STOCK, { method:'PUT', body: JSON.stringify(dto) });
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    localStorage.setItem('flash', JSON.stringify({message:'✅ Stock actualizado con éxito', type:'success'}));
-    go('materiales.html');
-  }catch(err){
-    console.error(err);
-    notify('Error al actualizar stock','error');
-  }finally{
-    btn.disabled = false; btn.classList.remove('loading');
-  }
+      }catch(err){
+        console.error(err);
+        notify('Error al actualizar stock','error');
+        btn.disabled = false; btn.classList.remove('loading');
+      }
+    }
+  });
 }

@@ -1,10 +1,9 @@
-// /static/files-js/clientes.js
 const { authFetch, getToken, safeJson } = window.api;
 const API_URL_CLI = '/clients';
 
 /* ==== Variables de Estado ==== */
-let ALL_CLIENTS = [];   
-let FILTRADOS   = [];   
+let ALL_CLIENTS = [];
+let FILTRADOS   = [];
 const PAGE_SIZE = 15;
 let page = 0;
 
@@ -54,7 +53,7 @@ function notify(message, type = 'success') {
   setTimeout(() => div.remove(), 5000);
 }
 
-/* ================= INICIO (Bootstrap) ================= */
+/* ================= INICIO ================= */
 
 window.addEventListener('DOMContentLoaded', async () => {
   if (!getToken()) { go('login.html'); return; }
@@ -74,7 +73,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (flash) {
     try {
       const { message, type } = JSON.parse(flash);
-      notify(message, type || 'success');
+      if(type === 'success') {
+          Swal.fire({ 
+              title: '¡Éxito!', 
+              text: message, 
+              icon: 'success', 
+              timer: 2000, 
+              showConfirmButton: false 
+          });
+      } else {
+          notify(message, type || 'success');
+      }
     } catch (_) {}
     localStorage.removeItem('flash');
   }
@@ -92,13 +101,13 @@ function bindFilters() {
   $('#filtroDni')?.addEventListener('input', deb);
   $('#filtroNombre')?.addEventListener('input', deb);
   
-  // El cambio de estado recarga desde el backend si es necesario
+  // El cambio de estado recarga desde el backend
   $('#filtroEstado')?.addEventListener('change', reloadFromBackend);
 
   $('#btnLimpiar')?.addEventListener('click', () => {
     if ($('#filtroDni'))    $('#filtroDni').value = '';
     if ($('#filtroNombre')) $('#filtroNombre').value = '';
-    if ($('#filtroEstado')) $('#filtroEstado').value = 'ACTIVE'; // Volver a defecto
+    if ($('#filtroEstado')) $('#filtroEstado').value = 'ACTIVE'; 
     reloadFromBackend();
   });
 }
@@ -109,15 +118,11 @@ async function reloadFromBackend() {
 
   try {
     const q = new URLSearchParams();
-    
-    // Lógica del filtro de estado para el backend
     const estadoSeleccionado = $('#filtroEstado')?.value || 'ACTIVE';
 
-    // Si piden INACTIVE o ALL, necesitamos que el backend traiga los eliminados
     if (estadoSeleccionado === 'INACTIVE' || estadoSeleccionado === 'ALL') {
       q.set('includeDeleted', 'true');
     }
-    // Si es ACTIVE, no mandamos nada (el back por defecto trae solo activos)
 
     const url = q.toString() ? `${API_URL_CLI}?${q.toString()}` : API_URL_CLI;
     const res = await authFetch(url);
@@ -141,31 +146,25 @@ async function reloadFromBackend() {
 function applyLocalFilters() {
   let lista = ALL_CLIENTS.slice();
 
-  // 1. Obtener valores de los inputs
   const dniTxt    = ($('#filtroDni')?.value || '').toLowerCase().trim();
   const nomTxt    = ($('#filtroNombre')?.value || '').toLowerCase().trim();
   const estadoSel = ($('#filtroEstado')?.value || 'ACTIVE');
 
-  // 2. Filtrar
   lista = lista.filter(c => {
     const cDni = (c.dni || '').toLowerCase();
     const cNom = `${c.name} ${c.surname}`.toLowerCase();
-    const cStatus = (c.status || 'ACTIVE').toUpperCase(); // Asegurar string
+    const cStatus = (c.status || 'ACTIVE').toUpperCase();
 
-    // Coincidencia de texto
     const matchDni = !dniTxt || cDni.includes(dniTxt);
     const matchNom = !nomTxt || cNom.includes(nomTxt);
 
-    // Coincidencia de estado
     let matchEstado = true;
     if (estadoSel === 'ACTIVE')   matchEstado = (cStatus === 'ACTIVE');
     if (estadoSel === 'INACTIVE') matchEstado = (cStatus === 'INACTIVE');
-    // Si es ALL, matchEstado siempre es true
 
     return matchDni && matchNom && matchEstado;
   });
 
-  // 3. Ordenar: Activos primero, luego ID descendente
   lista.sort((a, b) => {
     const aAct = (a.status === 'ACTIVE');
     const bAct = (b.status === 'ACTIVE');
@@ -206,7 +205,6 @@ function renderPager(totalElems, totalPages) {
 function renderLista(lista) {
   const contenedor = $('#lista-clientes');
   
-  // Encabezado con tus columnas originales
   contenedor.innerHTML = `
     <div class="fila encabezado">
       <div>ID</div>
@@ -230,27 +228,25 @@ function renderLista(lista) {
     const isInactive = (c.status === 'INACTIVE');
     const rowClass = isInactive ? 'fila disabled' : 'fila';
 
-    // Datos
     const id   = c.idClient;
-    const nom  = escapeHtml(`${c.name} ${c.surname}`);
+    const nom  = escapeHtml(`${c.name} ${c.surname}`); // <-- ESTE ES EL NOMBRE QUE QUEREMOS
     const dni  = escapeHtml(c.dni || '-');
     const tel  = escapeHtml(c.phoneNumber || '-');
     
-    // Estado Visual
     const pillClass = isInactive ? 'pill pending' : 'pill completed';
     const pillText  = isInactive ? 'INACTIVO' : 'ACTIVO';
     const pillHtml  = `<span class="${pillClass}">${pillText}</span>`;
 
     let btnAccion = '';
+    // AGREGAMOS data-name="${nom}" AQUÍ ABAJO
     if (isInactive) {
-        btnAccion = `<button class="btn restore" data-restore="${id}" title="Restaurar / Reactivar">Restaurar</button>`;
+        btnAccion = `<button class="btn restore" data-restore="${id}" data-name="${nom}" title="Restaurar / Reactivar">Restaurar</button>`;
     } else {
-        btnAccion = `<button class="btn danger" data-del="${id}" title="Eliminar (Deshabilitar)">🗑️</button>`;
+        btnAccion = `<button class="btn danger" data-del="${id}" data-name="${nom}" title="Eliminar (Deshabilitar)">🗑️</button>`;
     }
 
     const fila = document.createElement('div');
     fila.className = rowClass;
-    // Estructura original de columnas: ID, Cliente, DNI, Telefono, Estado, Acciones
     fila.innerHTML = `
       <div>#${id}</div>
       <div style="font-weight:600;">${nom}</div>
@@ -265,51 +261,92 @@ function renderLista(lista) {
     contenedor.appendChild(fila);
   });
 
-  // Clicks
   contenedor.onclick = (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
     const delId = btn.getAttribute('data-del');
     const resId = btn.getAttribute('data-restore');
+    const name  = btn.getAttribute('data-name'); // <-- CAPTURAMOS EL NOMBRE
 
-    if (delId) eliminarCliente(delId);
-    if (resId) restaurarCliente(resId);
+    // PASAMOS (ID, NOMBRE) A LAS FUNCIONES
+    if (delId) eliminarCliente(delId, name);
+    if (resId) restaurarCliente(resId, name);
   };
 }
 
-/* ================== ACCIONES (API) ================== */
+/* ================== ACCIONES (CON SWEETALERT2) ================== */
 
-async function eliminarCliente(id) {
-  if (!confirm(`¿Seguro que querés deshabilitar al cliente #${id}?`)) return;
+function eliminarCliente(id, name) {
+  // Usamos el nombre en el texto
+  Swal.fire({
+    title: '¿Estás seguro?',
+    text: `Vas a deshabilitar al cliente ${name}. Podrás reactivarlo luego.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',   
+    cancelButtonColor: '#3085d6', 
+    confirmButtonText: 'Deshabilitar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        const res = await authFetch(`${API_URL_CLI}/${id}`, { method: 'DELETE' });
+        
+        if (!res.ok) {
+           if (res.status === 403) throw new Error('No tienes permisos de OWNER');
+           throw new Error(`Error HTTP ${res.status}`);
+        }
 
-  try {
-    const res = await authFetch(`${API_URL_CLI}/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      if (res.status === 403) throw new Error('Requiere permisos de OWNER');
-      throw new Error(`HTTP ${res.status}`);
+        Swal.fire(
+          '¡Deshabilitado!',
+          `El cliente ${name} ha pasado a estado Inactivo.`,
+          'success'
+        );
+
+        reloadFromBackend();
+
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Error', err.message, 'error');
+      }
     }
-    notify('Cliente deshabilitado (Inactivo)', 'success');
-    // Recargamos manteniendo el filtro actual
-    reloadFromBackend(); 
-  } catch (err) {
-    console.error(err);
-    notify(err.message, 'error');
-  }
+  });
 }
 
-async function restaurarCliente(id) {
-  if (!confirm(`¿Reactivar al cliente #${id}?`)) return;
+function restaurarCliente(id, name) { 
+  Swal.fire({
+    title: '¿Reactivar cliente?',
+    text: `El cliente ${name} volverá a estar Activo.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#28a745', 
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Restaurar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        const res = await authFetch(`${API_URL_CLI}/${id}/restore`, { method: 'PUT' });
+        
+        if (!res.ok) {
+           if (res.status === 403) throw new Error('No tienes permisos de OWNER');
+           throw new Error(`Error HTTP ${res.status}`);
+        }
 
-  try {
-    const res = await authFetch(`${API_URL_CLI}/${id}/restore`, { method: 'PUT' });
-    if (!res.ok) {
-      if (res.status === 403) throw new Error('Requiere permisos de OWNER');
-      throw new Error(`HTTP ${res.status}`);
+        Swal.fire({
+            title: '¡Restaurado!',
+            text: `El cliente ${name} está activo nuevamente.`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+        });
+
+        reloadFromBackend();
+
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Error', err.message, 'error');
+      }
     }
-    notify('Cliente restaurado exitosamente', 'success');
-    reloadFromBackend();
-  } catch (err) {
-    console.error(err);
-    notify(err.message, 'error');
-  }
+  });
 }

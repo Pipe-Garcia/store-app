@@ -1,4 +1,3 @@
-// /static/files-js/materiales.js
 const { authFetch, getToken } = window.api;
 
 const API_URL_MAT        = '/materials';
@@ -23,23 +22,22 @@ function debounce(fn,delay=300){ let t; return (...a)=>{ clearTimeout(t); t=setT
 function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 
-let toastRoot;
-function notify(msg,type='info'){
-  if(!toastRoot){
-    toastRoot=document.createElement('div');
-    Object.assign(toastRoot.style,{
-      position:'fixed',
-      top:'76px',
-      right:'16px',
-      display:'flex',
-      flexDirection:'column',
-      gap:'8px',
-      zIndex:9999
-    });
-    document.body.appendChild(toastRoot);
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
   }
-  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg;
-  toastRoot.appendChild(n); setTimeout(()=>n.remove(),4000);
+});
+
+function notify(msg, type='info'){
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
 }
 
 /* ============ bootstrap ============ */
@@ -71,8 +69,20 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   // flash (desde crear-material)
   const flash = localStorage.getItem('flash');
   if (flash){
-    const {message,type} = JSON.parse(flash);
-    notify(message, type||'success');
+    try {
+        const {message, type} = JSON.parse(flash);
+        if(type === 'success') {
+            Swal.fire({
+                title: '¡Éxito!',
+                text: message,
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } else {
+            notify(message, type||'info');
+        }
+    } catch(_) {}
     localStorage.removeItem('flash');
   }
 
@@ -102,11 +112,19 @@ function validateRanges(){
   const elMin = $('#f_min'), elMax = $('#f_max');
   elMin?.classList.remove('invalid'); elMax?.classList.remove('invalid');
 
-  if (elMin?.value && min < 0) { elMin.classList.add('invalid'); notify('Precio mínimo inválido', 'error'); return false; }
-  if (elMax?.value && max < 0) { elMax.classList.add('invalid'); notify('Precio máximo inválido', 'error'); return false; }
+  if (elMin?.value && min < 0) { 
+      elMin.classList.add('invalid'); 
+      notify('Precio mínimo inválido', 'error'); 
+      return false; 
+  }
+  if (elMax?.value && max < 0) { 
+      elMax.classList.add('invalid'); 
+      notify('Precio máximo inválido', 'error'); 
+      return false; 
+  }
   if (elMin?.value && elMax?.value && min > max) {
     elMin.classList.add('invalid'); elMax.classList.add('invalid');
-    notify('El mínimo no puede ser mayor que el máximo', 'error');
+    notify('El mínimo no puede ser mayor que el máximo', 'warning');
     return false;
   }
   return true;
@@ -259,6 +277,8 @@ function renderTabla(list){
 
     const row = document.createElement('div');
     row.className = 'fila';
+    
+    // Agregamos data-name al botón de eliminar para el cartel
     row.innerHTML = `
       <div>${code || '-'}</div>
       <div>${name}</div>
@@ -268,7 +288,7 @@ function renderTabla(list){
       <div class="acciones">
         <button class="btn outline" data-view="${m.idMaterial}" title="Ver">👁️</button>
         <button class="btn outline" data-edit="${m.idMaterial}" title="Editar">✏️</button>
-        <button class="btn danger" data-del="${m.idMaterial}" title="Eliminar">🗑️</button>
+        <button class="btn danger" data-del="${m.idMaterial}" data-name="${name}" title="Eliminar">🗑️</button>
       </div>
     `;
     cont.appendChild(row);
@@ -279,21 +299,48 @@ function renderTabla(list){
     const idView=t.getAttribute('data-view');
     const idEdit=t.getAttribute('data-edit');
     const idDel =t.getAttribute('data-del');
+    const name  =t.getAttribute('data-name'); // Capturamos nombre para la alerta
+
     if(idView){ location.href=`../files-html/ver-material.html?id=${Number(idView)}`; return; }
     if(idEdit){ location.href=`../files-html/editar-material.html?id=${Number(idEdit)}`; return; }
-    if(idDel ){ eliminarMaterial(Number(idDel)); return; }
+    if(idDel ){ eliminarMaterial(Number(idDel), name); return; }
   };
 }
 
-async function eliminarMaterial(id){
-  if(!confirm('¿Eliminar material?')) return;
-  try{
-    const r=await authFetch(`${API_URL_MAT}/${id}`,{method:'DELETE'});
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    notify('🗑️ Material eliminado','success');
-    await buscarServidor();
-  }catch(e){
-    console.error(e);
-    notify('No se pudo eliminar','error');
-  }
+/* ============ Acciones (SweetAlert2) ============ */
+
+async function eliminarMaterial(id, name){
+  // Modal de confirmación
+  Swal.fire({
+    title: '¿Eliminar material?',
+    text: `Estás a punto de borrar "${name}". Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    
+    if (result.isConfirmed) {
+      try{
+        const r=await authFetch(`${API_URL_MAT}/${id}`,{method:'DELETE'});
+        if(!r.ok) throw new Error(`HTTP ${r.status}`);
+        
+        // Alerta de éxito
+        Swal.fire(
+            '¡Eliminado!',
+            'El material ha sido eliminado.',
+            'success'
+        );
+        
+        await buscarServidor();
+        
+      }catch(e){
+        console.error(e);
+        // Error más amigable
+        Swal.fire('Error', 'No se pudo eliminar el material (puede que tenga stock o ventas asociadas).', 'error');
+      }
+    }
+  });
 }

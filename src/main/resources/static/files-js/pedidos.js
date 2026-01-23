@@ -1,4 +1,3 @@
-// /static/files-js/pedidos.js
 // Listado de Presupuestos basado en /orders y /orders/search.
 // El "Estado" se calcula por VENTAS (pendiente por vender) usando /orders/{id}/view.
 
@@ -32,13 +31,25 @@ const fmtDate = (s)=>{
   return isNaN(d) ? '—' : d.toLocaleDateString('es-AR');
 };
 
-function notify(msg,type='info'){
-  const div=document.createElement('div');
-  div.className=`notification ${type}`;
-  div.textContent=msg;
-  document.body.appendChild(div);
-  setTimeout(()=>div.remove(),3800);
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+});
+
+function notify(msg, type='info'){
+  // Mapeamos los tipos: 'error', 'success', 'warning', 'info'
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
 }
+
 function go(page){
   const base = location.pathname.replace(/[^/]+$/, '');
   location.href = `${base}${page}`;
@@ -109,12 +120,22 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     }
   });
 
-  // flash desde crear/editar
+  // flash desde crear/editar (Mensaje bonito al volver)
   const flash = localStorage.getItem('flash');
   if (flash){
     try{
-      const {message,type} = JSON.parse(flash);
-      if (message) notify(message, type||'success');
+      const {message, type} = JSON.parse(flash);
+      if(type === 'success') {
+          Swal.fire({
+              icon: 'success',
+              title: '¡Éxito!',
+              text: message,
+              timer: 2000,
+              showConfirmButton: false
+          });
+      } else {
+          notify(message, type||'success');
+      }
     }catch(_){}
     localStorage.removeItem('flash');
   }
@@ -432,19 +453,22 @@ function render(lista){
     const fecha = fmtDate(getDateISO(o));
     const cli   = getClientName(o) || '—';
     const total = getTotal(o);
+    const totalStr = fmtARS.format(total); // Guardamos formateado para el modal
     const est   = getEstadoCode(o);
 
     const row = document.createElement('div');
     row.className='fila row';
+    
+    // AGREGAMOS data-desc PARA EL CARTEL DE BORRADO
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cli}</div>
-      <div>${fmtARS.format(total)}</div>
+      <div>${totalStr}</div>
       <div>${pill(est)}</div>
       <div class="acciones">
-        <a class="btn outline" href="ver-pedido.html?id=${id}">👁️</a>
-        <a class="btn outline" href="editar-pedido.html?id=${id}">✏️</a>
-        <button class="btn danger" data-del="${id}">🗑️</button>
+        <a class="btn outline" href="ver-pedido.html?id=${id}" title="Ver">👁️</a>
+        <a class="btn outline" href="editar-pedido.html?id=${id}" title="Editar">✏️</a>
+        <button class="btn danger" data-del="${id}" data-desc="${cli} (${totalStr})" title="Eliminar">🗑️</button>
       </div>
     `;
     cont.appendChild(row);
@@ -454,26 +478,52 @@ function render(lista){
     const btn = ev.target.closest('button[data-del]');
     if (!btn) return;
     const id = Number(btn.dataset.del);
-    borrarPresupuesto(id);
+    const desc = btn.dataset.desc; // Leemos la descripción
+    borrarPresupuesto(id, desc);
   };
 }
 
-async function borrarPresupuesto(id){
-  if (!confirm(`¿Eliminar definitivamente el presupuesto #${id}?`)) return;
-  try{
-    const r = await authFetch(`${API_URL_ORDERS}/${id}`, { method:'DELETE' });
-    if (!r.ok){
-      if (r.status===403){
-        notify('No tenés permisos para eliminar presupuestos (ROLE_OWNER requerido).','error');
-        return;
+/* ================== ACCIONES (SweetAlert2) ================== */
+
+async function borrarPresupuesto(id, descripcion){
+  // Modal de confirmación mejorado
+  Swal.fire({
+    title: '¿Eliminar presupuesto?',
+    text: `Vas a eliminar el presupuesto #${id} de ${descripcion}. Esta acción es irreversible.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    
+    if (result.isConfirmed) {
+      try{
+        const r = await authFetch(`${API_URL_ORDERS}/${id}`, { method:'DELETE' });
+        if (!r.ok){
+          if (r.status===403){
+            Swal.fire('Permiso denegado', 'Se requiere rol OWNER para eliminar presupuestos.', 'error');
+            return;
+          }
+          throw new Error(`HTTP ${r.status}`);
+        }
+        
+        // Eliminamos localmente
+        PRESUPUESTOS = PRESUPUESTOS.filter(o => getId(o) !== id);
+        
+        Swal.fire(
+          '¡Eliminado!',
+          'El presupuesto ha sido eliminado correctamente.',
+          'success'
+        );
+        
+        applyFilters();
+
+      }catch(e){
+        console.error(e);
+        Swal.fire('Error', 'No se pudo eliminar el presupuesto. Intenta nuevamente.', 'error');
       }
-      throw new Error(`HTTP ${r.status}`);
     }
-    PRESUPUESTOS = PRESUPUESTOS.filter(o => getId(o) !== id);
-    notify('Presupuesto eliminado.','success');
-    applyFilters();
-  }catch(e){
-    console.error(e);
-    notify('No se pudo eliminar el presupuesto','error');
-  }
+  });
 }

@@ -28,7 +28,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     go('ventas.html');
     return;
   }
-  $('#btnVolver').onclick = ()=> go(`ver-venta.html?id=${saleId}`);
+  $('#btnVolver').onclick = ()=> go(`ventas.html?id=${saleId}`);
 
   const [rSale, rClients] = await Promise.all([
     authFetch(`${API_SALES}/${saleId}`),

@@ -1,4 +1,3 @@
-// /static/files-js/proveedores.js
 const API_URL_PROVEEDORES = 'http://localhost:8088/suppliers';
 
 const $  = (s,r=document)=>r.querySelector(s);
@@ -12,15 +11,23 @@ function authHeaders(json=true){
 function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
 function go(page){ const base=location.pathname.replace(/[^/]+$/,''); location.href=`${base}${page}`; }
 
-let __toastRoot;
-function notify(msg,type='info'){
-  if(!__toastRoot){
-    __toastRoot=document.createElement('div');
-    Object.assign(__toastRoot.style,{position:'fixed',top:'76px',right:'16px',display:'flex',flexDirection:'column',gap:'8px',zIndex:9999});
-    document.body.appendChild(__toastRoot);
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
   }
-  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg; __toastRoot.appendChild(n);
-  setTimeout(()=>n.remove(),4200);
+});
+
+function notify(msg, type='info'){
+  // Mapeamos los tipos: 'error', 'success', 'warning', 'info'
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
 }
 
 const PILL = { ACTIVE:'green', INACTIVE:'gray' };
@@ -68,6 +75,26 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       currentPage++;
       aplicarFiltros();
     });
+  }
+
+  // ✅ LÓGICA DE MENSAJES FLASH (Aquí se muestra el cartel al volver de crear/editar)
+  const flash = localStorage.getItem('flash');
+  if (flash) {
+    try {
+      const {message, type} = JSON.parse(flash);
+      if(type === 'success') {
+          Swal.fire({
+              icon: 'success',
+              title: '¡Éxito!',
+              text: message,
+              timer: 2000,
+              showConfirmButton: false
+          });
+      } else {
+          notify(message, type||'success');
+      }
+    } catch(_) {}
+    localStorage.removeItem('flash');
   }
 
   await cargarProveedores();
@@ -125,7 +152,7 @@ function aplicarFiltros(){
   if (empresa) list = list.filter(p => String(p.nameCompany||'').toLowerCase().includes(empresa));
   if (estado)  list = list.filter(p => String(p.status||'').toUpperCase() === estado);
 
-  const total      = list.length;
+  const total       = list.length;
   const totalPages = total ? Math.ceil(total / pageSize) : 0;
 
   if (totalPages === 0){
@@ -183,19 +210,25 @@ function renderLista(lista){
 
   for (const p of lista){
     const id = p.idSupplier ?? p.id ?? '';
+    const fullName = [p.name, p.surname].filter(Boolean).join(' ') || '—';
+    const empresa = p.nameCompany || '—';
+    // Nombre para mostrar en el cartel de borrar (preferimos Empresa, si no Nombre personal)
+    const displayName = p.nameCompany ? p.nameCompany : fullName;
+
     const row = document.createElement('div');
     row.className='fila';
+    
     row.innerHTML = `
-      <div>${[p.name,p.surname].filter(Boolean).join(' ') || '—'}</div>
-      <div>${p.nameCompany || '—'}</div>
+      <div>${fullName}</div>
+      <div>${empresa}</div>
       <div>${p.phoneNumber || '—'}</div>
       <div>${p.email || '—'}</div>
       <div>${statePill(p.status)}</div>
       <div class="acciones">
-        <a class="btn outline" href="editar-proveedor.html?id=${id}">✏️</a>
-        <a class="btn outline" href="detalle-proveedor.html?id=${id}">👁️</a>
-        <a class="btn outline" href="asignar-materiales.html?id=${id}">➕</a>
-        <button class="btn danger" data-del="${id}">🗑️</button>
+        <a class="btn outline" href="editar-proveedor.html?id=${id}" title="Editar">✏️</a>
+        <a class="btn outline" href="detalle-proveedor.html?id=${id}" title="Ver Detalle">👁️</a>
+        <a class="btn outline" href="asignar-materiales.html?id=${id}" title="Asignar Materiales">➕</a>
+        <button class="btn danger" data-del="${id}" data-name="${displayName}" title="Eliminar">🗑️</button>
       </div>
     `;
     cont.appendChild(row);
@@ -204,18 +237,54 @@ function renderLista(lista){
   cont.onclick = async (ev)=>{
     const btn = ev.target.closest('[data-del]');
     if(!btn) return;
+    
     const id = btn.getAttribute('data-del');
-    if(!confirm('¿Eliminar proveedor?')) return;
-    try{
-      const r=await authFetch(`${API_URL_PROVEEDORES}/${id}`,{method:'DELETE'});
-      if(!r.ok) throw new Error(`HTTP ${r.status}`);
-      notify('Proveedor eliminado','success');
-      PROVEEDORES = PROVEEDORES.filter(p => String(p.idSupplier??p.id) !== String(id));
-      // después de eliminar, recomputamos filtros y paginado
-      if (currentPage > 0 && (currentPage * pageSize) >= PROVEEDORES.length){
-        currentPage--;
-      }
-      aplicarFiltros();
-    }catch(e){ console.error(e); notify('No se pudo eliminar','error'); }
+    const name = btn.getAttribute('data-name');
+    
+    eliminarProveedor(id, name);
   };
+}
+
+/* ================== ACCIONES (SweetAlert2) ================== */
+
+async function eliminarProveedor(id, name){
+  // Modal de confirmación
+  Swal.fire({
+    title: '¿Eliminar proveedor?',
+    text: `Vas a eliminar a "${name}". Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    
+    if (result.isConfirmed) {
+      try{
+        const r=await authFetch(`${API_URL_PROVEEDORES}/${id}`,{method:'DELETE'});
+        if(!r.ok) throw new Error(`HTTP ${r.status}`);
+        
+        // Notificación de éxito
+        Swal.fire(
+            '¡Eliminado!',
+            'El proveedor ha sido eliminado.',
+            'success'
+        );
+
+        // Actualizar lista localmente
+        PROVEEDORES = PROVEEDORES.filter(p => String(p.idSupplier??p.id) !== String(id));
+        
+        // Recalcular paginado
+        if (currentPage > 0 && (currentPage * pageSize) >= PROVEEDORES.length){
+          currentPage--;
+        }
+        aplicarFiltros();
+
+      }catch(e){ 
+        console.error(e); 
+        Swal.fire('Error', 'No se pudo eliminar el proveedor (posiblemente tenga datos asociados).', 'error');
+      }
+    }
+  });
 }

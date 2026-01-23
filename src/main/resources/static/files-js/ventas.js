@@ -1,10 +1,7 @@
-// /static/files-js/ventas.js
-
 const { authFetch, getToken, safeJson } = window.api;
 
 const API_URL_SALES   = '/sales';
 const API_URL_SEARCH  = '/sales/search';
-// API_URL_CLIENTS ya no se usa
 
 const $  = (s, r=document) => r.querySelector(s);
 const fmtARS = new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS' });
@@ -13,13 +10,26 @@ const norm = (s)=> (s||'').toString().toLowerCase()
 
 const debounce = (fn,d=250)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); }; };
 
-function notify(msg,type='info'){
-  const n=document.createElement('div');
-  n.className=`notification ${type}`;
-  n.textContent=msg;
-  document.body.appendChild(n);
-  setTimeout(()=>n.remove(),3500);
+/* ================== TOASTS (SweetAlert2) ================== */
+// Configuración base para notificaciones pequeñas en la esquina
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+});
+
+function notify(msg, type='info') {
+  // Mapeamos los tipos de tu código a los iconos de SweetAlert
+  const icon = type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info');
+  Toast.fire({ icon: icon, title: msg });
 }
+
 function go(page){
   const base = location.pathname.replace(/[^/]+$/, '');
   location.href = `${base}${page}`;
@@ -60,8 +70,21 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   const flash = localStorage.getItem('flash');
   if (flash){
     try{
-      const {message,type} = JSON.parse(flash);
-      if (message) notify(message, type||'success');
+      const {message, type} = JSON.parse(flash);
+      if (message) {
+          // Si es éxito, mostramos un cartel central más bonito
+          if(type === 'success') {
+              Swal.fire({
+                  icon: 'success',
+                  title: '¡Éxito!',
+                  text: message,
+                  timer: 2000,
+                  showConfirmButton: false
+              });
+          } else {
+              notify(message, type||'success');
+          }
+      }
     }catch(_){}
     localStorage.removeItem('flash');
   }
@@ -75,14 +98,12 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 function bindFilters(){
   const deb = debounce(reloadFromFilters, 280);
 
-  // Eliminado el listener de #filtroCliente
   $('#fDesde')       ?.addEventListener('change', deb);
   $('#fHasta')       ?.addEventListener('change', deb);
   $('#fEstadoEntrega')?.addEventListener('change', deb);
   $('#fTexto')       ?.addEventListener('input',  deb);
 
   $('#btnLimpiar')?.addEventListener('click', ()=>{
-    // Eliminado el reset de #filtroCliente
     $('#fDesde').value = '';
     $('#fHasta').value = '';
     $('#fEstadoEntrega').value = '';
@@ -96,12 +117,9 @@ function buildQueryFromFilters(){
   const from = $('#fDesde').value;
   const to   = $('#fHasta').value;
   
-  // Eliminado clientId del query param
-
   if (from) q.set('from', from);
   if (to)   q.set('to',   to);
 
-  // NOTA: no mandamos estado al back; el estado de entrega se calcula en front.
   return q.toString();
 }
 
@@ -141,7 +159,6 @@ async function reloadFromFilters(){
     if (text){
       view = view.filter(v=>{
         const cli = norm(v.clientName || '');
-        // Solo buscamos si el nombre contiene el texto. Ignoramos ID.
         return cli.includes(text);
       });
     }
@@ -193,12 +210,9 @@ function getPendingUnits(v){
 }
 
 function getDeliveryStateCode(v){
-  // 0) Si es una VENTA DIRECTA (sin presupuesto asociado),
-  //    la consideramos "ENTREGADA" a efectos logísticos.
   const hasOrder = !!(v.orderId ?? v.ordersId ?? v.order_id);
   if (!hasOrder) return 'DELIVERED';
 
-  // 1) Si el back ya manda un estado explícito
   const explicit = (v.deliveryStatus ?? v.deliveryState ?? '').toString().toUpperCase();
   if (['DELIVERED','COMPLETED','FULL','ENTREGADA','DIRECT'].includes(explicit)) {
     return 'DELIVERED';
@@ -207,13 +221,11 @@ function getDeliveryStateCode(v){
     return 'PENDING_DELIVERY';
   }
 
-  // 2) Flags booleanos
   const fully = v.fullyDelivered ?? v.allDelivered ?? v.deliveryCompleted;
   if (typeof fully === 'boolean'){
     return fully ? 'DELIVERED' : 'PENDING_DELIVERY';
   }
 
-  // 3) Cálculo por unidades
   const sold      = getSoldUnits(v);
   const delivered = getDeliveredUnits(v);
   const pending   = getPendingUnits(v);
@@ -321,20 +333,22 @@ function renderLista(lista){
     const fecha = fmtDate(v.dateSale || v.date);
     const cli   = v.clientName || '—';
     const total = Number(v.total ?? v.totalArs ?? v.amount ?? 0);
+    const totalStr = fmtARS.format(total); // Formateamos aquí para usarlo en el data-desc
     const st    = getDeliveryStateCode(v);
 
     const row = document.createElement('div');
     row.className = 'fila';
+    // AGREGAMOS data-desc PARA EL CARTEL DE BORRADO
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cli}</div>
-      <div>${fmtARS.format(total)}</div>
+      <div>${totalStr}</div>
       <div>${deliveryPillHtml(st)}</div>
       <div class="acciones">
-        <a class="btn outline" href="ver-venta.html?id=${id}">👁️</a>
-        <a class="btn outline" href="editar-venta.html?id=${id}">✏️</a>
-        <button class="btn outline" data-pdf="${id}">🧾</button>
-        <button class="btn danger" data-del="${id}">🗑️</button>
+        <a class="btn outline" href="ver-venta.html?id=${id}" title="Ver detalle">👁️</a>
+        <a class="btn outline" href="editar-venta.html?id=${id}" title="Editar">✏️</a>
+        <button class="btn outline" data-pdf="${id}" title="Descargar PDF">🧾</button>
+        <button class="btn danger" data-del="${id}" data-desc="${cli} (${totalStr})" title="Eliminar">🗑️</button>
       </div>
     `;
     cont.appendChild(row);
@@ -343,34 +357,56 @@ function renderLista(lista){
   cont.onclick = (ev)=>{
     const target = ev.target.closest('button, a');
     if (!target) return;
-    const delId = target.getAttribute('data-del');
-    const pdfId = target.getAttribute('data-pdf');
+    const delId  = target.getAttribute('data-del');
+    const pdfId  = target.getAttribute('data-pdf');
+    const desc   = target.getAttribute('data-desc'); // Capturamos la descripción
+
     if (delId){
-      borrarVenta(Number(delId));
+      borrarVenta(Number(delId), desc);
     }else if (pdfId){
       downloadSalePdf(Number(pdfId));
     }
   };
 }
 
-// ================== Acciones ==================
-async function borrarVenta(id){
-  if (!confirm(`¿Eliminar definitivamente la venta #${id}?`)) return;
-  try{
-    const r = await authFetch(`${API_URL_SALES}/${id}`, { method:'DELETE' });
-    if (!r.ok){
-      if (r.status === 403){
-        notify('No tenés permisos para eliminar ventas (ROLE_OWNER requerido).','error');
-        return;
+// ================== Acciones (Con SweetAlert2) ==================
+
+async function borrarVenta(id, descripcion){
+  // Cartel de confirmación mejorado
+  Swal.fire({
+    title: '¿Eliminar venta?',
+    text: `Vas a eliminar la venta #${id} de ${descripcion}. Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try{
+        const r = await authFetch(`${API_URL_SALES}/${id}`, { method:'DELETE' });
+        if (!r.ok){
+          if (r.status === 403){
+            Swal.fire('Permiso denegado', 'Se requiere rol OWNER para eliminar ventas.', 'error');
+            return;
+          }
+          throw new Error(`HTTP ${r.status}`);
+        }
+        
+        Swal.fire(
+          '¡Eliminada!',
+          'La venta ha sido eliminada correctamente.',
+          'success'
+        );
+        await reloadFromFilters();
+
+      }catch(e){
+        console.error(e);
+        Swal.fire('Error', 'No se pudo eliminar la venta. Verifica la consola.', 'error');
       }
-      throw new Error(`HTTP ${r.status}`);
     }
-    notify('Venta eliminada.','success');
-    await reloadFromFilters();
-  }catch(e){
-    console.error(e);
-    notify('No se pudo eliminar la venta','error');
-  }
+  });
 }
 
 async function downloadSalePdf(id){
@@ -383,7 +419,7 @@ async function downloadSalePdf(id){
   try{
     if (btn){
       btn.disabled = true;
-      btn.innerHTML = '⏳ Generando…';
+      btn.innerHTML = '⏳'; // Icono de carga
     }
 
     const r = await authFetch(`${API_URL_SALES}/${id}/pdf`, { method:'GET' });
@@ -398,13 +434,17 @@ async function downloadSalePdf(id){
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    
+    // Notificación discreta de éxito
+    notify('PDF descargado', 'success');
+
   }catch(e){
     console.error(e);
-    notify('No se pudo generar el PDF','error');
+    Swal.fire('Error PDF', 'No se pudo generar el documento.', 'error');
   }finally{
     if (btn){
       btn.disabled = false;
-      btn.innerHTML = originalHTML ?? '🧾 PDF';
+      btn.innerHTML = originalHTML ?? '🧾';
     }
   }
 }
