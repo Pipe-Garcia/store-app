@@ -23,7 +23,11 @@
   margin: 10px 0 14px 0;
 }
 
-.card:has(#lista-proveedores){ overflow-x:auto; }
+
+.list{
+  overflow-x:auto;
+}
+
 
 /* ====== Filtros ====== */
 .filters .row{
@@ -68,7 +72,7 @@ a.btn{ text-decoration:none; }
 .acciones{ display:flex; flex-wrap:wrap; gap:8px; }
 
 /* ====== Tabla de proveedores ====== */
-#lista-proveedores{ display:grid; min-width: 900px; }
+#lista-proveedores{ display:grid; min-width: 840px; }
 #lista-proveedores .fila{
   display:grid;
   grid-template-columns: 1.5fr 1.4fr 1fr 1.4fr .8fr 1.3fr;
