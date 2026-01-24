@@ -8,20 +8,20 @@ import java.util.List;
 
 public interface ISupplierService {
 
-    // ✅ Devuelve lista de DTOs, no entidades
-    List<SupplierDTO> getAllSuppliers();
+    List<SupplierDTO> getAllSuppliers(Boolean includeDeleted);
 
     Supplier getSupplierById(Long id);
-
-    // ✅ Si se usa desde el Service y se necesita en el controlador
-    SupplierDTO convertSupplierToDto(Supplier supplier);
-
     SupplierDTO getSupplierDtoById(Long id);
 
     SupplierDTO createSupplier(SupplierCreateDTO dto);
-
-    // ✅ Ya lo tenías bien, pero faltaba devolver un DTO
     SupplierDTO updateSupplier(Long id, SupplierCreateDTO dto);
 
+    // Ahora es "soft delete"
     void deleteSupplierById(Long id);
+
+    // Nuevo: restaurar proveedor
+    void restoreSupplier(Long id);
+
+    SupplierDTO convertSupplierToDto(Supplier s);
 }
+

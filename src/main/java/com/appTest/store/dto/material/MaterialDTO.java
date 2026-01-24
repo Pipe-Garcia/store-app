@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 @JsonPropertyOrder({
         "idMaterial", "name", "brand",
         "priceArs", "priceUsd",
-        "measurementUnit", "internalNumber", "description",
+        "measurementUnit", "internalNumber", "description", "status",
         // familia
         "familyId", "familyName", "category",
         // agregados/calculados
@@ -30,11 +30,13 @@ public class MaterialDTO implements Serializable {
     private String internalNumber;
     private String description;
 
-    // 🔹 NUEVO: datos de familia para poder preseleccionar en el front
+    // estado lógico
+    private String status;
+
+    // datos de familia
     private Long familyId;
     private String familyName;
 
-    // (lo que ya tenías)
     private String category;
 
     private BigDecimal quantityAvailable;
@@ -50,9 +52,8 @@ public class MaterialDTO implements Serializable {
             Long idMaterial, String name, String brand,
             BigDecimal priceArs, BigDecimal priceUsd,
             String measurementUnit, String internalNumber, String description,
-            // familia
+            String status,
             Long familyId, String familyName, String category,
-            // agregados/calculados
             BigDecimal quantityAvailable, int totalSales,
             int stockCount, int supplierCount, int saleDetailCount, int orderDetailCount
     ) {
@@ -64,6 +65,8 @@ public class MaterialDTO implements Serializable {
         this.measurementUnit = measurementUnit;
         this.internalNumber = internalNumber;
         this.description = description;
+
+        this.status = status;
 
         this.familyId = familyId;
         this.familyName = familyName;

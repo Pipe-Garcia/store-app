@@ -1,9 +1,18 @@
 package com.appTest.store.services;
 
-import com.appTest.store.dto.material.*;
-import com.appTest.store.models.*;
-import com.appTest.store.repositories.*;
-import com.appTest.store.services.AuditService; // <-- usa tu AuditService
+import com.appTest.store.dto.material.MaterialCreateDTO;
+import com.appTest.store.dto.material.MaterialDTO;
+import com.appTest.store.dto.material.MaterialMostExpensiveDTO;
+import com.appTest.store.dto.material.MaterialStockAlertDTO;
+import com.appTest.store.dto.material.MaterialUpdateDTO;
+import com.appTest.store.models.Family;
+import com.appTest.store.models.Material;
+import com.appTest.store.models.Stock;
+import com.appTest.store.models.Warehouse;
+import com.appTest.store.repositories.IFamilyRepository;
+import com.appTest.store.repositories.IMaterialRepository;
+import com.appTest.store.repositories.IStockRepository;
+import com.appTest.store.repositories.IWarehouseRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +33,6 @@ public class MaterialService implements IMaterialService {
     @Autowired private IWarehouseRepository repoWare;
     @Autowired private IStockRepository repoStock;
 
-    // ⬇️ agregamos el servicio de auditoría
     @Autowired private AuditService audit;
 
     /* ==================== Utils ==================== */
@@ -32,7 +40,7 @@ public class MaterialService implements IMaterialService {
     private String norm(String s){ return s==null? null : s.trim(); }
     private boolean hasText(String s){ return s!=null && !s.trim().isEmpty(); }
 
-    // Snapshot “plano” para diffs (no incluimos listas para evitar recursión)
+    // Snapshot “plano” para diffs (sin listas para evitar recursión)
     private Map<String, Object> snap(Material m){
         if (m==null) return null;
         Map<String,Object> map = new LinkedHashMap<>();
@@ -44,6 +52,7 @@ public class MaterialService implements IMaterialService {
         map.put("unidadMedida",     m.getMeasurementUnit());
         map.put("nroInterno",       m.getInternalNumber());
         map.put("descripcion",      m.getDescription());
+        map.put("estado",           m.getStatus());
         map.put("familiaId",        m.getFamily()!=null? m.getFamily().getIdFamily() : null);
         map.put("familiaNombre",    m.getFamily()!=null? m.getFamily().getTypeFamily() : null);
 
@@ -76,12 +85,11 @@ public class MaterialService implements IMaterialService {
             Object va = (a!=null) ? a.get(k) : null;
             Object vb = (b!=null) ? b.get(k) : null;
 
-            // 🔹 BigDecimal: consideramos igual si compareTo == 0 (misma cantidad)
+            // BigDecimal: consideramos igual si compareTo == 0
             if (va instanceof BigDecimal && vb instanceof BigDecimal){
                 BigDecimal bdA = (BigDecimal) va;
                 BigDecimal bdB = (BigDecimal) vb;
-                if (bdA.compareTo(bdB) == 0){
-                    // mismo valor lógico (ej: 35000 vs 35000.00) => no registrar cambio
+                if (bdA.compareTo(bdB) == 0) {
                     continue;
                 }
                 out.add(new Change(k, bdA, bdB));
@@ -95,7 +103,6 @@ public class MaterialService implements IMaterialService {
         return out;
     }
 
-
     private String humanField(String k){
         return switch (k){
             case "nombre"        -> "Nombre";
@@ -105,12 +112,12 @@ public class MaterialService implements IMaterialService {
             case "unidadMedida"  -> "Unidad";
             case "nroInterno"    -> "N° interno";
             case "descripcion"   -> "Descripción";
+            case "estado"        -> "Estado";
             case "familiaId", "familiaNombre" -> "Familia";
             case "depositoId", "depositoNombre" -> "Depósito";
             default -> k;
         };
     }
-
 
     private String fmt(Object v){
         if (v==null || (v instanceof String s && s.isBlank())) return "—";
@@ -120,21 +127,21 @@ public class MaterialService implements IMaterialService {
 
     private String summarize(List<Change> changes){
         if (changes==null || changes.isEmpty()) return "OK";
-        return changes.stream()
+        String s = changes.stream()
                 .limit(3)
                 .map(c -> humanField(c.field()) + ": " + fmt(c.from()) + " → " + fmt(c.to()))
-                .collect(Collectors.joining(" · "))
-                + (changes.size()>3 ? " +" + (changes.size()-3) + " más" : "");
+                .collect(Collectors.joining(" · "));
+        if (changes.size()>3) s += " +" + (changes.size()-3) + " más";
+        return s;
     }
 
-    // Ejecuta “después del commit” (para que tu tabla de auditoría no quede con basura si hace rollback)
+    // Ejecuta “después del commit”
     private void afterCommit(Runnable r){
         if (TransactionSynchronizationManager.isSynchronizationActive()){
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override public void afterCommit() { r.run(); }
             });
         } else {
-            // fallback: sin TX activa, ejecutar ahora
             r.run();
         }
     }
@@ -142,8 +149,11 @@ public class MaterialService implements IMaterialService {
     /* ==================== API pública ==================== */
 
     @Override
-    public List<Material> getAllMaterials() {
-        return repoMat.findAll();
+    public List<Material> getAllMaterials(Boolean includeDeleted) {
+        if (Boolean.TRUE.equals(includeDeleted)) {
+            return repoMat.findAll();
+        }
+        return repoMat.findByStatus("ACTIVE");
     }
 
     @Override
@@ -168,6 +178,7 @@ public class MaterialService implements IMaterialService {
                 material.getMeasurementUnit(),
                 material.getInternalNumber(),
                 material.getDescription(),
+                material.getStatus(),
                 famId, famName, famName,
                 totalQty, totalSales,
                 material.getStockList().size(),
@@ -197,7 +208,6 @@ public class MaterialService implements IMaterialService {
 
     @Override
     @Transactional
-    // Quitar @Auditable aquí para evitar duplicados
     public MaterialDTO createMaterial(MaterialCreateDTO dto) {
 
         Material material = new Material();
@@ -208,6 +218,8 @@ public class MaterialService implements IMaterialService {
         material.setMeasurementUnit(dto.getMeasurementUnit());
         material.setInternalNumber(dto.getInternalNumber());
         material.setDescription(dto.getDescription());
+        // Siempre nace activo
+        material.setStatus("ACTIVE");
 
         Family family = repoFam.findById(dto.getFamilyId())
                 .orElseThrow(() -> new EntityNotFoundException("Family not found with ID: " + dto.getFamilyId()));
@@ -234,14 +246,13 @@ public class MaterialService implements IMaterialService {
             repoStock.save(stock);
         }
 
-        // Refrescar (por si hay relaciones perezosas)
         savedMaterial = repoMat.findById(savedMaterial.getIdMaterial())
                 .orElseThrow(() -> new EntityNotFoundException("Material not found after creation"));
 
-        // === Auditoría (CREATE con ID correcto) ===
         final Long mid   = savedMaterial.getIdMaterial();
         final Map<String,Object> after = snap(savedMaterial);
-        final String name = savedMaterial.getName(); // << clave: capturar valor final
+        final String name = savedMaterial.getName();
+
         afterCommit(() -> {
             Long evId = audit.success("CREATE", "Material", mid, "Creado material \"" + name + "\"");
             Map<String,Object> diff = Map.of("created", true, "fields", after);
@@ -255,15 +266,12 @@ public class MaterialService implements IMaterialService {
 
     @Override
     @Transactional
-    // Quitar @Auditable aquí para evitar duplicados
     public void updateMaterial(MaterialUpdateDTO dto) {
         Material material = repoMat.findById(dto.getIdMaterial())
                 .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + dto.getIdMaterial()));
 
-        // Snapshot “antes”
         Map<String,Object> before = snap(material);
 
-        // Cambios
         if (hasText(dto.getName())) material.setName(norm(dto.getName()));
         if (hasText(dto.getBrand())) material.setBrand(norm(dto.getBrand()));
         if (dto.getPriceArs() != null) material.setPriceArs(dto.getPriceArs());
@@ -282,22 +290,17 @@ public class MaterialService implements IMaterialService {
             Warehouse newWh = repoWare.findById(dto.getWarehouseId())
                     .orElseThrow(() -> new EntityNotFoundException("Warehouse not found with ID: " + dto.getWarehouseId()));
 
-            // buscamos todos los registros de stock de este material
             List<Stock> stocks = repoStock.findByMaterial_IdMaterial(material.getIdMaterial());
 
             if (stocks.isEmpty()) {
-                // No había stock: creamos uno en 0 en el nuevo depósito
                 Stock st = new Stock();
                 st.setMaterial(material);
                 st.setWarehouse(newWh);
                 st.setQuantityAvailable(BigDecimal.ZERO);
                 st.setLastUpdate(LocalDate.now());
                 repoStock.save(st);
-
-                material.getStockList().add(st); // mantener la relación en memoria
-
+                material.getStockList().add(st);
             } else if (stocks.size() == 1) {
-                // Caso “normal”: un solo depósito → movemos ese registro al nuevo depósito
                 Stock st = stocks.get(0);
                 if (!Objects.equals(
                         st.getWarehouse().getIdWarehouse(),
@@ -307,51 +310,90 @@ public class MaterialService implements IMaterialService {
                     st.setLastUpdate(LocalDate.now());
                     repoStock.save(st);
                 }
-
             } else {
-                // Tiene stock en varios depósitos.
-                // Por ahora no hacemos magia: lo ideal es manejar la redistribución desde la pantalla de Stock.
-                // Si querés ser explícito, podés descomentar la excepción:
-                //
-                // throw new IllegalStateException(
-                //        "El material tiene stock en más de un depósito; " +
-                //        "cambiá la ubicación desde la pantalla de Stock.");
+                // multi-depósito: se maneja desde la pantalla de stock
             }
         }
 
         repoMat.save(material);
 
-        // Snapshot “después”
         Map<String,Object> after = snap(material);
         List<Change> changes = diff(before, after);
-
-        // Mensaje humano (hasta 3 cambios)
         String message = summarize(changes);
 
-        // Adjuntar auditoría DESPUÉS del commit
         final Long mid = material.getIdMaterial();
+        final List<Map<String,Object>> changed = changes.stream()
+                .map(c -> Map.of("field", c.field(), "from", c.from(), "to", c.to()))
+                .collect(Collectors.toList());
+        final Map<String,Object> payload = Map.of("changed", changed);
+
         afterCommit(() -> {
             Long evId = audit.success("UPDATE", "Material", mid, message);
-            // Estructura “diffJson” amigable para tu front (cambios[])
-            List<Map<String,Object>> changed = changes.stream()
-                    .map(c -> Map.of("field", c.field(), "from", c.from(), "to", c.to()))
-                    .collect(Collectors.toList());
-            Map<String,Object> diffPayload = Map.of("changed", changed);
-            audit.attachDiff(evId, before, after, diffPayload);
+            audit.attachDiff(evId, before, after, payload);
         });
     }
 
-    /* ==================== DELETE ==================== */
+    /* ==================== DELETE (Soft delete) ==================== */
 
     @Override
     @Transactional
-    // Podés dejar el @Auditable aquí si ya te funcionaba bien
     public boolean deleteMaterialById(Long idMaterial) {
         Material material = repoMat.findById(idMaterial).orElse(null);
-        if (material != null) {
-            repoMat.delete(material);
-            return true;
+        if (material == null) {
+            return false;
         }
-        return false;
+
+        Map<String,Object> before = snap(material);
+
+        material.setStatus("INACTIVE");
+        repoMat.save(material);
+
+        Map<String,Object> after = snap(material);
+        List<Change> changes = diff(before, after);
+        String message = summarize(changes);
+
+        final Long mid = material.getIdMaterial();
+        final List<Map<String,Object>> changed = changes.stream()
+                .map(c -> Map.of("field", c.field(), "from", c.from(), "to", c.to()))
+                .collect(Collectors.toList());
+        final Map<String,Object> payload = Map.of("changed", changed);
+
+        afterCommit(() -> {
+            Long evId = audit.success("SOFT_DELETE", "Material", mid, message);
+            audit.attachDiff(evId, before, after, payload);
+        });
+
+        return true;
+    }
+
+    /* ==================== RESTORE ==================== */
+
+    @Override
+    @Transactional
+    public void restoreMaterial(Long idMaterial) {
+        Material material = repoMat.findById(idMaterial).orElse(null);
+        if (material == null) {
+            return;
+        }
+
+        Map<String,Object> before = snap(material);
+
+        material.setStatus("ACTIVE");
+        repoMat.save(material);
+
+        Map<String,Object> after = snap(material);
+        List<Change> changes = diff(before, after);
+        String message = summarize(changes);
+
+        final Long mid = material.getIdMaterial();
+        final List<Map<String,Object>> changed = changes.stream()
+                .map(c -> Map.of("field", c.field(), "from", c.from(), "to", c.to()))
+                .collect(Collectors.toList());
+        final Map<String,Object> payload = Map.of("changed", changed);
+
+        afterCommit(() -> {
+            Long evId = audit.success("RESTORE", "Material", mid, message);
+            audit.attachDiff(evId, before, after, payload);
+        });
     }
 }

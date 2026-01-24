@@ -9,13 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-
 @Getter @Setter
 public class Material {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idMaterial;
+
     private String name;
     private String brand;
     private BigDecimal priceArs;
@@ -23,6 +23,10 @@ public class Material {
     private String measurementUnit;
     private String internalNumber;
     private String description;
+
+
+    @Column(nullable = false, length = 20)
+    private String status;
 
     @ManyToOne
     @JoinColumn(name = "family_id")
@@ -40,9 +44,18 @@ public class Material {
     @OneToMany(mappedBy = "material")
     private List<SaleDetail> saleDetailList = new ArrayList<>();
 
-    public Material() {}
+    public Material() {
+        this.status = "ACTIVE";
+    }
 
-    public Material(String brand, Family family, String internalNumber, String measurementUnit, String name, BigDecimal priceArs, BigDecimal priceUsd, String description) {
+    public Material(String brand,
+                    Family family,
+                    String internalNumber,
+                    String measurementUnit,
+                    String name,
+                    BigDecimal priceArs,
+                    BigDecimal priceUsd,
+                    String description) {
         this.brand = brand;
         this.family = family;
         this.internalNumber = internalNumber;
@@ -51,5 +64,6 @@ public class Material {
         this.priceArs = priceArs;
         this.priceUsd = priceUsd;
         this.description = description;
+        this.status = "ACTIVE";
     }
 }

@@ -30,7 +30,6 @@ public class SupplierService implements ISupplierService {
     @Autowired private IMaterialSupplierRepository matSupRepo;
     @Autowired private IMaterialRepository materialRepo;
 
-    // Auditoría
     @Autowired private AuditService audit;
 
     /* ==================== Utils auditoría ==================== */
@@ -127,12 +126,20 @@ public class SupplierService implements ISupplierService {
         }
     }
 
-    /* ==================== API existente ==================== */
+    /* ==================== API ==================== */
 
     @Override
-    public List<SupplierDTO> getAllSuppliers() {
-        return repoSupplier.findAll()
-                .stream()
+    public List<SupplierDTO> getAllSuppliers(Boolean includeDeleted) {
+        List<Supplier> list;
+
+        if (Boolean.TRUE.equals(includeDeleted)) {
+            list = repoSupplier.findAll();
+        } else {
+            // comportamiento por defecto: sólo activos
+            list = repoSupplier.findByStatus("ACTIVE");
+        }
+
+        return list.stream()
                 .map(this::convertSupplierToDto)
                 .collect(Collectors.toList());
     }
@@ -169,10 +176,12 @@ public class SupplierService implements ISupplierService {
 
         validateUniqueSupplier(dto.getDni(), dto.getEmail(), null);
 
+        String status = dto.getStatus() != null ? dto.getStatus() : "ACTIVE";
+
         Supplier supplier = new Supplier(
                 dto.getName(), dto.getSurname(), dto.getDni(), dto.getEmail(),
                 dto.getAddress(), dto.getLocality(), dto.getNameCompany(),
-                dto.getPhoneNumber(), dto.getStatus()
+                dto.getPhoneNumber(), status
         );
         Supplier saved = repoSupplier.save(supplier);
 
@@ -207,7 +216,6 @@ public class SupplierService implements ISupplierService {
         return convertSupplierToDto(saved);
     }
 
-
     @Override
     @Transactional
     public SupplierDTO updateSupplier(Long id, SupplierCreateDTO dto) {
@@ -228,7 +236,9 @@ public class SupplierService implements ISupplierService {
         supplier.setLocality(dto.getLocality());
         supplier.setNameCompany(dto.getNameCompany());
         supplier.setPhoneNumber(dto.getPhoneNumber());
-        supplier.setStatus(dto.getStatus());
+        if (dto.getStatus() != null) {
+            supplier.setStatus(dto.getStatus());
+        }
 
         Supplier saved = repoSupplier.save(supplier);
 
@@ -266,14 +276,60 @@ public class SupplierService implements ISupplierService {
         return convertSupplierToDto(saved);
     }
 
+    @Override
+    @Transactional
+    // ya no usamos @Auditable DELETE porque ahora es SOFT DELETE manual
+    public void deleteSupplierById(Long id) {
+        Supplier supplier = getSupplierById(id);
+
+        int prevCount = matSupRepo.findBySupplier(supplier).size();
+        Map<String,Object> before = snap(supplier, prevCount);
+
+        // Soft delete: sólo cambiamos el estado
+        supplier.setStatus("INACTIVE");
+        Supplier saved = repoSupplier.save(supplier);
+
+        int afterCount = matSupRepo.findBySupplier(saved).size();
+        Map<String,Object> after = snap(saved, afterCount);
+
+        final Long sid = saved.getIdSupplier();
+        List<Map<String,Object>> changed = List.of(
+                Map.of("field","status","from","ACTIVE","to","INACTIVE")
+        );
+        final Map<String,Object> payload = Map.of("changed", changed);
+
+        afterCommit(() -> {
+            Long ev = audit.success("SOFT_DELETE", "Supplier", sid,
+                    "Proveedor deshabilitado (Soft Delete)");
+            audit.attachDiff(ev, before, after, payload);
+        });
+    }
 
     @Override
     @Transactional
-    @Auditable(entity="Supplier", action="DELETE", idParam="id")
-    public void deleteSupplierById(Long id) {
+    public void restoreSupplier(Long id) {
         Supplier supplier = getSupplierById(id);
-        matSupRepo.deleteBySupplier(supplier);
-        repoSupplier.deleteById(id);
+
+        int prevCount = matSupRepo.findBySupplier(supplier).size();
+        Map<String,Object> before = snap(supplier, prevCount);
+
+        supplier.setStatus("ACTIVE");
+        Supplier saved = repoSupplier.save(supplier);
+
+        int afterCount = matSupRepo.findBySupplier(saved).size();
+        Map<String,Object> after = snap(saved, afterCount);
+
+        final Long sid = saved.getIdSupplier();
+        List<Map<String,Object>> changed = List.of(
+                Map.of("field","status","from","INACTIVE","to","ACTIVE")
+        );
+        final Map<String,Object> payload = Map.of("changed", changed);
+
+        afterCommit(() -> {
+            Long ev = audit.success("RESTORE", "Supplier", sid,
+                    "Proveedor restaurado");
+            audit.attachDiff(ev, before, after, payload);
+        });
     }
 
     @Override

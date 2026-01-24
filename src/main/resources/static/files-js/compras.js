@@ -37,7 +37,7 @@ let proveedores = []; // [{idSupplier, nameCompany,...}]
 let provById = new Map();
 
 // 🔹 paginación (front)
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 8;
 let page = 0;
 let comprasFiltradas = [];
 let pagerInfo, pagerPrev, pagerNext;
