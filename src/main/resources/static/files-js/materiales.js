@@ -149,17 +149,26 @@ function validateRanges(){
   return true;
 }
 
-function buildParams(){
+/**
+ * Arma el querystring que entiende /materials/search:
+ *  - q          → texto (combina código + nombre)
+ *  - familyId   → familia seleccionada
+ *  - minPrice   → precio mínimo
+ *  - maxPrice   → precio máximo
+ * (includeDeleted se agrega aparte según el combo de estado).
+ */
+function buildSearchQuery(){
   const p = new URLSearchParams();
 
   const fam = $('#f_family')?.value;
   if (fam) p.set('familyId', fam);
 
   const code = $('#f_code')?.value.trim();
-  if (code) p.set('internalNumber', code);
-
   const name = $('#f_name')?.value.trim();
-  if (name) p.set('name', name);
+  const terms = [];
+  if (code) terms.push(code);
+  if (name) terms.push(name);
+  if (terms.length) p.set('q', terms.join(' '));
 
   const min = $('#f_min')?.value;
   if (min) p.set('minPrice', min);
@@ -167,10 +176,7 @@ function buildParams(){
   const max = $('#f_max')?.value;
   if (max) p.set('maxPrice', max);
 
-  const stock = $('#f_stock')?.value;
-  if (stock) p.set('stockMode', stock);
-
-  return p;
+  return p.toString();
 }
 
 async function cargarFamiliasFiltro(){
@@ -203,10 +209,13 @@ function limpiarFiltros(){
 
 /* ============ carga desde servidor ============ */
 async function buscarServidor(){
-  const params = buildParams();
+  const estadoSel = ($('#f_status')?.value || 'ACTIVE').toUpperCase();
+
+  // Query que entiende /materials/search
+  const qsBase = buildSearchQuery();
+  const params = new URLSearchParams(qsBase || '');
 
   // Estado → decide si pedimos también inactivos al backend
-  const estadoSel = ($('#f_status')?.value || 'ACTIVE').toUpperCase();
   if (estadoSel === 'INACTIVE' || estadoSel === 'ALL') {
     params.set('includeDeleted', 'true');
   }
@@ -240,7 +249,7 @@ async function buscarServidor(){
           return true;
         });
 
-    // 2) fallback de texto (código + nombre)
+    // 2) fallback de texto (código + nombre) por si el back devuelve algo de más
     const code = $('#f_code')?.value.trim();
     const name = $('#f_name')?.value.trim();
     const fallbackByText = filtered.filter(m=>{
@@ -483,4 +492,121 @@ async function restaurarMaterial(id, name){
       Swal.fire('Error', e.message || 'No se pudo restaurar el material.', 'error');
     }
   });
+}
+
+// ================== EXPORTAR MATERIALES A PDF ==================
+
+// Nos aseguramos de enganchar el botón cuando el DOM está listo
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('btn-export-materials');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    const { value: scope } = await Swal.fire({
+      title: 'Exportar materiales',
+      html: `
+        <div class="export-options">
+          <label class="export-option">
+            <input type="radio" name="exportScope" value="LOW_STOCK">
+            <span>PDF – Stock bajo (≤ 10)</span>
+          </label>
+          <label class="export-option">
+            <input type="radio" name="exportScope" value="FILTERED" checked>
+            <span>PDF – Resultado de filtros</span>
+          </label>
+          <label class="export-option">
+            <input type="radio" name="exportScope" value="ALL">
+            <span>PDF – Todos los materiales disponibles</span>
+          </label>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Exportar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        const checked = document.querySelector('input[name="exportScope"]:checked');
+        if (!checked) {
+          Swal.showValidationMessage('Elegí una opción');
+          return;
+        }
+        return checked.value;
+      }
+    });
+
+    if (!scope) return;
+    await exportMaterialsPdf(scope);
+  });
+});
+
+async function exportMaterialsPdf(scope) {
+  const baseUrl = '/materials/pdf';
+  let url = baseUrl + '?scope=' + encodeURIComponent(scope);
+
+  // Reutilizamos exactamente los mismos filtros que /materials/search
+  if (scope === 'FILTERED' && typeof buildSearchQuery === 'function') {
+    const qsBase = buildSearchQuery() || '';
+    const params = new URLSearchParams(qsBase);
+
+    const estadoSel = ($('#f_status')?.value || 'ACTIVE').toUpperCase();
+    if (estadoSel === 'INACTIVE' || estadoSel === 'ALL') {
+      params.set('includeDeleted', 'true');
+    }
+
+    const qs = params.toString();
+    if (qs) url += '&' + qs;
+  }
+
+  // Umbral de stock bajo (podés exponerlo si querés que el usuario lo cambie)
+  if (scope === 'LOW_STOCK') {
+    url += '&threshold=10';
+  }
+
+  const btn = document.getElementById('btn-export-materials');
+  const originalText = btn ? btn.textContent : null;
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Generando…';
+    }
+
+    const r = await window.api.authFetch(url);
+    if (r.status === 204) {
+      await Swal.fire(
+        'Sin datos',
+        'No hay materiales para exportar con esos criterios.',
+        'info'
+      );
+      return;
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+
+    const blob = await r.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+
+    const today = new Date().toISOString().slice(0, 10);
+    link.download = `materiales-${scope.toLowerCase()}-${today}.pdf`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    if (typeof notify === 'function') {
+      notify('PDF de materiales descargado', 'success');
+    }
+  } catch (e) {
+    console.error(e);
+    await Swal.fire(
+      'Error',
+      'No se pudo generar el PDF de materiales.',
+      'error'
+    );
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText ?? '⬇ Exportar';
+    }
+  }
 }

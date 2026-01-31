@@ -141,6 +141,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   await loadClients();
   wireFilters();
+  setupExport();          // ⬅️ nuevo: wiring del modal de exportar
   await loadPresupuestos();
 });
 
@@ -475,6 +476,196 @@ function render(lista){
     borrarPresupuesto(id, desc);
   };
 }
+
+/* ================== EXPORTAR PDF (SweetAlert) ================== */
+
+/* ================== EXPORTAR PDF ================== */
+
+function setupExport(){
+  const btnOpen = document.getElementById('btnExport');
+  if (!btnOpen) return;
+
+  btnOpen.addEventListener('click', async ()=>{
+    const { value: scope } = await Swal.fire({
+      title: 'Exportar presupuestos',
+      width: 480,
+      html: `
+        <div style="text-align:left;font-size:0.95rem;line-height:1.5;">
+          <label style="display:block;margin:6px 4px;">
+            <input type="radio" name="ordersExportScope" value="FILTERED" checked>
+            PDF – Resultado de filtros
+          </label>
+          <label style="display:block;margin:6px 4px;">
+            <input type="radio" name="ordersExportScope" value="ONLY_PENDING">
+            PDF – Solo con pendiente por vender
+          </label>
+          <label style="display:block;margin:6px 4px;">
+            <input type="radio" name="ordersExportScope" value="ONLY_NO_PENDING">
+            PDF – Solo sin pendiente (todo vendido)
+          </label>
+        </div>
+      `,
+      showCancelButton: true,
+      focusConfirm: false,
+      reverseButtons: true,
+      confirmButtonText: 'Exportar',
+      cancelButtonText: 'Cancelar',
+      buttonsStyling: true,
+      // Colores y vibe similares a Materiales
+      confirmButtonColor: '#4f46e5',  // violeta
+      cancelButtonColor: '#6b7280',   // gris
+      customClass: {
+        popup: 'swal2-popup-export'
+      },
+      preConfirm: () => {
+        const checked = Swal.getPopup()
+          .querySelector('input[name="ordersExportScope"]:checked');
+        if (!checked) {
+          Swal.showValidationMessage('Seleccioná una opción de exportación');
+          return false;
+        }
+        return checked.value;
+      }
+    });
+
+    if (!scope) return;
+
+    try{
+      await exportPresupuestos(scope);
+    } catch (e){
+      console.error(e);
+      Swal.fire('Error', 'No se pudo generar el PDF de presupuestos.', 'error');
+    }
+  });
+}
+
+
+async function openExportDialog(){
+  const { value: scope, isConfirmed } = await Swal.fire({
+    title: 'Exportar presupuestos',
+    html: `
+      <div class="swal-export">
+        <label class="swal-export-option">
+          <input type="radio" name="expScope" value="FILTERED" checked>
+          <span>PDF – Resultado de Filtros</span>
+        </label>
+        <label class="swal-export-option">
+          <input type="radio" name="expScope" value="ONLY_PENDING">
+          <span>PDF – Solo con pendiente por vender</span>
+        </label>
+        <label class="swal-export-option">
+          <input type="radio" name="expScope" value="ONLY_NO_PENDING">
+          <span>PDF – Solo sin pendiente (todo vendido)</span>
+        </label>
+      </div>
+    `,
+    width: 480,
+    showCancelButton: true,
+    focusConfirm: false,
+    confirmButtonText: 'Exportar',
+    cancelButtonText: 'Cancelar',
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: 'btn primary',
+      cancelButton: 'btn outline',
+      popup: 'swal-export-popup',
+      actions: 'swal-export-actions'
+    },
+    preConfirm: () => {
+      const sel = document.querySelector('input[name="expScope"]:checked');
+      if (!sel) {
+        Swal.showValidationMessage('Seleccioná una opción para exportar');
+        return;
+      }
+      return sel.value;
+    }
+  });
+
+  if (!isConfirmed || !scope) return;
+
+  try {
+    await exportPresupuestos(scope);
+  } catch (e) {
+    console.error(e);
+    Swal.fire('Error', 'No se pudo generar el PDF de presupuestos.', 'error');
+  }
+}
+
+async function exportPresupuestos(scope){
+  const { clientId, from, to, status } = readFilterValues();
+
+  const qs = new URLSearchParams();
+  qs.set('scope', scope || 'FILTERED');
+  if (from) qs.set('from', from);
+  if (to)   qs.set('to',   to);
+  if (clientId) qs.set('clientId', clientId);
+
+  // Solo tiene sentido mandar estado cuando usamos scope=FILTERED
+  if (scope === 'FILTERED' && status){
+    // En el front usamos PENDING / SOLD_OUT.
+    // En el back el enum es PENDING / NO_PENDING.
+    const statusForServer = (status === 'SOLD_OUT') ? 'NO_PENDING' : 'PENDING';
+    qs.set('status', statusForServer);
+  }
+
+  const url = `/orders/report-pdf?${qs.toString()}`;
+
+  const btn = document.getElementById('btnExport');
+  const originalHTML = btn ? btn.innerHTML : null;
+
+  try{
+    if (btn){
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generando…';
+    }
+
+    notify('Generando PDF de presupuestos…', 'info');
+
+    const res = await authFetch(url);
+    if (res.status === 204){
+      Swal.fire('Sin datos', 'No hay presupuestos para exportar con esos filtros.', 'info');
+      return;
+    }
+    if (!res.ok){
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const blob = await res.blob();
+    if (!blob || blob.size === 0){
+      Swal.fire('Sin datos', 'No hay presupuestos para exportar con esos filtros.', 'info');
+      return;
+    }
+
+    let filename = 'presupuestos.pdf';
+    const cd = res.headers.get('Content-Disposition');
+    if (cd){
+      const m = /filename=\"?([^\";]+)\"?/i.exec(cd);
+      if (m && m[1]) filename = m[1];
+    }
+
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+
+    notify('PDF de presupuestos descargado', 'success');
+
+  }catch(e){
+    console.error(e);
+    Swal.fire('Error', 'No se pudo generar el PDF de presupuestos.', 'error');
+    notify('Error al generar el PDF de presupuestos', 'error');
+  }finally{
+    if (btn){
+      btn.disabled = false;
+      btn.innerHTML = originalHTML ?? '<span class="icon">⬇</span><span>Exportar</span>';
+    }
+  }
+}
+
 
 /* ================== ACCIONES (SweetAlert2) ================== */
 

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <link rel="stylesheet" th:href="@{classpath:/static/files-css/invoice.css}"/>
+  <title>Remito de entrega</title>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <table class="header">
+    <tr>
+      <td>
+        <div class="brand">
+          <img th:src="${c.logo}" alt="logo"/>
+          <div class="brand-title">
+            <h1 th:utext="${#strings.replace(c.name, ' ', '&nbsp;')}">Mi Empresa</h1>
+          </div>
+        </div>
+      </td>
+      <td class="head-right">
+        <div class="stamp">Entrega</div><br/>
+        <div>Remito de entrega</div>
+        <div>
+          <small th:text="${fecha}">01/01/2026</small>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- TARJETAS -->
+  <table class="row-2">
+    <tr>
+      <td style="width:55%">
+        <div class="card">
+          <h4>Cliente</h4>
+          <p th:text="${cliente}">Nombre del cliente</p>
+          <p th:if="${d.saleId != null}">
+            Venta:
+            <span class="mono" th:text="${'#' + d.saleId}">#1</span>
+          </p>
+          <p th:if="${d.ordersId != null}">
+            Presupuesto:
+            <span class="mono" th:text="${'#' + d.ordersId}">#10</span>
+          </p>
+        </div>
+      </td>
+      <td style="width:45%">
+        <div class="card">
+          <h4>Datos de la entrega</h4>
+          <p>
+            N° entrega:
+            <span class="mono" th:text="${d.idDelivery}">24</span>
+          </p>
+          <p>
+            Fecha:
+            <span class="mono"
+                  th:text="${#temporals.format(d.deliveryDate, 'dd/MM/yyyy')}">
+              01/01/2026
+            </span>
+          </p>
+          <p>
+            Estado:
+            <span th:text="${statusLabel}">COMPLETADA</span>
+          </p>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- DETALLE DE ÍTEMS -->
+  <table class="items">
+    <colgroup>
+      <col style="width:40%"/>
+      <col style="width:18%"/>
+      <col style="width:10%"/>
+      <col style="width:16%"/>
+      <col style="width:16%"/>
+    </colgroup>
+    <thead>
+    <tr>
+      <th>Material</th>
+      <th>Depósito</th>
+      <th class="num">Cant.</th>
+      <th class="num">Precio unit.</th>
+      <th class="num">Subtotal</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="it : ${items}">
+      <td th:text="${it.materialName}">Material X</td>
+      <td th:text="${it.warehouseName != null ? it.warehouseName : '—'}">Depósito</td>
+      <td class="num" th:text="${it.quantityDelivered}">1</td>
+      <td class="num"
+          th:text="${#numbers.formatCurrency(it.unitPriceSnapshot)}">
+        $ 0,00
+      </td>
+      <td class="num"
+          th:text="${#numbers.formatCurrency(
+                     (it.unitPriceSnapshot != null && it.quantityDelivered != null)
+                     ? it.unitPriceSnapshot.multiply(it.quantityDelivered)
+                     : 0)}">
+        $ 0,00
+      </td>
+    </tr>
+    </tbody>
+  </table>
+
+  <!-- TOTAL -->
+  <table class="totals">
+    <tr class="grand">
+      <td>Total entrega</td>
+      <td class="num"
+          th:text="${#numbers.formatCurrency(d.total)}">$ 0,00</td>
+    </tr>
+  </table>
+
+  <p class="note">
+    Recibí conforme los materiales detallados. Firma y aclaración:
+    _______________________________
+  </p>
+
+</div>
+</body>
+</html>

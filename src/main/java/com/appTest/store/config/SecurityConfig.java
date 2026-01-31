@@ -4,6 +4,7 @@ import com.appTest.store.filters.JwtAuthorizationFilter;
 import com.appTest.store.utils.JWTUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -34,29 +35,36 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                // estáticos
-                .requestMatchers("/", "/index.html", "/files-html/**", "/files-css/**", "/files-js/**", "/img.logo/**").permitAll()
-                // auth + health
-                .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // estáticos
+                        .requestMatchers("/", "/index.html", "/files-html/**", "/files-css/**", "/files-js/**", "/img.logo/**").permitAll()
+                        // auth + health
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
 
-                // dominios del negocio
-                .requestMatchers("/stock-reservations/**").hasAnyRole("EMPLOYEE","OWNER")
-                .requestMatchers("/reservations/**").hasAnyRole("EMPLOYEE","OWNER")
-                .requestMatchers("/audits/**").hasAnyRole("EMPLOYEE","OWNER")
-                .requestMatchers("/stock-movements/**").hasAnyRole("EMPLOYEE","OWNER")
+                        // 🔹 report de compras: sólo exige estar logueado
+                        .requestMatchers(HttpMethod.GET, "/purchases/report-pdf").authenticated()
 
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(new JwtAuthorizationFilter(jwtUtil),
-                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+                        // 🔹 resto de dominios que sí miran rol por HTTP
+                        .requestMatchers(
+                                "/stock-reservations/**",
+                                "/reservations/**",
+                                "/audits/**",
+                                "/stock-movements/**",
+                                "/purchases/**"
+                        ).hasAnyRole("EMPLOYEE","OWNER")
+
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(new JwtAuthorizationFilter(jwtUtil),
+                        org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

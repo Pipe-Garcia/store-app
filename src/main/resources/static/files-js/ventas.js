@@ -4,6 +4,7 @@ const { authFetch, getToken, safeJson } = window.api;
 
 const API_URL_SALES   = '/sales';
 const API_URL_SEARCH  = '/sales/search';
+const API_URL_CLIENTS = '/clients'; 
 
 const $  = (s, r=document) => r.querySelector(s);
 const fmtARS = new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS' });
@@ -69,6 +70,29 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     }
   });
 
+  // 🔹 botón Exportar ventas
+  const btnExport = document.getElementById('btn-export-sales');
+  if (btnExport) {
+    btnExport.addEventListener('click', async () => {
+      const { value: scope } = await Swal.fire({
+        title: 'Exportar ventas',
+        input: 'radio',
+        inputOptions: {
+          FILTERED:      'PDF – Resultado de filtros',
+          LAST_7_DAYS:   'PDF – Últimos 7 días',
+          CURRENT_MONTH: 'PDF – Mes actual'
+        },
+        inputValidator: (v) => !v && 'Elegí una opción',
+        showCancelButton: true,
+        confirmButtonText: 'Exportar',
+        cancelButtonText: 'Cancelar'
+      });
+
+      if (!scope) return;
+      await exportSalesPdf(scope);
+    });
+  }
+
   // flash (desde crear/editar)
   const flash = localStorage.getItem('flash');
   if (flash){
@@ -91,6 +115,8 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     localStorage.removeItem('flash');
   }
 
+  await cargarClientesFiltro();
+
   // Inicializar filtros y cargar lista
   bindFilters();
   await reloadFromFilters();
@@ -103,16 +129,19 @@ function bindFilters(){
   $('#fDesde')        ?.addEventListener('change', deb);
   $('#fHasta')        ?.addEventListener('change', deb);
   $('#fEstadoEntrega')?.addEventListener('change', deb);
+  $('#fCliente')      ?.addEventListener('change', deb);   
   $('#fTexto')        ?.addEventListener('input',  deb);
 
   $('#btnLimpiar')?.addEventListener('click', ()=>{
-    $('#fDesde').value = '';
-    $('#fHasta').value = '';
-    $('#fEstadoEntrega').value = '';
-    $('#fTexto').value = '';
+    $('#fDesde').value        = '';
+    $('#fHasta').value        = '';
+    $('#fEstadoEntrega').value= '';
+    $('#fCliente').value      = '';   
+    $('#fTexto').value        = '';
     reloadFromFilters();
   });
 }
+
 
 function buildQueryFromFilters(){
   const q = new URLSearchParams();
@@ -122,9 +151,42 @@ function buildQueryFromFilters(){
   if (from) q.set('from', from);
   if (to)   q.set('to',   to);
 
+  const clientId = $('#fCliente')?.value;
+  if (clientId) q.set('clientId', clientId);   
+
   // Estado de entrega se calcula en front.
   return q.toString();
 }
+
+
+// 🔹 wrapper reutilizable para el export
+function buildSearchQuery() {
+  return buildQueryFromFilters();
+}
+
+async function cargarClientesFiltro() {
+  const sel = document.getElementById('fCliente');
+  if (!sel) return;
+
+  try {
+    const r = await authFetch(API_URL_CLIENTS);
+    const data = r.ok ? await safeJson(r) : [];
+    const list = Array.isArray(data) ? data : (data.content || []);
+
+    sel.innerHTML = '<option value="">Todos</option>';
+
+    (list || []).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.idClient;
+      const fullName = `${c.name || ''} ${c.surname || ''}`.trim() || '(Sin nombre)';
+      opt.textContent = fullName;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    console.error('No se pudieron cargar clientes para el filtro', e);
+  }
+}
+
 
 async function fetchSalesFromServer(){
   const qs = buildQueryFromFilters();
@@ -446,6 +508,68 @@ async function downloadSalePdf(id){
     if (btn){
       btn.disabled = false;
       btn.innerHTML = originalHTML ?? '🧾';
+    }
+  }
+}
+
+/* ================== Exportar LISTADO de ventas a PDF ================== */
+
+async function exportSalesPdf(scope) {
+  const baseUrl = '/sales/report-pdf';
+  let url = baseUrl + '?scope=' + encodeURIComponent(scope);
+
+  // Resultado actual ⇒ usar mismos filtros de fecha que la tabla
+  if (scope === 'FILTERED') {
+    const qs = buildSearchQuery();
+    if (qs) url += '&' + qs;
+  }
+
+  const btn = document.getElementById('btn-export-sales');
+  const originalText = btn ? btn.textContent : null;
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Generando…';
+    }
+
+    const r = await authFetch(url);
+
+    if (r.status === 204) {
+      await Swal.fire(
+        'Sin datos',
+        'No hay ventas para exportar con esos criterios.',
+        'info'
+      );
+      return;
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+
+    const blob = await r.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+
+    const today = new Date().toISOString().slice(0, 10);
+    link.download = `ventas-${scope.toLowerCase()}-${today}.pdf`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    if (typeof notify === 'function') {
+      notify('PDF de ventas descargado', 'success');
+    }
+  } catch (e) {
+    console.error(e);
+    await Swal.fire(
+      'Error',
+      'No se pudo generar el PDF de ventas.',
+      'error'
+    );
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText ?? '⬇ Exportar';
     }
   }
 }

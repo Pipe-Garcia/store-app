@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <!-- Reutilizamos el mismo CSS que las facturas -->
+  <link rel="stylesheet" th:href="@{classpath:/static/files-css/invoice.css}"/>
+  <title>Listado de materiales</title>
+</head>
+<body>
+<div class="page">
+  <!-- HEADER (igual estilo que factura) -->
+  <table class="header">
+    <tr>
+      <td>
+        <div class="brand">
+          <img th:src="${c.logo}" alt="logo"/>
+          <div class="brand-title">
+            <h1 th:text="${c.name}">Mi Empresa</h1>
+          </div>
+        </div>
+      </td>
+      <td class="head-right">
+        <div class="stamp">Listado</div><br/>
+        <div th:text="${title}">Materiales</div>
+        <div>
+          <small th:text="${generatedAt}">10/10/2025 12:00</small>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- SUBTÍTULO / INFO DE FILTROS -->
+  <p class="note" th:text="${subtitle}">
+    Filtros aplicados…
+  </p>
+
+  <!-- TABLA DE MATERIALES -->
+  <table class="items">
+    <colgroup>
+      <col style="width:26%"/>
+      <col style="width:32%"/>
+      <col style="width:22%"/>
+      <col style="width:10%"/>
+      <col style="width:10%"/>
+    </colgroup>
+    <thead>
+    <tr>
+      <th>Código</th>
+      <th>Nombre</th>
+      <th>Familia</th>
+      <th class="num">Stock</th>
+      <th>Estado</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="m : ${materials}">
+      <td th:text="${m.code}">MAT-001</td>
+      <td th:text="${m.name}">Material de ejemplo</td>
+      <td th:text="${m.family}">Familia</td>
+      <td class="num" th:text="${m.stock}">0</td>
+      <td th:text="${m.status}">ACTIVO</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <p class="note">
+    Documento interno. Precios y condiciones comerciales pueden variar sin previo aviso.
+  </p>
+</div>
+</body>
+</html>

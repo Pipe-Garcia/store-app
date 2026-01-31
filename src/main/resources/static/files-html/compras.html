@@ -8,7 +8,11 @@
   <link rel="stylesheet" href="../files-css/compras.css"/>
   <!-- NAV fijo -->
   <link rel="stylesheet" href="../files-css/nav.css">
+
+  <!-- SweetAlert2 para toasts + modal de exportar -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
+
 <body>
   <!-- NAV -->
   <div id="app-header"></div>
@@ -17,6 +21,14 @@
     <div class="page-head">
       <h1>Compras</h1>
       <div class="actions">
+        <button type="button"
+                id="btnExport"
+                class="btn outline with-icon"
+                style="margin-right:10px; border:0.6px solid black;">
+          <span class="icon">⬇</span>
+          <span>Exportar</span>
+        </button>
+
         <a class="btn primary" href="../files-html/crear-compra.html">+ Nueva compra</a>
       </div>
     </div>
@@ -26,6 +38,13 @@
       <div class="row">
         <label>Buscar
           <input type="text" id="buscarTexto" placeholder="ID o proveedor..."/>
+        </label>
+
+        
+        <label>Proveedor
+          <select id="buscarProveedor" class="in">
+            <option value="">Todos</option>
+          </select>
         </label>
 
         <label>Desde
@@ -39,6 +58,7 @@
         <button id="btnLimpiar" class="btn outline">Limpiar</button>
       </div>
     </section>
+
 
     <section class="card">
       <div class="tabla" id="lista-compras">

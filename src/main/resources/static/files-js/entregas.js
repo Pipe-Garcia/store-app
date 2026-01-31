@@ -9,6 +9,27 @@ const $  = (s,r=document)=>r.querySelector(s);
 const norm = (s)=> (s||'').toString().toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
+  }
+});
+
+function notify(msg, type='info') {
+  const icon =
+    type === 'error'   ? 'error'   :
+    type === 'success' ? 'success' :
+    type === 'warning' ? 'warning' : 'info';
+  Toast.fire({ icon, title: msg });
+}
+
 
 // 🔹 Paginación en front
 const PAGE_SIZE = 8;
@@ -28,21 +49,28 @@ const fmtDate = (s)=>{
 const getDeliveryId = x => x?.idDelivery ?? x?.id ?? x?.deliveryId ?? null;
 const getSaleId     = x => x?.saleId ?? x?.salesId ?? x?.idSale ?? x?.sale?.idSale ?? x?.sale?.id ?? null;
 const getClientId   = x => x?.clientId ?? x?.client?.idClient ?? x?.client?.id ?? null;
-const getClientName = x => (x?.clientName ?? x?.customerName ?? [x?.client?.name, x?.client?.surname].filter(Boolean).join(' ')) .trim();
+const getClientName = x => (
+  x?.clientName ??
+  x?.customerName ??
+  [x?.client?.name, x?.client?.surname].filter(Boolean).join(' ')
+).trim();
 const getDateISO    = x => (x?.deliveryDate ?? x?.date ?? '').toString().slice(0,10) || '';
 const getStatus     = x => (x?.status ?? '').toString().toUpperCase();
 
 function pill(status){
   const txt = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', COMPLETED:'COMPLETADA' }[status] || status || 'PENDIENTE';
-  const cls = { PENDING:'pending',   PARTIAL:'partial', COMPLETED:'completed' }[status] || 'pending';
+  const cls = { PENDING:'pending',   PARTIAL:'partial',  COMPLETED:'completed' }[status] || 'pending';
   return `<span class="pill ${cls}">${txt}</span>`;
 }
 
 let ENTREGAS = [];
 
-// bootstrap
+// ================== Bootstrap ==================
 window.addEventListener('DOMContentLoaded', async ()=>{
-  if(!getToken()){ location.href='../files-html/login.html'; return; }
+  if(!getToken()){
+    location.href='../files-html/login.html';
+    return;
+  }
 
   // refs pager
   infoPager = document.getElementById('pg-info');
@@ -65,10 +93,12 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   await loadClients();
   wireFilters();
+  setupExport();          
+  setupRemitoButtons();
   await loadDeliveries(); 
 });
 
-// filtros
+// ================== Filtros ==================
 function wireFilters(){
   const debSearch = debounce(loadDeliveries, 250); 
   const debLocal  = debounce(applyFilters, 120);   
@@ -81,7 +111,8 @@ function wireFilters(){
   $('#fText')   ?.addEventListener('input',  debLocal);
 
   $('#btnClear')?.addEventListener('click', ()=>{
-    ['fSaleId','fClient','fFrom','fTo','fStatus','fText'].forEach(id=>$('#'+id).value='');
+    ['fSaleId','fClient','fFrom','fTo','fStatus','fText']
+      .forEach(id => { const el = $('#'+id); if (el) el.value=''; });
     applyFilters();
     loadDeliveries();
   });
@@ -161,7 +192,7 @@ async function loadDeliveries(){
   }
 }
 
-// aplicar filtros locales + render paginado
+// ================== Aplicar filtros locales + paginar ==================
 function applyFilters(){
   const { status, saleId, clientId, clientNameSel, from, to, text } = readFilterValues();
   let list = ENTREGAS.slice();
@@ -172,7 +203,10 @@ function applyFilters(){
 
   if (clientId){
     const targetName = norm(clientNameSel);
-    list = list.filter(e => String(getClientId(e) ?? '') === String(clientId) || norm(getClientName(e)) === targetName);
+    list = list.filter(e => 
+      String(getClientId(e) ?? '') === String(clientId) ||
+      norm(getClientName(e)) === targetName
+    );
   }
 
   if (status) list = list.filter(e => getStatus(e) === status.toUpperCase());
@@ -183,12 +217,11 @@ function applyFilters(){
     list = list.filter(e=>{
       const name = getClientName(e).toLowerCase();
       const sid  = String(getSaleId(e)||'');
-      // 👇 búsqueda solo por cliente / venta
       return name.includes(text) || sid.includes(text);
     });
   }
 
-  // === ORDENAMIENTO POR ID (DESC) ===
+  // Ordenamiento por ID (desc)
   list.sort((a,b)=>{
     const idA = Number(getDeliveryId(a) || 0);
     const idB = Number(getDeliveryId(b) || 0);
@@ -233,7 +266,7 @@ function renderPager(totalElems, totalPages){
 function render(lista){
   const cont = $('#lista-entregas');
   if (!cont) return;
-  // Sin la columna ID en el encabezado
+
   cont.innerHTML = `
     <div class="fila encabezado">
       <div>Fecha</div>
@@ -261,17 +294,253 @@ function render(lista){
 
     const row = document.createElement('div');
     row.className='fila';
-    // Sin la columna ID en el cuerpo
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cliente}</div>
       <div>${saleId ? `#${saleId}` : '—'}</div>
       <div>${pill(st)}</div>
       <div class="acciones">
+        <button type="button"
+                class="btn outline btn-remito"
+                data-id="${idDel}"
+                title="Imprimir remito" style="border: 1px solid #ced4da;">
+          🧾
+        </button>
         <a class="btn outline" href="../files-html/ver-entrega.html?id=${idDel}">👁️</a>
         <a class="btn outline" href="../files-html/editar-entrega.html?id=${idDel}">✏️</a>
       </div>
     `;
     cont.appendChild(row);
+  }
+
+}
+
+/* ================== EXPORTAR PDF ================== */
+
+function setupExport(){
+  const btnOpen = document.getElementById('btnExport');
+  if (!btnOpen) return;
+
+  btnOpen.addEventListener('click', async ()=>{
+    const { value: scope } = await Swal.fire({
+      title: 'Exportar entregas',
+      width: 480,
+      html: `
+        <div style="text-align:left;font-size:0.95rem;line-height:1.5;">
+          <label style="display:block;margin:6px 4px;">
+            <input type="radio" name="deliveriesExportScope" value="FILTERED" checked>
+            PDF – Resultado de filtros
+          </label>
+          <label style="display:block;margin:6px 4px;">
+            <input type="radio" name="deliveriesExportScope" value="ONLY_PENDING">
+            PDF – Solo parciales
+          </label>
+          <label style="display:block;margin:6px 4px;">
+            <input type="radio" name="deliveriesExportScope" value="ONLY_COMPLETED">
+            PDF – Solo completadas
+          </label>
+        </div>
+      `,
+      showCancelButton: true,
+      focusConfirm: false,
+      reverseButtons: true,
+      confirmButtonText: 'Exportar',
+      cancelButtonText: 'Cancelar',
+      buttonsStyling: true,
+      confirmButtonColor: '#4f46e5',  // violeta igual que presupuestos
+      cancelButtonColor: '#6b7280',   // gris
+      customClass: {
+        popup: 'swal2-popup-export'
+      },
+      preConfirm: () => {
+        const popup = Swal.getPopup();
+        const checked = popup.querySelector('input[name="deliveriesExportScope"]:checked');
+        if (!checked) {
+          Swal.showValidationMessage('Seleccioná una opción de exportación');
+          return false;
+        }
+        return checked.value;
+      }
+    });
+
+    if (!scope) return;
+
+    try{
+      await exportDeliveries(scope);
+    } catch (e){
+      console.error(e);
+      Swal.fire('Error', 'No se pudo generar el PDF de entregas.', 'error');
+    }
+  });
+}
+
+async function exportDeliveries(scope){
+  const { clientId, from, to, status } = readFilterValues();
+
+  const qs = new URLSearchParams();
+  qs.set('scope', scope || 'FILTERED');
+  if (from)     qs.set('from', from);
+  if (to)       qs.set('to',   to);
+  if (clientId) qs.set('clientId', clientId);
+
+  // Solo tiene sentido mandar estado cuando usamos scope=FILTERED
+  if (scope === 'FILTERED' && status){
+    qs.set('status', status);
+  }
+
+  const url = `/deliveries/report-pdf?${qs.toString()}`;
+
+  const btn = document.getElementById('btnExport');
+  const originalHTML = btn ? btn.innerHTML : null;
+
+  try{
+    if (btn){
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generando…';
+    }
+
+    notify('Generando PDF de entregas…', 'info');
+
+    const res = await authFetch(url);
+
+    if (res.status === 204){
+      Swal.fire('Sin datos', 'No hay entregas para exportar con esos filtros.', 'info');
+      return;
+    }
+    if (!res.ok){
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const blob = await res.blob();
+    if (!blob || blob.size === 0){
+      Swal.fire('Sin datos', 'No hay entregas para exportar con esos filtros.', 'info');
+      return;
+    }
+
+    let filename = 'entregas.pdf';
+    const cd = res.headers.get('Content-Disposition');
+    if (cd){
+      const m = /filename=\"?([^\";]+)\"?/i.exec(cd);
+      if (m && m[1]) filename = m[1];
+    }
+
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+
+    notify('PDF de entregas descargado', 'success');
+
+  }catch(e){
+    console.error(e);
+    Swal.fire('Error', 'No se pudo generar el PDF de entregas.', 'error');
+    notify('Error al generar el PDF de entregas', 'error');
+  }finally{
+    if (btn){
+      btn.disabled = false;
+      btn.innerHTML = originalHTML ?? '<span class="icon">⬇</span><span>Exportar</span>';
+    }
+  }
+}
+
+
+/* ================== REMITO POR ENTREGA ================== */
+
+function setupRemitoButtons(){
+  const cont = document.getElementById('lista-entregas');
+  if (!cont) return;
+
+  cont.addEventListener('click', async ev => {
+    const btn = ev.target.closest('.btn-remito');
+    if (!btn) return;
+
+    const id = btn.dataset.id;
+    if (!id) return;
+
+    try {
+      await downloadDeliveryNote(id);
+    } catch (e) {
+      console.error(e);
+      Swal.fire('Error',
+        'No se pudo generar el remito de esta entrega.',
+        'error'
+      );
+    }
+  });
+}
+
+async function downloadDeliveryNote(idDelivery){
+  const url = `/deliveries/${encodeURIComponent(idDelivery)}/note-pdf`;
+
+  const btn = document.querySelector(`.btn-remito[data-id="${idDelivery}"]`);
+  const originalHTML = btn ? btn.innerHTML : null;
+
+  try{
+    if (btn){
+      btn.disabled = true;
+      btn.innerHTML = '⏳';
+    }
+
+    notify('Generando remito de entrega…', 'info');
+
+    const res = await authFetch(url);
+
+    if (res.status === 404 || res.status === 204) {
+      Swal.fire(
+        'Sin datos',
+        'No se encontró la entrega o no hay datos para el remito.',
+        'info'
+      );
+      return;
+    }
+    if (!res.ok){
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const blob = await res.blob();
+    if (!blob || blob.size === 0){
+      Swal.fire(
+        'Sin datos',
+        'No se pudo generar el remito para esta entrega.',
+        'info'
+      );
+      return;
+    }
+
+    let filename = `entrega-${idDelivery}.pdf`;
+    const cd = res.headers.get('Content-Disposition');
+    if (cd){
+      const m = /filename=\"?([^\";]+)\"?/i.exec(cd);
+      if (m && m[1]) filename = m[1];
+    }
+
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+
+    notify('Remito de entrega descargado', 'success');
+
+  }catch(e){
+    console.error(e);
+    Swal.fire(
+      'Error',
+      'No se pudo generar el remito de esta entrega.',
+      'error'
+    );
+    notify('Error al generar el remito de entrega', 'error');
+  }finally{
+    if (btn){
+      btn.disabled = false;
+      btn.innerHTML = originalHTML ?? '🧾';
+    }
   }
 }

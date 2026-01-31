@@ -20,7 +20,7 @@ if (!id){
 
 // Configurar botón editar
 const btnEditar = document.getElementById('btnEditar');
-if(btnEditar) btnEditar.href = `editar-cliente.html?id=${id}`;
+if(btnEditar) btnEditar.href = `editar-clientes.html?id=${id}`;
 
 
 function sameClient(sale, idTarget){

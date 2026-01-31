@@ -1,3 +1,4 @@
+// src/main/java/com/appTest/store/controllers/PurchasePdfController.java
 package com.appTest.store.controllers;
 
 import com.appTest.store.services.pdf.PurchasePdfService;
@@ -11,19 +12,19 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/purchases")
-public class PurchasesPdfController {
+public class PurchasePdfController {
 
     private final PurchasePdfService pdf;
 
     @GetMapping("/{id}/pdf")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")   // 👈 SIN "ROLE_"
     public ResponseEntity<byte[]> purchasePdf(@PathVariable Long id){
         byte[] bytes = pdf.renderPurchase(id);
-        if (bytes==null) return ResponseEntity.notFound().build();
+        if (bytes == null) return ResponseEntity.notFound().build();
 
         String filename = "compra-" + id + ".pdf";
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(bytes);
     }

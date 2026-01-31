@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/entregas.css"/>
   <link rel="stylesheet" href="../files-css/nav.css">
+
+  <!-- SweetAlert2 para mensajes del export -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
   <div id="app-header"></div>
@@ -15,6 +18,11 @@
     <div class="page-head">
       <h1>Entregas</h1>
       <div class="actions">
+        <!-- Botón exportar igual al de Presupuestos/Materiales -->
+        <button type="button" id="btnExport" class="btn outline with-icon" style="border: 0.6px solid black; margin-right: 10px;">
+          <span class="icon">⬇</span>
+          <span>Exportar</span>
+        </button>
         <a class="btn primary" href="../files-html/crear-entrega.html">+ Nueva entrega</a>
       </div>
     </div>
@@ -44,7 +52,6 @@
         <label>Estado
           <select id="fStatus" class="in">
             <option value="">Todos</option>
-            <option value="PENDING">Pendiente</option>
             <option value="PARTIAL">Parcial</option>
             <option value="COMPLETED">Completada</option>
           </select>
@@ -67,15 +74,15 @@
           <div>Estado</div>
           <div>Acciones</div>
         </div>
-        </div>
+      </div>
     </section>
 
-  <!-- 🔹 NUEVO: paginador al final -->
-  <div class="pager">
-    <div class="info" id="pg-info"></div>
-    <button class="btn" id="pg-prev">« Anterior</button>
-    <button class="btn" id="pg-next">Siguiente »</button>
-  </div>
+    <!-- Paginador -->
+    <div class="pager">
+      <div class="info" id="pg-info"></div>
+      <button class="btn" id="pg-prev">« Anterior</button>
+      <button class="btn" id="pg-next">Siguiente »</button>
+    </div>
   </main>
 
   <script src="../files-js/core/api.js"></script>

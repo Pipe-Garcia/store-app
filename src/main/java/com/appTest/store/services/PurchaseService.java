@@ -127,15 +127,35 @@ public class PurchaseService implements IPurchaseService{
 
     @Override
     public PurchaseDTO convertPurchaseToDto(Purchase purchase) {
-        String supplierName = (purchase.getSupplier() != null) ? purchase.getSupplier().getNameCompany() : "Supplier's name not found";
+        Long supplierId = null;
+        String supplierName = "Proveedor no encontrado";
+
+        if (purchase.getSupplier() != null) {
+            supplierId = purchase.getSupplier().getIdSupplier();
+
+            if (purchase.getSupplier().getNameCompany() != null &&
+                    !purchase.getSupplier().getNameCompany().isBlank()) {
+
+                supplierName = purchase.getSupplier().getNameCompany();
+            } else {
+                String name = purchase.getSupplier().getName()    != null ? purchase.getSupplier().getName()    : "";
+                String sur  = purchase.getSupplier().getSurname() != null ? purchase.getSupplier().getSurname() : "";
+                String full = (name + " " + sur).trim();
+                if (!full.isBlank()) supplierName = full;
+            }
+        }
+
         BigDecimal totalAmount = calculateTotal(purchase);
+
         return new PurchaseDTO(
                 purchase.getIdPurchase(),
                 purchase.getDatePurchase(),
+                supplierId,
                 supplierName,
                 totalAmount
         );
     }
+
 
     private BigDecimal calculateTotal(Purchase purchase) {
         return purchase.getPurchaseDetails().stream()

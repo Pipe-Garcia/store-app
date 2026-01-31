@@ -1,0 +1,88 @@
+<!-- src/main/resources/templates/pdf/warehouse-stock.html -->
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Stock del depósito</title>
+  <link rel="stylesheet" th:href="@{classpath:/static/files-css/invoice.css}"/>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <table class="header">
+    <tr>
+      <td>
+        <div class="brand">
+          <img th:src="${c.logo}" alt="logo"/>
+          <div class="brand-title">
+          <!-- 🔹 USAR &#160; EN VEZ DE &nbsp; -->
+            <h1 th:utext="${#strings.replace(c.name, ' ', '&#160;')}">
+              Mi Empresa
+            </h1>
+          </div>
+        </div>
+      </td>
+      <td class="head-right">
+        <div class="stamp">Stock</div><br/>
+        <div>Stock del depósito</div>
+        <div th:text="${w.name}">Depósito Central</div>
+        <div>
+          <small th:text="${generatedAt}">10/10/2025 12:00</small>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- INFO DEPÓSITO -->
+  <p class="note">
+    <span>
+      <strong>Dirección:</strong>
+      <span th:text="${w.address}">Los Alpes 1234</span>
+    </span>
+    <!-- 🔹 TAMBIÉN ACÁ: &#160; EN LUGAR DE &nbsp; -->
+    &#160;·&#160;
+    <span>
+      <strong>Localidad:</strong>
+      <span th:text="${w.location}">San Justo</span>
+    </span>
+  </p>
+
+  <!-- TABLA PRINCIPAL -->
+  <table class="items warehouse-stock">
+    <colgroup>
+      <col style="width:50%"/> <!-- Material -->
+      <col style="width:25%"/> <!-- Cantidad -->
+      <col style="width:25%"/> <!-- Última actualización -->
+    </colgroup>
+    <thead>
+    <tr>
+      <th>Material</th>
+      <th class="num">Cantidad disponible</th>
+      <th>Última actualización</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="r : ${rows}">
+      <td th:text="${r.material}">Jarra de Vidrio</td>
+      <td class="num" th:text="${r.qtyLabel}">13</td>
+      <td th:text="${r.lastUpdate}">30/01/2026</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <!-- TOTAL -->
+  <table class="totals">
+    <tr class="grand">
+      <td>Total unidades</td>
+      <td class="num" th:text="${totalQtyLabel}">106</td>
+    </tr>
+  </table>
+
+  <p class="note">
+    Documento interno. Valores expresan cantidades físicas de stock.
+  </p>
+
+</div>
+</body>
+</html>

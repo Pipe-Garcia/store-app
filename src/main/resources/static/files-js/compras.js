@@ -21,14 +21,36 @@ function authHeaders(json=true){
   const t = getToken();
   return { ...(json?{"Content-Type":"application/json"}:{}), ...(t?{"Authorization":`Bearer ${t}`}:{}) };
 }
-function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
-function notify(msg,type='info'){
-  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg;
-  document.body.appendChild(n); setTimeout(()=>n.remove(),3500);
+function authFetch(url,opts={}){ 
+  return fetch(url,{
+    ...opts, 
+    headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}
+  }); 
 }
 function go(page){
   const base = location.pathname.replace(/[^/]+$/, '');
   location.href = `${base}${page}`;
+}
+
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
+  }
+});
+
+function notify(msg,type='info'){
+  const icon =
+    type === 'error'   ? 'error'   :
+    type === 'success' ? 'success' :
+    type === 'warning' ? 'warning' : 'info';
+  Toast.fire({ icon, title: msg });
 }
 
 // ========= Estado =========
@@ -70,10 +92,15 @@ window.addEventListener("DOMContentLoaded", async ()=>{
   await cargarDatosBase();
   applyFilters();
 
+  // filtros
   $("#buscarDesde").addEventListener("change", applyFilters);
   $("#buscarHasta").addEventListener("change", applyFilters);
   $("#buscarTexto").addEventListener("input", applyFilters);
+  $("#buscarProveedor").addEventListener("change", applyFilters);
   $("#btnLimpiar").addEventListener("click", limpiarFiltros);
+
+  // NUEVO: wiring botón Exportar
+  setupExport();
 });
 
 // ========= Carga base =========
@@ -88,7 +115,8 @@ async function cargarDatosBase(){
       if (!r.ok){
         if (r.status===401 || r.status===403){
           notify("Sesión inválida. Iniciá sesión nuevamente","error");
-          go("login.html"); return;
+          go("login.html"); 
+          return;
         }
         throw new Error(`HTTP ${r.status}`);
       }
@@ -101,9 +129,12 @@ async function cargarDatosBase(){
       (p.nameCompany || `${p.name??''} ${p.surname??''}`.trim() || `#${p.idSupplier}`)
     ]));
 
+     initProveedorFiltro();
+
     // ordenar por fecha desc
     compras.sort((a,b)=>{
-      const da = dateISO(a.datePurchase); const db = dateISO(b.datePurchase);
+      const da = dateISO(a.datePurchase); 
+      const db = dateISO(b.datePurchase);
       if (da!==db) return db.localeCompare(da);
       return (b.idPurchase||0)-(a.idPurchase||0);
     });
@@ -118,15 +149,50 @@ function limpiarFiltros(){
   $("#buscarDesde").value     = "";
   $("#buscarHasta").value     = "";
   $("#buscarTexto").value     = "";
+  const selProv = $("#buscarProveedor");
+  if (selProv) selProv.value = "";
   applyFilters();
 }
+
+
+function initProveedorFiltro(){
+  const sel = document.getElementById('buscarProveedor');
+  if (!sel) return;
+
+  sel.innerHTML = '<option value="">Todos</option>';
+
+  proveedores
+    .slice()
+    .sort((a,b)=>{
+      const na = (a.nameCompany || `${a.name||''} ${a.surname||''}`).trim();
+      const nb = (b.nameCompany || `${b.name||''} ${b.surname||''}`).trim();
+      return na.localeCompare(nb);
+    })
+    .forEach(p=>{
+      const opt = document.createElement('option');
+      opt.value = p.idSupplier;
+      const label = (p.nameCompany || `${p.name||''} ${p.surname||''}`).trim()
+                    || `#${p.idSupplier}`;
+      opt.textContent = label;
+      sel.appendChild(opt);
+    });
+}
+
 
 function applyFilters(){
   const desde = $("#buscarDesde").value || "";
   const hasta = $("#buscarHasta").value || "";
   const q     = ($("#buscarTexto").value || "").toLowerCase();
+  const supplierId = $("#buscarProveedor") ? $("#buscarProveedor").value : "";
 
   let list = compras.slice();
+
+  
+  if (supplierId){
+    list = list.filter(c =>
+      String(c.supplierId ?? '') === String(supplierId)
+    );
+  }
 
   if (desde) list = list.filter(c => {
     const iso = dateISO(c.datePurchase);
@@ -144,15 +210,26 @@ function applyFilters(){
     );
   }
 
-  // guardamos filtros y arrancamos desde la primera página
   comprasFiltradas = list;
   page = 0;
   renderPaginated();
 }
 
+
 function displaySupplier(c){
-  return c.supplierName || provById.get(Number(c.supplierId)) || "—";
+  const id = c.supplierId != null ? Number(c.supplierId) : null;
+
+  if (c.supplierName && c.supplierName.trim().length > 0){
+    return c.supplierName;
+  }
+
+  if (id && provById.has(id)){
+    return provById.get(id);
+  }
+
+  return "—";
 }
+
 
 // ========= Paginación (front) =========
 function renderPaginated(){
@@ -214,10 +291,10 @@ function renderLista(lista){
       <div>${displaySupplier(c)}</div>
       <div>${fmtARS.format(total)}</div>
       <div class="acciones">
-        <a class="btn outline" href="detalle-compra.html?id=${c.idPurchase}">👁️</a>
-        <a class="btn outline" href="editar-compra.html?id=${c.idPurchase}">✏️</a>
-        <button class="btn outline" style="border 1px black" data-pdf="${c.idPurchase}">📄</button>
-        <button class="btn danger" data-del="${c.idPurchase}">🗑️</button>
+        <a class="btn outline" href="detalle-compra.html?id=${c.idPurchase}" title="Ver detalle">👁️</a>
+        <a class="btn outline" href="editar-compra.html?id=${c.idPurchase}" title="Editar compra">✏️</a>
+        <button class="btn outline" style="border: 0.6px solid #ced4da;" data-pdf="${c.idPurchase}" title="Descargar PDF">📄</button>
+        <button class="btn danger" data-del="${c.idPurchase}" title="Eliminar">🗑️</button>
       </div>
     `;
     cont.appendChild(row);
@@ -225,11 +302,20 @@ function renderLista(lista){
 
   // Delegación de eventos
   cont.onclick = (ev)=>{
-    const delId = ev.target.getAttribute("data-del");
-    if (delId) { borrarCompra(Number(delId)); return; }
+    const btn = ev.target.closest('button');
+    if (!btn) return;
 
-    const pdfId = ev.target.getAttribute("data-pdf");
-    if (pdfId) { downloadPurchasePdf(Number(pdfId)); return; }
+    const delId = btn.getAttribute("data-del");
+    if (delId) { 
+      borrarCompra(Number(delId)); 
+      return; 
+    }
+
+    const pdfId = btn.getAttribute("data-pdf");
+    if (pdfId) { 
+      downloadPurchasePdf(Number(pdfId)); 
+      return; 
+    }
   };
 }
 
@@ -239,7 +325,10 @@ async function borrarCompra(id){
   try{
     const r = await authFetch(`${API_URL_PURCHASES}/${id}`, { method:"DELETE" });
     if (!r.ok){
-      if (r.status===403){ notify("No tenés permisos para eliminar compras (ROLE_OWNER requerido).","error"); return; }
+      if (r.status===403){ 
+        notify("No tenés permisos para eliminar compras (ROLE_OWNER requerido).","error"); 
+        return; 
+      }
       throw new Error(`HTTP ${r.status}`);
     }
     compras = compras.filter(c => c.idPurchase !== id);
@@ -251,16 +340,34 @@ async function borrarCompra(id){
   }
 }
 
+// 🔹 PDF individual de compra (con feedback tipo ventas)
 async function downloadPurchasePdf(id){
+  const btn = document.querySelector(`button[data-pdf="${id}"]`);
+  const originalHTML = btn ? btn.innerHTML : null;
+
   try{
+    if (btn){
+      btn.disabled = true;
+      btn.innerHTML = '⏳';
+    }
+
+    notify('Generando PDF de compra…','info');
+
     const r = await authFetch(`${API_URL_PURCHASES}/${id}/pdf`, { method:"GET" });
     if(!r.ok){
       if (r.status===401 || r.status===403){
-        notify("Sesión inválida o sin permisos.","error"); return;
+        notify("Sesión inválida o sin permisos.","error"); 
+        return;
       }
       throw new Error(`HTTP ${r.status}`);
     }
+
     const blob = await r.blob();
+    if (!blob || blob.size === 0){
+      Swal.fire('Sin datos','No se pudo generar el PDF de esta compra.','info');
+      return;
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -269,8 +376,149 @@ async function downloadPurchasePdf(id){
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+
+    notify('PDF de compra descargado','success');
   }catch(e){
     console.error(e);
-    notify("No se pudo descargar el PDF","error");
+    Swal.fire('Error PDF','No se pudo generar el documento de la compra.','error');
+  }finally{
+    if (btn){
+      btn.disabled = false;
+      btn.innerHTML = originalHTML ?? '📄';
+    }
   }
 }
+
+/* ================== EXPORTAR LISTADO DE COMPRAS A PDF ================== */
+
+function setupExport(){
+  const btn = document.getElementById('btnExport');
+  if (!btn) return;
+
+  btn.addEventListener('click', async ()=>{
+    const { value: scope } = await Swal.fire({
+      title: 'Exportar compras',
+      width: 480,
+      html: `
+        <div style="text-align:left;font-size:0.95rem;line-height:1.5;">
+          <label style="display:block;margin:6px 4px;">
+            <input type="radio" name="purchasesExportScope" value="FILTERED" checked>
+            PDF – Resultado de filtros
+          </label>
+          <label style="display:block;margin:6px 4px;">
+            <input type="radio" name="purchasesExportScope" value="LAST_7_DAYS">
+            PDF – Últimos 7 días
+          </label>
+          <label style="display:block;margin:6px 4px;">
+            <input type="radio" name="purchasesExportScope" value="CURRENT_MONTH">
+            PDF – Mes actual
+          </label>
+        </div>
+      `,
+      showCancelButton: true,
+      focusConfirm: false,
+      reverseButtons: true,
+      confirmButtonText: 'Exportar',
+      cancelButtonText: 'Cancelar',
+      buttonsStyling: true,
+      confirmButtonColor: '#4f46e5',  // violeta
+      cancelButtonColor: '#6b7280',   // gris
+      customClass: {
+        popup: 'swal2-popup-export'
+      },
+      preConfirm: () => {
+        const popup = Swal.getPopup();
+        const checked = popup.querySelector('input[name="purchasesExportScope"]:checked');
+        if (!checked) {
+          Swal.showValidationMessage('Seleccioná una opción de exportación');
+          return false;
+        }
+        return checked.value;
+      }
+    });
+
+    if (!scope) return;
+
+    try{
+      await exportPurchases(scope);
+    } catch (e){
+      console.error(e);
+      Swal.fire('Error', 'No se pudo generar el PDF de compras.', 'error');
+    }
+  });
+}
+
+async function exportPurchases(scope){
+  const from = $("#buscarDesde").value || "";
+  const to   = $("#buscarHasta").value || "";
+  const supplierId = $("#buscarProveedor") ? $("#buscarProveedor").value : "";
+
+  const qs = new URLSearchParams();
+  qs.set('scope', scope || 'FILTERED');
+
+  if (scope === 'FILTERED'){
+    if (from) qs.set('from', from);
+    if (to)   qs.set('to',   to);
+  }
+
+  
+  if (supplierId){
+    qs.set('supplierId', supplierId);
+  }
+
+  const btn = document.getElementById('btnExport');
+  const originalText = btn ? btn.textContent : null;
+
+  try{
+    if (btn){
+      btn.disabled = true;
+      btn.textContent = 'Generando…';
+    }
+
+    notify('Generando PDF de compras…','info');
+
+    const url = `${API_URL_PURCHASES}/report-pdf?` + qs.toString();
+    const r   = await authFetch(url);
+
+    if (r.status === 204){
+      Swal.fire('Sin datos','No hay compras para exportar con esos filtros.','info');
+      return;
+    }
+    if (!r.ok){
+      const body = await r.text().catch(()=> '');
+      console.error('Export compras 403 body:', body);
+      throw new Error(`HTTP ${r.status}`);
+    }
+
+
+    const blob = await r.blob();
+    if (!blob || blob.size === 0){
+      Swal.fire('Sin datos','No hay compras para exportar con esos filtros.','info');
+      return;
+    }
+
+    const scopeSlug = (scope || 'FILTERED').toLowerCase();
+    const today = new Date().toISOString().slice(0,10);
+
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = `compras-${scopeSlug}-${today}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+
+    notify('PDF de compras descargado','success');
+
+  }catch(e){
+    console.error(e);
+    Swal.fire('Error','No se pudo generar el PDF de compras.','error');
+  }finally{
+    if (btn){
+      btn.disabled = false;
+      btn.textContent = originalText ?? '⬇ Exportar';
+    }
+  }
+}
+

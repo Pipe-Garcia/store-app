@@ -20,8 +20,12 @@
       <h1>Stock del depósito</h1>
       <div class="acciones">
         <a href="../files-html/almacen.html">←  Volver</a>
+        <button id="btnExportStock" class="btn outline" style="padding: 0.55rem 0.8rem;">
+          ⬇ Exportar PDF
+        </button>
       </div>
     </div>
+
 
     <section class="card">
        <div class="wh-info">
@@ -50,6 +54,8 @@
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
   <script src="../files-js/menu-guard.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <!-- script de la página -->
   <script type="module" src="../files-js/stock-deposito.js"></script>
 </body>

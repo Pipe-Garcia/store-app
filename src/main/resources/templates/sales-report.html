@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <!-- Reutilizamos el mismo CSS que facturas/materiales -->
+  <link rel="stylesheet" th:href="@{classpath:/static/files-css/invoice.css}"/>
+  <title>Listado de ventas</title>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <table class="header">
+    <tr>
+      <td>
+        <div class="brand">
+          <img th:src="${c.logo}" alt="logo"/>
+          <div class="brand-title">
+            <h1 th:text="${c.name}">Mi Empresa</h1>
+          </div>
+        </div>
+      </td>
+      <td class="head-right">
+        <div class="stamp">Ventas</div><br/>
+        <div th:text="${title}">Listado de ventas</div>
+        <div>
+          <small th:text="${generatedAt}">10/10/2025 12:00</small>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- SUBTÍTULO / INFO DE FILTROS -->
+  <p class="note" th:text="${subtitle}">
+    Filtros aplicados…
+  </p>
+
+  <!-- TABLA DE VENTAS -->
+  <table class="items">
+    <colgroup>
+      <col style="width:12%"/>
+      <col style="width:16%"/>
+      <col style="width:42%"/>
+      <col style="width:15%"/>
+      <col style="width:15%"/>
+    </colgroup>
+    <thead>
+    <tr>
+      <th class="num">N° venta</th>
+      <th>Fecha</th>
+      <th>Cliente</th>
+      <th class="num">Total</th>
+      <th>Estado pago</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="r : ${rows}">
+      <td class="num" th:text="${r.id}">1</td>
+      <td th:text="${#temporals.format(r.date, 'dd/MM/yyyy')}">01/01/2026</td>
+      <td th:text="${r.client}">Cliente de ejemplo</td>
+      <td class="num"
+          th:text="${#numbers.formatCurrency(r.total)}">$ 0,00</td>
+      <td th:text="${r.paymentStatus}">Pagada</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <!-- TOTAL DEL PERÍODO -->
+  <table class="totals">
+    <tr class="grand">
+      <td>Total del período</td>
+      <td class="num"
+          th:text="${#numbers.formatCurrency(grandTotal)}">$ 0,00</td>
+    </tr>
+  </table>
+
+  <p class="note">
+    Documento interno. Valores expresados en ARS. Para uso administrativo.
+  </p>
+
+</div>
+</body>
+</html>

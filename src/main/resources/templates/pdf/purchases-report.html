@@ -1,0 +1,86 @@
+<!-- src/main/resources/templates/pdf/purchases-report.html -->
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <!-- Mismo CSS que facturas/materiales/ventas/presupuestos -->
+  <link rel="stylesheet" th:href="@{classpath:/static/files-css/invoice.css}"/>
+  <title>Listado de compras</title>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <table class="header">
+    <tr>
+      <td>
+        <div class="brand">
+          <img th:src="${c.logo}" alt="logo"/>
+          <div class="brand-title">
+            <!-- mismo truco que en otros reportes -->
+            <h1 th:utext="${#strings.replace(c.name, ' ', '&nbsp;')}">
+              Mi Empresa
+            </h1>
+          </div>
+        </div>
+      </td>
+      <td class="head-right">
+        <div class="stamp">Compras</div><br/>
+        <div th:text="${title}">Compras filtradas</div>
+        <div>
+          <small th:text="${generatedAt}">10/10/2025 12:00</small>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- SUBTÍTULO / INFO DE FILTROS -->
+  <p class="note" th:text="${subtitle}">
+    Período y proveedor…
+  </p>
+
+  <!-- TABLA DE COMPRAS -->
+  <table class="items purchases-report">
+    <colgroup>
+      <col style="width:25%"/>  <!-- N° compra -->
+      <col style="width:25%"/>  <!-- Fecha -->
+      <col style="width:25%"/>  <!-- Proveedor -->
+      <col style="width:25%"/>  <!-- Total -->
+    </colgroup>
+    <thead>
+    <tr>
+      <th class="num">N° compra</th>
+      <th>Fecha</th>
+      <th>Proveedor</th>
+      <th class="num">Total</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="r : ${rows}">
+      <td class="num" th:text="${r.id}">1</td>
+      <td th:text="${#temporals.format(r.date, 'dd/MM/yyyy')}">
+        01/01/2026
+      </td>
+      <td th:text="${r.supplier}">Proveedor de ejemplo</td>
+      <td class="num"
+          th:text="${#numbers.formatCurrency(r.total)}">$ 0,00</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <!-- TOTAL GLOBAL -->
+  <table class="totals">
+    <tr class="grand">
+      <td>Total</td>
+      <td class="num"
+          th:text="${#numbers.formatCurrency(grandTotal)}">$ 0,00</td>
+    </tr>
+  </table>
+
+  <p class="note">
+    Documento interno. Valores expresados en ARS. Para uso administrativo.
+  </p>
+
+</div>
+</body>
+</html>

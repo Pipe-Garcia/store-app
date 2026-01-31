@@ -1,10 +1,15 @@
 // /static/files-js/stock-deposito.js
 const { authFetch, safeJson, getToken } = window.api;
 
-const API_URL_WHS         = '/warehouses';
-const API_URL_STOCK_BY_WH = (id) => `/stocks/by-warehouse/${id}`;
+const API_URL_WHS           = '/warehouses';
+const API_URL_STOCK_BY_WH   = (id) => `/stocks/by-warehouse/${id}`;
+// 🔹 nuevo endpoint de export PDF
+const API_URL_WH_STOCK_PDF  = (id) => `/warehouses/${id}/stock-pdf`;
 
 const $ = (s, r = document) => r.querySelector(s);
+
+// 🔹 para usar el ID del depósito en cualquier función
+let currentWarehouseId = null;
 
 function notify(msg, type = 'info') {
   const n = document.createElement('div');
@@ -28,6 +33,104 @@ function formatDateDMY(iso) {
   return `${d}/${m}/${y}`;
 }
 
+async function exportStockPdf(warehouseId) {
+  if (!warehouseId) {
+    Swal.fire('Error', 'Depósito no identificado.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnExportStock');
+  const originalText = btn ? btn.textContent : null;
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Generando…';
+    }
+
+    // Modal de "cargando"
+    Swal.fire({
+      title: 'Generando PDF',
+      text: 'Por favor esperá…',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    const r = await authFetch(API_URL_WH_STOCK_PDF(warehouseId));
+
+    // cerramos el loading antes de mostrar cualquier otro mensaje
+    Swal.close();
+
+    if (r.status === 401) {
+      Swal.fire('Sesión expirada', 'Iniciá sesión nuevamente.', 'error')
+        .then(() => go('login.html'));
+      return;
+    }
+    if (r.status === 403) {
+      Swal.fire(
+        'Sin permisos',
+        'No tenés permisos para exportar el stock de este depósito.',
+        'error'
+      );
+      return;
+    }
+    if (r.status === 204) {
+      Swal.fire(
+        'Sin datos',
+        'No hay stock para exportar en este depósito.',
+        'info'
+      );
+      return;
+    }
+    if (!r.ok) {
+      throw new Error(`HTTP ${r.status}`);
+    }
+
+    const blob = await r.blob();
+    if (!blob || blob.size === 0) {
+      Swal.fire(
+        'Sin datos',
+        'No se pudo generar el PDF de stock.',
+        'error'
+      );
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = `stock-deposito-${warehouseId}-${today}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+
+    Swal.fire(
+      'Listo',
+      'PDF de stock descargado.',
+      'success'
+    );
+  } catch (e) {
+    console.error(e);
+    Swal.close();
+    Swal.fire(
+      'Error',
+      'Error al generar el PDF del depósito.',
+      'error'
+    );
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText ?? '⬇ Exportar PDF';
+    }
+  }
+}
+
+
 window.addEventListener('DOMContentLoaded', init);
 
 async function init() {
@@ -40,6 +143,15 @@ async function init() {
   if (!id) {
     notify('ID de depósito no especificado', 'error');
     return go('almacenes.html');
+  }
+
+  // 🔹 guardamos el ID globalmente
+  currentWarehouseId = id;
+
+  // 🔹 enganchamos el botón de exportar
+  const btnExport = $('#btnExportStock');
+  if (btnExport) {
+    btnExport.addEventListener('click', () => exportStockPdf(currentWarehouseId));
   }
 
   try {
@@ -81,9 +193,6 @@ async function loadStock(warehouseId) {
       return;
     }
     $('#msgEmpty').style.display = 'none';
-
-    // Por si acaso, para debug:
-    // console.log('Stock by warehouse:', list);
 
     list.sort((a, b) => {
       const na = (a.nameMaterial || '').toLowerCase();

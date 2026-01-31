@@ -27,7 +27,6 @@ body {
 .num { text-align: right; white-space: nowrap; }
 
 /* ====== Header ====== */
-/* Usamos tabla para compatibilidad con OpenHTMLtoPDF */
 .header {
   width: 100%;
   border-collapse: collapse;
@@ -35,6 +34,15 @@ body {
   border-bottom: 1px solid #e5e7eb;
 }
 .header td { vertical-align: top; padding: 0 0 10px 0; }
+
+/* 👉 Nuevo: forzar ancho de columnas del header */
+.header td:first-child {
+  width: 64%;
+}
+.header td.head-right {
+  width: 36%;
+}
+
 
 .brand { display: inline-block; }
 .brand img {
@@ -166,4 +174,20 @@ body {
 .items .num{ text-align: right; white-space: nowrap; }
 
 .sep { padding: 0 4px; }
+
+/* Evitar que el nombre de la empresa se corte en dos renglones */
+.brand-title h1 {
+  white-space: nowrap;
+}
+
+.items th.status,
+.items td.status {
+  white-space: nowrap;
+}
+
+/* Ajuste fino solo para el listado de presupuestos */
+.items.orders-report th:nth-child(1),
+.items.orders-report td:nth-child(1) {
+  padding-right: 18px;   /* más aire entre N° presupuesto y Fecha */
+}
 

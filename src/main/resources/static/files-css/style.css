@@ -608,3 +608,37 @@ body {
 .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:8px; border:1px solid #d0d7de; background:#fff; cursor:pointer; }
 .btn:disabled { opacity:.5; cursor:not-allowed; }
 .btn.primary { background:#1c7ed6; color:#fff; border-color:#1c7ed6; }
+
+/* Opciones de exportación en SweetAlert */
+.swal2-popup .export-options {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.swal2-popup .export-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
+.swal2-popup .export-option span {
+  white-space: nowrap; /* evita que "Stock bajo (≤ 10)" se parta en 2 líneas */
+}
+
+/* Radios de SweetAlert2 apilados en columna (exportar materiales/ventas, etc.) */
+.swal2-popup .swal2-radio {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+}
+
+.swal2-popup .swal2-radio label {
+  margin: 0.25rem 0;
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+}
