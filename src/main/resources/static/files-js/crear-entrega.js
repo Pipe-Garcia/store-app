@@ -1,4 +1,3 @@
-// /static/files-js/crear-entrega.js
 // Crear entrega apoyada 100% en la VENTA.
 // Cap por renglón = min(pendiente de esa venta, stock disponible del depósito).
 const { authFetch, safeJson, getToken } = window.api;
@@ -11,14 +10,25 @@ const API_URL_STOCKS_BY_MAT= (matId)   => `/stocks/by-material/${matId}`;
 const $  = (s, r=document) => r.querySelector(s);
 const fmt = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 
-function notify(msg,type='info',anchorSelector){
-  const anchor = anchorSelector ? $(anchorSelector) : document.body;
-  const div = document.createElement('div');
-  div.className = `notification ${type}`;
-  div.textContent = msg;
-  (anchor||document.body).appendChild(div);
-  setTimeout(()=>div.remove(),4500);
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+});
+
+function notify(msg, type='info'){
+  // Mapeo de iconos
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
 }
+
 function flashAndGo(message, page){
   localStorage.setItem('flash', JSON.stringify({ message, type:'success' }));
   const base = location.pathname.replace(/[^/]+$/, '');
@@ -348,7 +358,7 @@ async function renderFilas(rows){
   }
 }
 
-/* ================= Guardar ================= */
+/* ================= Guardar (CON CONFIRMACIÓN) ================= */
 async function guardarEntrega(ev){
   ev.preventDefault();
   if (sending) return;
@@ -384,20 +394,36 @@ async function guardarEntrega(ev){
     return;
   }
 
-  const payload = { saleId, deliveryDate, items };
+  // 👇 CONFIRMACIÓN ANTES DE ENVIAR 👇
+  Swal.fire({
+    title: '¿Confirmar entrega?',
+    text: "Se registrará la entrega y se descontará stock de los depósitos seleccionados.",
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#28a745', // Verde
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Sí, crear entrega',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+      
+      if(result.isConfirmed) {
+          
+          const payload = { saleId, deliveryDate, items };
 
-  try{
-    sending = true;
-    const res = await authFetch(API_URL_DELIVERIES, { method:'POST', body: JSON.stringify(payload) });
-    if (!res.ok){
-      const t = await res.text().catch(()=> '');
-      console.warn('POST /deliveries failed', res.status, t);
-      throw new Error(`HTTP ${res.status}`);
-    }
-    flashAndGo('Entrega creada correctamente','entregas.html');
-  }catch(err){
-    console.error(err);
-    sending = false;
-    notify('No se pudo crear la entrega','error');
-  }
+          try{
+            sending = true;
+            const res = await authFetch(API_URL_DELIVERIES, { method:'POST', body: JSON.stringify(payload) });
+            if (!res.ok){
+              const t = await res.text().catch(()=> '');
+              console.warn('POST /deliveries failed', res.status, t);
+              throw new Error(`HTTP ${res.status}`);
+            }
+            flashAndGo('Entrega creada correctamente','entregas.html');
+          }catch(err){
+            console.error(err);
+            sending = false;
+            notify('No se pudo crear la entrega','error');
+          }
+      }
+  });
 }

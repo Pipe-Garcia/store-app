@@ -89,6 +89,26 @@ window.addEventListener("DOMContentLoaded", async ()=>{
     }
   });
 
+  // ✅ LÓGICA DE MENSAJE FLASH (Muestra cartel de éxito al volver de crear)
+  const flash = localStorage.getItem('flash');
+  if (flash) {
+    try {
+      const {message, type} = JSON.parse(flash);
+      if(type === 'success') {
+          Swal.fire({
+              icon: 'success',
+              title: '¡Éxito!',
+              text: message,
+              timer: 2000,
+              showConfirmButton: false
+          });
+      } else {
+          notify(message, type||'success');
+      }
+    } catch (_) {}
+    localStorage.removeItem('flash');
+  }
+
   await cargarDatosBase();
   applyFilters();
 
@@ -321,23 +341,42 @@ function renderLista(lista){
 
 // ========= Acciones =========
 async function borrarCompra(id){
-  if (!confirm(`¿Eliminar definitivamente la compra #${id}?`)) return;
-  try{
-    const r = await authFetch(`${API_URL_PURCHASES}/${id}`, { method:"DELETE" });
-    if (!r.ok){
-      if (r.status===403){ 
-        notify("No tenés permisos para eliminar compras (ROLE_OWNER requerido).","error"); 
-        return; 
+  // SweetAlert en lugar de confirm()
+  Swal.fire({
+    title: '¿Eliminar compra?',
+    text: `Vas a eliminar la compra #${id}. Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    
+    if (result.isConfirmed) {
+      try{
+        const r = await authFetch(`${API_URL_PURCHASES}/${id}`, { method:"DELETE" });
+        if (!r.ok){
+          if (r.status===403){ 
+            notify("No tenés permisos para eliminar compras (ROLE_OWNER requerido).","error"); 
+            return; 
+          }
+          throw new Error(`HTTP ${r.status}`);
+        }
+        compras = compras.filter(c => c.idPurchase !== id);
+        
+        Swal.fire(
+            '¡Eliminada!',
+            'La compra ha sido eliminada.',
+            'success'
+        );
+        applyFilters();
+      }catch(e){
+        console.error(e);
+        notify("No se pudo eliminar la compra","error");
       }
-      throw new Error(`HTTP ${r.status}`);
     }
-    compras = compras.filter(c => c.idPurchase !== id);
-    notify("Compra eliminada.","success");
-    applyFilters();
-  }catch(e){
-    console.error(e);
-    notify("No se pudo eliminar la compra","error");
-  }
+  });
 }
 
 // 🔹 PDF individual de compra (con feedback tipo ventas)
@@ -521,4 +560,3 @@ async function exportPurchases(scope){
     }
   }
 }
-

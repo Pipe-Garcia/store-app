@@ -1,4 +1,3 @@
-// /static/files-js/crear-venta.js
 /* ===== Endpoints ===== */
 const { authFetch, getToken } = window.api;
 const API_URL_SALES          = '/sales';
@@ -14,28 +13,23 @@ const API_URL_STOCKS_BY_MAT  = (id)=> `/stocks/by-material/${id}`;
 /* ===== Helpers ===== */
 const $ = (s,r=document)=>r.querySelector(s);
 
-let __toastRoot;
-function notify(msg,type='info'){
-  if (!__toastRoot){
-    __toastRoot = document.createElement('div');
-    Object.assign(__toastRoot.style,{
-      position: 'fixed',
-      top: '72px',          // debajo del header
-      right: '20px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px',
-      zIndex: 9999
-    });
-    document.body.appendChild(__toastRoot);
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
   }
+});
 
-  const n = document.createElement('div');
-  n.className = `notification ${type}`;
-  n.textContent = msg;
-  __toastRoot.appendChild(n);
-
-  setTimeout(()=> n.remove(), 4200);
+function notify(msg, type='info'){
+  // Mapeamos para iconos
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
 }
 
 function go(page){
@@ -517,8 +511,9 @@ async function preloadFromOrderView(view){
   notify('Ítems cargados desde el presupuesto','success');
 }
 
+
 /* ======================================================
-   GUARDAR VENTA (Pago Obligatorio == Total)
+   GUARDAR (CON CONFIRMACIÓN Y REDIRECCIÓN AL LISTADO)
    ====================================================== */
 async function guardar(e){
   e.preventDefault();
@@ -569,35 +564,55 @@ async function guardar(e){
     return; 
   }
   
-  // Nuevo: el importe debe coincidir con el total (ni mucho menor ni mucho mayor)
+  // Nuevo: el importe debe coincidir con el total
   const diff = Math.abs(amount - CURRENT_TOTAL);
   if (diff > 0.5) {
-    notify(`El importe del pago debe coincidir con el total de la venta (${fmtARS.format(CURRENT_TOTAL)}).`, 'error');
+    notify(`El importe del pago debe coincidir con el total (${fmtARS.format(CURRENT_TOTAL)}).`, 'error');
     $imp.value = CURRENT_TOTAL;
     validatePaymentField();
     $imp.focus();
     return;
   }
 
+  // 👇👇👇 CONFIRMACIÓN DE VENTA 👇👇👇
+  Swal.fire({
+    title: '¿Confirmar venta?',
+    html: `Se registrará una venta por <b>${fmtARS.format(CURRENT_TOTAL)}</b>.<br>Esta acción descontará stock inmediatamente.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#28a745', // Verde
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Sí, crear venta',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+      
+      if(result.isConfirmed) {
+          
+          const payment = { amount, methodPayment: method, datePayment: pdate };
+          const payload = { 
+            dateSale: date, 
+            clientId, 
+            materials: items, 
+            payment: payment,
+            orderId: currentOrderId 
+          };
 
-  const payment = { amount, methodPayment: method, datePayment: pdate };
+          try{
+            const res = await authFetch(API_URL_SALES, { method:'POST', body: JSON.stringify(payload) });
+            if(!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            // ✅ EXITO: Mensaje Flash y Redirección al LISTADO
+            localStorage.setItem('flash', JSON.stringify({ 
+                message: 'Venta registrada exitosamente', 
+                type: 'success' 
+            }));
+            
+            go('ventas.html'); // <-- Ahora va al listado
 
-  const payload = { 
-    dateSale: date, 
-    clientId, 
-    materials: items, 
-    payment: payment,
-    orderId: currentOrderId 
-  };
-
-  try{
-    const res = await authFetch(API_URL_SALES, { method:'POST', body: JSON.stringify(payload) });
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const dto = await res.json();
-    notify('Venta creada','success');
-    setTimeout(()=> go(`ver-venta.html?id=${dto.idSale}`), 500);
-  }catch(err){
-    console.error(err);
-    notify('Error al crear venta','error');
-  }
+          }catch(err){
+            console.error(err);
+            notify('Error al crear venta','error');
+          }
+      }
+  });
 }

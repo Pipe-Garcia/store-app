@@ -1,4 +1,3 @@
-// /static/files-js/editar-pedido.js
 const { authFetch, safeJson, getToken } = window.api;
 
 const API_URL_ORDERS    = '/orders';
@@ -16,12 +15,22 @@ function go(page){
   location.href = `${base}${page}`;
 }
 
-function notify(message, type='info'){
-  const div = document.createElement('div');
-  div.className = `notification ${type}`;
-  div.textContent = message;
-  document.body.appendChild(div);
-  setTimeout(()=> div.remove(), 3800);
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+});
+
+function notify(msg, type='info'){
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
 }
 
 let listaMateriales = [];
@@ -157,6 +166,7 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
     if (matches.length === 0) {
       const div = document.createElement('div');
       div.textContent = 'Sin coincidencias';
+      div.style.cursor = 'default';
       div.style.color = '#999';
       list.appendChild(div);
       return;
@@ -290,7 +300,7 @@ function recalc(){
 }
 
 /* ======================================================
-   GUARDAR CAMBIOS (PUT)
+   GUARDAR CAMBIOS (PUT) CON CONFIRMACIÓN
    ====================================================== */
 async function guardarCambios(ev){
   ev.preventDefault();
@@ -298,6 +308,7 @@ async function guardarCambios(ev){
   const clientId = Number($('#cliente')?.value || 0); 
   const fechaEntrega = $('#fecha-entrega')?.value || '';
 
+  // Validación básica
   if (!clientId || !fechaEntrega){
     notify('Falta cliente o fecha','error');
     return;
@@ -318,6 +329,7 @@ async function guardarCambios(ev){
     return;
   }
 
+  // Objeto a enviar
   const payload = {
     idOrders: Number(orderId),
     clientId,
@@ -326,25 +338,39 @@ async function guardarCambios(ev){
     deleteMissingDetails: true 
   };
 
+  // 👇 CONFIRMACIÓN ANTES DE ENVIAR 👇
+  Swal.fire({
+    title: '¿Guardar cambios?',
+    text: "Se actualizará el presupuesto con los nuevos datos.",
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Sí, guardar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    
+    if (result.isConfirmed) {
+      try{
+        const r = await authFetch(API_URL_ORDERS, {
+          method:'PUT',
+          body: JSON.stringify(payload)
+        });
+        
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        
+        // Mensaje Flash y redirección
+        localStorage.setItem('flash', JSON.stringify({ 
+            message:'Presupuesto actualizado correctamente', 
+            type:'success' 
+        }));
+        
+        go('pedidos.html');
 
-  try{
-    const r = await authFetch(API_URL_ORDERS, {
-      method:'PUT',
-      body: JSON.stringify(payload)
-    });
-    
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    
-    // ✅ CAMBIO AQUÍ: Redirección al listado principal con mensaje flash
-    localStorage.setItem('flash', JSON.stringify({ 
-        message:'Presupuesto actualizado correctamente', 
-        type:'success' 
-    }));
-    
-    go('pedidos.html'); // <-- Redirección al listado
-
-  }catch(err){
-    console.error(err);
-    notify('Error actualizando presupuesto','error');
-  }
+      }catch(err){
+        console.error(err);
+        notify('Error actualizando presupuesto','error');
+      }
+    }
+  });
 }

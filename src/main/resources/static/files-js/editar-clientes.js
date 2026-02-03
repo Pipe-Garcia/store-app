@@ -1,4 +1,3 @@
-// /static/files-js/editar-clientes.js
 const { authFetch, getToken } = window.api;
 const API_BASE = '/clients';
 
@@ -11,13 +10,26 @@ function go(page){
   const base = location.pathname.replace(/[^/]+$/,''); 
   location.href = `${base}${page}`;
 }
+
+/* ================== TOASTS (SweetAlert2) ================== */
+// Usamos SweetAlert para las notificaciones también, para mantener consistencia
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+});
+
 function notify(msg, type='info'){
-  const n = document.createElement('div');
-  n.className = `notification ${type}`;
-  n.textContent = msg;
-  document.body.appendChild(n);
-  setTimeout(()=>n.remove(), 4500);
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
 }
+
 function flash(message){
   localStorage.setItem('flash', JSON.stringify({ message, type:'success' }));
 }
@@ -125,23 +137,39 @@ async function onSave(e){
   if (!v.locality) return notify('Localidad inválida.','error');
   if (!v.phone)    return notify('Teléfono inválido.','error');
 
-  try{
-    const res = await authFetch(API_BASE, {
-      method: 'PUT',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify(dto)
-    });
+  // 👇👇👇 AQUÍ EMPIEZA LA CONFIRMACIÓN 👇👇👇
+  Swal.fire({
+    title: '¿Guardar cambios?',
+    text: "Vas a modificar los datos del cliente.",
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Sí, guardar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    
+    if (result.isConfirmed) {
+      // Si confirma, procedemos con el fetch
+      try{
+        const res = await authFetch(API_BASE, {
+          method: 'PUT',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify(dto)
+        });
 
-    if (!res.ok){
-      let msg = `Error (${res.status})`;
-      try{ const data = await res.json(); if (data?.message) msg = data.message; }catch(_){}
-      throw new Error(msg);
+        if (!res.ok){
+          let msg = `Error (${res.status})`;
+          try{ const data = await res.json(); if (data?.message) msg = data.message; }catch(_){}
+          throw new Error(msg);
+        }
+
+        flash('✅ Cliente actualizado con éxito');
+        go('clientes.html');
+      }catch(err){
+        console.error(err);
+        notify(err.message || 'Error actualizando cliente','error');
+      }
     }
-
-    flash('✅ Cliente actualizado con éxito');
-    go('clientes.html');
-  }catch(err){
-    console.error(err);
-    notify(err.message || 'Error actualizando cliente','error');
-  }
+  });
 }

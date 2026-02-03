@@ -1,4 +1,3 @@
-// /static/files-js/entregas.js
 const { authFetch, safeJson, getToken } = window.api;
 
 const API_URL_DELIVERIES        = '/deliveries';
@@ -9,6 +8,7 @@ const $  = (s,r=document)=>r.querySelector(s);
 const norm = (s)=> (s||'').toString().toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
+
 /* ================== TOASTS (SweetAlert2) ================== */
 const Toast = Swal.mixin({
   toast: true,
@@ -90,6 +90,26 @@ window.addEventListener('DOMContentLoaded', async ()=>{
       renderPaginated();
     }
   });
+
+  // ✅ LÓGICA DE MENSAJE FLASH (Muestra cartel de éxito al volver de crear)
+  const flash = localStorage.getItem('flash');
+  if (flash) {
+    try {
+      const {message, type} = JSON.parse(flash);
+      if(type === 'success') {
+          Swal.fire({
+              icon: 'success',
+              title: '¡Éxito!',
+              text: message,
+              timer: 2000,
+              showConfirmButton: false
+          });
+      } else {
+          notify(message, type||'success');
+      }
+    } catch (_) {}
+    localStorage.removeItem('flash');
+  }
 
   await loadClients();
   wireFilters();

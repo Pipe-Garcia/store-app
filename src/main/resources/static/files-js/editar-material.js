@@ -159,13 +159,10 @@ async function init(){
   $('#formEditarMaterial')?.addEventListener('submit', onSave);
 }
 
-/* ================== save ================== */
+/* ================== save (MODIFICADO CON CARTEL) ================== */
 async function onSave(e){
   e.preventDefault();
   if(!getToken()){ notify('Iniciá sesión','error'); go('login.html'); return; }
-
-  const btn=$('#btnSave'); 
-  if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
 
   const famVal = $('#familyId').value;
   const whVal  = $('#warehouseId').value;
@@ -175,7 +172,6 @@ async function onSave(e){
     name:           $('#name').value.trim(),
     brand:          $('#brand').value.trim(),
     priceArs:       parseFloat($('#priceArs').value || '0'),
-    // Nuevos campos:
     internalNumber: $('#internalNumber').value.trim(),
     description:    $('#description').value.trim(),
     
@@ -190,17 +186,37 @@ async function onSave(e){
     }
   });
 
-  try{
-    const r = await authFetch(API_URL_MAT, {
-      method:'PUT',
-      body: JSON.stringify(payload)
-    });
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    flashAndGo('✅ Material actualizado','materiales.html');
-  }catch(err){
-    console.error(err);
-    notify('Error actualizando material','error');
-  }finally{
-    if(btn){ btn.disabled=false; btn.textContent='Guardar cambios'; }
-  }
+  // 👇👇👇 AQUÍ ESTÁ EL CARTEL DE CONFIRMACIÓN AGREGADO 👇👇👇
+  Swal.fire({
+    title: '¿Estás seguro?',
+    text: "Vas a guardar los cambios realizados en este material.",
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Sí, guardar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    
+    // Solo si el usuario confirma, ejecutamos el guardado
+    if (result.isConfirmed) {
+        
+        const btn=$('#btnSave'); 
+        if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
+
+        try{
+            const r = await authFetch(API_URL_MAT, {
+              method:'PUT',
+              body: JSON.stringify(payload)
+            });
+            if(!r.ok) throw new Error(`HTTP ${r.status}`);
+            flashAndGo('✅ Material actualizado','materiales.html');
+        }catch(err){
+            console.error(err);
+            notify('Error actualizando material','error');
+        }finally{
+            if(btn){ btn.disabled=false; btn.textContent='Guardar cambios'; }
+        }
+    }
+  });
 }

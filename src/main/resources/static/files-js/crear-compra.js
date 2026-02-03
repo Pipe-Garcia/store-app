@@ -11,16 +11,32 @@ const $  = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+});
+
+function notify(msg, type='info'){
+  // Mapeamos para iconos
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
+}
+
 function getToken(){ return localStorage.getItem("accessToken") || localStorage.getItem("token"); }
 function authHeaders(json=true){
   const t = getToken();
   return { ...(json?{"Content-Type":"application/json"}:{}), ...(t?{"Authorization":`Bearer ${t}`}:{}) };
 }
 function authFetch(url,opts={}){ return fetch(url,{...opts, headers:{...authHeaders(!opts.bodyIsForm), ...(opts.headers||{})}}); }
-function notify(msg,type='info'){
-  const n=document.createElement('div'); n.className=`notification ${type}`; n.textContent=msg;
-  document.body.appendChild(n); setTimeout(()=>n.remove(),3500);
-}
+
 function go(page){
   const base = location.pathname.replace(/[^/]+$/, '');
   location.href = `${base}${page}`;
@@ -315,7 +331,7 @@ function renderTabla(){
   $("#totalCompra").textContent = fmtARS.format(total);
 }
 
-// ========= Submit =========
+// ========= Submit (CON CONFIRMACIÓN Y REDIRECCIÓN) =========
 async function crearCompra(){
   const datePurchase = $("#datePurchase").value;
   const supplierId   = $("#supplierId").value;
@@ -359,6 +375,7 @@ async function crearCompra(){
     }
   }
 
+  // Preparamos payload
   const body = {
     datePurchase,
     supplierId: Number(supplierId),
@@ -369,27 +386,50 @@ async function crearCompra(){
     }))
   };
 
-  try{
-    $("#btnCrear").disabled = true;
-    const r = await authFetch(API_URL_PURCHASES, { method:"POST", body: JSON.stringify(body) });
-    if(!r.ok){
-      if(r.status===400){
-        const err = await r.json().catch(()=>null);
-        notify(err?.message || "Datos inválidos (400)","error");
-      }else if(r.status===401 || r.status===403){
-        notify("Sesión inválida o sin permisos","error"); go("login.html");
-      }else{
-        notify(`Error al crear compra (HTTP ${r.status})`,"error");
+  // 👇👇👇 CONFIRMACIÓN DE COMPRA 👇👇👇
+  Swal.fire({
+    title: '¿Confirmar compra?',
+    html: `Se registrará la compra y se aumentará el stock en los depósitos seleccionados.<br>Total: <b>${$("#totalCompra").textContent}</b>`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#28a745', // Verde
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Sí, crear compra',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+      
+      if(result.isConfirmed) {
+
+        try{
+            $("#btnCrear").disabled = true;
+            const r = await authFetch(API_URL_PURCHASES, { method:"POST", body: JSON.stringify(body) });
+            
+            if(!r.ok){
+              if(r.status===400){
+                const err = await r.json().catch(()=>null);
+                notify(err?.message || "Datos inválidos (400)","error");
+              }else if(r.status===401 || r.status===403){
+                notify("Sesión inválida o sin permisos","error"); go("login.html");
+              }else{
+                notify(`Error al crear compra (HTTP ${r.status})`,"error");
+              }
+              $("#btnCrear").disabled = false;
+              return;
+            }
+
+            // ✅ ÉXITO: Mensaje Flash y Redirección
+            localStorage.setItem('flash', JSON.stringify({ 
+                message: 'Compra registrada exitosamente', 
+                type: 'success' 
+            }));
+            
+            go('compras.html'); // <-- Ahora va al listado
+
+        }catch(err){
+            console.error(err);
+            notify("No se pudo crear la compra","error");
+            $("#btnCrear").disabled = false;
+        }
       }
-      return;
-    }
-    const created = await r.json();
-    notify("Compra creada con éxito","success");
-    go(`detalle-compra.html?id=${created.idPurchase}`);
-  }catch(err){
-    console.error(err);
-    notify("No se pudo crear la compra","error");
-  }finally{
-    $("#btnCrear").disabled = false;
-  }
+  });
 }

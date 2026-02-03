@@ -462,7 +462,6 @@ function render(lista){
       <div class="acciones">
         <a class="btn outline" href="ver-pedido.html?id=${id}" title="Ver">👁️</a>
         <a class="btn outline" href="editar-pedido.html?id=${id}" title="Editar">✏️</a>
-        <button class="btn danger" data-del="${id}" data-desc="${cli} (${totalStr})" title="Eliminar">🗑️</button>
       </div>
     `;
     cont.appendChild(row);

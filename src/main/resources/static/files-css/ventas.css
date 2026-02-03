@@ -280,8 +280,8 @@ button.disabled{ opacity:.6; cursor:not-allowed; }
   height: 100%;
 }
 .fila .autocomplete-wrapper input.in-search {
-  border: none;
-  border-radius: 0;
+  
+  border-radius: 1;
   background: transparent;
   height: 100%;
   padding: 0 12px;
