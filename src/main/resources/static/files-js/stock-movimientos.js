@@ -11,7 +11,7 @@
   const next  = document.getElementById('pg-next');
 
   let page = 0;
-  let size = Number(document.getElementById('f-size').value || 50);
+  let size = Number(document.getElementById('f-size').value || 10);
   // Cuando motivo = "Compra" lo filtramos sólo en el front
   let localReasonFilter = null;
 

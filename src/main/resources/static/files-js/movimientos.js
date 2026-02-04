@@ -257,9 +257,8 @@ const LABEL_ENTITY = {
 
   // ====== Paging/filters ======
   const qs = new URLSearchParams(window.location.search);
-  let page = Number(qs.get('page')||0);
-  let size = Number(qs.get('size')||20);
-  $('f-size').value = String(size);
+  let page = 0;
+  let size = Number(document.getElementById('f-size').value || 10);
 
   const debounce = (fn, wait=450)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; };
 
@@ -453,7 +452,7 @@ const LABEL_ENTITY = {
   prev.addEventListener('click', ()=>{ if(page>0){ page--; load(); }});
   next.addEventListener('click', ()=>{ page++; load(); });
 
-  const debouncedSearch = debounce(()=>{ page=0; size=Number($('f-size').value||20); load(); }, 500);
+  const debouncedSearch = debounce(()=>{ page=0; size=Number($('f-size').value||10); load(); }, 500);
   ['f-desde','f-hasta','f-actor','f-action','f-entity','f-status','f-size'].forEach(id=>{
     const el = $(id);
     const evt = el.tagName === 'SELECT' ? 'change' : 'input';
