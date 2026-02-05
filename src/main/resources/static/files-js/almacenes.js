@@ -1,5 +1,3 @@
-// /static/files-js/almacenes.js
-
 const API_URL_WAREHOUSES = 'http://localhost:8088/warehouses';
 
 const $  = (s, r=document) => r.querySelector(s);
@@ -23,11 +21,29 @@ function authFetch(url, opts = {}) {
   });
 }
 
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+});
+
+function notify(msg, type='info'){
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
+}
+
 let almacenes = [];
 
 // estado de paginado (solo front)
 let currentPage = 0;
-const pageSize  = 20; // 👈 tamaño fijo de página
+const pageSize  = 20; 
 
 let pgInfo, pgPrev, pgNext;
 
@@ -62,6 +78,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#filtroLocalidad')?.addEventListener('input', () => { currentPage = 0; applyFilters(); });
   $('#btnLimpiar')      ?.addEventListener('click', limpiarFiltros);
 
+  // ✅ LÓGICA DE MENSAJE FLASH (Cartel de éxito al volver de crear)
+  const flash = localStorage.getItem('flash');
+  if (flash) {
+    try {
+      const {message, type} = JSON.parse(flash);
+      if(type === 'success') {
+          Swal.fire({
+              icon: 'success',
+              title: '¡Éxito!',
+              text: message,
+              timer: 2000,
+              showConfirmButton: false
+          });
+      } else {
+          notify(message, type||'success');
+      }
+    } catch (_) {}
+    localStorage.removeItem('flash');
+  }
+
   await cargarAlmacenes();
   applyFilters();
 });
@@ -74,7 +110,7 @@ async function cargarAlmacenes() {
     almacenes = await res.json() || [];
   } catch (err) {
     console.error('Error cargando almacenes:', err);
-    alert('No se pudieron cargar los almacenes.');
+    notify('No se pudieron cargar los almacenes.', 'error');
     almacenes = [];
   }
 }
@@ -175,55 +211,14 @@ function renderLista(lista) {
       <div>${a.address  || '—'}</div>
       <div>${a.location || '—'}</div>
       <div class="acciones">
-        <a class="btn outline" href="stock-deposito.html?id=${idWh}">
+        <a class="btn outline" href="stock-deposito.html?id=${idWh}" title="Ver Stock">
          👁️  
         </a>
-        <a class="btn outline" href="../files-html/editar-almacen.html?id=${idWh}">
+        <a class="btn outline" href="../files-html/editar-almacen.html?id=${idWh}" title="Editar">
           ✏️
         </a>
-        <button class="btn danger" data-del="${idWh}">
-          🗑️
-        </button>
-      </div>
+        </div>
     `;
     cont.appendChild(row);
-  }
-
-  // Delegación para borrar (funciona aunque se cliquee el ícono o texto dentro del botón)
-  cont.onclick = (ev) => {
-    const btn = ev.target.closest('button[data-del]');
-    if (!btn) return;
-    const id = btn.dataset.del;
-    if (!id) return;
-    eliminarAlmacen(id);
-  };
-}
-
-// ------------------------ acciones ------------------------
-async function eliminarAlmacen(id) {
-  if (!confirm('¿Seguro que desea eliminar este almacén?')) return;
-
-  try {
-    const res = await authFetch(`${API_URL_WAREHOUSES}/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('No se pudo eliminar');
-
-    alert('Almacén eliminado correctamente');
-
-    // id puede venir como string, normalizamos
-    almacenes = almacenes.filter(
-      a => String(a.idWarehouse ?? a.warehouseId ?? a.id) !== String(id)
-    );
-
-    // si borramos el último de la última página, retrocedemos una
-    const total = almacenes.length;
-    const totalPages = total ? Math.ceil(total / pageSize) : 0;
-    if (currentPage >= totalPages && currentPage > 0) {
-      currentPage--;
-    }
-
-    applyFilters();
-  } catch (err) {
-    console.error('Error eliminando almacén:', err);
-    alert('Error al eliminar almacén');
   }
 }

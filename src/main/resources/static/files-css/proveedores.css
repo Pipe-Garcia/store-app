@@ -175,9 +175,9 @@ a.btn{ text-decoration:none; }
 
 /* Columnas específicas */
 /* Asignar materiales (con columna Acciones) -> 4 columnas */
-#lista-mat-proveedor .fila { grid-template-columns: 2fr 1fr 1fr 1fr; }
+#lista-mat-proveedor .fila { grid-template-columns: 1fr 1fr 1fr 1fr; }
 #lista-mat-proveedor .fila > div:nth-child(2),
-#lista-mat-proveedor .fila > div:nth-child(3) { text-align:right; }
+#lista-mat-proveedor .fila > div:nth-child(3) { text-align:center; }
 
 /* Detalle proveedor (sin Acciones) -> 3 columnas */
 #tabla-materiales .fila { grid-template-columns: 2fr 1fr 1fr; }

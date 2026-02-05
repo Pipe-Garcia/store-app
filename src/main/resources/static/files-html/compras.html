@@ -4,32 +4,34 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>🛒 - Compras</title>
+  
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/compras.css"/>
-  <!-- NAV fijo -->
   <link rel="stylesheet" href="../files-css/nav.css">
 
-  <!-- SweetAlert2 para toasts + modal de exportar -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+
 </head>
 
 <body>
-  <!-- NAV -->
   <div id="app-header"></div>
 
   <main class="page">
     <div class="page-head">
       <h1>Compras</h1>
-      <div class="actions">
-        <button type="button"
+      <div class="actions" style="display: flex;">
+        <a class="btn primary" href="../files-html/crear-compra.html">+ Nueva compra</a>
+         <button type="button"
                 id="btnExport"
                 class="btn outline with-icon"
-                style="margin-right:10px; border:0.6px solid black;">
+                style="margin-left:10px; border:0.6px solid black; padding: 10px;">
           <span class="icon">⬇</span>
           <span>Exportar</span>
         </button>
-
-        <a class="btn primary" href="../files-html/crear-compra.html">+ Nueva compra</a>
       </div>
     </div>
 
@@ -40,7 +42,6 @@
           <input type="text" id="buscarTexto" placeholder="ID o proveedor..."/>
         </label>
 
-        
         <label>Proveedor
           <select id="buscarProveedor" class="in">
             <option value="">Todos</option>
@@ -71,7 +72,6 @@
         </div>
       </div>
 
-      <!-- 🔹 NUEVO: paginador -->
       <div class="pager">
         <div class="info" id="pg-info"></div>
         <button class="btn" id="pg-prev">« Anterior</button>

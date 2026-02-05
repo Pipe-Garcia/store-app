@@ -4,7 +4,6 @@
   const API = '/audits/events';
   const API_DETAIL = id => `/audits/events/${id}`;
 
-  // CAMBIO 1: El ID del contenedor ahora es 'lista-movimientos'
   const tbody = document.getElementById('lista-movimientos');
   const info  = document.getElementById('pg-info');
   const prev  = document.getElementById('pg-prev');
@@ -12,68 +11,64 @@
   const $ = (id)=>document.getElementById(id);
 
   // ====== TZ y formateo seguro ======
-const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
-const dtDate = new Intl.DateTimeFormat('es-AR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  timeZone: userTZ
-});
+  const dtDate = new Intl.DateTimeFormat('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: userTZ
+  });
 
-
-function formatTime24(d){
-  const hh = String(d.getHours()).padStart(2,'0');
-  const mm = String(d.getMinutes()).padStart(2,'0');
-  const ss = String(d.getSeconds()).padStart(2,'0');
-  return `${hh}:${mm}:${ss}`;
-}
-
-function parseTs(ts){
-  if (ts == null) return null;
-  if (typeof ts === 'number') return new Date(ts);
-  if (typeof ts === 'string'){
-    if (/^\d+$/.test(ts)) return new Date(Number(ts));
-    const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(ts);
-    const canon = (!hasTZ && ts.includes('T')) ? ts + 'Z' : ts;
-    const d = new Date(canon);
-    return isNaN(d) ? null : d;
+  function formatTime24(d){
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    const ss = String(d.getSeconds()).padStart(2,'0');
+    return `${hh}:${mm}:${ss}`;
   }
-  return null;
-}
 
+  function parseTs(ts){
+    if (ts == null) return null;
+    if (typeof ts === 'number') return new Date(ts);
+    if (typeof ts === 'string'){
+      if (/^\d+$/.test(ts)) return new Date(Number(ts));
+      const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(ts);
+      const canon = (!hasTZ && ts.includes('T')) ? ts + 'Z' : ts;
+      const d = new Date(canon);
+      return isNaN(d) ? null : d;
+    }
+    return null;
+  }
 
-const formatTs = ts => {
-  const d = parseTs(ts);
-  return d ? `${dtDate.format(d)} ${formatTime24(d)}` : '—';
-};
-
-
+  const formatTs = ts => {
+    const d = parseTs(ts);
+    return d ? `${dtDate.format(d)} ${formatTime24(d)}` : '—';
+  };
 
   // ====== Diccionarios ES ======
-const LABEL_ACTION = {
-  CREATE:'Crear', UPDATE:'Modificar', DELETE:'Eliminar',
-  ORDER_CREATE:'Crear', ORDER_UPDATE:'Modificar',
-  SALE_CREATE:'Alta de venta',
-  DELIVERY_CREATE:'Alta de entrega',
-  PURCHASE_CREATE:'Alta de compra',   // 👈 NUEVO (para histórico)
-  BULK_CREATE:'Alta masiva',
-  LOGIN:'Inicio de sesión',
-  LOGOUT:'Cierre de sesión'
-};
+  const LABEL_ACTION = {
+    CREATE:'Crear', UPDATE:'Modificar', DELETE:'Eliminar',
+    ORDER_CREATE:'Crear', ORDER_UPDATE:'Modificar',
+    SALE_CREATE:'Alta de venta',
+    DELIVERY_CREATE:'Alta de entrega',
+    PURCHASE_CREATE:'Alta de compra',
+    BULK_CREATE:'Alta masiva',
+    LOGIN:'Inicio de sesión',
+    LOGOUT:'Cierre de sesión'
+  };
 
-const LABEL_ENTITY = {
-  Sale:      'Venta',
-  Purchase:  'Compra',   
-  Orders:    'Presupuesto',
-  Delivery:  'Entrega',
-  Stock:     'Stock',
-  Material:  'Material',
-  Client:    'Cliente',
-  User:      'Usuario',
-  Payment:   'Pago',
-  Supplier:  'Proveedor'
-};
+  const LABEL_ENTITY = {
+    Sale:      'Venta',
+    Purchase:  'Compra',   
+    Orders:    'Presupuesto',
+    Delivery:  'Entrega',
+    Stock:     'Stock',
+    Material:  'Material',
+    Client:    'Cliente',
+    User:      'Usuario',
+    Payment:   'Pago',
+    Supplier:  'Proveedor'
+  };
 
   const LABEL_STATUS = { SUCCESS:'OK', FAIL:'Error' };
 
@@ -82,11 +77,9 @@ const LABEL_ENTITY = {
   function numPretty(n){
     const x = (n==null) ? null : Number(n);
     if (x==null || Number.isNaN(x)) return '—';
-    // sin ceros de más (1.00 -> 1)
     return (Math.abs(x % 1) < 1e-9) ? String(Math.trunc(x)) : String(x);
   }
 
-  // intenta extraer “cantidad de → a” + nombre de material desde el detalle del evento
   function extractStockChange(e){
     let from=null, to=null, matName=null, matId=null;
     for (const ch of (e.changes||[])){
@@ -124,7 +117,6 @@ const LABEL_ENTITY = {
     }catch{ return ''; }
   }
 
-  // ❶ Normalización de acciones *_CREATE / *_UPDATE / *_DELETE
   function humanAction(a){
     if (!a) return '—';
     if (LABEL_ACTION[a]) return LABEL_ACTION[a];
@@ -141,7 +133,7 @@ const LABEL_ENTITY = {
   }
 
   // ====== Prefetch de cambios para “mensaje inteligente” ======
-  const SUMMARY_CACHE = new Map(); // id -> string summary
+  const SUMMARY_CACHE = new Map();
 
   function tryParseJSON(raw){ try{ return raw ? JSON.parse(raw) : null; }catch{ return null; } }
   function shallowDiff(oldObj, newObj){
@@ -153,7 +145,7 @@ const LABEL_ENTITY = {
     });
     return changes;
   }
-    // Detecta 'YYYY-MM-DD' y lo pasa a 'DD/MM/YYYY'
+  
   function formatIsoDateString(str){
     const s = String(str).trim();
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
@@ -164,23 +156,16 @@ const LABEL_ENTITY = {
 
   function stringify(v){
     if (v == null || v === '') return '—';
-
     if (typeof v === 'number') return String(v);
     if (typeof v === 'boolean') return v ? 'sí' : 'no';
-
     if (typeof v === 'string') {
-      // 👇 aquí convertimos la fecha del mensaje
       const asDate = formatIsoDateString(v);
-      const s = asDate || v;  // si no matchea fecha, usamos el original
-
+      const s = asDate || v;
       return s.length > 40 ? s.slice(0, 40) + '…' : s;
     }
-
     return JSON.stringify(v);
   }
 
-
-  // ❷ Formato de cambio:
   function fmtChange(from, to){
     const A = stringify(from);
     const B = stringify(to);
@@ -219,7 +204,6 @@ const LABEL_ENTITY = {
       if (!r.ok) throw new Error('HTTP '+r.status);
       const e = await safeJson(r);
 
-      // 👇 mensaje especial para cambios de Stock
       if ((e.entity||'') === 'Stock'){
         const { from, to, matName } = extractStockChange(e);
         let name = matName;
@@ -231,7 +215,6 @@ const LABEL_ENTITY = {
         }
       }
 
-      // fallback: lógica existente
       const s = summarizeEvent(e) || '';
       SUMMARY_CACHE.set(id, s);
       return s;
@@ -241,10 +224,8 @@ const LABEL_ENTITY = {
     }
   }
 
-
   async function fillSummaries(ids){
     await Promise.all(ids.map(async (id)=>{
-      // CAMBIO: Ahora buscamos '.msg' en lugar de 'td.msg'
       const td = tbody.querySelector(`.msg[data-id="${id}"]`);
       if (!td) return;
       const sum = await fetchSummary(id);
@@ -266,7 +247,7 @@ const LABEL_ENTITY = {
     const p = new URLSearchParams();
     const d=$('f-desde').value, h=$('f-hasta').value;
     const actor=$('f-actor').value.trim();
-    const action=$('f-action').value;   // <-- important
+    const action=$('f-action').value;
     const entity=$('f-entity').value;
     const status=$('f-status').value;
 
@@ -274,12 +255,10 @@ const LABEL_ENTITY = {
     if(h) p.set('to', h);
     if(actor) p.set('actor', actor);
 
-    // Si el usuario elige Crear/Modificar/Eliminar, mandamos "actionGroup",
-    // para que el back incluya *_CREATE / *_UPDATE / *_DELETE.
     if (action === 'CREATE' || action === 'UPDATE' || action === 'DELETE') {
-      p.set('actionGroup', action);     // <-- NUEVO
+      p.set('actionGroup', action);
     } else if (action) {
-      p.set('action', action);         // LOGIN / LOGOUT u otros específicos
+      p.set('action', action);
     }
 
     if(entity) p.set('entity', entity);
@@ -290,9 +269,7 @@ const LABEL_ENTITY = {
     return p.toString();
   }
 
-
   async function load(){
-    // CAMBIO 3: Mensaje de 'Cargando' adaptado a la estructura de DIVs
     tbody.innerHTML = `
       <div class="fila encabezado">
         <div>Fecha/Hora</div>
@@ -350,10 +327,8 @@ const LABEL_ENTITY = {
     }
   }
 
-  // CAMBIO 2: Función 'renderRows' reescrita para usar DIVs
   function renderRows(rows){
     if(!rows.length){
-      // Mantenemos el encabezado visible
       tbody.innerHTML = `
         <div class="fila encabezado">
           <div>Fecha/Hora</div>
@@ -370,7 +345,6 @@ const LABEL_ENTITY = {
       return;
     }
 
-    // Creamos un array de strings HTML, empezando por el encabezado
     const htmlRows = [
       `
       <div class="fila encabezado">
@@ -386,7 +360,6 @@ const LABEL_ENTITY = {
       `
     ];
 
-    // Agregamos cada fila de datos
     rows.forEach(r => {
       const ts = formatTs(r.timestamp);
       const action = humanAction(r.action);
@@ -409,17 +382,12 @@ const LABEL_ENTITY = {
       `);
     });
 
-    // Unimos todo y lo insertamos en el DOM
     tbody.innerHTML = htmlRows.join('');
-
-    // Completar mensajes ni bien se pintan
     const ids = rows.map(r => r.id);
     queueMicrotask(()=> fillSummaries(ids));
   }
 
-  // Prefetch perezoso en hover/focus
   function wirePrefetch(){
-    // CAMBIO: Buscamos '.msg' en lugar de 'td.msg'
     tbody.querySelectorAll('.msg').forEach(td=>{
       const id = td.getAttribute('data-id');
       let loaded = false;
@@ -447,6 +415,10 @@ const LABEL_ENTITY = {
   
   $('btn-limpiar').addEventListener('click', ()=>{
     ['f-desde','f-hasta','f-actor','f-action','f-entity','f-status'].forEach(id=>$(id).value='');
+    // Limpiar restricciones también
+    $('f-desde').max = "";
+    $('f-hasta').min = "";
+    
     page=0; load();
   });
   prev.addEventListener('click', ()=>{ if(page>0){ page--; load(); }});
@@ -459,5 +431,32 @@ const LABEL_ENTITY = {
     el.addEventListener(evt, debouncedSearch);
   });
 
+  // 👇👇👇 AQUI ESTA LA MAGIA DE FECHAS 👇👇👇
+  setupDateRangeConstraint('f-desde', 'f-hasta');
+
   load();
+
 })();
+
+// 👇👇 LA FUNCIÓN REUTILIZABLE PARA RESTRICCIÓN DE FECHAS 👇👇
+function setupDateRangeConstraint(idDesde, idHasta) {
+  const elDesde = document.getElementById(idDesde);
+  const elHasta = document.getElementById(idHasta);
+  if (!elDesde || !elHasta) return;
+
+  elDesde.addEventListener('change', () => {
+    elHasta.min = elDesde.value;
+    if (elHasta.value && elHasta.value < elDesde.value) {
+      elHasta.value = elDesde.value;
+      elHasta.dispatchEvent(new Event('change')); 
+    }
+  });
+
+  elHasta.addEventListener('change', () => {
+    elDesde.max = elHasta.value;
+    if (elDesde.value && elDesde.value > elHasta.value) {
+      elDesde.value = elHasta.value;
+      elDesde.dispatchEvent(new Event('change'));
+    }
+  });
+}

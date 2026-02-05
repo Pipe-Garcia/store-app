@@ -313,6 +313,10 @@
  
   $('btn-limpiar').addEventListener('click', ()=>{
     ['f-desde','f-hasta','f-mat','f-wh','f-reason','f-user'].forEach(id=>$(id).value='');
+    // Limpiamos las restricciones
+    $('f-desde').max = "";
+    $('f-hasta').min = "";
+    
     page = 0;
     load();
   });
@@ -320,5 +324,31 @@
   prev.addEventListener('click', ()=>{ if(page>0){ page--; load(); }});
   next.addEventListener('click', ()=>{ page++; load(); });
 
+  // 👇👇👇 AQUI ESTA LA MAGIA DE FECHAS 👇👇👇
+  setupDateRangeConstraint('f-desde', 'f-hasta');
+
   load();
 })();
+
+// 👇👇 LA FUNCIÓN REUTILIZABLE PARA RESTRICCIÓN DE FECHAS 👇👇
+function setupDateRangeConstraint(idDesde, idHasta) {
+  const elDesde = document.getElementById(idDesde);
+  const elHasta = document.getElementById(idHasta);
+  if (!elDesde || !elHasta) return;
+
+  elDesde.addEventListener('change', () => {
+    elHasta.min = elDesde.value;
+    if (elHasta.value && elHasta.value < elDesde.value) {
+      elHasta.value = elDesde.value;
+      elHasta.dispatchEvent(new Event('change')); 
+    }
+  });
+
+  elHasta.addEventListener('change', () => {
+    elDesde.max = elHasta.value;
+    if (elDesde.value && elDesde.value > elHasta.value) {
+      elDesde.value = elHasta.value;
+      elDesde.dispatchEvent(new Event('change'));
+    }
+  });
+}

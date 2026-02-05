@@ -9,7 +9,12 @@
   max-width:980px; margin-inline:auto; padding:1.25rem;
 }
 
-.page-head{display:flex;align-items:center;justify-content:space-between;gap:var(--gap-2);margin-bottom:var(--gap-3);}
+.page-head{
+    display:flex;    
+    margin-bottom: 12px;
+    justify-content: space-around;
+  }
+
 .page-head .actions{display:flex;gap:.5rem;}
 
 .card{
@@ -27,8 +32,11 @@
 
 /* Form agregar material */
 .subhead{font-size:1rem;margin:0 0 var(--gap-2);color:#111827;}
+
 .grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:var(--gap-2);align-items:end;}
+
 .grid label{display:block;font-size:.9rem;color:#6b7280;margin-bottom:.35rem;}
+
 .grid input{
   width:100%;height:40px;padding:0 .75rem;border:1px solid #d1d5db;border-radius:10px;outline:none;
 }
@@ -56,7 +64,6 @@
 .tabla .encabezado{background:#f9fafb;color:#374151;font-weight:600;}
 .tabla .fila > div:nth-child(2),
 .tabla .fila > div:nth-child(3){text-align:right;font-variant-numeric:tabular-nums;}
-.tabla .fila > div:last-child{display:flex;justify-content:flex-end;}
 .tabla .btn.danger{background:#ef4444;border-color:#ef4444;color:#fff;}
 .tabla .btn.danger:hover{filter:brightness(.95);}
 

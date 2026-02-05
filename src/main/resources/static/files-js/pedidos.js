@@ -95,6 +95,7 @@ function pill(code){
 // estado global
 let PRESUPUESTOS = [];
 let MAX_TOTAL = 1000;
+let clientSelectInstance = null; // Instancia global para Tom Select
 
 window.addEventListener('DOMContentLoaded', async ()=>{
   if (!getToken()){ go('login.html'); return; }
@@ -143,6 +144,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   wireFilters();
   setupExport();          // ⬅️ nuevo: wiring del modal de exportar
   await loadPresupuestos();
+
+  // 👇👇 ACTIVAMOS LA RESTRICCIÓN DE FECHAS 👇👇
+  setupDateRangeConstraint('fFrom', 'fTo');
 });
 
 // ===== Filtros =====
@@ -155,15 +159,26 @@ function wireFilters(){
   $('#fFrom')   ?.addEventListener('change', ()=>{ debServer(); debLocal(); });
   $('#fTo')     ?.addEventListener('change', ()=>{ debServer(); debLocal(); });
   $('#fStatus') ?.addEventListener('change', debLocal);
-  $('#fText')   ?.addEventListener('input',  debLocal);
+  
+  // Filtro de texto eliminado (#fText)
 
   $('#btnClear')?.addEventListener('click', ()=>{
     $('#fOrderId').value='';
-    $('#fClient').value='';
     $('#fFrom').value='';
     $('#fTo').value='';
     $('#fStatus').value='';
-    $('#fText').value='';
+    
+    // Limpiar TomSelect si existe
+    if (clientSelectInstance) {
+        clientSelectInstance.clear(); 
+    } else {
+        $('#fClient').value = '';
+    }
+    
+    // Limpiamos también las restricciones de los inputs
+    $('#fFrom').max = '';
+    $('#fTo').min = '';
+
     setSliderBounds(MAX_TOTAL);
     applyFilters();
     loadPresupuestos();
@@ -173,15 +188,27 @@ function wireFilters(){
   $('#f_t_slider_max')?.addEventListener('input', onSliderChange);
 }
 
+// ---------------------------------------------------------
+//  TOM SELECT INTEGRATION (Igual que en Ventas)
+// ---------------------------------------------------------
 async function loadClients(){
+  const sel = document.getElementById('fClient');
+  if (!sel) return;
+
   try{
     const r = await authFetch(API_URL_CLIENTS);
     let data = r.ok ? await safeJson(r) : [];
     if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
 
-    const sel = $('#fClient');
-    if (!sel) return;
+    // 1. Destruir instancia previa si existe
+    if (clientSelectInstance) {
+        clientSelectInstance.destroy();
+        clientSelectInstance = null;
+    }
+
     sel.innerHTML = `<option value="">Todos</option>`;
+    
+    // 2. Llenar opciones
     (data||[])
       .sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
       .forEach(c=>{
@@ -192,6 +219,20 @@ async function loadClients(){
         opt.textContent = nm;
         sel.appendChild(opt);
       });
+
+    // 3. Inicializar Tom Select
+    clientSelectInstance = new TomSelect('#fClient', {
+        create: false,
+        sortField: { field: "text", direction: "asc" },
+        placeholder: "Buscar cliente...",
+        allowEmptyOption: true,
+        plugins: ['no_active_items'],
+        onChange: function() {
+            const event = new Event('change');
+            sel.dispatchEvent(event);
+        }
+    });
+
   }catch(e){
     console.warn('clients',e);
   }
@@ -206,7 +247,6 @@ function readFilterValues(){
     from    : $('#fFrom')?.value || '',
     to      : $('#fTo')?.value || '',
     status  : $('#fStatus')?.value || '',
-    text    : ($('#fText')?.value || '').trim().toLowerCase(),
     minT    : Number($('#fMinTotal')?.value || 0),
     maxT    : Number($('#fMaxTotal')?.value || MAX_TOTAL)
   };
@@ -242,10 +282,11 @@ async function enrichWithSalesStatus(list){
         totalPendingToSellUnits: Number(
           v.totalPendingToSellUnits ??
           v.pendingToSellUnits ??
-          0
+          v.pendingToSell
         ),
         totalSoldUnits: Number(
           v.totalSoldUnits ??
+          v.soldUnits ??
           v.soldUnits ??
           0
         ),
@@ -352,7 +393,7 @@ function onSliderChange(){ paintSlider(); applyFilters(); }
 
 // ===== Aplicar filtros locales + paginar + render =====
 function applyFilters(){
-  const { orderId, clientId, clientNameSel, from, to, status, text, minT, maxT } = readFilterValues();
+  const { orderId, clientId, clientNameSel, from, to, status, minT, maxT } = readFilterValues();
   let list = PRESUPUESTOS.slice();
 
   if (orderId){
@@ -374,13 +415,7 @@ function applyFilters(){
     list = list.filter(o => getEstadoCode(o) === status);
   }
 
-  if (text){
-    list = list.filter(o=>{
-      const name = getClientName(o).toLowerCase();
-      const idStr= String(getId(o)||'');
-      return name.includes(text) || idStr.includes(text);
-    });
-  }
+  // (Filtro de texto eliminado)
 
   list = list.filter(o=>{
     const tot = getTotal(o);
@@ -475,8 +510,6 @@ function render(lista){
     borrarPresupuesto(id, desc);
   };
 }
-
-/* ================== EXPORTAR PDF (SweetAlert) ================== */
 
 /* ================== EXPORTAR PDF ================== */
 
@@ -705,6 +738,29 @@ async function borrarPresupuesto(id, descripcion){
         console.error(e);
         Swal.fire('Error', 'No se pudo eliminar el presupuesto. Intenta nuevamente.', 'error');
       }
+    }
+  });
+}
+
+// 👇👇 FUNCIÓN PARA RESTRICCIÓN DE FECHAS 👇👇
+function setupDateRangeConstraint(idDesde, idHasta) {
+  const elDesde = document.getElementById(idDesde);
+  const elHasta = document.getElementById(idHasta);
+  if (!elDesde || !elHasta) return;
+
+  elDesde.addEventListener('change', () => {
+    elHasta.min = elDesde.value;
+    if (elHasta.value && elHasta.value < elDesde.value) {
+      elHasta.value = elDesde.value;
+      elHasta.dispatchEvent(new Event('change')); 
+    }
+  });
+
+  elHasta.addEventListener('change', () => {
+    elDesde.max = elHasta.value;
+    if (elDesde.value && elDesde.value > elHasta.value) {
+      elDesde.value = elHasta.value;
+      elDesde.dispatchEvent(new Event('change'));
     }
   });
 }

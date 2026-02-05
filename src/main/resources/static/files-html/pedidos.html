@@ -4,10 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>📄 - Presupuestos</title>
+  
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/pedidos.css"/>
   <link rel="stylesheet" href="../files-css/nav.css"/>
+  
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
 </head>
 <body>
 
@@ -17,8 +23,8 @@
   <div class="page-head">
     <h1>Presupuestos</h1>
     <div class="actions">
-      <button type="button" id="btnExport" class="btn outline" style="border: 0.6px solid black; margin-right: 10px;">⬇ Exportar</button>
       <a class="btn primary" href="../files-html/crear-pedido.html">+ Nuevo presupuesto</a>
+      <button type="button" id="btnExport" class="btn outline" style="border: 0.6px solid black; margin-left: 10px;">⬇ Exportar</button>
     </div>
   </div>
 
@@ -29,13 +35,6 @@
       <label>
         <span>Presupuesto #</span>
         <input id="fOrderId" type="number" class="in" placeholder="ID" min="1">
-      </label>
-
-      <label>
-        <span>Cliente</span>
-        <select id="fClient" class="in">
-          <option value="">Todos</option>
-        </select>
       </label>
 
       <label class="stack">
@@ -62,11 +61,13 @@
         </select>
       </label>
 
-      <label>
-        <span>Buscar</span>
-        <input id="fText" type="text" class="in" placeholder="ID, cliente...">
+       <label>
+        <span>Cliente</span>
+        <select id="fClient" class="in">
+          <option value="">Todos</option>
+        </select>
       </label>
-
+      
       <button id="btnClear" class="btn outline" style="align-self:flex-end;">Limpiar</button>
     </div>
   </section>
@@ -80,8 +81,7 @@
         <div>Estado</div>
         <div>Acciones</div>
       </div>
-      <!-- filas dinámicas -->
-    </div>
+      </div>
   </section>
 
   <div class="pager">

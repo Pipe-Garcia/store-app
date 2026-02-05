@@ -3,6 +3,24 @@ const $ = (s, r = document) => r.querySelector(s);
 
 function getToken(){ return localStorage.getItem('accessToken') || localStorage.getItem('token'); }
 
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+});
+
+function notify(msg, type='info'){
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   if (!getToken()) { window.location.href = '../files-html/login.html'; return; }
 
@@ -14,34 +32,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const location = $('#location').value.trim();
 
     if (!name || !address || !location) {
-      mostrarAlerta('Completá todos los campos.', 'error');
+      notify('Completá todos los campos.', 'error');
       return;
     }
 
+    // 👇 Confirmación antes de crear (Opcional, si quieres consistencia)
+    // Si prefieres que cree directo sin preguntar, borra el Swal.fire y deja solo el try/catch
+    
     try {
-      const res = await fetch(API_URL_WAREHOUSES, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name, address, location })
-      });
+        const res = await fetch(API_URL_WAREHOUSES, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${getToken()}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, address, location })
+        });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      mostrarAlerta('✅ Almacén creado con éxito. Redirigiendo…', 'ok');
-      setTimeout(() => window.location.href = '../files-html/almacen.html', 900);
+        // ✅ ÉXITO: Guardamos mensaje flash y redirigimos
+        localStorage.setItem('flash', JSON.stringify({ 
+            message: 'Almacén creado con éxito', 
+            type: 'success' 
+        }));
+
+        window.location.href = '../files-html/almacen.html';
+
     } catch (err) {
-      console.error('Error creando almacén:', err);
-      mostrarAlerta('Ocurrió un error al crear el almacén.', 'error');
+        console.error('Error creando almacén:', err);
+        notify('Ocurrió un error al crear el almacén.', 'error');
     }
   });
 });
-
-function mostrarAlerta(msg, tipo = 'ok') {
-  const box = $('#alerta');
-  box.style.display = 'block';
-  box.textContent = msg;
-  box.className = `alerta ${tipo}`;
-}

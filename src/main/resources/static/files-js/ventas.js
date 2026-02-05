@@ -46,6 +46,7 @@ let FILTRADAS = [];
 let infoPager, btnPrev, btnNext;
 
 let LAST_SALES = [];
+let clientSelectInstance = null; // Global instance for Tom Select
 
 // ================== Bootstrap ==================
 window.addEventListener('DOMContentLoaded', async ()=>{
@@ -120,6 +121,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   // Inicializar filtros y cargar lista
   bindFilters();
   await reloadFromFilters();
+
+  // 👇👇 ACTIVAMOS LA RESTRICCIÓN DE FECHAS 👇👇
+  setupDateRangeConstraint('fDesde', 'fHasta');
 });
 
 // ================== Filtros ==================
@@ -130,14 +134,25 @@ function bindFilters(){
   $('#fHasta')        ?.addEventListener('change', deb);
   $('#fEstadoEntrega')?.addEventListener('change', deb);
   $('#fCliente')      ?.addEventListener('change', deb);   
-  $('#fTexto')        ?.addEventListener('input',  deb);
+  
+  // (Filtro de texto eliminado)
 
   $('#btnLimpiar')?.addEventListener('click', ()=>{
     $('#fDesde').value        = '';
     $('#fHasta').value        = '';
     $('#fEstadoEntrega').value= '';
-    $('#fCliente').value      = '';   
-    $('#fTexto').value        = '';
+    
+    // Clear TomSelect if it exists
+    if (clientSelectInstance) {
+        clientSelectInstance.clear(); 
+    } else {
+        $('#fCliente').value = '';
+    }
+    
+    // Limpiamos también las restricciones de los inputs
+    $('#fDesde').max = '';
+    $('#fHasta').min = '';
+
     reloadFromFilters();
   });
 }
@@ -164,6 +179,9 @@ function buildSearchQuery() {
   return buildQueryFromFilters();
 }
 
+// ---------------------------------------------------------
+//  TOM SELECT INTEGRATION
+// ---------------------------------------------------------
 async function cargarClientesFiltro() {
   const sel = document.getElementById('fCliente');
   if (!sel) return;
@@ -172,6 +190,12 @@ async function cargarClientesFiltro() {
     const r = await authFetch(API_URL_CLIENTS);
     const data = r.ok ? await safeJson(r) : [];
     const list = Array.isArray(data) ? data : (data.content || []);
+
+    // Destroy previous instance if exists to avoid duplication/errors
+    if (clientSelectInstance) {
+        clientSelectInstance.destroy();
+        clientSelectInstance = null;
+    }
 
     sel.innerHTML = '<option value="">Todos</option>';
 
@@ -182,6 +206,22 @@ async function cargarClientesFiltro() {
       opt.textContent = fullName;
       sel.appendChild(opt);
     });
+
+    // Initialize Tom Select
+    clientSelectInstance = new TomSelect('#fCliente', {
+        create: false,
+        sortField: { field: "text", direction: "asc" },
+        placeholder: "Buscar cliente...",
+        allowEmptyOption: true,
+        plugins: ['no_active_items'], // Optional: makes it look cleaner
+        onChange: function() {
+            // Manually trigger the change event on the hidden original select
+            // so our filter logic picks it up
+            const event = new Event('change');
+            sel.dispatchEvent(event);
+        }
+    });
+
   } catch (e) {
     console.error('No se pudieron cargar clientes para el filtro', e);
   }
@@ -219,14 +259,7 @@ async function reloadFromFilters(){
     LAST_SALES = data;
     let view = data.slice();
 
-    // Texto libre: SOLO por Nombre de cliente
-    const text = norm($('#fTexto').value || '');
-    if (text){
-      view = view.filter(v=>{
-        const cli = norm(v.clientName || '');
-        return cli.includes(text);
-      });
-    }
+    // (Filtro de texto eliminado)
 
     // Estado de entrega (front-only)
     const stFilter = ($('#fEstadoEntrega').value || '').toUpperCase();
@@ -461,7 +494,7 @@ async function borrarVenta(id, descripcion){
 
       Swal.fire(
         '¡Eliminada!',
-        'La venta ha sido eliminada correctamente.',
+        'La venta ha sido eliminada.',
         'success'
       );
       await reloadFromFilters();
@@ -572,4 +605,27 @@ async function exportSalesPdf(scope) {
       btn.textContent = originalText ?? '⬇ Exportar';
     }
   }
+}
+
+
+function setupDateRangeConstraint(idDesde, idHasta) {
+  const elDesde = document.getElementById(idDesde);
+  const elHasta = document.getElementById(idHasta);
+  if (!elDesde || !elHasta) return;
+
+  elDesde.addEventListener('change', () => {
+    elHasta.min = elDesde.value;
+    if (elHasta.value && elHasta.value < elDesde.value) {
+      elHasta.value = elDesde.value;
+      elHasta.dispatchEvent(new Event('change')); 
+    }
+  });
+
+  elHasta.addEventListener('change', () => {
+    elDesde.max = elHasta.value;
+    if (elDesde.value && elDesde.value > elHasta.value) {
+      elDesde.value = elHasta.value;
+      elDesde.dispatchEvent(new Event('change'));
+    }
+  });
 }

@@ -1,18 +1,73 @@
-<!-- /static/files-html/ventas.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>📈 - Ventas</title>
+  
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/ventas.css"/>
-  <!-- NAV fijo -->
   <link rel="stylesheet" href="../files-css/nav.css">
+
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+  
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    /* Contenedor principal del input */
+    .ts-control {
+        border: 1px solid #ced4da !important;  /* Borde gris estándar */
+        border-radius: 6px !important;         /* Bordes redondeados */
+        padding: 8px 12px !important;          /* Espaciado interno */
+        height: auto;
+        min-height: 38px;                      /* Misma altura que inputs estándar */
+        box-shadow: none !important;           
+        font-size: 1rem;                       
+        font-family: inherit;
+        background-color: #fff;
+        color: #212529;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Al hacer foco (clic) */
+    .ts-wrapper.focus .ts-control {
+        border-color: #86b7fe !important;      /* Color azulito al enfocar */
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important; 
+        outline: 0;
+    }
+
+    /* Menú desplegable */
+    .ts-dropdown {
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        margin-top: 4px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        z-index: 9999;
+    }
+
+    /* Items de la lista */
+    .ts-dropdown .option {
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+
+    /* Item activo/seleccionado */
+    .ts-dropdown .active {
+        background-color: #e9ecef;
+        color: #000;
+    }
+
+    /* Input de texto interno */
+    .ts-control input {
+        font-size: 1rem !important;
+        color: inherit;
+    }
+  </style>
+
 </head>
 <body>
-  <!-- NAV -->
   <div id="app-header"></div>
 
   <main class="page">
@@ -25,7 +80,6 @@
 
     <hr><br>
 
-    <!-- Filtros (ahora por estado de ENTREGA, no de pago) -->
     <section class="filters card">
       <div class="row">
         
@@ -51,16 +105,11 @@
           </select>
         </label>
 
-        <label>Buscar
-          <input type="text" id="fTexto" placeholder="Nombre del cliente..."/>
-        </label>
-
         <button id="btnLimpiar" class="btn outline">Limpiar</button>
         <button id="btn-export-sales" class="btn outline">⬇ Exportar</button>
       </div>
     </section>
 
-    <!-- Lista -->
     <section class="card">
       <div class="tabla" id="lista-ventas">
         <div class="fila encabezado">
@@ -70,11 +119,9 @@
           <div>Estado</div>
           <div>Acciones</div>
         </div>
-        <!-- filas dinámicas -->
-      </div>
+        </div>
     </section>
 
-    <!-- 🔹 NUEVO: paginador al final -->
     <div class="pager">
       <div class="info" id="pg-info"></div>
       <button class="btn" id="pg-prev">« Anterior</button>
@@ -82,13 +129,10 @@
     </div>
   </main>
 
-  <!-- núcleo HTTP + base URL una sola vez -->
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
-  <!-- header (usa api.me / token / rol) -->
   <script src="../files-js/header.js"></script>
   <script src="../files-js/menu-guard.js"></script>
-  <!-- script de esta página -->
   <script src="../files-js/ventas.js"></script>
 
 </body>

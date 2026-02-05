@@ -37,6 +37,8 @@ let page = 0;
 let FILTRADAS = [];
 let infoPager, btnPrev, btnNext;
 
+let clientSelectInstance = null; // Instancia global Tom Select
+
 // Fecha → dd/mm/aaaa
 const fmtDate = (s)=>{
   if (!s) return '—';
@@ -116,6 +118,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   setupExport();          
   setupRemitoButtons();
   await loadDeliveries(); 
+
+  // 👇👇 ACTIVAMOS LA RESTRICCIÓN DE FECHAS 👇👇
+  setupDateRangeConstraint('fFrom', 'fTo');
 });
 
 // ================== Filtros ==================
@@ -128,24 +133,47 @@ function wireFilters(){
   $('#fFrom')   ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
   $('#fTo')     ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
   $('#fStatus') ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
-  $('#fText')   ?.addEventListener('input',  debLocal);
+  
+  // (Filtro de texto eliminado)
 
   $('#btnClear')?.addEventListener('click', ()=>{
-    ['fSaleId','fClient','fFrom','fTo','fStatus','fText']
+    ['fSaleId','fFrom','fTo','fStatus']
       .forEach(id => { const el = $('#'+id); if (el) el.value=''; });
+    
+    // Limpiar TomSelect
+    if (clientSelectInstance) {
+        clientSelectInstance.clear();
+    } else {
+        $('#fClient').value = '';
+    }
+
+    // Limpiamos las restricciones de fecha
+    $('#fFrom').max = '';
+    $('#fTo').min = '';
+
     applyFilters();
     loadDeliveries();
   });
 }
 
+// ---------------------------------------------------------
+//  TOM SELECT INTEGRATION
+// ---------------------------------------------------------
 async function loadClients(){
+  const sel=$('#fClient');
+  if (!sel) return;
+
   try{
     const r = await authFetch(API_URL_CLIENTS);
     let data = r.ok ? await safeJson(r) : [];
     if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
 
-    const sel=$('#fClient');
-    if (!sel) return;
+    // 1. Destruir instancia anterior
+    if (clientSelectInstance) {
+        clientSelectInstance.destroy();
+        clientSelectInstance = null;
+    }
+
     sel.innerHTML = `<option value="">Todos</option>`;
     (data||[])
       .sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
@@ -157,6 +185,20 @@ async function loadClients(){
         opt.textContent = nm;
         sel.appendChild(opt);
       });
+
+    // 2. Inicializar Tom Select
+    clientSelectInstance = new TomSelect('#fClient', {
+        create: false,
+        sortField: { field: "text", direction: "asc" },
+        placeholder: "Buscar cliente...",
+        allowEmptyOption: true,
+        plugins: ['no_active_items'],
+        onChange: function() {
+            const event = new Event('change');
+            sel.dispatchEvent(event);
+        }
+    });
+
   }catch(e){ console.warn('clients',e); }
 }
 
@@ -168,8 +210,7 @@ function readFilterValues(){
     clientId: sel?.value || '',
     clientNameSel: sel?.selectedOptions?.[0]?.textContent || '',
     from   : $('#fFrom')?.value || '',
-    to     : $('#fTo')?.value || '',
-    text   : ($('#fText')?.value || '').trim().toLowerCase()
+    to     : $('#fTo')?.value || ''
   };
 }
 
@@ -214,7 +255,7 @@ async function loadDeliveries(){
 
 // ================== Aplicar filtros locales + paginar ==================
 function applyFilters(){
-  const { status, saleId, clientId, clientNameSel, from, to, text } = readFilterValues();
+  const { status, saleId, clientId, clientNameSel, from, to } = readFilterValues();
   let list = ENTREGAS.slice();
 
   if (saleId){
@@ -232,14 +273,6 @@ function applyFilters(){
   if (status) list = list.filter(e => getStatus(e) === status.toUpperCase());
   if (from)   list = list.filter(e => (getDateISO(e) || '0000-00-00') >= from);
   if (to)     list = list.filter(e => (getDateISO(e) || '9999-12-31') <= to);
-
-  if (text){
-    list = list.filter(e=>{
-      const name = getClientName(e).toLowerCase();
-      const sid  = String(getSaleId(e)||'');
-      return name.includes(text) || sid.includes(text);
-    });
-  }
 
   // Ordenamiento por ID (desc)
   list.sort((a,b)=>{
@@ -563,4 +596,27 @@ async function downloadDeliveryNote(idDelivery){
       btn.innerHTML = originalHTML ?? '🧾';
     }
   }
+}
+
+// 👇👇 LA FUNCIÓN REUTILIZABLE PARA RESTRICCIÓN DE FECHAS 👇👇
+function setupDateRangeConstraint(idDesde, idHasta) {
+  const elDesde = document.getElementById(idDesde);
+  const elHasta = document.getElementById(idHasta);
+  if (!elDesde || !elHasta) return;
+
+  elDesde.addEventListener('change', () => {
+    elHasta.min = elDesde.value;
+    if (elHasta.value && elHasta.value < elDesde.value) {
+      elHasta.value = elDesde.value;
+      elHasta.dispatchEvent(new Event('change')); 
+    }
+  });
+
+  elHasta.addEventListener('change', () => {
+    elDesde.max = elHasta.value;
+    if (elDesde.value && elDesde.value > elHasta.value) {
+      elDesde.value = elHasta.value;
+      elDesde.dispatchEvent(new Event('change'));
+    }
+  });
 }

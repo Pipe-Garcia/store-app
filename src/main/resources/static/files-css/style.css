@@ -607,7 +607,8 @@ body {
 .pager .info { color:#666; font-size:.92rem; }
 .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:8px; border:1px solid #d0d7de; background:#fff; cursor:pointer; }
 .btn:disabled { opacity:.5; cursor:not-allowed; }
-.btn.primary { background:#1c7ed6; color:#fff; border-color:#1c7ed6; }
+.btn.primary { background:#1c7ed6; color:#fff; border-color:#1c7ed6;font-weight: 500; line-height: 1;
+}
 
 /* Opciones de exportación en SweetAlert */
 .swal2-popup .export-options {

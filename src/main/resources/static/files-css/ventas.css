@@ -313,3 +313,99 @@ input:disabled {
   margin-top: 4px;
   display: block;
 }
+
+/* =========================================
+   Tom Select - Corrección Final
+   ========================================= */
+
+/* 1. CONTENEDOR PRINCIPAL */
+.ts-control {
+    border: 1px solid #ced4da !important;
+    border-radius: 6px !important;
+    padding: 0 12px !important;
+    width: 200px !important;  
+    min-height: 38px !important;
+    height: 38px !important;
+    box-shadow: none !important;
+    font-size: 1rem;
+    font-family: inherit;
+    background-color: #fff;
+    color: #212529;
+    
+    /* Flexbox para centrar texto verticalmente */
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    overflow: hidden;
+}
+
+/* 2. TEXTO SELECCIONADO (El que se ve al cargar la página) */
+/* Le quitamos el fondo y bordes para que parezca texto plano */
+.ts-control > .item {
+    background: transparent !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: inherit !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+/* 3. INPUT DE ESCRITURA (El que aparece al hacer clic) */
+.ts-control input {
+    font-size: 1rem !important;
+    color: inherit;
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+    position: relative;
+    top: 0;
+}
+
+/* 4. OCULTAR EL ITEM AL ESCRIBIR */
+.ts-wrapper.single.input-active .ts-control .item {
+    display: none !important;
+}
+
+/* 5. FOCUS (Borde azul) */
+.ts-wrapper.focus .ts-control {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+    outline: 0;
+}
+
+/* 6. MENÚ DESPLEGABLE */
+.ts-dropdown {
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    margin-top: 4px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    z-index: 9999;
+   
+    /* Que el menú tenga el mismo ancho que el input */
+    width: 200px !important; 
+}
+
+/* 7. OPCIONES DEL MENÚ */
+.ts-dropdown .option {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.ts-dropdown .active {
+    background-color: #e9ecef;
+    color: #000;
+}
+
+/* 8. FLECHITA */
+.ts-wrapper.single .ts-control::after {
+    border-color: #6c757d transparent transparent transparent !important;
+    border-width: 5px 5px 0 5px !important;
+    right: 10px !important;
+}

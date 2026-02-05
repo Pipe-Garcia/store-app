@@ -4,10 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>🚚 - Entregas</title>
+  
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/entregas.css"/>
   <link rel="stylesheet" href="../files-css/nav.css">
+  
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
+
 </head>
 <body>
   <div id="app-header"></div>
@@ -16,7 +23,6 @@
     <div class="page-head">
       <h1>Entregas</h1>
       <div class="actions">
-        <!-- Botón exportar igual al de Presupuestos/Materiales -->
         <button type="button" id="btnExport" class="btn outline with-icon" style="border: 0.6px solid black; margin-right: 10px;">
           <span class="icon">⬇</span>
           <span>Exportar</span>
@@ -55,10 +61,6 @@
           </select>
         </label>
 
-        <label>Buscar
-          <input id="fText" type="text" class="in" placeholder="Cliente...">
-        </label>
-
         <button id="btnClear" class="btn outline">Limpiar</button>
       </div>
     </section>
@@ -75,7 +77,6 @@
       </div>
     </section>
 
-    <!-- Paginador -->
     <div class="pager">
       <div class="info" id="pg-info"></div>
       <button class="btn" id="pg-prev">« Anterior</button>
@@ -87,6 +88,6 @@
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
   <script src="../files-js/menu-guard.js"></script>
-  <script type="module" src="../files-js/entregas.js"></script>
+  <script src="../files-js/entregas.js"></script>
 </body>
 </html>

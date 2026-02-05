@@ -1,4 +1,3 @@
-// /static/files-js/asignar-materiales.js 
 const API_URL_SUPPLIERS = 'http://localhost:8088/suppliers';
 const API_URL_MAT       = 'http://localhost:8088/materials';
 const API_URL_MAT_SUP   = 'http://localhost:8088/material-suppliers';
@@ -8,9 +7,28 @@ const supplierId = new URLSearchParams(window.location.search).get('id');
 
 let materiales = [];
 
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
+  }
+});
+
+function notify(msg, type='info'){
+  const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
+  Toast.fire({ icon: icon, title: msg });
+}
+
+// Validación de sesión
 if (!token) {
-  alert('Debes iniciar sesión para acceder');
-  window.location.href = '../files-html/login.html';
+  notify('Debes iniciar sesión para acceder', 'error');
+  setTimeout(() => window.location.href = '../files-html/login.html', 1500);
 }
 
 // util: toma el primer elemento que exista entre varios ids
@@ -29,8 +47,8 @@ function safeText(el, value){
 document.addEventListener('DOMContentLoaded', async () => {
   // guard clave: id en la URL
   if (!supplierId) {
-    console.error('Falta ?id= en la URL');
-    alert('No se indicó el proveedor (?id=). Volvé a la lista e ingresá nuevamente.');
+    Swal.fire('Error', 'No se indicó el proveedor. Volvé a la lista e ingresá nuevamente.', 'error')
+        .then(() => window.location.href = 'proveedores.html');
     return;
   }
 
@@ -60,7 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (err) {
     console.error(err);
-    alert('No se pudo cargar el proveedor');
+    notify('No se pudo cargar el proveedor', 'error');
   }
 
   // Cargar materiales disponibles (para autocomplete)
@@ -142,41 +160,66 @@ function renderMateriales(lista) {
   lista.forEach(m => {
     const row = document.createElement('div');
     row.className = 'fila';
+    
+    // Usamos data-del para evitar problemas de scope global con onclick
     row.innerHTML = `
       <div>${m.materialName || '-'}</div>
       <div>$${m.priceUnit ?? 0}</div>
       <div>${m.deliveryTimeDays ?? '-'}</div>
       <div>
-        <button class="btn danger" onclick="eliminarMaterialProveedor(${m.idMaterialSupplier})">🗑️ Eliminar</button>
+        <button class="btn danger btn-eliminar" data-id="${m.idMaterialSupplier}">🗑️ Eliminar</button>
       </div>
     `;
     cont.appendChild(row);
   });
+
+  // Event Delegation para el botón eliminar
+  cont.onclick = (e) => {
+    const btn = e.target.closest('.btn-eliminar');
+    if (btn) {
+        const id = btn.getAttribute('data-id');
+        eliminarMaterialProveedor(id);
+    }
+  };
 }
 
-// ===== Eliminar material asignado =====
+// ===== Eliminar material asignado (CON CONFIRMACIÓN) =====
 async function eliminarMaterialProveedor(idMatSup) {
-  if (!confirm("¿Seguro que deseas eliminar este material del proveedor?")) return;
+  
+  Swal.fire({
+    title: '¿Quitar material?',
+    text: "Se eliminará la asociación de este material con el proveedor.",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${API_URL_MAT_SUP}/${idMatSup}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-  try {
-    const res = await fetch(`${API_URL_MAT_SUP}/${idMatSup}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+        if (!res.ok) throw new Error(`Error al eliminar material (HTTP ${res.status})`);
+        
+        notify("Material eliminado correctamente", "success");
 
-    if (!res.ok) throw new Error(`Error al eliminar material (HTTP ${res.status})`);
-    alert("Material eliminado correctamente");
-
-    // Recargar lista
-    const provRes = await fetch(`${API_URL_SUPPLIERS}/${supplierId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const p = await provRes.json();
-    renderMateriales(p.materials || []);
-  } catch (err) {
-    console.error(err);
-    alert("No se pudo eliminar el material");
-  }
+        // Recargar lista
+        const provRes = await fetch(`${API_URL_SUPPLIERS}/${supplierId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const p = await provRes.json();
+        renderMateriales(p.materials || []);
+      } catch (err) {
+        console.error(err);
+        notify("No se pudo eliminar el material", "error");
+      }
+    }
+  });
 }
 
 // ===== Agregar material asignado =====
@@ -192,9 +235,10 @@ async function agregarMaterialProveedor(e) {
   const tiempo = inputTiempo ? parseInt(inputTiempo.value) : null;
 
   const material = materiales.find(m => (m.name || '').toLowerCase() === nombre.toLowerCase());
-  if (!material) return alert('Material no encontrado.');
-  if (isNaN(precio)) return alert('Precio inválido');
-  if (inputTiempo && isNaN(tiempo)) return alert('Tiempo de entrega inválido');
+  
+  if (!material) return notify('Material no encontrado.', 'error');
+  if (isNaN(precio)) return notify('Precio inválido', 'error');
+  if (inputTiempo && inputTiempo.value && isNaN(tiempo)) return notify('Tiempo de entrega inválido', 'error');
 
   try {
     const body = {
@@ -202,7 +246,7 @@ async function agregarMaterialProveedor(e) {
       supplierId: Number(supplierId),
       priceUnit: precio
     };
-    if (inputTiempo) body.deliveryTimeDays = tiempo;
+    if (inputTiempo && !isNaN(tiempo)) body.deliveryTimeDays = tiempo;
 
     const res = await fetch(API_URL_MAT_SUP, {
       method: 'POST',
@@ -214,7 +258,8 @@ async function agregarMaterialProveedor(e) {
     });
 
     if (!res.ok) throw new Error(`Error al asignar material (HTTP ${res.status})`);
-    alert('Material asignado correctamente');
+    
+    notify('Material asignado correctamente', 'success');
 
     // Refrescar la lista
     const provRes = await fetch(`${API_URL_SUPPLIERS}/${supplierId}`, {
@@ -229,6 +274,6 @@ async function agregarMaterialProveedor(e) {
     if (inputTiempo) inputTiempo.value = '';
   } catch (err) {
     console.error(err);
-    alert('No se pudo asignar el material');
+    notify('No se pudo asignar el material', 'error');
   }
 }

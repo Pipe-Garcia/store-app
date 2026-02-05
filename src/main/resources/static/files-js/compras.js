@@ -57,6 +57,7 @@ function notify(msg,type='info'){
 let compras = [];     // [PurchaseDTO]
 let proveedores = []; // [{idSupplier, nameCompany,...}]
 let provById = new Map();
+let supplierSelectInstance = null; // Instancia global Tom Select
 
 // 🔹 paginación (front)
 const PAGE_SIZE = 8;
@@ -89,7 +90,7 @@ window.addEventListener("DOMContentLoaded", async ()=>{
     }
   });
 
-  // ✅ LÓGICA DE MENSAJE FLASH (Muestra cartel de éxito al volver de crear)
+  // ✅ LÓGICA DE MENSAJE FLASH (Cartel de éxito al volver de crear)
   const flash = localStorage.getItem('flash');
   if (flash) {
     try {
@@ -116,11 +117,17 @@ window.addEventListener("DOMContentLoaded", async ()=>{
   $("#buscarDesde").addEventListener("change", applyFilters);
   $("#buscarHasta").addEventListener("change", applyFilters);
   $("#buscarTexto").addEventListener("input", applyFilters);
+  
+  // Nota: TomSelect oculta el select original, pero escuchamos 'change' porque lo disparamos manualmente
   $("#buscarProveedor").addEventListener("change", applyFilters);
+  
   $("#btnLimpiar").addEventListener("click", limpiarFiltros);
 
   // NUEVO: wiring botón Exportar
   setupExport();
+
+  // 👇👇 ACTIVAMOS LA RESTRICCIÓN DE FECHAS 👇👇
+  setupDateRangeConstraint('buscarDesde', 'buscarHasta');
 });
 
 // ========= Carga base =========
@@ -169,18 +176,38 @@ function limpiarFiltros(){
   $("#buscarDesde").value     = "";
   $("#buscarHasta").value     = "";
   $("#buscarTexto").value     = "";
-  const selProv = $("#buscarProveedor");
-  if (selProv) selProv.value = "";
+  
+  // Limpiar TomSelect si existe
+  if (supplierSelectInstance) {
+      supplierSelectInstance.clear();
+  } else {
+      const selProv = $("#buscarProveedor");
+      if (selProv) selProv.value = "";
+  }
+  
+  // Limpiamos también las restricciones de los inputs
+  $("#buscarDesde").max = "";
+  $("#buscarHasta").min = "";
+
   applyFilters();
 }
 
-
+// ---------------------------------------------------------
+//  TOM SELECT INTEGRATION
+// ---------------------------------------------------------
 function initProveedorFiltro(){
   const sel = document.getElementById('buscarProveedor');
   if (!sel) return;
 
+  // 1. Destruir instancia anterior si existe
+  if (supplierSelectInstance) {
+      supplierSelectInstance.destroy();
+      supplierSelectInstance = null;
+  }
+
   sel.innerHTML = '<option value="">Todos</option>';
 
+  // 2. Llenar opciones
   proveedores
     .slice()
     .sort((a,b)=>{
@@ -196,6 +223,20 @@ function initProveedorFiltro(){
       opt.textContent = label;
       sel.appendChild(opt);
     });
+
+  // 3. Inicializar Tom Select
+  supplierSelectInstance = new TomSelect('#buscarProveedor', {
+      create: false,
+      sortField: { field: "text", direction: "asc" },
+      placeholder: "Buscar proveedor...",
+      allowEmptyOption: true,
+      plugins: ['no_active_items'],
+      onChange: function() {
+          // Disparamos evento manual para que applyFilters lo detecte
+          const event = new Event('change');
+          sel.dispatchEvent(event);
+      }
+  });
 }
 
 
@@ -559,4 +600,27 @@ async function exportPurchases(scope){
       btn.textContent = originalText ?? '⬇ Exportar';
     }
   }
+}
+
+// 👇👇 LA FUNCIÓN REUTILIZABLE PARA RESTRICCIÓN DE FECHAS 👇👇
+function setupDateRangeConstraint(idDesde, idHasta) {
+  const elDesde = document.getElementById(idDesde);
+  const elHasta = document.getElementById(idHasta);
+  if (!elDesde || !elHasta) return;
+
+  elDesde.addEventListener('change', () => {
+    elHasta.min = elDesde.value;
+    if (elHasta.value && elHasta.value < elDesde.value) {
+      elHasta.value = elDesde.value;
+      elHasta.dispatchEvent(new Event('change')); 
+    }
+  });
+
+  elHasta.addEventListener('change', () => {
+    elDesde.max = elHasta.value;
+    if (elDesde.value && elDesde.value > elHasta.value) {
+      elDesde.value = elHasta.value;
+      elDesde.dispatchEvent(new Event('change'));
+    }
+  });
 }
