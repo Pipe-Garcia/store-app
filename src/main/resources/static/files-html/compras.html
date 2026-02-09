@@ -6,15 +6,11 @@
   <title>🛒 - Compras</title>
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/compras.css"/>
-  <!-- NAV fijo -->
   <link rel="stylesheet" href="../files-css/nav.css">
-
-  <!-- SweetAlert2 para toasts + modal de exportar -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
-  <!-- NAV -->
   <div id="app-header"></div>
 
   <main class="page">
@@ -34,16 +30,24 @@
     </div>
 
     <hr><br>
+
     <section class="filters card">
       <div class="row">
         <label>Buscar
           <input type="text" id="buscarTexto" placeholder="ID o proveedor..."/>
         </label>
 
-        
         <label>Proveedor
           <select id="buscarProveedor" class="in">
             <option value="">Todos</option>
+          </select>
+        </label>
+
+        <label>Estado
+          <select id="buscarEstado" class="in">
+            <option value="">Todos</option>
+            <option value="ACTIVE">Activa</option>
+            <option value="CANCELLED">Anulada</option>
           </select>
         </label>
 
@@ -59,7 +63,6 @@
       </div>
     </section>
 
-
     <section class="card">
       <div class="tabla" id="lista-compras">
         <div class="fila encabezado">
@@ -67,11 +70,11 @@
           <div>Fecha</div>
           <div>Proveedor</div>
           <div>Total</div>
+          <div>Estado</div>
           <div>Acciones</div>
         </div>
       </div>
 
-      <!-- 🔹 NUEVO: paginador -->
       <div class="pager">
         <div class="info" id="pg-info"></div>
         <button class="btn" id="pg-prev">« Anterior</button>

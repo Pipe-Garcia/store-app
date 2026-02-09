@@ -59,7 +59,9 @@ const LABEL_ACTION = {
   PURCHASE_CREATE:'Alta de compra',   // 👈 NUEVO (para histórico)
   BULK_CREATE:'Alta masiva',
   LOGIN:'Inicio de sesión',
-  LOGOUT:'Cierre de sesión'
+  LOGOUT:'Cierre de sesión',
+  CANCEL:'Anular',
+  RESTORE:'Restaurar'
 };
 
 const LABEL_ENTITY = {

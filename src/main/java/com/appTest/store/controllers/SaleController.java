@@ -32,40 +32,39 @@ public class SaleController {
     private ISaleRepository repoSale;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<SaleDTO>> getAllSales() {
         List<Sale> saleList = servSale.getAllSales();
         List<SaleDTO> saleDTOList = saleList.stream()
-                                    .map(sale -> servSale.convertSaleToDto(sale))
-                                    .collect(Collectors.toList());
+                .map(sale -> servSale.convertSaleToDto(sale))
+                .collect(Collectors.toList());
         return ResponseEntity.ok(saleDTOList);
     }
 
     @GetMapping ("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<SaleDTO> getSaleById(@PathVariable Long id) {
         Sale sale = servSale.getSaleById(id);
-        if (sale == null) {
-            return ResponseEntity.notFound().build();
-        }
-        SaleDTO saleDTO = servSale.convertSaleToDto(sale);
-        return ResponseEntity.ok(saleDTO);
+        if (sale == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(servSale.convertSaleToDto(sale));
     }
 
     @GetMapping ("/date/{date}")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
-    public ResponseEntity<SaleSummaryByDateDTO> getSaleSummaryByDate(@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        SaleSummaryByDateDTO saleSummaryByDateDTO = servSale.getSaleSummaryByDate(date);
-        return ResponseEntity.ok(saleSummaryByDateDTO);
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
+    public ResponseEntity<SaleSummaryByDateDTO> getSaleSummaryByDate(
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        SaleSummaryByDateDTO dto = servSale.getSaleSummaryByDate(date);
+        return ResponseEntity.ok(dto);
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<List<SaleDTO>> search(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) Long clientId,
-            @RequestParam(required = false) String paymentStatus // PENDING|PARTIAL|PAID
+            @RequestParam(required = false) String paymentStatus
     ) {
         List<Sale> list = servSale.search(from, to, clientId, paymentStatus);
         List<SaleDTO> dto = list.stream().map(servSale::convertSaleToDto).collect(Collectors.toList());
@@ -73,31 +72,36 @@ public class SaleController {
     }
 
     @GetMapping ("/highest")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<SaleHighestDTO> getHighestSale() {
         SaleHighestDTO saleHighestDTO  = servSale.getHighestSale();
-        if (saleHighestDTO == null) {
-            return ResponseEntity.notFound().build();
-        }
+        if (saleHighestDTO == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(saleHighestDTO);
     }
 
-    // SaleController
     @GetMapping("/{id}/details")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public List<SaleDetailLiteDTO> getSaleDetails(@PathVariable Long id) {
         return servSale.getSaleDetailsLite(id);
     }
 
-
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<SaleDTO> createSale(@RequestBody @Valid SaleCreateDTO dto) {
         SaleDTO createdSale = servSale.createSale(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdSale);
     }
 
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
+    public ResponseEntity<SaleDTO> cancelSale(@PathVariable Long id) {
+        Sale sale = servSale.getSaleById(id);
+        if (sale == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(servSale.cancelSale(id));
+    }
+
     @PutMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<SaleDTO> updateSale(@RequestBody @Valid SaleUpdateDTO dto) {
         servSale.updateSale(dto);
         Sale sale = servSale.getSaleById(dto.getIdSale());
@@ -105,7 +109,7 @@ public class SaleController {
     }
 
     @DeleteMapping ("/{id}")
-    @PreAuthorize("hasRole('ROLE_OWNER')")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
     public ResponseEntity<String> deleteSale(@PathVariable Long id) {
         Sale sale = servSale.getSaleById(id);
         if (sale != null) {

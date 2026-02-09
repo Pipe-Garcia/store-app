@@ -16,6 +16,7 @@ function go(page){
   location.href = `${base}${page}`;
 }
 
+let isCancelled = false;
 let saleId = null;
 
 window.addEventListener('DOMContentLoaded', async ()=>{
@@ -44,19 +45,34 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     `<option value="${c.idClient||c.id}">${(c.name||'') } ${(c.surname||'')}</option>`
   ).join('');
 
-  if(sale){
-    $('#fecha').value = (sale.dateSale || sale.date || '').toString().slice(0,10);
-    if (sale.clientId){
-      sel.value = String(sale.clientId);
-    }else{
-      const match = (clients||[]).find(c =>
-        `${c.name||''} ${c.surname||''}`.trim() === (sale.clientName||'').trim()
-      );
-      if (match) sel.value = String(match.idClient||match.id);
-    }
+  if(!sale){
+    notify('No se pudo cargar la venta','error');
+    setTimeout(()=> go('ventas.html'), 800);
+    return;
+  }
+
+  isCancelled = ((sale.status || '').toString().toUpperCase() === 'CANCELLED');
+  if (isCancelled){
+    notify('Esta venta está ANULADA y no se puede editar','error');
+    setTimeout(()=> go(`ver-venta.html?id=${saleId}`), 800);
+    return;
+  }
+
+  $('#fecha').value = (sale.dateSale || sale.date || '').toString().slice(0,10);
+  if (sale.clientId){
+    sel.value = String(sale.clientId);
+  }else{
+    const match = (clients||[]).find(c =>
+      `${c.name||''} ${c.surname||''}`.trim() === (sale.clientName||'').trim()
+    );
+    if (match) sel.value = String(match.idClient||match.id);
   }
 
   $('#btnGuardar').onclick = async ()=>{
+    if (isCancelled){
+      notify('No se puede editar una venta ANULADA','error');
+      return;
+    }
     const dateSale = $('#fecha').value;
     const clientId = Number(sel.value||0);
     if(!dateSale || !clientId){

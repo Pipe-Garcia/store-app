@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/ver-entrega.css"/>
   <link rel="stylesheet" href="../files-css/nav.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
   <div id="app-header"></div>
@@ -21,6 +22,12 @@
       </div>
       
       <div class="actions-toolbar">
+        <button id="btnAnularEntrega"
+                type="button"
+                class="btn outline"
+                style="display:none;border:1px solid #ef4444;color:#ef4444;">
+          Anular
+        </button>
         <a id="btnEditarEntrega" class="btn outline" style="display:none;">Editar</a>
         <a class="btn outline" href="entregas.html">Volver</a>
       </div>

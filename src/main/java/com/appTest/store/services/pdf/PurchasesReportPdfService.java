@@ -1,10 +1,10 @@
-// src/main/java/com/appTest/store/services/pdf/PurchasesReportPdfService.java
 package com.appTest.store.services.pdf;
 
 import com.appTest.store.config.CompanyProps;
 import com.appTest.store.models.Purchase;
 import com.appTest.store.models.PurchaseDetail;
 import com.appTest.store.models.Supplier;
+import com.appTest.store.models.enums.DocumentStatus;
 import com.appTest.store.repositories.IPurchaseRepository;
 import com.appTest.store.repositories.ISupplierRepository;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
@@ -38,8 +38,7 @@ public class PurchasesReportPdfService {
     private static final DateTimeFormatter DATE_TIME =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    // Fila para el reporte
-    public record Row(Long id, LocalDate date, String supplier, BigDecimal total) {}
+    public record Row(Long id, LocalDate date, String supplier, BigDecimal total, String status) {}
 
     public enum Scope {
         FILTERED,
@@ -59,12 +58,12 @@ public class PurchasesReportPdfService {
     public byte[] renderReport(String scopeRaw,
                                LocalDate from,
                                LocalDate to,
-                               Long supplierId) {
+                               Long supplierId,
+                               DocumentStatus status) {
 
         Scope scope = Scope.from(scopeRaw);
         LocalDate today = LocalDate.now();
 
-        // Ajustar fechas según scope
         switch (scope){
             case LAST_7_DAYS -> {
                 to = today;
@@ -81,11 +80,11 @@ public class PurchasesReportPdfService {
         }
 
         List<Purchase> purchases = purchaseRepo.searchForReport(
-                supplierId, from, to
+                supplierId, from, to, status
         );
 
         if (purchases == null || purchases.isEmpty()){
-            return null;  // el controller devolverá 204
+            return null;
         }
 
         List<Row> rows = new ArrayList<>();
@@ -95,15 +94,17 @@ public class PurchasesReportPdfService {
             BigDecimal total = calculateTotal(p);
             grandTotal = grandTotal.add(total);
 
+            String st = (p.getStatus() != null) ? p.getStatus().name() : "ACTIVE";
+
             rows.add(new Row(
                     p.getIdPurchase(),
                     p.getDatePurchase(),
                     formatSupplier(p.getSupplier()),
-                    total
+                    total,
+                    st
             ));
         }
 
-        // Título, subtítulo, generado
         String title = switch (scope){
             case LAST_7_DAYS   -> "Compras – últimos 7 días";
             case CURRENT_MONTH -> "Compras – mes actual";
@@ -127,7 +128,12 @@ public class PurchasesReportPdfService {
             supplierLabel = "Proveedor: " + name;
         }
 
-        String subtitle    = periodLabel + " · " + supplierLabel;
+        String statusLabel = "Estado: todos";
+        if (status != null){
+            statusLabel = "Estado: " + (status == DocumentStatus.CANCELLED ? "Anulada" : "Activa");
+        }
+
+        String subtitle    = periodLabel + " · " + supplierLabel + " · " + statusLabel;
         String generatedAt = LocalDateTime.now().format(DATE_TIME);
 
         Context ctx = new Context(LOCALE_AR);
@@ -154,7 +160,6 @@ public class PurchasesReportPdfService {
 
     private BigDecimal calculateTotal(Purchase p){
         if (p.getPurchaseDetails() == null) return BigDecimal.ZERO;
-
         return p.getPurchaseDetails().stream()
                 .map(this::lineAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -163,6 +168,7 @@ public class PurchasesReportPdfService {
     private BigDecimal lineAmount(PurchaseDetail d){
         if (d == null) return BigDecimal.ZERO;
         BigDecimal qty = d.getQuantity() != null ? d.getQuantity() : BigDecimal.ZERO;
+
         BigDecimal unit;
         if (d.getPurchasedPrice() != null){
             unit = d.getPurchasedPrice();

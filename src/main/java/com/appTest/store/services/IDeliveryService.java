@@ -25,7 +25,7 @@ public interface IDeliveryService {
 
     List<DeliveryDTO> getDeliveriesByOrder(Long orderId);
     List<DeliveryDetailDTO> getDeliveryDetailsByOrder(Long orderId);
-
+    com.appTest.store.dto.delivery.DeliveryDTO cancelDelivery(Long id);
 
     List<DeliveryDTO> getDeliveriesBySale(Long saleId);
 }

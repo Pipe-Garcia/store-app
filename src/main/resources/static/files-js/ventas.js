@@ -161,7 +161,10 @@ function buildQueryFromFilters(){
 
 // 🔹 wrapper reutilizable para el export
 function buildSearchQuery() {
-  return buildQueryFromFilters();
+  const q = new URLSearchParams(buildQueryFromFilters());
+  const st = ($('#fEstadoEntrega')?.value || '').toUpperCase();
+  if (st) q.set('state', st);   // <-- NUEVO
+  return q.toString();
 }
 
 async function cargarClientesFiltro() {
@@ -228,10 +231,19 @@ async function reloadFromFilters(){
       });
     }
 
-    // Estado de entrega (front-only)
+    // Estado (front-only)
     const stFilter = ($('#fEstadoEntrega').value || '').toUpperCase();
     if (stFilter){
-      view = view.filter(v => getDeliveryStateCode(v) === stFilter);
+      if (stFilter === 'CANCELLED'){
+        // Solo anuladas
+        view = view.filter(v => getSaleStatusCode(v) === 'CANCELLED');
+      } else {
+        // Pendiente/Entregada: NO deben entrar anuladas
+        view = view.filter(v =>
+          getSaleStatusCode(v) !== 'CANCELLED' &&
+          getDeliveryStateCode(v) === stFilter
+        );
+      }
     }
 
     // Ordenar por fecha desc, luego id desc
@@ -274,6 +286,11 @@ function getPendingUnits(v){
   );
 }
 
+function getSaleStatusCode(v) {
+  const raw = (v.status || v.saleStatus || '').toString().toUpperCase();
+  return raw || 'ACTIVE';
+}
+
 function getDeliveryStateCode(v){
   // VENTA DIRECTA (sin presupuesto asociado) → la consideramos ENTREGADA.
   const hasOrder = !!(v.orderId ?? v.ordersId ?? v.order_id);
@@ -307,6 +324,21 @@ function getDeliveryStateCode(v){
   if (delivered > 0) return 'DELIVERED';
 
   return 'PENDING_DELIVERY';
+}
+
+const UI_SALE_STATUS = {
+  ACTIVE: 'ACTIVA',
+  CANCELLED: 'ANULADA'
+};
+
+function saleStatusPillHtml(saleStatusCode, deliveryCode) {
+  // Si la venta está anulada, mostramos eso y listo
+  if (saleStatusCode === 'CANCELLED') {
+    return `<span class="pill cancelled">${UI_SALE_STATUS.CANCELLED}</span>`;
+  }
+
+  // Si está activa, usamos el estado de ENTREGA como hasta ahora
+  return deliveryPillHtml(deliveryCode);
 }
 
 const UI_DELIVERY_STATUS = {
@@ -400,21 +432,36 @@ function renderLista(lista){
     const cli   = v.clientName || '—';
     const total = Number(v.total ?? v.totalArs ?? v.amount ?? 0);
     const totalStr = fmtARS.format(total);
-    const st    = getDeliveryStateCode(v);
+
+    const saleStatus = getSaleStatusCode(v);          // ACTIVE | CANCELLED
+    const stEntrega  = getDeliveryStateCode(v);       // PENDING_DELIVERY | DELIVERED
+    const isCancelled = saleStatus === 'CANCELLED';
+
+    const cancelBtnHtml = isCancelled
+      ? `<button class="btn outline" disabled title="Venta anulada">⛔</button>`
+      : `<button class="btn danger" data-cancel="${id}" data-desc="${cli} (${totalStr})" title="Anular">⛔</button>`;
+
+    const isDelivered = stEntrega === 'DELIVERED';
+    const disableEdit = isCancelled || isDelivered;
+
+    const editBtnHtml = disableEdit
+      ? `<button class="btn outline muted" disabled
+                title="${isCancelled ? 'No se puede editar una venta anulada' : 'No se puede editar una venta ENTREGADA'}">✏️</button>`
+      : `<a class="btn outline" href="editar-venta.html?id=${id}" title="Editar">✏️</a>`;
+
 
     const row = document.createElement('div');
     row.className = 'fila';
-    // data-desc para mostrar en el cartel de borrado
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cli}</div>
       <div>${totalStr}</div>
-      <div>${deliveryPillHtml(st)}</div>
+      <div>${saleStatusPillHtml(saleStatus, stEntrega)}</div>
       <div class="acciones">
         <a class="btn outline" href="ver-venta.html?id=${id}" title="Ver detalle">👁️</a>
-        <a class="btn outline" href="editar-venta.html?id=${id}" title="Editar">✏️</a>
+        ${editBtnHtml}
         <button class="btn outline" data-pdf="${id}" title="Descargar PDF">🧾</button>
-        <button class="btn danger" data-del="${id}" data-desc="${cli} (${totalStr})" title="Eliminar">🗑️</button>
+        ${cancelBtnHtml}
       </div>
     `;
     cont.appendChild(row);
@@ -423,54 +470,77 @@ function renderLista(lista){
   cont.onclick = (ev)=>{
     const target = ev.target.closest('button, a');
     if (!target) return;
-    const delId = target.getAttribute('data-del');
-    const pdfId = target.getAttribute('data-pdf');
-    const desc  = target.getAttribute('data-desc');
+    const cancelId = target.getAttribute('data-cancel');
+    const pdfId    = target.getAttribute('data-pdf');
+    const desc     = target.getAttribute('data-desc');
 
-    if (delId){
-      borrarVenta(Number(delId), desc);
-    }else if (pdfId){
+    if (cancelId){
+      anularVenta(Number(cancelId), desc);
+    } else if (pdfId){
       downloadSalePdf(Number(pdfId));
     }
   };
 }
 
 // ================== Acciones (SweetAlert2) ==================
-async function borrarVenta(id, descripcion){
-  Swal.fire({
-    title: '¿Eliminar venta?',
-    text: `Vas a eliminar la venta #${id} de ${descripcion}. Esta acción no se puede deshacer.`,
+async function anularVenta(id, descripcion){
+  const result = await Swal.fire({
+    title: '¿Anular venta?',
+    text: `Vas a anular la venta #${id} de ${descripcion}. 
+Se revertirá el stock y la venta dejará de contarse en los reportes. 
+Esta acción no se puede deshacer.`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#d33',
     cancelButtonColor: '#3085d6',
-    confirmButtonText: 'Sí, eliminar',
+    confirmButtonText: 'Sí, anular',
     cancelButtonText: 'Cancelar'
-  }).then(async (result) => {
-    if (!result.isConfirmed) return;
-
-    try{
-      const r = await authFetch(`${API_URL_SALES}/${id}`, { method:'DELETE' });
-      if (!r.ok){
-        if (r.status === 403){
-          Swal.fire('Permiso denegado', 'Se requiere rol OWNER para eliminar ventas.', 'error');
-          return;
-        }
-        throw new Error(`HTTP ${r.status}`);
-      }
-
-      Swal.fire(
-        '¡Eliminada!',
-        'La venta ha sido eliminada correctamente.',
-        'success'
-      );
-      await reloadFromFilters();
-
-    }catch(e){
-      console.error(e);
-      Swal.fire('Error', 'No se pudo eliminar la venta.', 'error');
-    }
   });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    const r = await authFetch(`${API_URL_SALES}/${id}/cancel`, { method:'POST' });
+
+    if (r.status === 403){
+      await Swal.fire(
+        'Permiso denegado',
+        'Se requiere rol OWNER para anular ventas.',
+        'error'
+      );
+      return;
+    }
+
+    if (!r.ok){
+      let msg = `HTTP ${r.status}`;
+      try {
+        const err = await r.json();
+        if (err && err.message) msg = err.message;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+
+    const data = await safeJson(r).catch(()=>null);
+    const alreadyCancelled = data && (data.status || '').toString().toUpperCase() === 'CANCELLED';
+
+    await Swal.fire(
+      alreadyCancelled ? 'Venta ya anulada' : 'Venta anulada',
+      alreadyCancelled
+        ? 'Esta venta ya estaba marcada como ANULADA.'
+        : 'La venta fue anulada correctamente y el stock fue actualizado.',
+      'success'
+    );
+
+    await reloadFromFilters();
+
+  } catch (e) {
+    console.error(e);
+    await Swal.fire(
+      'Error',
+      e.message || 'No se pudo anular la venta.',
+      'error'
+    );
+  }
 }
 
 async function downloadSalePdf(id){

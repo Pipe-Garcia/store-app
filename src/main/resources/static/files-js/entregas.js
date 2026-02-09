@@ -57,9 +57,28 @@ const getClientName = x => (
 const getDateISO    = x => (x?.deliveryDate ?? x?.date ?? '').toString().slice(0,10) || '';
 const getStatus     = x => (x?.status ?? '').toString().toUpperCase();
 
-function pill(status){
-  const txt = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', COMPLETED:'COMPLETADA' }[status] || status || 'PENDIENTE';
-  const cls = { PENDING:'pending',   PARTIAL:'partial',  COMPLETED:'completed' }[status] || 'pending';
+function normStatus(raw){
+  const s = (raw || '').toString().toUpperCase();
+  if (s === 'ANULADA') return 'CANCELLED';
+  return s || 'PENDING';
+}
+
+function pill(statusRaw){
+  const status = normStatus(statusRaw);
+  const txt = {
+    PENDING:'PENDIENTE',
+    PARTIAL:'PARCIAL',
+    COMPLETED:'COMPLETADA',
+    CANCELLED:'ANULADA'
+  }[status] || status || 'PENDIENTE';
+
+  const cls = {
+    PENDING:'pending',
+    PARTIAL:'partial',
+    COMPLETED:'completed',
+    CANCELLED:'cancelled'
+  }[status] || 'pending';
+
   return `<span class="pill ${cls}">${txt}</span>`;
 }
 
@@ -114,7 +133,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   await loadClients();
   wireFilters();
   setupExport();          
-  setupRemitoButtons();
+  setupListActions();
   await loadDeliveries(); 
 });
 
@@ -312,22 +331,59 @@ function render(lista){
     const saleId  = getSaleId(e);
     const cliente = getClientName(e) || '—';
 
+    const stN = normStatus(st);
+    const isCancelled = stN === 'CANCELLED';
+    const isCompleted = stN === 'COMPLETED';
+
+    // reglas de UI
+    const disableEdit   = isCancelled || isCompleted;
+    const disableRemito = isCancelled; // COMPLETADA: remito OK
+    const canCancel     = !isCancelled; // ya anulada => no
+
+    const desc = `${cliente}${saleId ? ` (Venta #${saleId})` : ''}`;
+
+    const cancelBtnHtml = isCancelled
+      ? `<button type="button"
+                class="btn outline muted is-disabled"
+                data-disabled-msg="Entrega anulada"
+                title="Entrega anulada">⛔</button>`
+      : `<button type="button"
+                class="btn danger btn-anular"
+                data-id="${idDel}"
+                data-desc="${desc}"
+                title="Anular" style="background: #fff">⛔</button>`;
+    const editHref = disableEdit ? '#' : `../files-html/editar-entrega.html?id=${idDel}`;
+
     const row = document.createElement('div');
     row.className='fila';
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cliente}</div>
       <div>${saleId ? `#${saleId}` : '—'}</div>
-      <div>${pill(st)}</div>
+      <div>${pill(stN)}</div>
+
       <div class="acciones">
         <button type="button"
-                class="btn outline btn-remito"
+                class="btn outline btn-remito ${disableRemito ? 'muted is-disabled' : ''}"
                 data-id="${idDel}"
-                title="Imprimir remito" style="border: 1px solid #ced4da;">
+                data-disabled-msg="No se puede generar PDF/remito de una entrega ANULADA"
+                title="${disableRemito ? 'Entrega anulada' : 'Imprimir remito'}"
+                style="border: 1px solid #ced4da;">
           🧾
         </button>
-        <a class="btn outline" href="../files-html/ver-entrega.html?id=${idDel}">👁️</a>
-        <a class="btn outline" href="../files-html/editar-entrega.html?id=${idDel}">✏️</a>
+
+        <a class="btn outline"
+          href="../files-html/ver-entrega.html?id=${idDel}"
+          title="Ver detalle">👁️</a>
+
+        <a class="btn outline ${disableEdit ? 'muted is-disabled' : ''}"
+          href="${editHref}"
+          data-disabled-msg="${isCancelled ? 'No se puede editar una entrega ANULADA' : 'No se puede editar una entrega COMPLETADA'}"
+          title="${disableEdit ? (isCancelled ? 'Entrega anulada' : 'Entrega completada') : 'Editar'}">
+          ✏️
+        </a>
+
+        ${cancelBtnHtml}
       </div>
     `;
     cont.appendChild(row);
@@ -470,27 +526,88 @@ async function exportDeliveries(scope){
 
 /* ================== REMITO POR ENTREGA ================== */
 
-function setupRemitoButtons(){
+function setupListActions(){
   const cont = document.getElementById('lista-entregas');
   if (!cont) return;
 
-  cont.addEventListener('click', async ev => {
-    const btn = ev.target.closest('.btn-remito');
-    if (!btn) return;
+  cont.addEventListener('click', async (ev) => {
+    const disabled = ev.target.closest('.is-disabled');
+    if (disabled){
+      ev.preventDefault();
+      ev.stopPropagation();
+      notify(disabled.dataset.disabledMsg || 'Acción no disponible', 'info');
+      return;
+    }
 
-    const id = btn.dataset.id;
-    if (!id) return;
+    const btnRemito = ev.target.closest('.btn-remito');
+    if (btnRemito){
+      const id = btnRemito.dataset.id;
+      if (!id) return;
+      try { await downloadDeliveryNote(id); }
+      catch (e){
+        console.error(e);
+        Swal.fire('Error', 'No se pudo generar el remito de esta entrega.', 'error');
+      }
+      return;
+    }
 
-    try {
-      await downloadDeliveryNote(id);
-    } catch (e) {
-      console.error(e);
-      Swal.fire('Error',
-        'No se pudo generar el remito de esta entrega.',
-        'error'
-      );
+    const btnAnular = ev.target.closest('.btn-anular');
+    if (btnAnular){
+      const id = btnAnular.dataset.id;
+      const desc = btnAnular.dataset.desc || '';
+      if (!id) return;
+
+      const r = await Swal.fire({
+        title: '¿Anular entrega?',
+        text: `Vas a anular la entrega #${id}${desc ? ` de ${desc}` : ''}. 
+    La entrega quedará ANULADA y no contará para el progreso de la venta. 
+    Esta acción no se puede deshacer.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, anular',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+      });
+      if (!r.isConfirmed) return;
+
+      try{
+        await cancelDelivery(id);
+        notify('Entrega anulada', 'success');
+        await loadDeliveries();
+      }catch(e){
+        console.error(e);
+        if (String(e?.message || '').includes('403')){
+          Swal.fire('Sin permisos', 'Solo OWNER puede anular entregas.', 'error');
+        } else {
+          Swal.fire('Error', 'No se pudo anular la entrega.', 'error');
+        }
+      }
     }
   });
+}
+
+async function cancelDelivery(idDelivery){
+  // Ajustá acá si tu endpoint tiene otro path:
+  const candidates = [
+    { method:'PUT',   url: `/deliveries/${encodeURIComponent(idDelivery)}/cancel` },
+    { method:'PATCH', url: `/deliveries/${encodeURIComponent(idDelivery)}/cancel` },
+    { method:'POST',  url: `/deliveries/${encodeURIComponent(idDelivery)}/cancel` }
+  ];
+
+  let last = null;
+  for (const c of candidates){
+    const res = await authFetch(c.url, { method: c.method });
+    if (res.ok) return true;
+
+    last = res;
+    // si no existe o método no permitido, probamos siguiente
+    if (![404,405].includes(res.status)) {
+      const t = await res.text().catch(()=> '');
+      throw new Error(`HTTP ${res.status} ${t}`);
+    }
+  }
+  const t = last ? await last.text().catch(()=> '') : '';
+  throw new Error(`No encontré endpoint de anulación. Último: HTTP ${last?.status} ${t}`);
 }
 
 async function downloadDeliveryNote(idDelivery){

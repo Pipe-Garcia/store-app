@@ -10,14 +10,18 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.appTest.store.models.enums.DocumentStatus;
 import com.appTest.store.models.Delivery;
 import com.appTest.store.models.DeliveryItem;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import lombok.extern.slf4j.Slf4j;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Objects;
@@ -31,6 +35,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class SaleService implements ISaleService{
 
     @Autowired
@@ -56,6 +61,9 @@ public class SaleService implements ISaleService{
 
     @Autowired
     private IStockReservationService reservationService;
+
+    @Autowired
+    private IWarehouseRepository repoWare;
 
     @Autowired
     private IStockReservationRepository repoReservation;
@@ -136,17 +144,33 @@ public class SaleService implements ISaleService{
     }
 
     private void afterCommit(Runnable r){
+        Runnable safe = () -> {
+            try {
+                r.run();
+            } catch (Exception e) {
+                log.error("afterCommit task failed (audit). Operation already committed.", e);
+            }
+        };
+
         if (TransactionSynchronizationManager.isSynchronizationActive()){
             TransactionSynchronizationManager.registerSynchronization(
                     new TransactionSynchronization() {
-                        @Override public void afterCommit() { r.run(); }
+                        @Override public void afterCommit() { safe.run(); }
                     }
             );
         } else {
-            r.run();
+            safe.run();
         }
     }
 
+    private void ensureEditable(Sale sale){
+        if (sale != null && sale.getStatus() == DocumentStatus.CANCELLED){
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Sale is CANCELLED and cannot be edited."
+            );
+        }
+    }
 
     @Override
     public List<Sale> getAllSales() {
@@ -187,7 +211,7 @@ public class SaleService implements ISaleService{
 
         String paymentStatus = computePaymentStatus(total, paid);
 
-        // (compat) primer método de pago si existe
+        // (compat) primer metodo de pago si existe
         String paymentMethod = (sale.getPaymentList() != null && !sale.getPaymentList().isEmpty())
                 ? sale.getPaymentList().get(0).getMethodPayment()
                 : null;
@@ -200,10 +224,13 @@ public class SaleService implements ISaleService{
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
 
-        // ===== Unidades entregadas (todas las entregas de esta venta) =====
+        // ===== Unidades entregadas (todas las entregas NO anuladas de esta venta) =====
         BigDecimal deliveredUnits = BigDecimal.ZERO;
         if (sale.getDeliveries() != null) {
             for (Delivery d : sale.getDeliveries()) {
+                if (d == null) continue;
+                if (d.getStatus() == com.appTest.store.models.enums.DeliveryStatus.CANCELLED) continue;
+
                 if (d.getItems() == null) continue;
                 for (DeliveryItem di : d.getItems()) {
                     if (di.getQuantityDelivered() != null) {
@@ -281,6 +308,12 @@ public class SaleService implements ISaleService{
         dto.setPendingUnits(pendingUnits);
         dto.setDeliveryStatus(deliveryStatus);
 
+        dto.setStatus(
+                sale.getStatus() != null
+                        ? sale.getStatus().name()
+                        : DocumentStatus.ACTIVE.name()
+        );
+
         return dto;
     }
 
@@ -303,6 +336,9 @@ public class SaleService implements ISaleService{
 
         if (sale.getDeliveries() != null) {
             for (Delivery delivery : sale.getDeliveries()) {
+                if (delivery == null) continue;
+                if (delivery.getStatus() == com.appTest.store.models.enums.DeliveryStatus.CANCELLED) continue;
+
                 if (delivery.getItems() == null) continue;
 
                 for (DeliveryItem item : delivery.getItems()) {
@@ -357,8 +393,15 @@ public class SaleService implements ISaleService{
 
 
     private BigDecimal calculateTotal(Sale sale) {
+        if (sale == null || sale.getSaleDetailList() == null) return BigDecimal.ZERO;
+
         return sale.getSaleDetailList().stream()
-                .map(detail -> detail.getQuantity().multiply(detail.getPriceUni()))
+                .filter(Objects::nonNull)
+                .map(detail -> {
+                    BigDecimal q = detail.getQuantity() != null ? detail.getQuantity() : BigDecimal.ZERO;
+                    BigDecimal p = detail.getPriceUni() != null ? detail.getPriceUni() : BigDecimal.ZERO;
+                    return q.multiply(p);
+                })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -391,6 +434,8 @@ public class SaleService implements ISaleService{
         List<Sale> salesFromOrder = repoSale.findByOrders_IdOrders(orderId);
 
         for (Sale s : salesFromOrder) {
+            if (s.getStatus() == DocumentStatus.CANCELLED) continue;
+
             if (s.getSaleDetailList() == null) continue;
 
             for (SaleDetail sd : s.getSaleDetailList()) {
@@ -440,6 +485,7 @@ public class SaleService implements ISaleService{
 
         // --- Cabecera ---
         Sale sale = new Sale();
+        sale.setStatus(DocumentStatus.ACTIVE);
         sale.setDateSale(dto.getDateSale());
 
         Client client = repoClient.findById(dto.getClientId())
@@ -513,6 +559,9 @@ public class SaleService implements ISaleService{
             Material material = repoMat.findById(matId)
                     .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + matId));
 
+            Warehouse warehouse = repoWare.findById(warehouseId)
+                    .orElseThrow(() -> new EntityNotFoundException("Warehouse not found with ID: " + warehouseId));
+
             // === NUEVO MODELO: SIEMPRE baja stock físico en la venta ===
             BigDecimal onHand = servStock.availability(matId, warehouseId);
             if (qty.compareTo(onHand) > 0) {
@@ -535,6 +584,7 @@ public class SaleService implements ISaleService{
             d.setSale(sale);
             d.setQuantity(qty);
             d.setPriceUni(material.getPriceArs() != null ? material.getPriceArs() : BigDecimal.ZERO);
+            d.setWarehouse(warehouse);
             saleDetailList.add(d);
         }
 
@@ -621,8 +671,6 @@ public class SaleService implements ISaleService{
 
 
 
-    // ADD: helper de consumo
-
     private String computePaymentStatus(BigDecimal total, BigDecimal paid){
         if (paid == null)  paid  = BigDecimal.ZERO;
         if (total == null) total = BigDecimal.ZERO;
@@ -640,6 +688,8 @@ public class SaleService implements ISaleService{
         Sale sale = repoSale.findById(dto.getIdSale())
                 .orElseThrow(() -> new EntityNotFoundException("Sale not found"));
 
+        ensureEditable(sale);
+
         Map<String,Object> before = snap(sale);
 
         if (dto.getDateSale() != null) sale.setDateSale(dto.getDateSale());
@@ -648,6 +698,7 @@ public class SaleService implements ISaleService{
                     .orElseThrow(() -> new EntityNotFoundException("Client not found"));
             sale.setClient(client);
         }
+
         repoSale.save(sale);
 
         Map<String,Object> after = snap(sale);
@@ -669,6 +720,79 @@ public class SaleService implements ISaleService{
         });
     }
 
+    @Override
+    @Transactional
+    public SaleDTO cancelSale(Long idSale) {
+        Sale sale = repoSale.findById(idSale)
+                .orElseThrow(() -> new EntityNotFoundException("Sale not found"));
+
+        // Snapshot antes
+        Map<String,Object> before = snap(sale);
+
+        // Si ya está anulada, devolvemos tal cual
+        if (sale.getStatus() == DocumentStatus.CANCELLED) {
+            return convertSaleToDto(sale);
+        }
+
+
+        boolean hasNonCancelledDeliveries =
+                sale.getDeliveries() != null &&
+                        sale.getDeliveries().stream()
+                                .anyMatch(d -> d != null
+                                        && d.getStatus() != com.appTest.store.models.enums.DeliveryStatus.CANCELLED);
+        if (hasNonCancelledDeliveries) {
+            throw new IllegalStateException(
+                    "Cannot cancel a sale that has active deliveries. Cancel deliveries first."
+            );
+        }
+
+        // Revertir stock
+        if (sale.getSaleDetailList() != null) {
+            for (SaleDetail sd : sale.getSaleDetailList()) {
+                if (sd.getMaterial() == null) continue;
+
+                if (sd.getWarehouse() == null) {
+                    throw new IllegalStateException(
+                            "SaleDetail " + sd.getIdSaleDetail() +
+                                    " has no warehouse information; cannot safely cancel this sale."
+                    );
+                }
+
+                Long matId = sd.getMaterial().getIdMaterial();
+                Long whId  = sd.getWarehouse().getIdWarehouse();
+                BigDecimal qty = sd.getQuantity() != null ? sd.getQuantity() : BigDecimal.ZERO;
+
+                if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                    servStock.increaseStock(matId, whId, qty);
+                }
+            }
+        }
+
+        // Marcar como anulada
+        sale.setStatus(DocumentStatus.CANCELLED);
+        repoSale.save(sale);
+
+        // Snapshot después
+        Map<String,Object> after = snap(sale);
+        List<Change> changes = diff(before, after);
+        String message = summarize(changes);
+        final Long sid = sale.getIdSale();
+
+        afterCommit(() -> {
+            Long evId = audit.success("CANCEL", "Sale", sid, message);
+            var changed = changes.stream()
+                    .map(c -> java.util.Map.<String,Object>of(
+                            "field", c.field(),
+                            "from",  c.from(),
+                            "to",    c.to()
+                    ))
+                    .collect(Collectors.toList());
+            java.util.Map<String,Object> diffPayload = java.util.Map.of("changed", changed);
+            audit.attachDiff(evId, before, after, diffPayload);
+        });
+
+        return convertSaleToDto(sale);
+    }
 
     @Override
     @Transactional

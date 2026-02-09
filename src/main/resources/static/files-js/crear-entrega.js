@@ -96,8 +96,10 @@ function normalizeSale(raw){
     }
   }
 
+  const status = (raw.status || raw.saleStatus || 'ACTIVE').toString().toUpperCase();
+
   const orderId = raw.orderId ?? raw.ordersId ?? raw.order?.idOrders ?? null;
-  return { id, clientName, dateSale, total, pendingUnits: Number(pendingUnits||0), deliveryStatus, orderId };
+  return { id, clientName, dateSale, total, pendingUnits: Number(pendingUnits||0), deliveryStatus, orderId, status };
 }
 
 async function cargarVentasConPendiente(){
@@ -117,7 +119,7 @@ async function cargarVentasConPendiente(){
             : [];
   list = (list||[]).map(normalizeSale).filter(Boolean);
 
-  const eligible = list.filter(s => (s.pendingUnits || 0) > 0);
+  const eligible = list.filter(s => s.status !== 'CANCELLED' && (s.pendingUnits || 0) > 0);
 
   eligible.forEach(s => {
     const opt = document.createElement('option');
@@ -165,6 +167,10 @@ async function lookupVentaPorId(){
     const s = normalizeSale(sRaw);
     if (!s){
       notify('No se pudo interpretar la venta','error');
+      return;
+    }
+    if (s.status === 'CANCELLED'){
+      notify('No se pueden crear entregas para una venta ANULADA','error');
       return;
     }
     if ((s.pendingUnits || 0) <= 0){
@@ -232,7 +238,6 @@ function normalizeDetail(d){
   };
 }
 
-
 async function onChangeVenta(){
   const sel = $('#venta');
   const saleId = Number(sel.value || 0);
@@ -246,14 +251,26 @@ async function onChangeVenta(){
 
   try{
     // 1) Traer venta (para cliente + orderId asociado)
+    let dto = null;
     const res = await authFetch(`${API_URL_SALES}/${saleId}`);
-    if (res.ok){
-      const dto = await safeJson(res);
-      currentSale = dto;
-      currentOrderId = dto.orderId ?? dto.ordersId ?? dto.order?.idOrders ?? null;
-      if (currentOrderId){
-        $('#pedidoAsociado').value = `#${currentOrderId}`;
-      }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    dto = await safeJson(res);
+    currentSale = dto;
+
+    const st = (dto.status || '').toString().toUpperCase();
+    if (st === 'CANCELLED'){
+      notify('Esta venta está ANULADA. No se pueden crear entregas.','error');
+      $('#venta').value = '';
+      $('#pedidoAsociado').value = '—';
+      renderFilas([]);
+      currentSale = null;
+      return;
+    }
+
+    currentOrderId = dto.orderId ?? dto.ordersId ?? dto.order?.idOrders ?? null;
+    if (currentOrderId){
+      $('#pedidoAsociado').value = `#${currentOrderId}`;
     }
 
     // 2) Detalles de la venta con info de entrega (vendido / entregado / pendiente)
@@ -407,23 +424,39 @@ async function guardarEntrega(ev){
   }).then(async (result) => {
       
       if(result.isConfirmed) {
-          
-          const payload = { saleId, deliveryDate, items };
 
-          try{
-            sending = true;
-            const res = await authFetch(API_URL_DELIVERIES, { method:'POST', body: JSON.stringify(payload) });
-            if (!res.ok){
-              const t = await res.text().catch(()=> '');
-              console.warn('POST /deliveries failed', res.status, t);
-              throw new Error(`HTTP ${res.status}`);
+        if (sending) return;
+        sending = true; // ✅ bloquear doble submit mientras revalidamos
+
+        try {
+          const chk = await authFetch(`${API_URL_SALES}/${saleId}`);
+          if (chk.ok){
+            const sNow = await safeJson(chk);
+            const stNow = (sNow.status || '').toString().toUpperCase();
+            if (stNow === 'CANCELLED'){
+              notify('La venta fue ANULADA. No se puede crear la entrega.','error');
+              sending = false;
+              return;
             }
-            flashAndGo('Entrega creada correctamente','entregas.html');
-          }catch(err){
-            console.error(err);
-            sending = false;
-            notify('No se pudo crear la entrega','error');
           }
-      }
+        }catch(_){}
+
+        const payload = { saleId, deliveryDate, items };
+
+        try{
+          const res = await authFetch(API_URL_DELIVERIES, { method:'POST', body: JSON.stringify(payload) });
+          if (!res.ok){
+            const t = await res.text().catch(()=> '');
+            console.warn('POST /deliveries failed', res.status, t);
+            throw new Error(`HTTP ${res.status}`);
+          }
+          flashAndGo('Entrega creada correctamente','entregas.html');
+        }catch(err){
+          console.error(err);
+          sending = false;
+          notify('No se pudo crear la entrega','error');
+        }
+      }  
+
   });
 }

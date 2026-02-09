@@ -23,39 +23,47 @@ public class PurchaseController {
     private IPurchaseService servPurchase;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")
     public ResponseEntity<List<PurchaseDTO>> getAllPurchases() {
         List<Purchase> purchaseList = servPurchase.getAllPurchases();
         List<PurchaseDTO> purchaseDTOList = purchaseList.stream()
-                .map(purchase -> servPurchase.convertPurchaseToDto(purchase))
+                .map(servPurchase::convertPurchaseToDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(purchaseDTOList);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")
     public ResponseEntity<PurchaseDTO> getPurchaseById(@PathVariable Long id) {
         Purchase purchase = servPurchase.getPurchaseById(id);
         return ResponseEntity.ok(servPurchase.convertPurchaseToDto(purchase));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")
     public ResponseEntity<PurchaseDTO> createPurchase(@RequestBody @Valid PurchaseCreateDTO dto) {
         PurchaseDTO createdPurchase = servPurchase.createPurchase(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdPurchase);
     }
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")
     public ResponseEntity<PurchaseDTO> updatePurchase(@RequestBody @Valid PurchaseUpdateDTO dto) {
         servPurchase.updatePurchase(dto);
         Purchase purchase = servPurchase.getPurchaseById(dto.getIdPurchase());
         return ResponseEntity.ok(servPurchase.convertPurchaseToDto(purchase));
     }
 
+    // ✅ NUEVO: ANULAR compra (soft-cancel + rewind stock)
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('OWNER')")
+    public ResponseEntity<PurchaseDTO> cancelPurchase(@PathVariable Long id){
+        PurchaseDTO dto = servPurchase.cancelPurchase(id);
+        return ResponseEntity.ok(dto);
+    }
+
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_OWNER')")
+    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<Void> deletePurchaseById(@PathVariable Long id) {
         servPurchase.deletePurchaseById(id);
         return ResponseEntity.noContent().build();

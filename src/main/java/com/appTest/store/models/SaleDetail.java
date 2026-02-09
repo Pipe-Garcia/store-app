@@ -1,3 +1,4 @@
+// src/main/java/com/appTest/store/models/SaleDetail.java
 package com.appTest.store.models;
 
 import jakarta.persistence.*;
@@ -30,6 +31,10 @@ public class SaleDetail {
     @JoinColumn(name = "material_id", nullable = false)
     private Material material;
 
+    @ManyToOne
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+
     @OneToMany(mappedBy = "saleDetail", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeliveryItem> deliveryItems = new ArrayList<>();
 
@@ -42,4 +47,3 @@ public class SaleDetail {
         this.material = material;
     }
 }
-

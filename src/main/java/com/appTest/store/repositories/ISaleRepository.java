@@ -1,3 +1,4 @@
+// src/main/java/com/appTest/store/repositories/ISaleRepository.java
 package com.appTest.store.repositories;
 
 import com.appTest.store.dto.sale.PaymentStatusAggDTO;
@@ -16,14 +17,35 @@ import java.util.List;
 @Repository
 public interface ISaleRepository extends JpaRepository <Sale, Long> {
 
-   @Query("SELECT new com.appTest.store.dto.sale.SaleSummaryByDateDTO(s.dateSale, SUM(sd.quantity * sd.priceUni), COUNT(DISTINCT s.idSale)) " +
-            "FROM Sale s JOIN s.saleDetailList sd WHERE s.dateSale = :date GROUP BY s.dateSale")
-   SaleSummaryByDateDTO getSaleSummaryByDate(@Param("date") LocalDate date);
+    @Query("""
+      select new com.appTest.store.dto.sale.SaleSummaryByDateDTO(
+        s.dateSale,
+        sum(sd.quantity * sd.priceUni),
+        count(distinct s.idSale)
+      )
+      from Sale s
+      join s.saleDetailList sd
+      where s.dateSale = :date
+        and (s.status is null or s.status <> com.appTest.store.models.enums.DocumentStatus.CANCELLED)
+      group by s.dateSale
+    """)
+    SaleSummaryByDateDTO getSaleSummaryByDate(@Param("date") LocalDate date);
 
-    @Query("SELECT new com.appTest.store.dto.sale.SaleHighestDTO(" +
-            "s.client.name, s.client.surname, s.idSale, SIZE(s.saleDetailList), SUM(sd.quantity * sd.priceUni)) " +
-            "FROM Sale s JOIN s.saleDetailList sd GROUP BY s.idSale, s.client.name, s.client.surname ORDER BY SUM(sd.quantity * sd.priceUni) DESC")
-    List<SaleHighestDTO> getHighestSale();
+    @Query("""
+      select new com.appTest.store.dto.sale.SaleHighestDTO(
+        s.client.name,
+        s.client.surname,
+        s.idSale,
+        size(s.saleDetailList),
+        sum(sd.quantity * sd.priceUni)
+      )
+      from Sale s
+      join s.saleDetailList sd
+      where (s.status is null or s.status <> com.appTest.store.models.enums.DocumentStatus.CANCELLED)
+      group by s.idSale, s.client.name, s.client.surname
+      order by sum(sd.quantity * sd.priceUni) desc
+    """)
+   List<SaleHighestDTO> getHighestSale();
 
 
     @Query("""
@@ -38,8 +60,6 @@ public interface ISaleRepository extends JpaRepository <Sale, Long> {
     List<Sale> search(@Param("from") LocalDate from, @Param("to") LocalDate to, @Param("clientId") Long clientId);
 
 
-    // total a cobrar (sum(balance)) donde balance > 0
-    // balance(s) = totalVenta(s) - totalPagos(s)
     @Query("""
       select coalesce(sum(
         (select coalesce(sum(sd.priceUni * sd.quantity), 0)
@@ -59,10 +79,11 @@ public interface ISaleRepository extends JpaRepository <Sale, Long> {
         (select coalesce(sum(p.amount), 0)
             from Payment p
             where p.sale = s)) > 0
+        and (s.status is null or s.status <> com.appTest.store.models.enums.DocumentStatus.CANCELLED)
     """)
     BigDecimal sumReceivablesTotal();
 
-    @Query("""
+     @Query("""
       select count(s)
       from Sale s
       where
@@ -73,10 +94,10 @@ public interface ISaleRepository extends JpaRepository <Sale, Long> {
         (select coalesce(sum(p.amount), 0)
             from Payment p
             where p.sale = s)) > 0
+        and (s.status is null or s.status <> com.appTest.store.models.enums.DocumentStatus.CANCELLED)
     """)
     Long countReceivables();
 
-    // Top clientes del mes (ya estaba OK; lo dejo igual)
     @Query("""
       select new com.appTest.store.dto.dashboard.TopClientDTO(
         c.idClient,
@@ -87,12 +108,12 @@ public interface ISaleRepository extends JpaRepository <Sale, Long> {
       join s.client c
       join s.saleDetailList sd
       where s.dateSale between :from and :to
+        and (s.status is null or s.status <> com.appTest.store.models.enums.DocumentStatus.CANCELLED)
       group by c.idClient, c.name, c.surname
       order by sum(sd.priceUni * sd.quantity) desc
     """)
     List<com.appTest.store.dto.dashboard.TopClientDTO>
     topClientsBetween(java.time.LocalDate from, java.time.LocalDate to);
-
 
     @Query("""
       select new com.appTest.store.dto.sale.SaleSummaryByDateDTO(
@@ -102,13 +123,20 @@ public interface ISaleRepository extends JpaRepository <Sale, Long> {
       )
       from Sale s join s.saleDetailList sd
       where s.dateSale between :from and :to
+        and (s.status is null or s.status <> com.appTest.store.models.enums.DocumentStatus.CANCELLED)
       group by s.dateSale
       order by s.dateSale
     """)
     List<com.appTest.store.dto.sale.SaleSummaryByDateDTO> sumByDateBetween(
-        @Param("from") java.time.LocalDate from,
-        @Param("to")   java.time.LocalDate to);
+         @Param("from") java.time.LocalDate from,
+         @Param("to")   java.time.LocalDate to);
 
-    List<Sale> findByOrders_IdOrders(Long orderId);
+    @Query("""
+       select s
+       from Sale s
+       where s.orders.idOrders = :orderId
+         and (s.status is null or s.status <> com.appTest.store.models.enums.DocumentStatus.CANCELLED)
+    """)
+    List<Sale> findByOrders_IdOrders(@Param("orderId") Long orderId);
 
 }

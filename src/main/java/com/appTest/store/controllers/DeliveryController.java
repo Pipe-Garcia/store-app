@@ -109,6 +109,12 @@ public class DeliveryController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdDelivery);
     }
 
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
+    public ResponseEntity<DeliveryDTO> cancelDelivery(@PathVariable Long id) {
+        return ResponseEntity.ok(servDelivery.cancelDelivery(id));
+    }
+
     @PutMapping
     @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<DeliveryDTO> updateDelivery(@RequestBody @Valid DeliveryUpdateDTO dto) {

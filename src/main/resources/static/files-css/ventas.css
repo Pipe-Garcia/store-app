@@ -53,7 +53,7 @@
 
 .btn.primary { background:#1c7ed6; color:#fff; }
 .btn.green   { background:#3ac654; color:#fff; padding:8px 12px;}
-.btn.danger  { background:#f84052; color:#fff; padding:8px 12px;}
+.btn.danger  { background:#fff; color:#fff; padding:8px 12px;}
 .btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
 
 .btn.primary:hover{ background:#1864ab; }
@@ -79,7 +79,10 @@ a.btn{ text-decoration:none; }
 .pill.pending   { background:#fff4d6; color:#7a5600; }
 .pill.partial   { background:#e7f1ff; color:#1b4fa3; }
 .pill.completed { background:#e8f7ee; color:#146c2e; }
-
+.pill.cancelled {
+  background-color: #fecaca; /* rojo clarito */
+  color: #7f1d1d;
+}
 /* ====== Tabla de ventas ====== */
 #lista-ventas{
   display:grid;

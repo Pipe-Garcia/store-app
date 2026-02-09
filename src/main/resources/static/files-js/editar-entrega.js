@@ -36,6 +36,18 @@ async function init(){
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await safeJson(res);
 
+    const st = (d.status || '').toString().toUpperCase();
+    if (st === 'ANULADA' || st === 'CANCELLED' || st === 'COMPLETED'){
+      notify(
+        st === 'COMPLETED'
+          ? 'No se puede editar una entrega COMPLETADA'
+          : 'No se puede editar una entrega ANULADA',
+        'error'
+      );
+      setTimeout(()=> location.href = `ver-entrega.html?id=${deliveryId}`, 700);
+      return;
+    }
+
     // Cabecera: Info de Venta
     const idDelivery = d.idDelivery ?? d.deliveryId ?? d.id ?? deliveryId;
     const saleId     = d.saleId ?? d.salesId ?? d.sale?.idSale ?? d.sale?.id ?? null;
@@ -63,8 +75,8 @@ async function init(){
     (d.items || d.details || []).forEach(it=>{
       const name = it.materialName || it.material?.name || `Material #${it.materialId ?? ''}` || '—';
 
-      const qSold = Number(it.quantitySoldForSale ?? it.quantitySold ?? it.soldUnits ?? 0);
-      const qDel = Number(it.quantityDeliveredForSale ?? it.quantityDelivered ?? it.quantity ?? 0);
+      const qSold = Number(it.quantityOrdered ?? it.quantitySoldForSale ?? it.quantitySold ?? it.soldUnits ?? 0);
+      const qDel  = Number(it.quantityDelivered ?? it.quantityDeliveredForSale ?? it.quantity ?? 0);
 
       const deliveryItemId = it.idDeliveryItem ?? it.deliveryItemId ?? it.id ?? null;
       const saleDetailId   = it.saleDetailId ?? it.idSaleDetail ?? null;

@@ -414,3 +414,46 @@ a.btn { text-decoration: none; }
   border-color: #3b82f6 !important;      
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
+
+/* ===== Acciones deshabilitadas (muted) como Ventas ===== */
+.btn.muted,
+a.btn.muted {
+  opacity: .45;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+
+.btn.muted:hover,
+a.btn.muted:hover {
+  transform: none;
+}
+
+/* Chip/etiqueta tipo "Anulada" en acciones */
+.action-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: .85rem;
+  color: #6b7280;
+  background: #f9fafb;
+}
+
+/* Botón anular compacto */
+.btn.danger-outline {
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+}
+.btn.danger-outline:hover {
+  background: #fee2e2;
+}
+
+.pill.cancelled {
+  background-color: #fecaca;
+  color: #7f1d1d;
+}
+
+.btn.danger:hover{
+  background:#c92a2a!important;
+}
