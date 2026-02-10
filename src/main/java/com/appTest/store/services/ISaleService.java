@@ -19,4 +19,5 @@ public interface ISaleService {
     public void deleteSaleById(Long idSale);
     List<Sale> search(LocalDate from, LocalDate to, Long clientId, String paymentStatus);
     List<SaleDetailLiteDTO> getSaleDetailsLite(Long saleId);
+    SaleDTO cancelSale(Long idSale);
 }

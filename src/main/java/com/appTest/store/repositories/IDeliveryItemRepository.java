@@ -13,6 +13,7 @@ public interface IDeliveryItemRepository extends JpaRepository<DeliveryItem, Lon
       select coalesce(sum(di.quantityDelivered), 0)
       from DeliveryItem di
       where di.orderDetail.orders.idOrders = :orderId
+        and di.delivery.status <> com.appTest.store.models.enums.DeliveryStatus.CANCELLED
     """)
     BigDecimal sumDeliveredByOrder(@Param("orderId") Long orderId);
 
@@ -20,16 +21,16 @@ public interface IDeliveryItemRepository extends JpaRepository<DeliveryItem, Lon
       select coalesce(sum(di.quantityDelivered), 0)
       from DeliveryItem di
       where di.orderDetail.idOrderDetail = :orderDetailId
+        and di.delivery.status <> com.appTest.store.models.enums.DeliveryStatus.CANCELLED
     """)
     BigDecimal sumDeliveredByOrderDetail(@Param("orderDetailId") Long orderDetailId);
 
-    // mapa (orderDetailId -> entregado) para un pedido completo
     @Query("""
       select di.orderDetail.idOrderDetail, coalesce(sum(di.quantityDelivered), 0)
       from DeliveryItem di
       where di.orderDetail.orders.idOrders = :orderId
+        and di.delivery.status <> com.appTest.store.models.enums.DeliveryStatus.CANCELLED
       group by di.orderDetail.idOrderDetail
     """)
     List<Object[]> deliveredByOrderDetail(@Param("orderId") Long orderId);
 }
-

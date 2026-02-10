@@ -7,7 +7,7 @@ const API_URL_SUPPLIERS  = `${API_BASE}/suppliers`;
 const $  = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 const fmtARS = new Intl.NumberFormat('es-AR',{ style:'currency', currency:'ARS' });
-// Normalizo a 'YYYY-MM-DD' (primeros 10) y formateo a dd/mm/aaaa para UI
+
 const dateISO = (s) => (s ? String(s).slice(0,10) : '');
 const fmtDate = (s) => {
   const iso = dateISO(s);
@@ -57,7 +57,9 @@ function notify(msg,type='info'){
 let compras = [];     // [PurchaseDTO]
 let proveedores = []; // [{idSupplier, nameCompany,...}]
 let provById = new Map();
-let supplierSelectInstance = null; // Instancia global Tom Select
+
+// TomSelect
+let supplierSelectInstance = null;
 
 // 🔹 paginación (front)
 const PAGE_SIZE = 8;
@@ -90,21 +92,21 @@ window.addEventListener("DOMContentLoaded", async ()=>{
     }
   });
 
-  // ✅ LÓGICA DE MENSAJE FLASH (Cartel de éxito al volver de crear)
+  // flash message
   const flash = localStorage.getItem('flash');
   if (flash) {
     try {
       const {message, type} = JSON.parse(flash);
       if(type === 'success') {
-          Swal.fire({
-              icon: 'success',
-              title: '¡Éxito!',
-              text: message,
-              timer: 2000,
-              showConfirmButton: false
-          });
+        Swal.fire({
+          icon: 'success',
+          title: '¡Éxito!',
+          text: message,
+          timer: 2000,
+          showConfirmButton: false
+        });
       } else {
-          notify(message, type||'success');
+        notify(message, type||'success');
       }
     } catch (_) {}
     localStorage.removeItem('flash');
@@ -114,19 +116,20 @@ window.addEventListener("DOMContentLoaded", async ()=>{
   applyFilters();
 
   // filtros
-  $("#buscarDesde").addEventListener("change", applyFilters);
-  $("#buscarHasta").addEventListener("change", applyFilters);
-  $("#buscarTexto").addEventListener("input", applyFilters);
-  
-  // Nota: TomSelect oculta el select original, pero escuchamos 'change' porque lo disparamos manualmente
-  $("#buscarProveedor").addEventListener("change", applyFilters);
-  
-  $("#btnLimpiar").addEventListener("click", limpiarFiltros);
+  $("#buscarDesde")?.addEventListener("change", applyFilters);
+  $("#buscarHasta")?.addEventListener("change", applyFilters);
+  $("#buscarTexto")?.addEventListener("input", applyFilters);
 
-  // NUEVO: wiring botón Exportar
+  // TomSelect dispara change manual en onChange
+  $("#buscarProveedor")?.addEventListener("change", applyFilters);
+
+  $("#buscarEstado")?.addEventListener("change", applyFilters);
+  $("#btnLimpiar")?.addEventListener("click", limpiarFiltros);
+
+  // Export
   setupExport();
 
-  // 👇👇 ACTIVAMOS LA RESTRICCIÓN DE FECHAS 👇👇
+  // ✅ Restricción de fechas Desde/Hasta
   setupDateRangeConstraint('buscarDesde', 'buscarHasta');
 });
 
@@ -156,7 +159,7 @@ async function cargarDatosBase(){
       (p.nameCompany || `${p.name??''} ${p.surname??''}`.trim() || `#${p.idSupplier}`)
     ]));
 
-     initProveedorFiltro();
+    initProveedorFiltro();
 
     // ordenar por fecha desc
     compras.sort((a,b)=>{
@@ -165,6 +168,7 @@ async function cargarDatosBase(){
       if (da!==db) return db.localeCompare(da);
       return (b.idPurchase||0)-(a.idPurchase||0);
     });
+
   }catch(err){
     console.error(err);
     notify("No se pudieron cargar las compras","error");
@@ -176,16 +180,19 @@ function limpiarFiltros(){
   $("#buscarDesde").value     = "";
   $("#buscarHasta").value     = "";
   $("#buscarTexto").value     = "";
-  
-  // Limpiar TomSelect si existe
+
+  // Limpiar proveedor (TomSelect si existe)
   if (supplierSelectInstance) {
-      supplierSelectInstance.clear();
+    supplierSelectInstance.clear();
   } else {
-      const selProv = $("#buscarProveedor");
-      if (selProv) selProv.value = "";
+    const selProv = $("#buscarProveedor");
+    if (selProv) selProv.value = "";
   }
-  
-  // Limpiamos también las restricciones de los inputs
+
+  const selSt = $("#buscarEstado");
+  if (selSt) selSt.value = "";
+
+  // Limpiar restricciones min/max
   $("#buscarDesde").max = "";
   $("#buscarHasta").min = "";
 
@@ -193,21 +200,20 @@ function limpiarFiltros(){
 }
 
 // ---------------------------------------------------------
-//  TOM SELECT INTEGRATION
+//  TOM SELECT INTEGRATION (Proveedor)
 // ---------------------------------------------------------
 function initProveedorFiltro(){
   const sel = document.getElementById('buscarProveedor');
   if (!sel) return;
 
-  // 1. Destruir instancia anterior si existe
+  // destruir instancia anterior si existe
   if (supplierSelectInstance) {
-      supplierSelectInstance.destroy();
-      supplierSelectInstance = null;
+    supplierSelectInstance.destroy();
+    supplierSelectInstance = null;
   }
 
   sel.innerHTML = '<option value="">Todos</option>';
 
-  // 2. Llenar opciones
   proveedores
     .slice()
     .sort((a,b)=>{
@@ -224,35 +230,40 @@ function initProveedorFiltro(){
       sel.appendChild(opt);
     });
 
-  // 3. Inicializar Tom Select
+  // inicializar TomSelect
   supplierSelectInstance = new TomSelect('#buscarProveedor', {
-      create: false,
-      sortField: { field: "text", direction: "asc" },
-      placeholder: "Buscar proveedor...",
-      allowEmptyOption: true,
-      plugins: ['no_active_items'],
-      onChange: function() {
-          // Disparamos evento manual para que applyFilters lo detecte
-          const event = new Event('change');
-          sel.dispatchEvent(event);
-      }
+    create: false,
+    sortField: { field: "text", direction: "asc" },
+    placeholder: "Buscar proveedor...",
+    allowEmptyOption: true,
+    plugins: ['no_active_items'],
+    onChange: function() {
+      // Disparamos change manual para que applyFilters lo detecte
+      sel.dispatchEvent(new Event('change'));
+    }
   });
 }
-
 
 function applyFilters(){
   const desde = $("#buscarDesde").value || "";
   const hasta = $("#buscarHasta").value || "";
   const q     = ($("#buscarTexto").value || "").toLowerCase();
   const supplierId = $("#buscarProveedor") ? $("#buscarProveedor").value : "";
+  const statusSel  = $("#buscarEstado") ? ($("#buscarEstado").value || "") : "";
 
   let list = compras.slice();
 
-  
   if (supplierId){
     list = list.filter(c =>
       String(c.supplierId ?? '') === String(supplierId)
     );
+  }
+
+  if (statusSel){
+    list = list.filter(c => {
+      const st = String(c.status || 'ACTIVE').toUpperCase();
+      return st === String(statusSel).toUpperCase();
+    });
   }
 
   if (desde) list = list.filter(c => {
@@ -276,21 +287,27 @@ function applyFilters(){
   renderPaginated();
 }
 
-
 function displaySupplier(c){
   const id = c.supplierId != null ? Number(c.supplierId) : null;
 
   if (c.supplierName && c.supplierName.trim().length > 0){
     return c.supplierName;
   }
-
   if (id && provById.has(id)){
     return provById.get(id);
   }
-
   return "—";
 }
 
+function purchaseStatusCode(p){
+  return String(p.status || 'ACTIVE').toUpperCase();
+}
+function purchaseStatusPillHtml(code){
+  if (code === 'CANCELLED'){
+    return `<span class="pill cancelled">ANULADA</span>`;
+  }
+  return `<span class="pill active">ACTIVA</span>`;
+}
 
 // ========= Paginación (front) =========
 function renderPaginated(){
@@ -329,6 +346,7 @@ function renderLista(lista){
       <div>Fecha</div>
       <div>Proveedor</div>
       <div>Total</div>
+      <div>Estado</div>
       <div>Acciones</div>
     </div>
   `;
@@ -338,52 +356,126 @@ function renderLista(lista){
     r.className="fila";
     r.innerHTML = `<div style="grid-column:1/-1;color:#666;">No hay compras para los filtros aplicados.</div>`;
     cont.appendChild(r);
+    cont.onclick = null;
     return;
   }
 
   for (const c of lista){
+    const id = c.idPurchase;
     const total = Number(c.totalAmount||0);
+    const st = purchaseStatusCode(c);
+    const isCancelled = st === 'CANCELLED';
+
+    const editBtnHtml = isCancelled
+      ? `<button class="btn outline muted" disabled
+                title="No se puede editar una compra anulada">✏️</button>`
+      : `<a class="btn outline" href="editar-compra.html?id=${id}" title="Editar compra">✏️</a>`;
+
+    const cancelBtnHtml = isCancelled
+      ? `<button class="btn outline" disabled title="Compra anulada" style="background:#fff;">⛔</button>`
+      : `<button class="btn danger" data-cancel="${id}"
+                data-desc="Compra #${id} — ${displaySupplier(c)}"
+                title="Anular" style="background:#fff;">⛔</button>`;
 
     const row = document.createElement("div");
     row.className="fila";
     row.innerHTML = `
-      <div>${c.idPurchase || "-"}</div>
+      <div>${id || "-"}</div>
       <div>${fmtDate(c.datePurchase)}</div>
       <div>${displaySupplier(c)}</div>
       <div>${fmtARS.format(total)}</div>
+      <div>${purchaseStatusPillHtml(st)}</div>
       <div class="acciones">
-        <a class="btn outline" href="detalle-compra.html?id=${c.idPurchase}" title="Ver detalle">👁️</a>
-        <a class="btn outline" href="editar-compra.html?id=${c.idPurchase}" title="Editar compra">✏️</a>
-        <button class="btn outline" style="border: 0.6px solid #ced4da;" data-pdf="${c.idPurchase}" title="Descargar PDF">📄</button>
-        <button class="btn danger" data-del="${c.idPurchase}" title="Eliminar">🗑️</button>
+        <a class="btn outline" href="detalle-compra.html?id=${id}" title="Ver detalle">👁️</a>
+        ${editBtnHtml}
+        <button class="btn outline" style="border: 0.6px solid #ced4da;" data-pdf="${id}" title="Descargar PDF">📄</button>
+        ${cancelBtnHtml}
       </div>
     `;
     cont.appendChild(row);
   }
 
-  // Delegación de eventos
   cont.onclick = (ev)=>{
-    const btn = ev.target.closest('button');
-    if (!btn) return;
+    const target = ev.target.closest('button, a');
+    if (!target) return;
 
-    const delId = btn.getAttribute("data-del");
-    if (delId) { 
-      borrarCompra(Number(delId)); 
-      return; 
+    const cancelId = target.getAttribute("data-cancel");
+    const desc = target.getAttribute("data-desc");
+    if (cancelId) {
+      anularCompra(Number(cancelId), desc || `Compra #${cancelId}`);
+      return;
     }
 
-    const pdfId = btn.getAttribute("data-pdf");
-    if (pdfId) { 
-      downloadPurchasePdf(Number(pdfId)); 
-      return; 
+    const delId = target.getAttribute("data-del");
+    if (delId) {
+      borrarCompra(Number(delId));
+      return;
+    }
+
+    const pdfId = target.getAttribute("data-pdf");
+    if (pdfId) {
+      downloadPurchasePdf(Number(pdfId));
     }
   };
 }
 
 // ========= Acciones =========
+async function anularCompra(id, descripcion){
+  const result = await Swal.fire({
+    title: '¿Anular compra?',
+    text: `Vas a anular ${descripcion}.
+Se revertirá el stock ingresado por esta compra.
+Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Sí, anular',
+    cancelButtonText: 'Cancelar'
+  });
+
+  if (!result.isConfirmed) return;
+
+  try{
+    const r = await authFetch(`${API_URL_PURCHASES}/${id}/cancel`, { method:"POST" });
+
+    if (r.status === 403){
+      await Swal.fire(
+        'Permiso denegado',
+        'Se requiere rol OWNER para anular compras.',
+        'error'
+      );
+      return;
+    }
+
+    if (!r.ok){
+      let msg = `HTTP ${r.status}`;
+      try{
+        const err = await r.json();
+        if (err?.message) msg = err.message;
+      }catch(_){}
+      throw new Error(msg);
+    }
+
+    const updated = await r.json().catch(()=>null);
+
+    // actualizar en memoria (sin recargar todo)
+    compras = compras.map(p => {
+      if (p.idPurchase !== id) return p;
+      return updated ? updated : { ...p, status: 'CANCELLED' };
+    });
+
+    await Swal.fire('Compra anulada', 'La compra fue anulada y el stock fue revertido.', 'success');
+    applyFilters();
+
+  }catch(e){
+    console.error(e);
+    await Swal.fire('Error', e.message || 'No se pudo anular la compra.', 'error');
+  }
+}
+
 async function borrarCompra(id){
-  // SweetAlert en lugar de confirm()
-  Swal.fire({
+  const result = await Swal.fire({
     title: '¿Eliminar compra?',
     text: `Vas a eliminar la compra #${id}. Esta acción no se puede deshacer.`,
     icon: 'warning',
@@ -392,35 +484,30 @@ async function borrarCompra(id){
     cancelButtonColor: '#3085d6',
     confirmButtonText: 'Sí, eliminar',
     cancelButtonText: 'Cancelar'
-  }).then(async (result) => {
-    
-    if (result.isConfirmed) {
-      try{
-        const r = await authFetch(`${API_URL_PURCHASES}/${id}`, { method:"DELETE" });
-        if (!r.ok){
-          if (r.status===403){ 
-            notify("No tenés permisos para eliminar compras (ROLE_OWNER requerido).","error"); 
-            return; 
-          }
-          throw new Error(`HTTP ${r.status}`);
-        }
-        compras = compras.filter(c => c.idPurchase !== id);
-        
-        Swal.fire(
-            '¡Eliminada!',
-            'La compra ha sido eliminada.',
-            'success'
-        );
-        applyFilters();
-      }catch(e){
-        console.error(e);
-        notify("No se pudo eliminar la compra","error");
-      }
-    }
   });
+
+  if (!result.isConfirmed) return;
+
+  try{
+    const r = await authFetch(`${API_URL_PURCHASES}/${id}`, { method:"DELETE" });
+    if (!r.ok){
+      if (r.status===403){
+        notify("No tenés permisos para eliminar compras (ROLE_OWNER requerido).","error");
+        return;
+      }
+      throw new Error(`HTTP ${r.status}`);
+    }
+    compras = compras.filter(c => c.idPurchase !== id);
+
+    await Swal.fire('¡Eliminada!', 'La compra ha sido eliminada.', 'success');
+    applyFilters();
+  }catch(e){
+    console.error(e);
+    notify("No se pudo eliminar la compra","error");
+  }
 }
 
-// 🔹 PDF individual de compra (con feedback tipo ventas)
+// 🔹 PDF individual de compra
 async function downloadPurchasePdf(id){
   const btn = document.querySelector(`button[data-pdf="${id}"]`);
   const originalHTML = btn ? btn.innerHTML : null;
@@ -501,11 +588,9 @@ function setupExport(){
       confirmButtonText: 'Exportar',
       cancelButtonText: 'Cancelar',
       buttonsStyling: true,
-      confirmButtonColor: '#4f46e5',  // violeta
-      cancelButtonColor: '#6b7280',   // gris
-      customClass: {
-        popup: 'swal2-popup-export'
-      },
+      confirmButtonColor: '#4f46e5',
+      cancelButtonColor: '#6b7280',
+      customClass: { popup: 'swal2-popup-export' },
       preConfirm: () => {
         const popup = Swal.getPopup();
         const checked = popup.querySelector('input[name="purchasesExportScope"]:checked');
@@ -521,7 +606,7 @@ function setupExport(){
 
     try{
       await exportPurchases(scope);
-    } catch (e){
+    }catch(e){
       console.error(e);
       Swal.fire('Error', 'No se pudo generar el PDF de compras.', 'error');
     }
@@ -532,6 +617,7 @@ async function exportPurchases(scope){
   const from = $("#buscarDesde").value || "";
   const to   = $("#buscarHasta").value || "";
   const supplierId = $("#buscarProveedor") ? $("#buscarProveedor").value : "";
+  const statusSel  = $("#buscarEstado") ? ($("#buscarEstado").value || "") : "";
 
   const qs = new URLSearchParams();
   qs.set('scope', scope || 'FILTERED');
@@ -541,10 +627,8 @@ async function exportPurchases(scope){
     if (to)   qs.set('to',   to);
   }
 
-  
-  if (supplierId){
-    qs.set('supplierId', supplierId);
-  }
+  if (supplierId) qs.set('supplierId', supplierId);
+  if (statusSel)  qs.set('status', statusSel);
 
   const btn = document.getElementById('btnExport');
   const originalText = btn ? btn.textContent : null;
@@ -566,10 +650,9 @@ async function exportPurchases(scope){
     }
     if (!r.ok){
       const body = await r.text().catch(()=> '');
-      console.error('Export compras 403 body:', body);
+      console.error('Export compras error body:', body);
       throw new Error(`HTTP ${r.status}`);
     }
-
 
     const blob = await r.blob();
     if (!blob || blob.size === 0){
@@ -602,7 +685,7 @@ async function exportPurchases(scope){
   }
 }
 
-// 👇👇 LA FUNCIÓN REUTILIZABLE PARA RESTRICCIÓN DE FECHAS 👇👇
+// ✅ Restricción Desde/Hasta reutilizable
 function setupDateRangeConstraint(idDesde, idHasta) {
   const elDesde = document.getElementById(idDesde);
   const elHasta = document.getElementById(idHasta);

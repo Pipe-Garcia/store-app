@@ -10,6 +10,13 @@ const API_DELIVERIES_BY_SALE = (id)=> `/deliveries/by-sale/${id}`;
 const $  = (s,r=document)=>r.querySelector(s);
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 
+const UI_SALE_STATUS = { ACTIVE:'ACTIVA', CANCELLED:'ANULADA' };
+
+function getSaleStatusCode(v){
+  const raw = (v.status || v.saleStatus || '').toString().toUpperCase();
+  return raw || 'ACTIVE';
+}
+
 /* =========================================
    HELPER DE FECHA (YYYY-MM-DD -> DD/MM/AAAA)
    ========================================= */
@@ -105,6 +112,29 @@ function renderCabecera(s){
   
   $('#cliente').textContent = s.clientName ?? '—';
 
+  const saleStatus = getSaleStatusCode(s);
+  const pillSale = document.getElementById('estadoVenta');
+  if (pillSale){
+    if (saleStatus === 'CANCELLED'){
+      pillSale.className = 'pill cancelled';
+      pillSale.textContent = UI_SALE_STATUS.CANCELLED;
+    } else {
+      pillSale.className = 'pill completed';
+      pillSale.textContent = UI_SALE_STATUS.ACTIVE;
+    }
+  }
+
+  if (saleStatus === 'CANCELLED'){
+    const btnEdit = document.getElementById('btnEditar');
+    if (btnEdit) btnEdit.style.display = 'none';
+
+    const btnCrear = document.getElementById('btnCrearEntrega');
+    if (btnCrear) btnCrear.style.display = 'none';
+
+    const btnPay = document.getElementById('btnRegistrarPago2');
+    if (btnPay) btnPay.style.display = 'none';
+  }
+
   const orderId = s.orderId ?? null;
   $('#pedido').textContent = orderId ? `#${orderId}` : '—';
 
@@ -169,11 +199,26 @@ function refreshHeaderTotals(){
           btnPay.onclick = openPayDialog;
       }
   }
+
+  try{
+    const st = getSaleStatusCode(saleDTO);
+    if (st === 'CANCELLED' && btnPay){
+      btnPay.style.display = 'none';
+      btnPay.onclick = null;
+    }
+  }catch(_){}
 }
 
 function setupCrearEntrega(s){
   const btn = $('#btnCrearEntrega');
   if (!btn) return;
+
+  const saleStatus = getSaleStatusCode(s);
+  if (saleStatus === 'CANCELLED'){
+    btn.style.display = 'none';
+    return;
+  }
+
   const sold = getSoldUnits(s);
   const pending = getPendingUnits(s);
   const delState = getDeliveryStateCode(s);
@@ -245,12 +290,22 @@ async function renderEntregasVenta(id){
       const date = fmtDate(d.deliveryDate);
       
       const units  = Number(d.deliveredUnits ?? 0);
-      const status = (d.status ?? '').toUpperCase();
       
       const labelEnt = (d.itemsSummary && d.itemsSummary.trim()) ? d.itemsSummary.trim() : `${units} unid.`;
-      const pillClass = status === 'COMPLETED' ? 'completed' : 'pending';
-      const labelStatus = status === 'COMPLETED' ? 'COMPLETADA' : 'PENDIENTE';
 
+      const status = (d.status ?? '').toUpperCase();
+
+      let pillClass = 'pending';
+      let labelStatus = 'PENDIENTE';
+
+      if (status === 'COMPLETED') {
+        pillClass = 'completed';
+        labelStatus = 'COMPLETADA';
+      } else if (status === 'CANCELLED') {
+        pillClass = 'cancelled';
+        labelStatus = 'ANULADA';
+      }
+      
       const row = document.createElement('div');
       row.className = 'trow';
       row.innerHTML = `

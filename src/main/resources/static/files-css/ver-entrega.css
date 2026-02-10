@@ -155,3 +155,17 @@
   .tabla-clean .thead { display: none; }
   .tabla-clean .trow { flex-direction: column; align-items: flex-start; gap: 8px; border-bottom: 2px solid #eee; }
 }
+
+/* ====== Pills de Estado ====== */
+.pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: inline-block;
+  border: 1px solid transparent;
+}
+.pill.pending   { background: #fff4d6; color: #7a5600; border-color: #ffe8a1; }
+.pill.partial   { background: #e7f1ff; color: #1b4fa3; border-color: #cfe2ff; }
+.pill.completed { background: #e8f7ee; color: #146c2e; border-color: #a7f3d0; }
+.pill.cancelled { background-color: #fecaca; color: #7f1d1d; }

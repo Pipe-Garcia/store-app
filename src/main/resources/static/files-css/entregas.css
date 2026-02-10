@@ -48,7 +48,7 @@
 /* ====== Filtros (Estilo Proveedores) ====== */
 .filters.card {
   margin-bottom: 20px;
-      padding: var(--card-pad);
+  padding: var(--card-pad);
 }
 
 .filters .row {
@@ -119,21 +119,18 @@
 a.btn { text-decoration: none; }
 .acciones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 
-
-
 /* ====== TABLA DE ENTREGAS (5 columnas en desktop) ====== */
 
 .tabla {
   width: 100%;
   display: block;
-  overflow-x: auto; /* por si alguna columna crece mucho */
+  overflow-x: auto;
 }
 
-/* Fila tipo tabla (desktop ≥ ~900px) */
+/* Fila tipo tabla (desktop) */
 #lista-entregas .fila,
 .tabla .fila {
   display: grid;
-  /* Fecha | Cliente | Venta | Estado | Acciones */
   grid-template-columns: 130px 2fr 0.6fr 1.4fr 1fr;
   align-items: center;
   gap: 10px;
@@ -145,7 +142,6 @@ a.btn { text-decoration: none; }
   margin-bottom: 0;
 }
 
-
 /* Encabezado */
 #lista-entregas .fila.encabezado {
   background: #f1f3f5;
@@ -155,13 +151,11 @@ a.btn { text-decoration: none; }
   top: 0;
   z-index: 1;
   border: 1px solid #e9ecef;
-  
-  /* Corrección de tamaño de texto */
   font-size: 1rem; 
   color: #212529;
 }
 
-/* Centrado TOTAL (Texto y contenido) */
+/* Centrado TOTAL */
 #lista-entregas .fila > div {
   display: flex;
   justify-content: center;
@@ -171,14 +165,10 @@ a.btn { text-decoration: none; }
 }
 
 /* Zebra y Hover */
-#lista-entregas .fila:not(.encabezado):nth-child(odd) {
-  background: #fcfcfd;
-}
-#lista-entregas .fila:not(.encabezado):hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-}
+#lista-entregas .fila:not(.encabezado):nth-child(odd) { background: #fcfcfd; }
+#lista-entregas .fila:not(.encabezado):hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06); }
 
-/* ====== Pills de Estado (Etiquetas) ====== */
+/* ====== Pills de Estado ====== */
 .pill {
   padding: 4px 10px;
   border-radius: 999px;
@@ -190,24 +180,13 @@ a.btn { text-decoration: none; }
 .pill.pending   { background: #fff4d6; color: #7a5600; border-color: #ffe8a1; }
 .pill.partial   { background: #e7f1ff; color: #1b4fa3; border-color: #cfe2ff; }
 .pill.completed { background: #e8f7ee; color: #146c2e; border-color: #a7f3d0; }
+.pill.cancelled { background-color: #fecaca; color: #7f1d1d; }
 
-.form-page.narrow { 
-  max-width: 900px;
-  margin: 0 auto; 
-}
-.form-page .grid { 
-  display: grid; 
-  grid-template-columns: 1fr 1fr; 
-  gap: 12px; 
-}
+/* Formularios */
+.form-page.narrow { max-width: 900px; margin: 0 auto; }
+.form-page .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-/* Inputs de formularios de edición/creación */
-.form-page label {
-  display: block; 
-  font-size: 0.9rem; 
-  color: #444; 
-  margin-bottom: 6px;
-}
+.form-page label { display: block; font-size: 0.9rem; color: #444; margin-bottom: 6px; }
 .form-page input, 
 .form-page select,
 .tabla input.qty {
@@ -225,15 +204,8 @@ a.btn { text-decoration: none; }
   box-shadow: none;
 }
 
-/* Acciones de formulario */
-.form-actions {
-  margin-top: 20px;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-start;
-}
+.form-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-start; }
 
-/* Vista de detalle (Ver Entrega) */
 .view-delivery {
   display: grid; 
   grid-template-columns: repeat(3, 1fr); 
@@ -241,22 +213,14 @@ a.btn { text-decoration: none; }
   margin-bottom: 20px;
 }
 
-/* ====== Responsive tabla / filtros / header local ====== */
-
-/* Pantallas medianas: tipografía y padding un poco más chicos */
+/* ====== Responsive ====== */
 @media (max-width: 1100px){
   .page { padding: 16px; }
-
-  #lista-entregas .fila {
-    font-size: 0.9rem;
-  }
+  #lista-entregas .fila { font-size: 0.9rem; }
 }
 
-/* Tablets / ventanas ~900px: seguimos en 5 columnas, pero más compactas */
 @media (max-width: 900px){
-  .filters .row {
-    gap: 8px;
-  }
+  .filters .row { gap: 8px; }
 
   #lista-entregas .fila,
   .tabla .fila {
@@ -264,7 +228,6 @@ a.btn { text-decoration: none; }
     padding: 8px 10px;
   }
 
-  /* Cliente alineado a la izquierda para no apretar tanto el texto */
   #lista-entregas .fila > div:nth-child(2){
     justify-content: flex-start;
     text-align: left;
@@ -274,30 +237,14 @@ a.btn { text-decoration: none; }
   .view-delivery { grid-template-columns: 1fr; }
 }
 
-/* Mobile / ventana chica (~≤700px): pasamos a “cards” apiladas */
 @media (max-width: 700px){
   .page { padding: 12px; }
 
-  /* Header local: título arriba, botón abajo */
-  .page-head{
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  .page-head h1{
-    margin-left: 0;
-  }
+  .page-head{ flex-direction: column; align-items: flex-start; gap: 8px; }
+  .page-head h1{ margin-left: 0; }
 
-  /* Encabezado tipo tabla deja de tener sentido → lo ocultamos */
-  #lista-entregas .fila.encabezado {
-    display: none;
-  }
+  #lista-entregas .fila.encabezado { display: none; }
 
-  /* Cada entrega:
-       Fecha   | Estado
-       Cliente | Cliente
-       Venta   | Acciones
-  */
   #lista-entregas .fila,
   .tabla .fila {
     grid-template-columns: 1fr 1fr;
@@ -310,67 +257,30 @@ a.btn { text-decoration: none; }
     padding: 10px 12px;
   }
 
-  #lista-entregas .fila > div {
-    width: 100%;
-  }
-
-  #lista-entregas .fila > div:nth-child(1){ /* Fecha */
-    grid-area: fecha;
-    justify-content: flex-start;
-  }
-  #lista-entregas .fila > div:nth-child(2){ /* Cliente */
-    grid-area: cliente;
-    justify-content: flex-start;
-    text-align: left;
-  }
-  #lista-entregas .fila > div:nth-child(3){ /* Venta */
-    grid-area: venta;
-    justify-content: flex-start;
-  }
-  #lista-entregas .fila > div:nth-child(4){ /* Estado */
-    grid-area: estado;
-    justify-content: flex-end;
-  }
-  #lista-entregas .fila > div:nth-child(5){ /* Acciones */
-    grid-area: acciones;
-    justify-content: flex-end;
-  }
+  #lista-entregas .fila > div { width: 100%; }
+  #lista-entregas .fila > div:nth-child(1){ grid-area: fecha; justify-content: flex-start; }
+  #lista-entregas .fila > div:nth-child(2){ grid-area: cliente; justify-content: flex-start; text-align: left; }
+  #lista-entregas .fila > div:nth-child(3){ grid-area: venta; justify-content: flex-start; }
+  #lista-entregas .fila > div:nth-child(4){ grid-area: estado; justify-content: flex-end; }
+  #lista-entregas .fila > div:nth-child(5){ grid-area: acciones; justify-content: flex-end; }
 }
 
+/* Sección crear entrega / editar */
+.seccion-crearEntrega #items .fila { grid-template-columns: 2fr 1.5fr 0.8fr 1fr; }
+.seccion-crearEntrega #items .fila > div:nth-child(3) { justify-content: center; }
+.seccion-crearEntrega #items .fila > div:nth-child(4) { justify-content: center; }
 
-.seccion-crearEntrega #items .fila {
-  grid-template-columns: 2fr 1.5fr 0.8fr 1fr; 
-}
+.seccion-crearEntrega { max-width: 900px; margin: 0 auto; }
+.seccion-crearEntrega .tabla { min-width: 0 !important; width: 100%; overflow-x: visible; }
+.seccion-crearEntrega .tabla .fila.encabezado { padding: 12px 14px !important; background-color: #f1f3f5; }
 
-/* Alineación específica */
-.seccion-crearEntrega #items .fila > div:nth-child(3) { /* Vendido */
-  justify-content: center;
-}
-.seccion-crearEntrega #items .fila > div:nth-child(4) { /* A Entregar */
-  justify-content: center;
-}
-
-.seccion-crearEntrega {
-  max-width: 900px;            
-  margin: 0 auto;              
-}
-
-.seccion-crearEntrega .tabla {
-  min-width: 0 !important;  
-  width: 100%;              
-  overflow-x: visible;    
-}
-.seccion-crearEntrega .tabla .fila.encabezado {
-  padding: 12px 14px !important;
-  background-color: #f1f3f5;
-}
 #form-editar #items .fila {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr;
   align-items: center;
   gap: 10px;
   border-bottom: 1px solid #e9ecef;
-  padding: 10px 0; /* Padding vertical para aire */
+  padding: 10px 0;
 }
 
 #form-editar #items .fila > div:nth-child(2),
@@ -385,17 +295,10 @@ a.btn { text-decoration: none; }
   font-weight: 700;
   border-bottom: 2px solid #e9ecef;
 }
-#form-editar #items .fila.encabezado > div {
-  justify-content: center;
-}
-#form-editar #items .fila.encabezado > div:first-child {
-  justify-content: flex-start;
-  padding-left: 10px;
-}
-/* ==========================================================
-   CORRECCIÓN FINAL: Input pequeño y siempre visible
-   ========================================================== */
+#form-editar #items .fila.encabezado > div { justify-content: center; }
+#form-editar #items .fila.encabezado > div:first-child { justify-content: flex-start; padding-left: 10px; }
 
+/* Input pequeño y siempre visible */
 #form-editar .tabla input[type="number"] {
   border: 1px solid #dfe3e6 !important;  
   background-color: #fff !important;     
@@ -403,105 +306,106 @@ a.btn { text-decoration: none; }
   height: 34px !important;               
   padding: 0 5px !important;            
   width: 80px !important;                
-  
-  margin: 0 auto !important; /* Centrado en la celda */
+  margin: 0 auto !important;
   display: block;                        
   text-align: center;                    
 }
-
-/* Efecto Focus */
 #form-editar .tabla input[type="number"]:focus {
   border-color: #3b82f6 !important;      
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
-    .ts-control {
-        border: 1px solid #ced4da !important;
-        border-radius: 6px !important;
-        padding: 0 12px !important;
-        
-        /* Forzar ancho igual al resto de inputs */
-        width: 200px !important;  
-        
-        min-height: 38px !important;
-        height: 38px !important;
-        box-shadow: none !important;
-        font-size: 1rem;
-        font-family: inherit;
-        background-color: #fff;
-        color: #212529;
-        
-        /* Flexbox para centrar texto verticalmente */
-        display: flex !important;
-        align-items: center !important;
-        flex-wrap: nowrap !important;
-        overflow: hidden;
-    }
 
-    /* 2. TEXTO SELECCIONADO */
-    .ts-control > .item {
-        background: transparent !important;
-        border: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        color: inherit !important;
-        font-size: 1rem !important;
-        line-height: 1.5 !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        width: 100%;
-    }
+/* Acciones deshabilitadas (muted) */
+.btn.muted,
+a.btn.muted {
+  opacity: .45;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+.btn.muted:hover,
+a.btn.muted:hover { transform: none; }
 
-    /* 3. INPUT DE ESCRITURA */
-    .ts-control input {
-        font-size: 1rem !important;
-        color: inherit;
-        background: transparent !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        height: 100% !important;
-        width: 100% !important;
-        position: relative;
-        top: 0;
-    }
+/* Chip/etiqueta */
+.action-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: .85rem;
+  color: #6b7280;
+  background: #f9fafb;
+}
 
-    /* 4. OCULTAR EL ITEM AL ESCRIBIR */
-    .ts-wrapper.single.input-active .ts-control .item {
-        display: none !important;
-    }
+/* Botón anular compacto */
+.btn.danger-outline { border: 1px solid #fca5a5; color: #b91c1c; }
+.btn.danger-outline:hover { background: #fee2e2; }
 
-    /* 5. FOCUS */
-    .ts-wrapper.focus .ts-control {
-        border-color: #86b7fe !important;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-        outline: 0;
-    }
+.btn.danger:hover{ background:#c92a2a!important; }
 
-    /* 6. MENÚ DESPLEGABLE */
-    .ts-dropdown {
-        border: 1px solid #ced4da;
-        border-radius: 6px;
-        margin-top: 4px;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-        z-index: 9999;
-        background: #fff;
-        width: 200px !important; 
-    }
-
-    /* 7. OPCIONES */
-    .ts-dropdown .option {
-        padding: 8px 12px;
-        cursor: pointer;
-    }
-
-    .ts-dropdown .active {
-        background-color: #e9ecef;
-        color: #000;
-    }
-
-    /* 8. FLECHITA */
-    .ts-wrapper.single .ts-control::after {
-        border-color: #6c757d transparent transparent transparent !important;
-        border-width: 5px 5px 0 5px !important;
-        right: 10px !important;
-    }
+/* ==========================================================
+   TOM SELECT (desde cambios-febrero)
+   ========================================================== */
+.ts-control {
+  border: 1px solid #ced4da !important;
+  border-radius: 6px !important;
+  padding: 0 12px !important;
+  width: 200px !important;
+  min-height: 38px !important;
+  height: 38px !important;
+  box-shadow: none !important;
+  font-size: 1rem;
+  font-family: inherit;
+  background-color: #fff;
+  color: #212529;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  overflow: hidden;
+}
+.ts-control > .item {
+  background: transparent !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: inherit !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+.ts-control input {
+  font-size: 1rem !important;
+  color: inherit;
+  background: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+  position: relative;
+  top: 0;
+}
+.ts-wrapper.single.input-active .ts-control .item { display: none !important; }
+.ts-wrapper.focus .ts-control {
+  border-color: #86b7fe !important;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+  outline: 0;
+}
+.ts-dropdown {
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  margin-top: 4px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  z-index: 9999;
+  background: #fff;
+  width: 200px !important; 
+}
+.ts-dropdown .option { padding: 8px 12px; cursor: pointer; }
+.ts-dropdown .active { background-color: #e9ecef; color: #000; }
+.ts-wrapper.single .ts-control::after {
+  border-color: #6c757d transparent transparent transparent !important;
+  border-width: 5px 5px 0 5px !important;
+  right: 10px !important;
+}

@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 @Entity
 @Getter @Setter
 public class PurchaseDetail {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idPurchaseDetail;
@@ -20,6 +21,10 @@ public class PurchaseDetail {
     @ManyToOne
     @JoinColumn(name = "material_supplier_id", nullable = false)
     private MaterialSupplier materialSupplier;
+
+    @ManyToOne
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
 
     @Column(nullable = false)
     private BigDecimal quantity;

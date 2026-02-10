@@ -1,104 +1,166 @@
-/* ====== Variables y base ====== */
+/* ==========================================================
+   VENTAS.CSS (UNIFICADO + RESPONSIVE COMO ENTREGAS)
+   - Arregla spacing (Cliente/Total/Estado) centrando celdas
+   - Acciones con columna más ancha y botones “parejos”
+   - Responsive igual a entregas (<=700px en “tarjetas”)
+   - Tooltip en hover para acciones deshabilitadas (anulada/entregada)
+   - Tom Select del cliente con el MISMO tamaño que los otros inputs
+   ========================================================== */
+
+/* ====== Variables Base ====== */
 :root{
   --gap: 14px;
   --radius: 12px;
   --card-pad: 14px 16px;
   --shadow: 0 1px 2px rgba(0,0,0,.06);
+
+  --c-text: #212529;
+  --c-muted: #6b7280;
+  --c-border: #e9ecef;
+
+  --c-primary: #1c7ed6;
+  --c-primary-600: #1864ab;
+
+  --c-red: #f84052;
+  --c-red-700: #c92a2a;
 }
 
-.page{ 
-    max-width: none;        /* ELIMINA EL LÍMITE */
-    width: 100%;            /* Ocupa todo el ancho */
-    padding: 24px; 
-    box-sizing: border-box; /* Evita scroll horizontal por padding */
-}
-.page-head{ display:flex; align-items:center; margin-bottom:12px; gap: 35px;}
-.page-head h1{ margin-left: 15px; }
+*{ box-sizing:border-box; }
 
-/* ====== Cards / contenedores ====== */
+/* ====== Layout Base ====== */
+.page{
+  max-width:none;
+  width:100%;
+  padding:24px;
+  box-sizing:border-box;
+}
+
+.page-head{
+  display:flex;
+  align-items:center;
+  margin-bottom:12px;
+  gap:35px;
+}
+.page-head h1{ margin-left:15px; }
+
+/* ====== Cards ====== */
 .card{
-  background:#fff; border-radius:var(--radius);
+  background:#fff;
+  border-radius:var(--radius);
   padding:var(--card-pad);
-  box-shadow: var(--shadow);
-  margin: 10px 0 14px 0;
+  box-shadow:var(--shadow);
+  margin:10px 0 14px 0;
 }
 
-/* Permite scroll horizontal si la tabla no entra */
-.card:has(#lista-ventas){ overflow-x:auto; }
+/* ====== Filtros (igual a entregas) ====== */
+.filters.card{
+  margin-bottom:20px;
+  padding:var(--card-pad);
+}
 
-/* ====== Filtros ====== */
 .filters .row{
-  display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px;
-}
-.filters label{
-  display:flex; flex-direction:column; gap:6px; font-size:.95rem; color:#555;
-}
-.filters input[type="date"],
-.filters select,
-.filters input[type="text"]{
-  padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
-  min-width: 180px;
-}
-#btnLimpiar{ align-self:flex-end; }
-
-/* ====== Botones ====== */
-.btn{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:8px 12px; border-radius:8px; border:1px solid transparent;
-  font-weight:500; cursor:pointer; text-decoration:none; line-height:1;
-  transition: background .15s, border-color .15s, transform .02s;
-  letter-spacing: .3px;
-}
-.btn:active{ transform: translateY(1px); }
-
-.btn.primary { background:#1c7ed6; color:#fff; }
-.btn.green   { background:#3ac654; color:#fff; padding:8px 12px;}
-.btn.danger  { background:#f84052; color:#fff; padding:8px 12px;}
-.btn.outline { background:#fff; color:#212529; border-color:#ced4da; }
-
-.btn.primary:hover{ background:#1864ab; }
-.btn.green:hover  { background:#2b8a3e; }
-.btn.danger:hover { background:#c92a2a; }
-.btn.outline:hover{ background:#f1f3f5; }
-
-/* Asegura quitar subrayado a <a class="btn"> */
-a.btn{ text-decoration:none; }
-
-/* Contenedor de acciones dentro de la tabla */
-.acciones{
   display:flex;
   flex-wrap:wrap;
-  gap:8px;
-  justify-content:center;   /* centrado en su celda */
+  align-items:flex-end;
+  gap:12px;
 }
 
-/* ====== Pills (estado de ENTREGA) ====== */
-.pill{
-  padding:3px 10px; border-radius:999px; font-size:.85rem; font-weight:700; display:inline-block;
-}
-.pill.pending   { background:#fff4d6; color:#7a5600; }
-.pill.partial   { background:#e7f1ff; color:#1b4fa3; }
-.pill.completed { background:#e8f7ee; color:#146c2e; }
-
-/* ====== Tabla de ventas ====== */
-#lista-ventas{
-  display:grid;
-  gap:8px;
-  min-width: 920px;
+.filters label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  font-size:.95rem;
+  color:#555;
+  min-width:150px;
+  font-weight:normal;
+  text-align:left;
 }
 
+/* Inputs dentro de filtros */
+.filters input[type="text"],
+.filters input[type="number"],
+.filters input[type="date"],
+.filters select{
+  padding:8px 10px;
+  border:1px solid #dfe3e6;
+  border-radius:8px;
+  background:#fff;
+  width:100%;
+  min-width:140px;
+  font-size:.95rem;
+  color:#495057;
+}
+
+.filters input:focus,
+.filters select:focus{
+  border-color:#3b82f6;
+  outline:none;
+}
+
+/* ====== Botones (base) ====== */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:8px 12px;
+  border-radius:8px;
+  border:1px solid transparent;
+  font-weight:500;
+  cursor:pointer;
+  text-decoration:none;
+  line-height:1;
+  transition:background .15s, border-color .15s, transform .02s;
+}
+.btn:active{ transform:translateY(1px); }
+
+.btn.primary{ background:var(--c-primary); color:#fff; }
+.btn.primary:hover{ background:var(--c-primary-600); }
+
+.btn.outline{ background:#fff; color:var(--c-text); border-color:#ced4da; }
+.btn.outline:hover{ background:#f1f3f5; }
+
+.btn.danger{ background:var(--c-red); color:#fff; }
+.btn.danger:hover{ background:var(--c-red-700); }
+
+a.btn{ text-decoration:none; }
+
+/* Acciones deshabilitadas (muted) */
+.btn.muted,
+a.btn.muted{
+  opacity:.45;
+  filter:grayscale(1);
+  cursor:not-allowed;
+}
+.btn.muted:hover,
+a.btn.muted:hover{ transform:none; }
+
+/* ====== Wrapper “tabla” (scroll horizontal si hace falta) ====== */
+.tabla{
+  width:100%;
+  display:block;
+  overflow-x:auto;
+}
+
+/* ==========================================================
+   LISTADO VENTAS (desktop) — MISMO CRITERIO QUE ENTREGAS
+   ========================================================== */
+
+/* Fila tipo tabla */
 #lista-ventas .fila{
   display:grid;
-  /* 5 columnas reales: Fecha | Cliente | Total | Estado | Acciones */
-  grid-template-columns: 130px 1fr 1fr 1.5fr 1fr;
+  /* Fecha | Cliente | Total | Estado | Acciones */
+  grid-template-columns: 130px 2fr .9fr 1.3fr 1.6fr; /* <- Acciones más ancha */
   align-items:center;
   gap:10px;
   background:#fff;
   border-radius:10px;
   padding:10px 14px;
-  box-shadow: var(--shadow);
+  box-shadow:var(--shadow);
+  border:1px solid #f1f3f5;
 }
 
+/* Encabezado */
 #lista-ventas .fila.encabezado{
   background:#f1f3f5;
   font-weight:800;
@@ -106,306 +168,326 @@ a.btn{ text-decoration:none; }
   position:sticky;
   top:0;
   z-index:1;
-  border:1px solid #e9ecef;
+  border:1px solid var(--c-border);
+  font-size:1rem;
+  color:var(--c-text);
+}
+
+/* Centrado TOTAL (esto arregla el “espacio enorme” visual) */
+#lista-ventas .fila > div{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  width:100%;
 }
 
 /* Zebra + hover */
 #lista-ventas .fila:not(.encabezado):nth-child(odd){ background:#fcfcfd; }
-#lista-ventas .fila:not(.encabezado):hover{ box-shadow: 0 6px 16px rgba(0,0,0,.06); }
+#lista-ventas .fila:not(.encabezado):hover{ box-shadow:0 6px 16px rgba(0,0,0,.06); }
 
-/* Alineación: Total a la derecha, Estado/Acciones centrados */
-#lista-ventas .fila > div:nth-child(3){
-  text-align:right;
-}
-#lista-ventas .fila > div:nth-child(4),
-#lista-ventas .fila > div:nth-child(5){
-  text-align:center;
+/* Acciones: que queden “parejas” y prolijas */
+#lista-ventas .acciones{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
+  align-content:center;
 }
 
-/* ====== Detalle de venta (otras tablas) ====== */
+/* Botones de acciones cuadrados (como en tus capturas) */
+#lista-ventas .acciones .btn{
+  width:44px;
+  height:36px;
+  padding:0;
+}
+
+/* ====== Pills ====== */
+.pill{
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:.85rem;
+  font-weight:700;
+  display:inline-block;
+  border:1px solid transparent;
+}
+.pill.pending   { background:#fff4d6; color:#7a5600; border-color:#ffe8a1; }
+.pill.partial   { background:#e7f1ff; color:#1b4fa3; border-color:#cfe2ff; }
+.pill.completed { background:#e8f7ee; color:#146c2e; border-color:#a7f3d0; }
+.pill.cancelled { background:#fecaca; color:#7f1d1d; border-color:#fca5a5; }
+
+/* ====== Tooltips en hover para acciones deshabilitadas ======
+   (Sirve para “Entrega anulada / Venta anulada / No editable…”) */
+#lista-ventas .acciones button:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  pointer-events:auto; /* permite hover para tooltip */
+}
+
+/* Tooltip (usa el title) */
+#lista-ventas .acciones button[disabled][title]{
+  position:relative;
+}
+#lista-ventas .acciones button[disabled][title]:hover::after{
+  content:attr(title);
+  position:absolute;
+  bottom:calc(100% + 8px);
+  left:50%;
+  transform:translateX(-50%);
+  background:#111827;
+  color:#fff;
+  font-size:.78rem;
+  padding:6px 8px;
+  border-radius:8px;
+  white-space:nowrap;
+  z-index:9999;
+  box-shadow:0 6px 18px rgba(0,0,0,.18);
+}
+#lista-ventas .acciones button[disabled][title]:hover::before{
+  content:"";
+  position:absolute;
+  bottom:calc(100% + 2px);
+  left:50%;
+  transform:translateX(-50%);
+  border:6px solid transparent;
+  border-top-color:#111827;
+  z-index:9999;
+}
+
+/* ==========================================================
+   Detalle / formularios (se usan en ver-venta / crear-venta)
+   ========================================================== */
+
 .detail-grid{
   display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px 16px;
-}
-.detail-grid .muted{ color:#6c757d; }
-
-/* Tablas reutilizadas en ver-venta */
-.tabla .fila{ grid-template-columns: 1.6fr .8fr .9fr .9fr; }
-.tabla .fila.encabezado{ background:#f1f3f5; }
-.tabla .fila > div:nth-child(2),
-.tabla .fila > div:nth-child(3),
-
-.card .pago {
-    max-width: none;  /* ELIMINA EL LÍMITE */
-    width: 100%;      /* Ocupa todo el ancho disponible */
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:10px 16px;
 }
 
-#form-pago {
-    display: flex;
-    flex-direction: column;
-    gap: 35px;
-    align-items: start;
-}
+.muted{ color:var(--c-muted); }
+.detail-grid .muted{ color:var(--c-muted); }
 
-#form-pago div {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+.form-page.narrow{ max-width:900px; margin:0 auto; }
+.form-page .card{
+  background:#fff;
+  padding:16px;
+  border-radius:12px;
+  box-shadow:var(--shadow);
 }
-
-#form-pago div input,
-#form-pago div select {
-    border-radius: 4px;
-    border: .8px solid gray;
-    padding: 10px;
-}
-
-.form-page.narrow { 
-    max-width: 900px;
-    margin: 0 auto;
-}
-
-.form-page .card {
-  background:#fff; padding:16px; border-radius:12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.06);
-}
-.form-page .grid {
-  display:grid; grid-template-columns: 1fr 1fr; gap:12px;
-}
-.form-page label { display:block; font-size:.9rem; color:#444; margin-bottom:6px; }
+.form-page .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-page label{ display:block; font-size:.9rem; color:#444; margin-bottom:6px; }
 .form-page input[type="date"],
 .form-page input[type="text"],
 .form-page input[type="number"],
-.form-page select {
-  width:100%; padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
+.form-page select{
+  width:100%;
+  padding:8px 10px;
+  border:1px solid #dfe3e6;
+  border-radius:8px;
+  background:#fff;
 }
-.subhead { margin:14px 0 8px; }
-.form-actions { margin-top:16px; display:flex; gap:10px; }
+
+.subhead{ margin:14px 0 8px; }
+.form-actions{ margin-top:16px; display:flex; gap:10px; justify-content:flex-start; }
 
 .subtotales{ display:flex; justify-content:flex-end; margin:10px 0; font-size:1.1rem; }
 .subtotales strong{ font-size:1.25rem; }
 
-.tabla .fila { grid-template-columns: 2fr 1fr .8fr 1fr 1fr .5fr; gap: 5px;}
-.tabla .fila.encabezado { background:#eaeaea; font-weight:700; }
+.hint{ color:var(--c-muted); font-size:.85rem; }
+.row-error{ outline:2px solid #dc3545; border-radius:8px; }
 
-#delivery {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #dfe3e6;
-  border-radius: 8px;
-  background: #fff;
-}
-
-.hint { color:#6b7280; font-size:.85rem; }
-
-.row-error { outline: 2px solid #dc3545; border-radius: 8px; }
-
-/* ====== Responsivo ====== */
-@media (max-width: 1100px){
-  #lista-ventas .fila{
-    /* mantenemos 5 columnas pero más comprimidas */
-    grid-template-columns: 100px 1.8fr 1.1fr 1.4fr 1.6fr;
-  }
-}
-@media (max-width: 900px){
-  /* en pantallas chicas dejamos que el contenedor scrollee horizontal */
-  .filters input[type="date"],
-  .filters select,
-  .filters input[type="text"]{ min-width: 150px; }
-}
-
-button:disabled { opacity:.55; cursor:not-allowed; }
-button.disabled{ opacity:.6; cursor:not-allowed; }
-
-/* ====== Entregas en ver-venta ====== */
-.tabla.tabla-entregas-venta .fila{
-  /* ID | Fecha | Entregado | Estado | Acciones */
-  grid-template-columns: 90px 130px 1.1fr 1.3fr 1.3fr;
-  align-items: center;
-}
-
-.tabla.tabla-entregas-venta .fila > div:nth-child(3),
-.tabla.tabla-entregas-venta .fila > div:nth-child(4){
-  text-align: right;
-}
-
-.tabla.tabla-entregas-venta .fila > div:nth-child(5){
-  text-align: center;
-}
-
-/* Botón chiquito para "Ver entrega" */
-.btn.btn-small{
-  padding: 6px 10px;
-  font-size: .85rem;
-}
-/* ==========================================================
-   ESTILOS ADICIONALES PARA AUTOCOMPLETE (Ventas)
-   Añadir al final de ventas.css
-   ========================================================== */
-
-/* Wrapper relativo */
-.autocomplete-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-/* Input de búsqueda visible */
-.autocomplete-wrapper input[type="text"] {
-  width: 100%;
-}
-
-/* Lista flotante */
-.autocomplete-list {
-  position: absolute;
-  top: 100%; left: 0; right: 0;
-  background: #fff;
-  border: 1px solid #dfe3e6; border-top: none;
-  border-radius: 0 0 8px 8px;
-  max-height: 200px; overflow-y: auto;
-  z-index: 9999;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  display: none;
-}
-.autocomplete-list.active { display: block; }
-
-.autocomplete-list div {
-  padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f1f3f5;
-  font-size: 0.9rem; color: #333;
-}
-.autocomplete-list div:hover { background-color: #f0f7ff; color: #1c7ed6; }
-
-/* Ajuste específico para el input dentro de la TABLA de ítems */
-.fila .autocomplete-wrapper {
-  height: 100%;
-}
-.fila .autocomplete-wrapper input.in-search {
-  
-  border-radius: 1;
-  background: transparent;
-  height: 100%;
-  padding: 0 12px;
-}
-.fila .autocomplete-wrapper input.in-search:focus {
-  background: #f0f7ff;
-  box-shadow: inset 0 0 0 2px #3b82f6;
-}
-
-/* Ajuste visual cuando el cliente está bloqueado (por presupuesto) */
-input:disabled {
-  background-color: #f8f9fa !important;
-  color: #6c757d;
-  cursor: not-allowed;
-  border-color: #e9ecef;
-}
-
-/* Inputs con error (ej: importe de pago en crear venta) */
+/* Inputs con error */
 .input-error{
-  border-color: var(--bad) !important;
-  box-shadow: 0 0 0 1px rgba(239,68,68,.25);
-  background: rgba(239,68,68,.02);
+  border-color: var(--c-red) !important;
+  box-shadow: 0 0 0 1px rgba(248,64,82,.25);
+  background: rgba(248,64,82,.02);
 }
-
-/* Mensaje de ayuda en rojo */
 .field-hint.error{
-  color: var(--bad);
+  color: var(--c-red);
   font-size: .85rem;
   margin-top: 4px;
   display: block;
 }
 
-/* =========================================
-   Tom Select - Corrección Final
-   ========================================= */
+button:disabled{ opacity:.55; cursor:not-allowed; }
 
-/* 1. CONTENEDOR PRINCIPAL */
-.ts-control {
-    border: 1px solid #ced4da !important;
-    border-radius: 6px !important;
-    padding: 0 12px !important;
-    width: 200px !important;  
-    min-height: 38px !important;
-    height: 38px !important;
-    box-shadow: none !important;
-    font-size: 1rem;
-    font-family: inherit;
-    background-color: #fff;
-    color: #212529;
-    
-    /* Flexbox para centrar texto verticalmente */
-    display: flex !important;
-    align-items: center !important;
-    flex-wrap: nowrap !important;
-    overflow: hidden;
+/* ==========================================================
+   Autocomplete (si lo usan en crear/editar)
+   ========================================================== */
+.autocomplete-wrapper{ position:relative; width:100%; }
+.autocomplete-wrapper input[type="text"]{ width:100%; }
+
+.autocomplete-list{
+  position:absolute;
+  top:100%; left:0; right:0;
+  background:#fff;
+  border:1px solid #dfe3e6;
+  border-top:none;
+  border-radius:0 0 8px 8px;
+  max-height:200px;
+  overflow-y:auto;
+  z-index:9999;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  display:none;
+}
+.autocomplete-list.active{ display:block; }
+.autocomplete-list div{
+  padding:10px 12px;
+  cursor:pointer;
+  border-bottom:1px solid #f1f3f5;
+  font-size:.9rem;
+  color:#333;
+}
+.autocomplete-list div:hover{ background:#f0f7ff; color:var(--c-primary); }
+
+input:disabled{
+  background-color:#f8f9fa !important;
+  color:#6c757d;
+  cursor:not-allowed;
+  border-color:#e9ecef;
 }
 
-/* 2. TEXTO SELECCIONADO (El que se ve al cargar la página) */
-/* Le quitamos el fondo y bordes para que parezca texto plano */
-.ts-control > .item {
-    background: transparent !important;
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    color: inherit !important;
-    font-size: 1rem !important;
-    line-height: 1.5 !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
+/* ==========================================================
+   TOM SELECT (cliente) — mismo tamaño que los otros inputs
+   (Override fuerte por si tenés estilos inline en ventas.html)
+   ========================================================== */
+.filters label .ts-wrapper{ width:100% !important; }
+.filters .ts-control{
+  border:1px solid #dfe3e6 !important;
+  border-radius:8px !important;
+  padding:0 10px !important;
+  width:100% !important;           /* <- NO fijo 200 */
+  min-width:140px !important;      /* <- igual a inputs */
+  min-height:38px !important;
+  height:38px !important;
+  box-shadow:none !important;
+  font-size:.95rem !important;
+  font-family:inherit !important;
+  background:#fff !important;
+  color:#495057 !important;
+  display:flex !important;
+  align-items:center !important;
+  flex-wrap:nowrap !important;
+  overflow:hidden !important;
 }
 
-/* 3. INPUT DE ESCRITURA (El que aparece al hacer clic) */
-.ts-control input {
-    font-size: 1rem !important;
-    color: inherit;
-    background: transparent !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    height: 100% !important;
-    width: 100% !important;
-    position: relative;
-    top: 0;
+.filters .ts-control > .item{
+  background:transparent !important;
+  border:none !important;
+  margin:0 !important;
+  padding:0 !important;
+  color:inherit !important;
+  font-size:.95rem !important;
+  line-height:1.5 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  width:100% !important;
 }
 
-/* 4. OCULTAR EL ITEM AL ESCRIBIR */
-.ts-wrapper.single.input-active .ts-control .item {
-    display: none !important;
+.filters .ts-control input{
+  font-size:.95rem !important;
+  color:inherit !important;
+  background:transparent !important;
+  margin:0 !important;
+  padding:0 !important;
+  height:100% !important;
+  width:100% !important;
+  position:relative !important;
+  top:0 !important;
 }
 
-/* 5. FOCUS (Borde azul) */
-.ts-wrapper.focus .ts-control {
-    border-color: #86b7fe !important;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-    outline: 0;
+.filters .ts-wrapper.single.input-active .ts-control .item{ display:none !important; }
+
+.filters .ts-wrapper.focus .ts-control{
+  border-color:#3b82f6 !important;
+  outline:none !important;
+  box-shadow:0 0 0 0.25rem rgba(59,130,246,.18) !important;
 }
 
-/* 6. MENÚ DESPLEGABLE */
-.ts-dropdown {
-    border: 1px solid #ced4da;
-    border-radius: 6px;
-    margin-top: 4px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-    z-index: 9999;
-   
-    /* Que el menú tenga el mismo ancho que el input */
-    width: 200px !important; 
+.filters .ts-dropdown{
+  border:1px solid #ced4da;
+  border-radius:8px;
+  margin-top:4px;
+  box-shadow:0 4px 6px -1px rgba(0,0,0,.1);
+  z-index:9999;
+  background:#fff;
+  width:100% !important; /* <- igual al control */
 }
 
-/* 7. OPCIONES DEL MENÚ */
-.ts-dropdown .option {
-    padding: 8px 12px;
-    cursor: pointer;
+.filters .ts-dropdown .option{ padding:8px 12px; cursor:pointer; }
+.filters .ts-dropdown .active{ background:#e9ecef; color:#000; }
+
+.filters .ts-wrapper.single .ts-control::after{
+  border-color:#6c757d transparent transparent transparent !important;
+  border-width:5px 5px 0 5px !important;
+  right:10px !important;
 }
 
-.ts-dropdown .active {
-    background-color: #e9ecef;
-    color: #000;
+/* ==========================================================
+   RESPONSIVE (idéntico criterio que entregas)
+   ========================================================== */
+@media (max-width:1100px){
+  .page{ padding:16px; }
+  #lista-ventas .fila{ font-size:.95rem; }
 }
 
-/* 8. FLECHITA */
-.ts-wrapper.single .ts-control::after {
-    border-color: #6c757d transparent transparent transparent !important;
-    border-width: 5px 5px 0 5px !important;
-    right: 10px !important;
+@media (max-width:900px){
+  .filters .row{ gap:8px; }
+
+  #lista-ventas .fila{
+    grid-template-columns: 110px 2fr .9fr 1.2fr 1.4fr;
+    padding:8px 10px;
+  }
+
+  /* En pantallas medianas, cliente a la izquierda (como entregas) */
+  #lista-ventas .fila > div:nth-child(2){
+    justify-content:flex-start;
+    text-align:left;
+  }
+
+  .form-page .grid{ grid-template-columns:1fr; }
+}
+
+@media (max-width:700px){
+  .page{ padding:12px; }
+
+  .page-head{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:8px;
+  }
+  .page-head h1{ margin-left:0; }
+
+  /* Ocultar encabezado (como entregas) */
+  #lista-ventas .fila.encabezado{ display:none; }
+
+  /* Tarjeta */
+  #lista-ventas .fila{
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows:auto auto auto;
+    grid-template-areas:
+      "fecha estado"
+      "cliente cliente"
+      "total acciones";
+    align-items:flex-start;
+    padding:10px 12px;
+  }
+
+  #lista-ventas .fila > div{ width:100%; }
+
+  /* Mapeo por orden: 1 Fecha, 2 Cliente, 3 Total, 4 Estado, 5 Acciones */
+  #lista-ventas .fila > div:nth-child(1){ grid-area:fecha; justify-content:flex-start; }
+  #lista-ventas .fila > div:nth-child(2){ grid-area:cliente; justify-content:flex-start; text-align:left; }
+  #lista-ventas .fila > div:nth-child(3){ grid-area:total; justify-content:flex-start; }
+  #lista-ventas .fila > div:nth-child(4){ grid-area:estado; justify-content:flex-end; }
+  #lista-ventas .fila > div:nth-child(5){ grid-area:acciones; justify-content:flex-end; }
+
+  #lista-ventas .acciones{ justify-content:flex-end; }
+}
+
+/* Botón chiquito reutilizable */
+.btn.btn-small{
+  padding:6px 10px;
+  font-size:.85rem;
 }

@@ -1,6 +1,12 @@
 // /static/files-js/ver-entrega.js
 const { authFetch, safeJson, getToken } = window.api;
+
 const API_DELIVERIES = '/deliveries';
+const API_CANCEL_DELIVERY = (id) => `/deliveries/${id}/cancel`;
+
+const API_SALE_DETAILS_1 = (saleId) => `/sales/${saleId}/details`;
+const API_SALE_DETAILS_2 = (saleId) => `/sale-details/by-sale/${saleId}`;
+
 const $ = (s, r = document) => r.querySelector(s);
 
 function notify(msg, type = 'info') {
@@ -10,14 +16,31 @@ function notify(msg, type = 'info') {
   document.body.appendChild(n);
   setTimeout(() => n.remove(), 3500);
 }
-let currentDeliveryDto = null;
+
+const fmtDate = (s) => {
+  if (!s) return '—';
+  const iso = s.toString().slice(0, 10);
+  const [y, m, d] = iso.split('-');
+  return (y && m && d) ? `${d}/${m}/${y}` : '—';
+};
 
 const UI_DELIVERY_STATUS = {
+  CANCELLED: 'ANULADA',
+  ANULADA: 'ANULADA',
   DELIVERED: 'ENTREGADA',
   COMPLETED: 'ENTREGADA',
   PENDING: 'PENDIENTE A ENTREGAR',
   PARTIAL: 'PENDIENTE A ENTREGAR'
 };
+
+function pillClass(st){
+  if (st === 'COMPLETED') return 'completed';
+  if (st === 'PARTIAL') return 'partial';
+  if (st === 'CANCELLED') return 'cancelled';
+  return 'pending';
+}
+
+let currentDeliveryDto = null;
 
 window.addEventListener('DOMContentLoaded', init);
 
@@ -26,22 +49,20 @@ async function init() {
 
   const qs = new URLSearchParams(location.search);
   const id = qs.get('id');
-  if (!id) { notify('ID no especificado', 'error'); setTimeout(() => (location.href = 'entregas.html'), 1000); return; }
-
-  const btnEdit = $('#btnEditarEntrega');
-  if (btnEdit) {
-     btnEdit.href = `editar-entrega.html?id=${id}`;
-     // btnEdit.style.display = 'inline-flex'; // Descomentar para habilitar
+  if (!id) {
+    notify('ID no especificado', 'error');
+    setTimeout(() => (location.href = 'entregas.html'), 1000);
+    return;
   }
 
   try {
     const res = await authFetch(`${API_DELIVERIES}/${id}/detail`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const dto = await safeJson(res);
-      currentDeliveryDto = dto;
+    const dto = await safeJson(res);
+    currentDeliveryDto = dto;
 
-      renderHeader(dto);
-      await renderItems(dto);  
+    renderHeader(dto, id);
+    await renderItems(dto);
 
   } catch (e) {
     console.error(e);
@@ -49,12 +70,11 @@ async function init() {
   }
 }
 
-function renderHeader(d) {
-  $('#deliveryId').textContent = d.idDelivery ?? d.deliveryId ?? d.id ?? '—';
+function renderHeader(d, idStr) {
+  const idDelivery = d.idDelivery ?? d.deliveryId ?? d.id ?? '—';
+  $('#deliveryId').textContent = idDelivery;
 
-  let rawDate = (d.deliveryDate ?? d.date ?? d.dateDelivery ?? '').toString();
-  if(rawDate.length >= 10) rawDate = rawDate.slice(0, 10).split('-').reverse().join('/');
-  $('#fecha').textContent = rawDate || '—';
+  $('#fecha').textContent = fmtDate(d.deliveryDate ?? d.date ?? d.dateDelivery);
 
   $('#cliente').textContent = d.clientName ?? d.client?.name ?? '—';
 
@@ -75,73 +95,136 @@ function renderHeader(d) {
   const orderId = d.ordersId ?? d.orderId ?? d.idOrders ?? (d.orders && d.orders.idOrders) ?? null;
   $('#pedidoAsociado').textContent = orderId ? `#${orderId}` : '—';
 
-  // Estado
+  // ===== Estado (FIX: definir st) =====
   const raw = (d.status || '').toString().toUpperCase();
-  const code = (raw === 'COMPLETED' || raw === 'DELIVERED') ? 'DELIVERED' : (raw === 'PARTIAL' ? 'PARTIAL' : 'PENDING');
+
+  // Normalizamos a los 4 estados esperados por el front
+  const st =
+    (raw === 'ANULADA' || raw === 'CANCELLED') ? 'CANCELLED' :
+    (raw === 'DELIVERED') ? 'COMPLETED' :
+    (raw === 'COMPLETED') ? 'COMPLETED' :
+    (raw === 'PARTIAL') ? 'PARTIAL' :
+    'PENDING';
+
+  // UI pill
   const pill = $('#estadoEntrega');
-  pill.className = `pill ${code === 'DELIVERED' ? 'completed' : 'pending'}`;
-  pill.textContent = UI_DELIVERY_STATUS[code] || raw;
+  if (pill) {
+    pill.className = `pill ${pillClass(st)}`;
+    pill.textContent = UI_DELIVERY_STATUS[st] || st;
+  }
+
+  // ✅ Editar: solo si NO está COMPLETED ni CANCELLED
+  const btnEdit = $('#btnEditarEntrega');
+  const canEdit = !['COMPLETED', 'CANCELLED'].includes(st);
+  if (btnEdit) {
+    if (canEdit) {
+      btnEdit.href = `editar-entrega.html?id=${encodeURIComponent(idStr)}`;
+      btnEdit.style.display = 'inline-flex';
+    } else {
+      btnEdit.style.display = 'none';
+      btnEdit.removeAttribute('href');
+    }
+  }
+
+  // ✅ Anular: visible si NO está CANCELLED
+  const btnCancel = $('#btnAnularEntrega');
+  if (btnCancel) {
+    if (st === 'CANCELLED') {
+      btnCancel.style.display = 'none';
+      btnCancel.onclick = null;
+    } else {
+      btnCancel.style.display = 'inline-flex';
+      btnCancel.onclick = () => onCancelDelivery(idStr);
+    }
+  }
+}
+
+async function onCancelDelivery(id){
+  const res = await Swal.fire({
+    title: '¿Anular entrega?',
+    text: 'Se marcará como ANULADA y no contará para el progreso de la venta.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, anular',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true
+  });
+  if (!res.isConfirmed) return;
+
+  try{
+    const r = await authFetch(API_CANCEL_DELIVERY(id), { method:'POST' });
+
+    if (r.status === 403) {
+      Swal.fire('Acceso denegado', 'Solo un OWNER puede anular entregas.', 'error');
+      return;
+    }
+    if (r.status === 409) {
+      const err = await safeJson(r).catch(()=>null);
+      Swal.fire('No se puede anular', err?.message || 'Conflicto al anular la entrega.', 'info');
+      return;
+    }
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+    Swal.fire('Listo', 'Entrega anulada correctamente.', 'success');
+    // refrescar para ver estado ANULADA y números recalculados
+    setTimeout(()=> location.reload(), 350);
+
+  }catch(e){
+    console.error(e);
+    Swal.fire('Error', 'No se pudo anular la entrega.', 'error');
+  }
 }
 
 async function renderItems(dto) {
-  const items = dto.items || dto.details || [];
   const cont  = $('#tablaItems');
   const msg   = $('#msgItems');
 
-  // Limpiar filas anteriores
   cont.querySelectorAll('.trow').forEach(e => e.remove());
 
-  if (!Array.isArray(items) || !items.length) {
-    if (msg) { msg.textContent = 'Sin ítems.'; msg.style.display = 'block'; }
-    return;
-  }
-  if (msg) msg.style.display = 'none';
-
-  // --- Identificadores base ---
   const saleId = dto.saleId ?? dto.idSale ?? dto.sale?.idSale ?? null;
-  const currentDeliveryId = dto.idDelivery ?? dto.deliveryId ?? dto.id ?? null;
 
-  // Cantidad vendida por material (es siempre la misma para esa venta)
-  const orderedByMaterial = {};
-  for (const it of items) {
-    const mid = it.materialId ?? it.material?.id ?? it.saleDetail?.material?.id ?? null;
-    if (mid == null) continue;
+  // ✅ PRIORIDAD: pintar Vendido/Entregado/Pendiente DESDE LA VENTA (ya ignora anuladas)
+  if (saleId) {
+    let details = [];
+    try{
+      let r = await authFetch(API_SALE_DETAILS_1(saleId));
+      if (!r.ok) r = await authFetch(API_SALE_DETAILS_2(saleId));
+      if (r.ok) details = await safeJson(r);
+    }catch(_){ details = []; }
 
-    const sold = Number(
-      it.quantityOrdered ??
-      it.quantitySoldForSale ??
-      it.quantitySold ??
-      it.totalUnits ??
-      0
-    );
-    orderedByMaterial[mid] = sold;
-  }
+    if (!Array.isArray(details) || !details.length) {
+      if (msg) { msg.textContent = 'Sin ítems.'; msg.style.display = 'block'; }
+      return;
+    }
+    if (msg) msg.style.display = 'none';
 
-  // Si no tenemos saleId o id de entrega, usamos el comportamiento viejo
-  if (!saleId || !currentDeliveryId) {
-    for (const it of items) {
+    for (const it of details){
+      const name = it.materialName ?? it.material?.name ?? it.name ?? '—';
+
       const sold = Number(
-        it.quantityOrdered ??
-        it.quantitySoldForSale ??
-        it.quantitySold ??
-        it.totalUnits ??
-        0
-      );
-      const deliveredThis = Number(
-        it.quantityDelivered ??
-        it.deliveredQty ??
-        it.qty ??
         it.quantity ??
+        it.quantitySold ??
+        it.soldUnits ??
+        it.unitsSold ??
         0
       );
-      const pending = Math.max(0, sold - deliveredThis);
+
+      const delivered = Number(
+        it.quantityDelivered ??
+        it.deliveredUnits ??
+        it.unitsDelivered ??
+        0
+      );
+
+      let pending = it.pendingQuantity ?? it.pendingUnits ?? it.pendingToDeliver ?? null;
+      pending = (pending == null || isNaN(pending)) ? Math.max(0, sold - delivered) : Number(pending);
 
       const row = document.createElement('div');
       row.className = 'trow';
       row.innerHTML = `
-        <div style="flex: 2;" class="strong-text">${it.materialName || it.name || '—'}</div>
+        <div style="flex: 2;" class="strong-text">${name}</div>
         <div class="text-center">${sold}</div>
-        <div class="text-center strong-text">${deliveredThis}</div>
+        <div class="text-center strong-text">${delivered}</div>
         <div class="text-center">${pending}</div>
       `;
       cont.appendChild(row);
@@ -149,103 +232,25 @@ async function renderItems(dto) {
     return;
   }
 
-  // --- Cálculo acumulado: sumamos entregas de la venta hasta la actual ---
-  const deliveredAccum = {}; // materialId -> entregado acumulado
-
-  try {
-    // 1) Traer todas las entregas de la venta
-    const listRes = await authFetch(`/deliveries/by-sale/${saleId}`);
-    let list = [];
-    if (listRes.ok) list = await safeJson(listRes);
-
-    // 2) Ordenar por fecha + id (ascendente)
-    const deliveries = (list || []).slice().sort((a, b) => {
-      const da = String(a.deliveryDate || '');
-      const db = String(b.deliveryDate || '');
-      if (da < db) return -1;
-      if (da > db) return 1;
-      const ida = Number(a.idDelivery ?? a.id ?? 0);
-      const idb = Number(b.idDelivery ?? b.id ?? 0);
-      return ida - idb;
-    });
-
-    // 3) Recorrer entregas y acumular cantidades por material
-    for (const d of deliveries) {
-      const dId = d.idDelivery ?? d.id;
-      let detailDto;
-
-      if (dId === currentDeliveryId) {
-        // Para la entrega actual usamos el dto que ya tenemos
-        detailDto = dto;
-      } else {
-        const detRes = await authFetch(`${API_DELIVERIES}/${dId}/detail`);
-        if (!detRes.ok) continue;
-        detailDto = await safeJson(detRes);
-      }
-
-      const detItems = detailDto.items || detailDto.details || [];
-      for (const it of detItems) {
-        const mid = it.materialId ?? it.material?.id ?? it.saleDetail?.material?.id ?? null;
-        if (mid == null) continue;
-
-        const deliveredHere = Number(
-          it.quantityDelivered ??
-          it.deliveredQty ??
-          it.qty ??
-          it.quantity ??
-          0
-        );
-
-        deliveredAccum[mid] = (deliveredAccum[mid] || 0) + deliveredHere;
-
-        // Por si falta la cantidad vendida en orderedByMaterial, la completamos
-        if (orderedByMaterial[mid] == null) {
-          const sold = Number(
-            it.quantityOrdered ??
-            it.quantitySoldForSale ??
-            it.quantitySold ??
-            it.totalUnits ??
-            0
-          );
-          orderedByMaterial[mid] = sold;
-        }
-      }
-
-      // Cuando llegamos a la entrega actual, cortamos el loop
-      if (dId === currentDeliveryId) break;
-    }
-  } catch (e) {
-    console.error(e);
-    // Si algo falla, deliveredAccum se queda parcial y abajo usamos fallback
+  // Fallback (si por algún motivo no hay saleId): usar items del DTO de entrega
+  const items = dto.items || dto.details || [];
+  if (!Array.isArray(items) || !items.length) {
+    if (msg) { msg.textContent = 'Sin ítems.'; msg.style.display = 'block'; }
+    return;
   }
+  if (msg) msg.style.display = 'none';
 
-  // --- Render de filas usando el entregado ACUMULADO ---
   for (const it of items) {
-    const mid = it.materialId ?? it.material?.id ?? it.saleDetail?.material?.id ?? null;
-    const sold = orderedByMaterial[mid] ?? Number(
-      it.quantityOrdered ??
-      it.quantitySoldForSale ??
-      it.quantitySold ??
-      it.totalUnits ??
-      0
-    );
-
-    const deliveredTotal = deliveredAccum[mid] ?? Number(
-      it.quantityDelivered ??
-      it.deliveredQty ??
-      it.qty ??
-      it.quantity ??
-      0
-    );
-
-    const pending = Math.max(0, sold - deliveredTotal);
+    const sold = Number(it.quantityOrdered ?? 0);
+    const deliveredThis = Number(it.quantityDelivered ?? it.quantity ?? 0);
+    const pending = Math.max(0, sold - deliveredThis);
 
     const row = document.createElement('div');
     row.className = 'trow';
     row.innerHTML = `
       <div style="flex: 2;" class="strong-text">${it.materialName || it.name || '—'}</div>
       <div class="text-center">${sold}</div>
-      <div class="text-center strong-text">${deliveredTotal}</div>
+      <div class="text-center strong-text">${deliveredThis}</div>
       <div class="text-center">${pending}</div>
     `;
     cont.appendChild(row);

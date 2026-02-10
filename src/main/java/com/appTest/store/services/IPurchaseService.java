@@ -10,8 +10,14 @@ import java.util.List;
 public interface IPurchaseService {
     List<Purchase> getAllPurchases();
     Purchase getPurchaseById(Long id);
+
     PurchaseDTO convertPurchaseToDto(Purchase purchase);
+
     PurchaseDTO createPurchase(PurchaseCreateDTO dto);
+
     void updatePurchase(PurchaseUpdateDTO dto);
+
     void deletePurchaseById(Long id);
+
+    PurchaseDTO cancelPurchase(Long id);
 }

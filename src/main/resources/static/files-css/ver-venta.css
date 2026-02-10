@@ -232,3 +232,7 @@
   .tabla-clean .trow { flex-direction: column; align-items: flex-start; gap: 8px; border-bottom: 2px solid #eee; }
   .total-row { flex-direction: column; align-items: flex-end; gap: 5px; }
 }
+
+.pill.cancelled {
+    background: #f50b0b;
+}

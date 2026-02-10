@@ -9,6 +9,7 @@ import com.appTest.store.models.Client;
 import com.appTest.store.models.Material;
 import com.appTest.store.models.OrderDetail;
 import com.appTest.store.models.Orders;
+import com.appTest.store.models.enums.DocumentStatus;
 import com.appTest.store.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -197,6 +198,8 @@ public class OrdersService implements IOrdersService {
         java.util.Map<Long, java.math.BigDecimal> soldByMat = new java.util.HashMap<>();
         var sales = repoSale.findByOrders_IdOrders(o.getIdOrders());
         for (Sale s : sales) {
+            if (s.getStatus() == DocumentStatus.CANCELLED) continue;
+
             if (s.getSaleDetailList() == null) continue;
             for (SaleDetail sd : s.getSaleDetailList()) {
                 if (sd.getMaterial() == null) continue;

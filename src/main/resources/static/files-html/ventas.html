@@ -14,57 +14,6 @@
   
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <style>
-    /* Contenedor principal del input */
-    .ts-control {
-        border: 1px solid #ced4da !important;  /* Borde gris estándar */
-        border-radius: 6px !important;         /* Bordes redondeados */
-        padding: 8px 12px !important;          /* Espaciado interno */
-        height: auto;
-        min-height: 38px;                      /* Misma altura que inputs estándar */
-        box-shadow: none !important;           
-        font-size: 1rem;                       
-        font-family: inherit;
-        background-color: #fff;
-        color: #212529;
-        display: flex;
-        align-items: center;
-    }
-
-    /* Al hacer foco (clic) */
-    .ts-wrapper.focus .ts-control {
-        border-color: #86b7fe !important;      /* Color azulito al enfocar */
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important; 
-        outline: 0;
-    }
-
-    /* Menú desplegable */
-    .ts-dropdown {
-        border: 1px solid #ced4da;
-        border-radius: 6px;
-        margin-top: 4px;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-        z-index: 9999;
-    }
-
-    /* Items de la lista */
-    .ts-dropdown .option {
-        padding: 8px 12px;
-        cursor: pointer;
-    }
-
-    /* Item activo/seleccionado */
-    .ts-dropdown .active {
-        background-color: #e9ecef;
-        color: #000;
-    }
-
-    /* Input de texto interno */
-    .ts-control input {
-        font-size: 1rem !important;
-        color: inherit;
-    }
-  </style>
 
 </head>
 <body>
@@ -91,11 +40,12 @@
           <input type="date" id="fHasta"/>
         </label>
 
-        <label>Estado de entrega
+        <label>Estado
           <select id="fEstadoEntrega">
             <option value="">Todos</option>
             <option value="PENDING_DELIVERY">Pendiente a entregar</option>
             <option value="DELIVERED">Entregada</option>
+            <option value="CANCELLED">Anulada</option>
           </select>
         </label>
 

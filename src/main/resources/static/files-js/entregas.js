@@ -9,6 +9,8 @@ const norm = (s)=> (s||'').toString().toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
 
+let clientSelectInstance = null;
+
 /* ================== TOASTS (SweetAlert2) ================== */
 const Toast = Swal.mixin({
   toast: true,
@@ -21,7 +23,6 @@ const Toast = Swal.mixin({
     toast.addEventListener('mouseleave', Swal.resumeTimer);
   }
 });
-
 function notify(msg, type='info') {
   const icon =
     type === 'error'   ? 'error'   :
@@ -30,14 +31,11 @@ function notify(msg, type='info') {
   Toast.fire({ icon, title: msg });
 }
 
-
 // 🔹 Paginación en front
 const PAGE_SIZE = 8;
 let page = 0;
 let FILTRADAS = [];
 let infoPager, btnPrev, btnNext;
-
-let clientSelectInstance = null; // Instancia global Tom Select
 
 // Fecha → dd/mm/aaaa
 const fmtDate = (s)=>{
@@ -59,9 +57,28 @@ const getClientName = x => (
 const getDateISO    = x => (x?.deliveryDate ?? x?.date ?? '').toString().slice(0,10) || '';
 const getStatus     = x => (x?.status ?? '').toString().toUpperCase();
 
-function pill(status){
-  const txt = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', COMPLETED:'COMPLETADA' }[status] || status || 'PENDIENTE';
-  const cls = { PENDING:'pending',   PARTIAL:'partial',  COMPLETED:'completed' }[status] || 'pending';
+function normStatus(raw){
+  const s = (raw || '').toString().toUpperCase();
+  if (s === 'ANULADA') return 'CANCELLED';
+  return s || 'PENDING';
+}
+
+function pill(statusRaw){
+  const status = normStatus(statusRaw);
+  const txt = {
+    PENDING:'PENDIENTE',
+    PARTIAL:'PARCIAL',
+    COMPLETED:'COMPLETADA',
+    CANCELLED:'ANULADA'
+  }[status] || status || 'PENDIENTE';
+
+  const cls = {
+    PENDING:'pending',
+    PARTIAL:'partial',
+    COMPLETED:'completed',
+    CANCELLED:'cancelled'
+  }[status] || 'pending';
+
   return `<span class="pill ${cls}">${txt}</span>`;
 }
 
@@ -74,7 +91,6 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     return;
   }
 
-  // refs pager
   infoPager = document.getElementById('pg-info');
   btnPrev   = document.getElementById('pg-prev');
   btnNext   = document.getElementById('pg-next');
@@ -93,21 +109,20 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     }
   });
 
-  // ✅ LÓGICA DE MENSAJE FLASH (Muestra cartel de éxito al volver de crear)
   const flash = localStorage.getItem('flash');
   if (flash) {
     try {
       const {message, type} = JSON.parse(flash);
       if(type === 'success') {
-          Swal.fire({
-              icon: 'success',
-              title: '¡Éxito!',
-              text: message,
-              timer: 2000,
-              showConfirmButton: false
-          });
+        Swal.fire({
+          icon: 'success',
+          title: '¡Éxito!',
+          text: message,
+          timer: 2000,
+          showConfirmButton: false
+        });
       } else {
-          notify(message, type||'success');
+        notify(message, type||'success');
       }
     } catch (_) {}
     localStorage.removeItem('flash');
@@ -115,39 +130,36 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   await loadClients();
   wireFilters();
-  setupExport();          
-  setupRemitoButtons();
-  await loadDeliveries(); 
 
-  // 👇👇 ACTIVAMOS LA RESTRICCIÓN DE FECHAS 👇👇
+  setupExport();
+  setupListActions();
+
+  await loadDeliveries();
+
   setupDateRangeConstraint('fFrom', 'fTo');
 });
 
 // ================== Filtros ==================
 function wireFilters(){
   const debSearch = debounce(loadDeliveries, 250); 
-  const debLocal  = debounce(applyFilters, 120);   
+  const debLocal  = debounce(applyFilters, 120);
 
   $('#fSaleId')?.addEventListener('input',  ()=>{ debSearch(); debLocal(); });
-  $('#fClient') ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
-  $('#fFrom')   ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
-  $('#fTo')     ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
-  $('#fStatus') ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
-  
-  // (Filtro de texto eliminado)
+  $('#fClient')?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
+  $('#fFrom')  ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
+  $('#fTo')    ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
+  $('#fStatus')?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
+
+  // filtro texto local (si existe en HTML)
+  $('#fText')  ?.addEventListener('input', debLocal);
 
   $('#btnClear')?.addEventListener('click', ()=>{
-    ['fSaleId','fFrom','fTo','fStatus']
+    ['fSaleId','fFrom','fTo','fStatus','fText']
       .forEach(id => { const el = $('#'+id); if (el) el.value=''; });
-    
-    // Limpiar TomSelect
-    if (clientSelectInstance) {
-        clientSelectInstance.clear();
-    } else {
-        $('#fClient').value = '';
-    }
 
-    // Limpiamos las restricciones de fecha
+    if (clientSelectInstance) clientSelectInstance.clear();
+    else if ($('#fClient')) $('#fClient').value = '';
+
     $('#fFrom').max = '';
     $('#fTo').min = '';
 
@@ -157,7 +169,7 @@ function wireFilters(){
 }
 
 // ---------------------------------------------------------
-//  TOM SELECT INTEGRATION
+//  TOM SELECT INTEGRATION (Clientes)
 // ---------------------------------------------------------
 async function loadClients(){
   const sel=$('#fClient');
@@ -168,10 +180,9 @@ async function loadClients(){
     let data = r.ok ? await safeJson(r) : [];
     if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
 
-    // 1. Destruir instancia anterior
     if (clientSelectInstance) {
-        clientSelectInstance.destroy();
-        clientSelectInstance = null;
+      clientSelectInstance.destroy();
+      clientSelectInstance = null;
     }
 
     sel.innerHTML = `<option value="">Todos</option>`;
@@ -186,17 +197,15 @@ async function loadClients(){
         sel.appendChild(opt);
       });
 
-    // 2. Inicializar Tom Select
     clientSelectInstance = new TomSelect('#fClient', {
-        create: false,
-        sortField: { field: "text", direction: "asc" },
-        placeholder: "Buscar cliente...",
-        allowEmptyOption: true,
-        plugins: ['no_active_items'],
-        onChange: function() {
-            const event = new Event('change');
-            sel.dispatchEvent(event);
-        }
+      create: false,
+      sortField: { field: "text", direction: "asc" },
+      placeholder: "Buscar cliente...",
+      allowEmptyOption: true,
+      plugins: ['no_active_items'],
+      onChange: function() {
+        sel.dispatchEvent(new Event('change'));
+      }
     });
 
   }catch(e){ console.warn('clients',e); }
@@ -210,7 +219,8 @@ function readFilterValues(){
     clientId: sel?.value || '',
     clientNameSel: sel?.selectedOptions?.[0]?.textContent || '',
     from   : $('#fFrom')?.value || '',
-    to     : $('#fTo')?.value || ''
+    to     : $('#fTo')?.value || '',
+    text   : ($('#fText')?.value || '').trim().toLowerCase()
   };
 }
 
@@ -218,7 +228,7 @@ function buildSearchQuery(){
   const {status,saleId,clientId,from,to} = readFilterValues();
   const q = new URLSearchParams();
   if (status)  q.set('status', status);
-  if (saleId)  q.set('saleId', saleId);    
+  if (saleId)  q.set('saleId', saleId);
   if (clientId)q.set('clientId', clientId);
   if (from)    q.set('from', from);
   if (to)      q.set('to', to);
@@ -255,7 +265,7 @@ async function loadDeliveries(){
 
 // ================== Aplicar filtros locales + paginar ==================
 function applyFilters(){
-  const { status, saleId, clientId, clientNameSel, from, to } = readFilterValues();
+  const { status, saleId, clientId, clientNameSel, from, to, text } = readFilterValues();
   let list = ENTREGAS.slice();
 
   if (saleId){
@@ -270,16 +280,19 @@ function applyFilters(){
     );
   }
 
-  if (status) list = list.filter(e => getStatus(e) === status.toUpperCase());
+  if (status) list = list.filter(e => normStatus(getStatus(e)) === status.toUpperCase());
   if (from)   list = list.filter(e => (getDateISO(e) || '0000-00-00') >= from);
   if (to)     list = list.filter(e => (getDateISO(e) || '9999-12-31') <= to);
 
-  // Ordenamiento por ID (desc)
-  list.sort((a,b)=>{
-    const idA = Number(getDeliveryId(a) || 0);
-    const idB = Number(getDeliveryId(b) || 0);
-    return idB - idA; // Las nuevas arriba
-  });
+  if (text){
+    list = list.filter(e=>{
+      const name = (getClientName(e)||'').toLowerCase();
+      const sid  = String(getSaleId(e)||'');
+      return name.includes(text) || sid.includes(text);
+    });
+  }
+
+  list.sort((a,b)=> Number(getDeliveryId(b) || 0) - Number(getDeliveryId(a) || 0));
 
   FILTRADAS = list;
   page = 0; 
@@ -341,9 +354,30 @@ function render(lista){
   for (const e of lista){
     const idDel   = getDeliveryId(e);
     const fecha   = fmtDate(getDateISO(e));
-    const st      = getStatus(e);
+    const stN     = normStatus(getStatus(e));
     const saleId  = getSaleId(e);
     const cliente = getClientName(e) || '—';
+
+    const isCancelled = stN === 'CANCELLED';
+    const isCompleted = stN === 'COMPLETED';
+
+    const disableEdit   = isCancelled || isCompleted;
+    const disableRemito = isCancelled;
+
+    const desc = `${cliente}${saleId ? ` (Venta #${saleId})` : ''}`;
+
+    const cancelBtnHtml = isCancelled
+      ? `<button type="button"
+                class="btn outline muted is-disabled"
+                data-disabled-msg="Entrega anulada"
+                title="Entrega anulada">⛔</button>`
+      : `<button type="button"
+                class="btn danger btn-anular"
+                data-id="${idDel}"
+                data-desc="${desc}"
+                title="Anular" style="background:#fff;">⛔</button>`;
+
+    const editHref = disableEdit ? '#' : `../files-html/editar-entrega.html?id=${idDel}`;
 
     const row = document.createElement('div');
     row.className='fila';
@@ -351,25 +385,37 @@ function render(lista){
       <div>${fecha}</div>
       <div>${cliente}</div>
       <div>${saleId ? `#${saleId}` : '—'}</div>
-      <div>${pill(st)}</div>
+      <div>${pill(stN)}</div>
+
       <div class="acciones">
         <button type="button"
-                class="btn outline btn-remito"
+                class="btn outline btn-remito ${disableRemito ? 'muted is-disabled' : ''}"
                 data-id="${idDel}"
-                title="Imprimir remito" style="border: 1px solid #ced4da;">
+                data-disabled-msg="No se puede generar PDF/remito de una entrega ANULADA"
+                title="${disableRemito ? 'Entrega anulada' : 'Imprimir remito'}"
+                style="border: 1px solid #ced4da;">
           🧾
         </button>
-        <a class="btn outline" href="../files-html/ver-entrega.html?id=${idDel}">👁️</a>
-        <a class="btn outline" href="../files-html/editar-entrega.html?id=${idDel}">✏️</a>
+
+        <a class="btn outline"
+          href="../files-html/ver-entrega.html?id=${idDel}"
+          title="Ver detalle">👁️</a>
+
+        <a class="btn outline ${disableEdit ? 'muted is-disabled' : ''}"
+          href="${editHref}"
+          data-disabled-msg="${isCancelled ? 'No se puede editar una entrega ANULADA' : 'No se puede editar una entrega COMPLETADA'}"
+          title="${disableEdit ? (isCancelled ? 'Entrega anulada' : 'Entrega completada') : 'Editar'}">
+          ✏️
+        </a>
+
+        ${cancelBtnHtml}
       </div>
     `;
     cont.appendChild(row);
   }
-
 }
 
 /* ================== EXPORTAR PDF ================== */
-
 function setupExport(){
   const btnOpen = document.getElementById('btnExport');
   if (!btnOpen) return;
@@ -400,11 +446,9 @@ function setupExport(){
       confirmButtonText: 'Exportar',
       cancelButtonText: 'Cancelar',
       buttonsStyling: true,
-      confirmButtonColor: '#4f46e5',  // violeta igual que presupuestos
-      cancelButtonColor: '#6b7280',   // gris
-      customClass: {
-        popup: 'swal2-popup-export'
-      },
+      confirmButtonColor: '#4f46e5',
+      cancelButtonColor: '#6b7280',
+      customClass: { popup: 'swal2-popup-export' },
       preConfirm: () => {
         const popup = Swal.getPopup();
         const checked = popup.querySelector('input[name="deliveriesExportScope"]:checked');
@@ -436,7 +480,6 @@ async function exportDeliveries(scope){
   if (to)       qs.set('to',   to);
   if (clientId) qs.set('clientId', clientId);
 
-  // Solo tiene sentido mandar estado cuando usamos scope=FILTERED
   if (scope === 'FILTERED' && status){
     qs.set('status', status);
   }
@@ -500,30 +543,87 @@ async function exportDeliveries(scope){
   }
 }
 
-
-/* ================== REMITO POR ENTREGA ================== */
-
-function setupRemitoButtons(){
+/* ================== ACCIONES LISTADO (remito + anular + disabled) ================== */
+function setupListActions(){
   const cont = document.getElementById('lista-entregas');
   if (!cont) return;
 
-  cont.addEventListener('click', async ev => {
-    const btn = ev.target.closest('.btn-remito');
-    if (!btn) return;
+  cont.addEventListener('click', async (ev) => {
+    const disabled = ev.target.closest('.is-disabled');
+    if (disabled){
+      ev.preventDefault();
+      ev.stopPropagation();
+      notify(disabled.dataset.disabledMsg || 'Acción no disponible', 'info');
+      return;
+    }
 
-    const id = btn.dataset.id;
-    if (!id) return;
+    const btnRemito = ev.target.closest('.btn-remito');
+    if (btnRemito){
+      const id = btnRemito.dataset.id;
+      if (!id) return;
+      try { await downloadDeliveryNote(id); }
+      catch (e){
+        console.error(e);
+        Swal.fire('Error', 'No se pudo generar el remito de esta entrega.', 'error');
+      }
+      return;
+    }
 
-    try {
-      await downloadDeliveryNote(id);
-    } catch (e) {
-      console.error(e);
-      Swal.fire('Error',
-        'No se pudo generar el remito de esta entrega.',
-        'error'
-      );
+    const btnAnular = ev.target.closest('.btn-anular');
+    if (btnAnular){
+      const id = btnAnular.dataset.id;
+      const desc = btnAnular.dataset.desc || '';
+      if (!id) return;
+
+      const r = await Swal.fire({
+        title: '¿Anular entrega?',
+        text: `Vas a anular la entrega #${id}${desc ? ` de ${desc}` : ''}. 
+La entrega quedará ANULADA y no contará para el progreso de la venta. 
+Esta acción no se puede deshacer.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, anular',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+      });
+      if (!r.isConfirmed) return;
+
+      try{
+        await cancelDelivery(id);
+        notify('Entrega anulada', 'success');
+        await loadDeliveries();
+      }catch(e){
+        console.error(e);
+        if (String(e?.message || '').includes('403')){
+          Swal.fire('Sin permisos', 'Solo OWNER puede anular entregas.', 'error');
+        } else {
+          Swal.fire('Error', 'No se pudo anular la entrega.', 'error');
+        }
+      }
     }
   });
+}
+
+async function cancelDelivery(idDelivery){
+  const candidates = [
+    { method:'PUT',   url: `/deliveries/${encodeURIComponent(idDelivery)}/cancel` },
+    { method:'PATCH', url: `/deliveries/${encodeURIComponent(idDelivery)}/cancel` },
+    { method:'POST',  url: `/deliveries/${encodeURIComponent(idDelivery)}/cancel` }
+  ];
+
+  let last = null;
+  for (const c of candidates){
+    const res = await authFetch(c.url, { method: c.method });
+    if (res.ok) return true;
+
+    last = res;
+    if (![404,405].includes(res.status)) {
+      const t = await res.text().catch(()=> '');
+      throw new Error(`HTTP ${res.status} ${t}`);
+    }
+  }
+  const t = last ? await last.text().catch(()=> '') : '';
+  throw new Error(`No encontré endpoint de anulación. Último: HTTP ${last?.status} ${t}`);
 }
 
 async function downloadDeliveryNote(idDelivery){
@@ -543,11 +643,7 @@ async function downloadDeliveryNote(idDelivery){
     const res = await authFetch(url);
 
     if (res.status === 404 || res.status === 204) {
-      Swal.fire(
-        'Sin datos',
-        'No se encontró la entrega o no hay datos para el remito.',
-        'info'
-      );
+      Swal.fire('Sin datos', 'No se encontró la entrega o no hay datos para el remito.', 'info');
       return;
     }
     if (!res.ok){
@@ -556,11 +652,7 @@ async function downloadDeliveryNote(idDelivery){
 
     const blob = await res.blob();
     if (!blob || blob.size === 0){
-      Swal.fire(
-        'Sin datos',
-        'No se pudo generar el remito para esta entrega.',
-        'info'
-      );
+      Swal.fire('Sin datos', 'No se pudo generar el remito para esta entrega.', 'info');
       return;
     }
 
@@ -584,11 +676,7 @@ async function downloadDeliveryNote(idDelivery){
 
   }catch(e){
     console.error(e);
-    Swal.fire(
-      'Error',
-      'No se pudo generar el remito de esta entrega.',
-      'error'
-    );
+    Swal.fire('Error', 'No se pudo generar el remito de esta entrega.', 'error');
     notify('Error al generar el remito de entrega', 'error');
   }finally{
     if (btn){
@@ -598,7 +686,7 @@ async function downloadDeliveryNote(idDelivery){
   }
 }
 
-// 👇👇 LA FUNCIÓN REUTILIZABLE PARA RESTRICCIÓN DE FECHAS 👇👇
+// ✅ Restricción Desde/Hasta
 function setupDateRangeConstraint(idDesde, idHasta) {
   const elDesde = document.getElementById(idDesde);
   const elHasta = document.getElementById(idHasta);

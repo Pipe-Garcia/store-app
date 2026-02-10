@@ -6,10 +6,12 @@ import com.appTest.store.dto.purchase.PurchaseDTO;
 import com.appTest.store.dto.purchase.PurchaseUpdateDTO;
 import com.appTest.store.dto.purchaseDetail.PurchaseDetailRequestDTO;
 import com.appTest.store.models.*;
+import com.appTest.store.models.enums.DocumentStatus;
 import com.appTest.store.repositories.IMaterialRepository;
 import com.appTest.store.repositories.IMaterialSupplierRepository;
 import com.appTest.store.repositories.IPurchaseRepository;
 import com.appTest.store.repositories.ISupplierRepository;
+import com.appTest.store.repositories.IWarehouseRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,34 +19,23 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-
 @Service
-public class PurchaseService implements IPurchaseService{
+public class PurchaseService implements IPurchaseService {
 
-    @Autowired
-    private IPurchaseRepository repoPurch;
+    @Autowired private IPurchaseRepository repoPurch;
+    @Autowired private IMaterialSupplierRepository repoMatSup;
+    @Autowired private IMaterialRepository repoMat;
 
-    @Autowired
-    private IMaterialSupplierRepository repoMatSup;
+    @Autowired private IWarehouseRepository repoWare;
 
-    @Autowired
-    private IMaterialRepository repoMat;
+    @Autowired private IStockService servStock;
+    @Autowired private ISupplierRepository repoSup;
 
-    @Autowired
-    private IStockService servStock;
-
-    @Autowired
-    private ISupplierRepository repoSup;
-
-    @Autowired
-    private AuditService audit;
+    @Autowired private AuditService audit;
 
     /* ========= Helpers auditoría (similar a MaterialService) ========= */
 
@@ -56,6 +47,7 @@ public class PurchaseService implements IPurchaseService{
         map.put("proveedorId", p.getSupplier()!=null ? p.getSupplier().getIdSupplier()   : null);
         map.put("proveedor",   p.getSupplier()!=null ? p.getSupplier().getNameCompany() : null);
         map.put("total",       calculateTotal(p));
+        map.put("status",      p.getStatus()!=null ? p.getStatus().name() : null);
         return map;
     }
 
@@ -81,6 +73,7 @@ public class PurchaseService implements IPurchaseService{
             case "fecha"        -> "Fecha";
             case "proveedor", "proveedorId" -> "Proveedor";
             case "total"        -> "Total";
+            case "status"       -> "Estado";
             default -> k;
         };
     }
@@ -100,7 +93,6 @@ public class PurchaseService implements IPurchaseService{
                 + (changes.size()>3 ? " +" + (changes.size()-3) + " más" : "");
     }
 
-    // Ejecutar algo después del commit de la transacción actual
     private void afterCommit(Runnable r){
         if (TransactionSynchronizationManager.isSynchronizationActive()){
             TransactionSynchronizationManager.registerSynchronization(
@@ -109,7 +101,6 @@ public class PurchaseService implements IPurchaseService{
                     }
             );
         } else {
-            // fallback: sin TX activa
             r.run();
         }
     }
@@ -146,20 +137,22 @@ public class PurchaseService implements IPurchaseService{
         }
 
         BigDecimal totalAmount = calculateTotal(purchase);
+        String status = (purchase.getStatus() != null) ? purchase.getStatus().name() : DocumentStatus.ACTIVE.name();
 
         return new PurchaseDTO(
                 purchase.getIdPurchase(),
                 purchase.getDatePurchase(),
                 supplierId,
                 supplierName,
-                totalAmount
+                totalAmount,
+                status
         );
     }
 
-
     private BigDecimal calculateTotal(Purchase purchase) {
+        if (purchase.getPurchaseDetails() == null) return BigDecimal.ZERO;
         return purchase.getPurchaseDetails().stream()
-                .map(purchaseDetail -> purchaseDetail.getQuantity().multiply(purchaseDetail.getPurchasedPrice()))
+                .map(d -> d.getQuantity().multiply(d.getPurchasedPrice()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -168,6 +161,7 @@ public class PurchaseService implements IPurchaseService{
     public PurchaseDTO createPurchase(PurchaseCreateDTO dto) {
         Purchase purchase = new Purchase();
         purchase.setDatePurchase(dto.getDatePurchase());
+        purchase.setStatus(DocumentStatus.ACTIVE);
 
         Supplier supplier = repoSup.findById(dto.getSupplierId())
                 .orElseThrow(() -> new EntityNotFoundException("Supplier not found with ID: " + dto.getSupplierId()));
@@ -179,23 +173,22 @@ public class PurchaseService implements IPurchaseService{
             MaterialSupplier materialSupplier = repoMatSup.findById(item.getMaterialSupplierId())
                     .orElseThrow(() -> new EntityNotFoundException("MaterialSupplier not found with ID: " + item.getMaterialSupplierId()));
 
-            // 🔒 Validar que todos los materiales pertenezcan al mismo proveedor
             if (!materialSupplier.getSupplier().getIdSupplier().equals(supplier.getIdSupplier())) {
                 throw new IllegalArgumentException("All materials must belong to the specified supplier.");
             }
 
-            // Crear PurchaseDetail
+            Warehouse warehouse = repoWare.findById(item.getWarehouseId())
+                    .orElseThrow(() -> new EntityNotFoundException("Warehouse not found with ID: " + item.getWarehouseId()));
+
             PurchaseDetail purchaseDetail = new PurchaseDetail();
             purchaseDetail.setMaterialSupplier(materialSupplier);
             purchaseDetail.setPurchase(purchase);
+            purchaseDetail.setWarehouse(warehouse);
             purchaseDetail.setQuantity(item.getQuantity());
             purchaseDetail.setPurchasedPrice(materialSupplier.getPriceUnit());
             purchaseDetailList.add(purchaseDetail);
 
-            // Derivar materialId desde materialSupplier
             Long materialId = materialSupplier.getMaterial().getIdMaterial();
-
-            // Actualizar stock
             servStock.increaseStock(materialId, item.getWarehouseId(), item.getQuantity());
         }
 
@@ -205,7 +198,6 @@ public class PurchaseService implements IPurchaseService{
         savedPurchase = repoPurch.findById(savedPurchase.getIdPurchase())
                 .orElseThrow(() -> new EntityNotFoundException("Purchase not found after creation"));
 
-        // === AUDITORÍA: CREATE con mensaje humano ===
         final Long pid = savedPurchase.getIdPurchase();
         final Map<String,Object> after = snap(savedPurchase);
         final String proveedor = savedPurchase.getSupplier() != null
@@ -216,7 +208,6 @@ public class PurchaseService implements IPurchaseService{
 
         afterCommit(() -> {
             Long evId = audit.success("CREATE", "Purchase", pid, message);
-            // payload “tipo create” para diffJson
             Map<String,Object> diffPayload = Map.of(
                     "created", true,
                     "fields",  after
@@ -227,15 +218,16 @@ public class PurchaseService implements IPurchaseService{
         return convertPurchaseToDto(savedPurchase);
     }
 
-
-
     @Override
     @Transactional
     public void updatePurchase(PurchaseUpdateDTO dto) {
         Purchase purchase = repoPurch.findById(dto.getIdPurchase())
                 .orElseThrow(() -> new EntityNotFoundException("Purchase not found with ID: " + dto.getIdPurchase()));
 
-        // Snapshot “antes”
+        if (purchase.getStatus() == DocumentStatus.CANCELLED){
+            throw new IllegalStateException("No se puede editar una compra ANULADA.");
+        }
+
         Map<String,Object> before = snap(purchase);
 
         if (dto.getDatePurchase() != null) purchase.setDatePurchase(dto.getDatePurchase());
@@ -246,7 +238,6 @@ public class PurchaseService implements IPurchaseService{
         }
         repoPurch.save(purchase);
 
-        // Snapshot “después”
         Map<String,Object> after = snap(purchase);
         List<Change> changes = diff(before, after);
         String message = summarize(changes);
@@ -255,7 +246,6 @@ public class PurchaseService implements IPurchaseService{
 
         afterCommit(() -> {
             Long evId = audit.success("UPDATE", "Purchase", pid, message);
-            // estructura de diff amigable
             var changed = changes.stream()
                     .map(c -> Map.<String,Object>of(
                             "field", c.field(),
@@ -268,6 +258,82 @@ public class PurchaseService implements IPurchaseService{
         });
     }
 
+    @Override
+    @Transactional
+    public PurchaseDTO cancelPurchase(Long id) {
+        Purchase p = repoPurch.findFullById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Purchase not found with ID: " + id));
+
+        if (p.getStatus() == DocumentStatus.CANCELLED){
+            return convertPurchaseToDto(p);
+        }
+
+        if (p.getPurchaseDetails() == null || p.getPurchaseDetails().isEmpty()){
+            throw new IllegalStateException("No se puede anular: la compra no tiene detalles.");
+        }
+
+        // 1) Validar que exista warehouse por detalle y que haya stock suficiente para revertir
+        for (PurchaseDetail d : p.getPurchaseDetails()){
+            if (d.getWarehouse() == null){
+                throw new IllegalStateException(
+                        "No se puede anular esta compra: hay detalles sin depósito (warehouse_id NULL). " +
+                                "Probablemente es una compra vieja (legacy)."
+                );
+            }
+            if (d.getMaterialSupplier() == null || d.getMaterialSupplier().getMaterial() == null){
+                throw new IllegalStateException("No se puede anular: detalle sin material asociado.");
+            }
+
+            Long materialId = d.getMaterialSupplier().getMaterial().getIdMaterial();
+            Long warehouseId = d.getWarehouse().getIdWarehouse();
+            BigDecimal qty = d.getQuantity() != null ? d.getQuantity() : BigDecimal.ZERO;
+
+            BigDecimal available = servStock.availability(materialId, warehouseId);
+            if (available.compareTo(qty) < 0){
+                String matName = d.getMaterialSupplier().getMaterial().getName();
+                String whName  = d.getWarehouse().getName();
+                throw new IllegalStateException(
+                        "No se puede anular: stock insuficiente para revertir. " +
+                                "Material: " + matName + " · Depósito: " + whName +
+                                " · Disponible: " + available.stripTrailingZeros().toPlainString() +
+                                " · A revertir: " + qty.stripTrailingZeros().toPlainString()
+                );
+            }
+        }
+
+        // 2) Revertir stock (restar lo que esta compra había ingresado)
+        for (PurchaseDetail d : p.getPurchaseDetails()){
+            Long materialId = d.getMaterialSupplier().getMaterial().getIdMaterial();
+            Long warehouseId = d.getWarehouse().getIdWarehouse();
+            BigDecimal qty = d.getQuantity();
+            servStock.decreaseStock(materialId, warehouseId, qty);
+        }
+
+        // 3) Marcar CANCELLED
+        Map<String,Object> before = snap(p);
+
+        p.setStatus(DocumentStatus.CANCELLED);
+        repoPurch.save(p);
+
+        Map<String,Object> after = snap(p);
+
+        final Long pid = p.getIdPurchase();
+        final String proveedor = p.getSupplier() != null
+                ? p.getSupplier().getNameCompany()
+                : "—";
+        final BigDecimal total = calculateTotal(p);
+        final String message = "Compra anulada · Proveedor: " + proveedor + " · Total: " + fmt(total);
+
+        afterCommit(() -> {
+            Long evId = audit.success("CANCEL", "Purchase", pid, message);
+            Map<String,Object> diffPayload = Map.of(
+                    "changed", List.of(Map.of("field","status","from","ACTIVE","to","CANCELLED"))
+            );
+            audit.attachDiff(evId, before, after, diffPayload);
+        });
+
+        return convertPurchaseToDto(p);
+    }
 
     @Override
     @Transactional
@@ -275,5 +341,4 @@ public class PurchaseService implements IPurchaseService{
     public void deletePurchaseById(Long id) {
         repoPurch.deleteById(id);
     }
-
 }

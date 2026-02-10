@@ -1,3 +1,4 @@
+// SalesReportPdfController.java
 package com.appTest.store.controllers;
 
 import com.appTest.store.services.pdf.SalesReportPdfService;
@@ -19,7 +20,7 @@ public class SalesReportPdfController {
     private final SalesReportPdfService pdfService;
 
     @GetMapping("/report-pdf")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")   
+    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")
     public ResponseEntity<byte[]> exportSalesPdf(
             @RequestParam String scope,
             @RequestParam(required = false)
@@ -29,14 +30,16 @@ public class SalesReportPdfController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate to,
             @RequestParam(required = false) Long clientId,
-            @RequestParam(required = false) String paymentStatus
+            @RequestParam(required = false) String paymentStatus,
+            @RequestParam(required = false) String state
     ) {
         byte[] bytes = pdfService.renderSales(
                 scope,
                 from,
                 to,
                 clientId,
-                paymentStatus
+                paymentStatus,
+                state
         );
 
         if (bytes == null || bytes.length == 0) {

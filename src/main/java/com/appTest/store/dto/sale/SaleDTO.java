@@ -22,20 +22,20 @@ public class SaleDTO implements Serializable {
     // Totales monetarios
     private BigDecimal total;
     private BigDecimal paid;
-    private BigDecimal balance;       // total - paid (>= 0)
-    private String paymentStatus;     // PENDING | PARTIAL | PAID
+    private BigDecimal balance;
+    private String paymentStatus;
 
-    // Compat opcional
     private String paymentMethod;
 
     // Referencias
-    private Long deliveryId;          // si hay exactamente 1 entrega, se setea a ese id
-    private Long orderId;             // presupuesto de origen (si existe)
+    private Long deliveryId;
+    private Long orderId;
 
-    // 🔴 NUEVO: resumen de unidades (venta ↔ entregas)
-    private BigDecimal totalUnits;      // unidades vendidas en esta venta
-    private BigDecimal deliveredUnits;  // unidades entregadas (todas las entregas de la venta)
-    private BigDecimal pendingUnits;    // totalUnits - deliveredUnits (>= 0)
-    private String deliveryStatus;      // NO_ITEMS | PENDING | PARTIAL | COMPLETED
+    // Logística
+    private BigDecimal totalUnits;
+    private BigDecimal deliveredUnits;
+    private BigDecimal pendingUnits;
+    private String deliveryStatus;
+
+    private String status; // ACTIVE | CANCELLED
 }
-

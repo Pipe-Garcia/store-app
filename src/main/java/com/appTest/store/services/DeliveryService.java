@@ -795,6 +795,64 @@ public class DeliveryService implements IDeliveryService {
     }
 
 
+    @Override
+    @Transactional
+    public DeliveryDTO cancelDelivery(Long id) {
+        Delivery delivery = repoDelivery.findByIdWithGraph(id)
+                .orElseThrow(() -> new EntityNotFoundException("Delivery not found with id: " + id));
+
+        Map<String,Object> before = snap(delivery);
+
+        if (delivery.getStatus() == DeliveryStatus.CANCELLED) {
+            throw new IllegalStateException("Delivery is already cancelled.");
+        }
+
+        delivery.setStatus(DeliveryStatus.CANCELLED);
+        repoDelivery.save(delivery);
+
+        // Si esta entrega está ligada a un pedido, recalculamos el “status global” (según tu modelo actual)
+        // y lo aplicamos a las entregas NO anuladas de ese pedido para mantener consistencia visual.
+        if (delivery.getOrders() != null) {
+            Long orderId = delivery.getOrders().getIdOrders();
+            DeliveryStatus newStatus = calculateStatusForOrder(orderId);
+
+            List<Delivery> all = repoDelivery.findByOrders_IdOrders(orderId);
+            for (Delivery d : all) {
+                if (d == null) continue;
+                if (d.getStatus() == DeliveryStatus.CANCELLED) continue;
+                d.setStatus(newStatus);
+            }
+            repoDelivery.saveAll(all);
+        }
+
+        DeliveryDTO dtoOut = convertDeliveryToDto(delivery);
+
+        // Auditoría CANCEL
+        final Long did = dtoOut.getIdDelivery();
+        final Map<String,Object> after = snap(delivery);
+
+        final String clientName = dtoOut.getClientName() != null ? dtoOut.getClientName() : "—";
+        final BigDecimal units = dtoOut.getDeliveredUnits() != null ? dtoOut.getDeliveredUnits() : BigDecimal.ZERO;
+        final Long saleId = dtoOut.getSaleId();
+        final Long orderId = dtoOut.getOrdersId();
+
+        StringBuilder msg = new StringBuilder();
+        msg.append("Cliente: ").append(clientName)
+                .append(" · Unidades: ").append(fmt(units))
+                .append(" · Estado: CANCELLED");
+        if (saleId != null)  msg.append(" · Venta #").append(saleId);
+        if (orderId != null) msg.append(" · Presupuesto #").append(orderId);
+        final String message = msg.toString();
+
+        afterCommit(() -> {
+            Long evId = audit.success("CANCEL", "Delivery", did, message);
+            Map<String,Object> diffPayload = Map.of("cancelled", true);
+            audit.attachDiff(evId, before, after, diffPayload);
+        });
+
+        return dtoOut;
+    }
+
     /* ==================== Delete ==================== */
 
     @Override
