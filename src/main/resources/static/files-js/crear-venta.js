@@ -473,42 +473,84 @@ function validatePaymentField(){
   }
 }
 
+function getDetOrdered(d){
+  return Number(
+    d.quantityOrdered ?? d.quantity ?? d.qty ?? 0
+  ) || 0;
+}
+
+function getDetCommitted(d){
+  return Number(
+    d.quantityCommitted ?? d.quantityCommittedUnits ?? d.committedUnits ?? d.unitsCommitted ?? 0
+  ) || 0;
+}
+
+function getDetDelivered(d){
+  return Number(
+    d.quantityDelivered ?? d.deliveredUnits ?? d.unitsDelivered ?? 0
+  ) || 0;
+}
+
+// ✅ Pendiente por VENDER (no por entregar)
+function getPendingToSell(d){
+  // si en el futuro el back lo manda explícito, lo tomamos
+  const explicit = d.pendingToSellUnits ?? d.remainingToSellUnits ?? d.unitsPendingToSell;
+  if (explicit != null) return Math.max(0, Number(explicit) || 0);
+
+  const ordered   = getDetOrdered(d);
+  const committed = getDetCommitted(d);
+  const delivered = getDetDelivered(d);
+
+  const sold = committed + delivered;
+  return Math.max(0, ordered - sold);
+}
 
 /* ===== PRECARGA ===== */
 async function preloadFromOrderView(view){
-  const lines = (view.details || []).filter(d => Number(d.remainingUnits || 0) > 0);
+  const rawDetails = Array.isArray(view?.details) ? view.details : [];
+
+  // ✅ solo renglones con pendiente por VENDER
+  const lines = rawDetails
+    .map(d => ({ ...d, __pendingSell: getPendingToSell(d) }))
+    .filter(d => Number(d.__pendingSell || 0) > 0);
+
   if (!lines.length){
     clearOrderAndUnlockClient();
-    notify('Ese presupuesto no tiene cantidades pendientes.','info');
+    notify('Ese presupuesto no tiene cantidades pendientes por vender.','info');
     return;
   }
 
+  // Map materialId -> pendiente por vender (sumado por si hubiese repetidos)
   ORDER_REMAIN.clear();
   for (const det of lines){
-    const mid = Number(det.materialId);
-    const rem = Number(det.remainingUnits || 0);
-    if (mid) ORDER_REMAIN.set(mid, rem);
+    const mid = Number(det.materialId ?? det.idMaterial ?? 0);
+    const rem = Number(det.__pendingSell || 0);
+    if (!mid) continue;
+    ORDER_REMAIN.set(mid, (ORDER_REMAIN.get(mid) || 0) + rem);
   }
 
   limpiarItems();
 
   for (const det of lines){
-    const materialId = Number(det.materialId);
-    const qty        = Number(det.remainingUnits || 0);
-    
+    const materialId = Number(det.materialId ?? det.idMaterial ?? 0);
+    const qty        = Number(det.__pendingSell || 0);
+
     let wh = null;
     try{
       const rs = await authFetch(API_URL_STOCKS_BY_MAT(materialId));
       const list = rs.ok ? await rs.json() : [];
-      wh = (list||[]).sort((a,b)=> Number(b.quantityAvailable)-Number(a.quantityAvailable))[0]?.warehouseId;
+      wh = (list||[])
+        .sort((a,b)=> Number(b.quantityAvailable)-Number(a.quantityAvailable))[0]
+        ?.warehouseId;
     }catch(_){}
 
-    await sleep(10); 
+    await sleep(10);
     addRow({ materialId, warehouseId: wh, qty, orderBound: true });
   }
+
   recalc();
   $('#btnClearOrder') && ($('#btnClearOrder').style.display = 'inline-flex');
-  notify('Ítems cargados desde el presupuesto','success');
+  notify('Ítems pendientes cargados desde el presupuesto','success');
 }
 
 

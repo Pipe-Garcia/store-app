@@ -23,4 +23,7 @@ public interface StockMovementRepository
       group by m.reason
     """)
     List<Object[]> countByReasonBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+
+    List<StockMovement> findByRequestId(String requestId);
 }

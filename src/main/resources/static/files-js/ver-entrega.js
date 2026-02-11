@@ -27,10 +27,9 @@ const fmtDate = (s) => {
 const UI_DELIVERY_STATUS = {
   CANCELLED: 'ANULADA',
   ANULADA: 'ANULADA',
-  DELIVERED: 'ENTREGADA',
-  COMPLETED: 'ENTREGADA',
-  PENDING: 'PENDIENTE A ENTREGAR',
-  PARTIAL: 'PENDIENTE A ENTREGAR'
+  PENDING: 'PENDIENTE',
+  PARTIAL: 'PARCIAL',
+  COMPLETED: 'COMPLETADA'
 };
 
 function pillClass(st){
@@ -70,6 +69,39 @@ async function init() {
   }
 }
 
+function getDeliveryStatus(d){
+  const cand = [
+    d?.deliveryStatus,
+    d?.statusDelivery,
+    d?.delivery?.status,
+    d?.status
+  ].map(v => (v ?? '').toString().trim()).filter(Boolean);
+
+  const raw = (cand[0] || '').toUpperCase();
+
+  const map = {
+    // cancelación
+    'ANULADA': 'CANCELLED',
+    'CANCELLED': 'CANCELLED',
+
+    // completada
+    'COMPLETADA': 'COMPLETED',
+    'COMPLETED': 'COMPLETED',
+    'DELIVERED': 'COMPLETED',
+    'ENTREGADA': 'COMPLETED',
+
+    // parcial
+    'PARCIAL': 'PARTIAL',
+    'PARTIAL': 'PARTIAL',
+
+    // pendiente
+    'PENDIENTE': 'PENDING',
+    'PENDING': 'PENDING'
+  };
+
+  return map[raw] || 'PENDING';
+}
+
 function renderHeader(d, idStr) {
   const idDelivery = d.idDelivery ?? d.deliveryId ?? d.id ?? '—';
   $('#deliveryId').textContent = idDelivery;
@@ -95,16 +127,8 @@ function renderHeader(d, idStr) {
   const orderId = d.ordersId ?? d.orderId ?? d.idOrders ?? (d.orders && d.orders.idOrders) ?? null;
   $('#pedidoAsociado').textContent = orderId ? `#${orderId}` : '—';
 
-  // ===== Estado (FIX: definir st) =====
-  const raw = (d.status || '').toString().toUpperCase();
-
-  // Normalizamos a los 4 estados esperados por el front
-  const st =
-    (raw === 'ANULADA' || raw === 'CANCELLED') ? 'CANCELLED' :
-    (raw === 'DELIVERED') ? 'COMPLETED' :
-    (raw === 'COMPLETED') ? 'COMPLETED' :
-    (raw === 'PARTIAL') ? 'PARTIAL' :
-    'PENDING';
+  // ===== Estado (Delivery) =====
+  const st = getDeliveryStatus(d);
 
   // UI pill
   const pill = $('#estadoEntrega');

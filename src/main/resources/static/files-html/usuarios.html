@@ -21,7 +21,6 @@
 
     if (!token) { go('login.html'); return; }
 
-    // helpers JWT
     function b64u(s){ try { return atob(s.replace(/-/g,'+').replace(/_/g,'/')); } catch(_) { return ''; } }
     function parseJwt(tok){
       try{
@@ -41,11 +40,9 @@
       return set.has('ROLE_OWNER') || set.has('OWNER');
     }
 
-    // 1) si el JWT ya trae OWNER, dejar pasar
     const payload = parseJwt(token);
     if (hasOwnerRole(payload)) { show(); return; }
 
-    // 2) si el JWT no trae rol, consultar /auth/me
     fetch(API_ME, { headers:{ 'Authorization':'Bearer '+token }})
       .then(r => r.ok ? r.json() : null)
       .then(me => {
@@ -61,6 +58,9 @@
   <link rel="stylesheet" href="../files-css/dashboard.css"/>
   <link rel="stylesheet" href="../files-css/usuarios.css"/>
   <link rel="stylesheet" href="../files-css/nav.css"/>
+
+  <!-- SweetAlert2 (si ya lo tenés local, reemplazá este src por tu archivo local) -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
   <div id="app-header"></div>
@@ -83,7 +83,7 @@
             <option value="ROLE_OWNER">Owner</option>
           </select>
           <input class="full" name="password" type="password" placeholder="Contraseña" required />
-          <button class="btn">Crear</button>
+          <button class="btn" id="btnCreate">Crear</button>
         </form>
         <p id="nMsg" class="muted"></p>
       </section>
@@ -93,7 +93,7 @@
         <form id="fReset">
           <input name="userId" placeholder="ID de usuario" required />
           <input name="password" type="password" placeholder="Nueva contraseña" required />
-          <button class="btn">Actualizar</button>
+          <button class="btn" id="btnReset">Actualizar</button>
         </form>
         <p id="rMsg" class="muted"></p>
       </section>
@@ -112,51 +112,74 @@
     </section>
   </main>
 
+  <!-- Header + menú usuario (igual que el resto) -->
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
+  <script src="../files-js/role-guard.js"></script>
+  <script src="../files-js/menu-guard.js"></script>
+
   <script>
-    const API_USERS = 'http://localhost:8088/users';
-    const API_ME    = 'http://localhost:8088/auth/me';
-    const token = localStorage.getItem('accessToken')||localStorage.getItem('token')||
-                  sessionStorage.getItem('accessToken')||sessionStorage.getItem('token');
-    if(!token){ location.href='login.html'; }
+    const { authFetch, safeJson, getToken } = window.api;
+
+    const API_USERS = '/users';
+    const API_ME    = '/auth/me';
+
+    if(!getToken()){ location.href='login.html'; }
+
     const $ = s=>document.querySelector(s);
 
-    function authFetch(url,opts={}){
-      const hasBody = !!opts.body;
-      return fetch(url,{
-        ...opts,
-        headers:{
-          'Authorization':`Bearer ${token}`,
-          ...(hasBody?{'Content-Type':'application/json'}:{}),
-          ...(opts.headers||{})
-        }
-      });
-    }
-
     let selfId = null;
+
+    const Toast = Swal.mixin({
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2200,
+      timerProgressBar: true
+    });
+
+    function toastOk(text){ Toast.fire({ icon:'success', title: text }); }
+    function toastErr(text){ Toast.fire({ icon:'error', title: text }); }
+
+    async function readErr(r){
+      try{
+        const j = await safeJson(r);
+        if (j && (j.message || j.error)) return String(j.message || j.error);
+        const t = await r.text();
+        return (t||'').trim() || ('HTTP ' + r.status);
+      }catch{
+        return ('HTTP ' + r.status);
+      }
+    }
 
     async function whoAmI(){
       try{
         const r = await authFetch(API_ME);
         if(!r.ok) return null;
-        return await r.json();
+        return await safeJson(r);
       }catch{ return null; }
     }
 
     async function load(){
-      // saber mi id para bloquear acciones sobre mí mismo
       const me = await whoAmI();
       selfId = me && (me.id || me.userId || me.sub) || null;
 
       const r = await authFetch(API_USERS);
-      if(!r.ok){ alert('No autorizado'); location.href='index.html'; return; }
-      const list = await r.json();
-      render(list);
+      if(!r.ok){
+        const msg = await readErr(r);
+        await Swal.fire({ icon:'error', title:'No autorizado', text: msg || 'No tenés permisos.' });
+        location.href='index.html';
+        return;
+      }
+      const list = await safeJson(r);
+      render(Array.isArray(list) ? list : []);
     }
 
     function render(list){
       const host = $('#tbl');
       host.querySelectorAll('.filaUsr').forEach(n=>n.remove());
+
       list.forEach(u=>{
         const isSelf = selfId && String(u.id) === String(selfId);
         const nextRole = u.role==='ROLE_OWNER'?'ROLE_EMPLOYEE':'ROLE_OWNER';
@@ -177,7 +200,7 @@
             <button class="btn outline" data-act="role" data-id="${u.id}" data-role="${nextRole}" ${isSelf?'disabled':''}>
               ${u.role==='ROLE_OWNER'?'Hacer Empleado':'Hacer Owner'}
             </button>
-            <button class="btn outline" data-act="toggle" data-id="${u.id}" ${isSelf?'disabled':''}>
+            <button class="btn outline" data-act="toggle" data-id="${u.id}" data-enabled="${u.enabled ? '1':'0'}" ${isSelf?'disabled':''}>
               ${u.enabled?'Desactivar':'Activar'}
             </button>
             <button class="btn outline" data-act="reset" data-id="${u.id}">Reset pass</button>
@@ -193,42 +216,140 @@
         const act= btn.dataset.act;
 
         if (act==='del'){
-          if(!confirm('¿Eliminar usuario?')) return;
+          const res = await Swal.fire({
+            icon:'warning',
+            title:'Eliminar usuario',
+            text:'Esta acción no se puede deshacer.',
+            showCancelButton:true,
+            confirmButtonText:'Sí, eliminar',
+            cancelButtonText:'Cancelar'
+          });
+          if(!res.isConfirmed) return;
+
           const r = await authFetch(`${API_USERS}/${id}`,{ method:'DELETE' });
-          r.ok ? load() : alert('Error al eliminar');
+          if(r.ok){ toastOk('Usuario eliminado'); load(); }
+          else { toastErr(await readErr(r)); }
+
         } else if (act==='toggle'){
-          const enable = btn.textContent==='Activar';
-          const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ enabled: enable }) });
-          r.ok ? load() : alert('Error al actualizar');
+          const currentlyEnabled = btn.dataset.enabled === '1';
+          const enable = !currentlyEnabled;
+
+          const res = await Swal.fire({
+            icon:'question',
+            title: enable ? 'Activar usuario' : 'Desactivar usuario',
+            text: enable ? 'El usuario podrá iniciar sesión.' : 'El usuario NO podrá iniciar sesión.',
+            showCancelButton:true,
+            confirmButtonText: enable ? 'Activar' : 'Desactivar',
+            cancelButtonText:'Cancelar'
+          });
+          if(!res.isConfirmed) return;
+
+          const r = await authFetch(`${API_USERS}/${id}`,{
+            method:'PATCH',
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ enabled: enable })
+          });
+          if(r.ok){ toastOk('Actualizado'); load(); }
+          else { toastErr(await readErr(r)); }
+
         } else if (act==='role'){
           const role = btn.dataset.role;
-          const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ role }) });
-          r.ok ? load() : alert('Error al actualizar rol');
+
+          const res = await Swal.fire({
+            icon:'question',
+            title:'Cambiar rol',
+            text:`¿Confirmás cambiar el rol a ${role.replace('ROLE_','')}?`,
+            showCancelButton:true,
+            confirmButtonText:'Cambiar',
+            cancelButtonText:'Cancelar'
+          });
+          if(!res.isConfirmed) return;
+
+          const r = await authFetch(`${API_USERS}/${id}`,{
+            method:'PATCH',
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ role })
+          });
+          if(r.ok){ toastOk('Rol actualizado'); load(); }
+          else { toastErr(await readErr(r)); }
+
         } else if (act==='reset'){
-          const pwd = prompt('Nueva contraseña:'); if(!pwd) return;
-          const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ password: pwd }) });
-          r.ok ? alert('Contraseña actualizada') : alert('Error al actualizar');
+          const res = await Swal.fire({
+            title:'Nueva contraseña',
+            input:'password',
+            inputPlaceholder:'Ingresá la nueva contraseña',
+            inputAttributes:{ autocomplete:'new-password' },
+            showCancelButton:true,
+            confirmButtonText:'Actualizar',
+            cancelButtonText:'Cancelar',
+            inputValidator: (v)=> !v ? 'Ingresá una contraseña' : undefined
+          });
+          if(!res.isConfirmed) return;
+
+          const r = await authFetch(`${API_USERS}/${id}`,{
+            method:'PATCH',
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ password: res.value })
+          });
+          if(r.ok){ toastOk('Contraseña actualizada'); }
+          else { toastErr(await readErr(r)); }
         }
       };
     }
 
     $('#fNew').addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const fd = new FormData(e.target);
-      const body = JSON.stringify(Object.fromEntries(fd.entries()));
-      const r = await authFetch(API_USERS,{ method:'POST', body });
-      $('#nMsg').textContent = r.ok ? 'Usuario creado' : 'No se pudo crear';
-      if (r.ok) { e.target.reset(); load(); }
+      const btn = $('#btnCreate');
+      btn.disabled = true;
+
+      try{
+        const fd = new FormData(e.target);
+        const body = JSON.stringify(Object.fromEntries(fd.entries()));
+        const r = await authFetch(API_USERS,{ method:'POST', headers:{ 'Content-Type':'application/json' }, body });
+
+        if (r.ok){
+          $('#nMsg').textContent = 'Usuario creado';
+          toastOk('Usuario creado');
+          e.target.reset();
+          load();
+        } else {
+          const msg = await readErr(r);
+          $('#nMsg').textContent = 'No se pudo crear';
+          await Swal.fire({ icon:'error', title:'No se pudo crear', text: msg });
+        }
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     $('#fReset').addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const fd = new FormData(e.target);
-      const id = fd.get('userId');
-      const pwd= fd.get('password');
-      const r = await authFetch(`${API_USERS}/${id}`,{ method:'PATCH', body: JSON.stringify({ password: pwd }) });
-      $('#rMsg').textContent = r.ok ? 'Contraseña actualizada' : 'No se pudo actualizar';
-      if (r.ok) e.target.reset();
+      const btn = $('#btnReset');
+      btn.disabled = true;
+
+      try{
+        const fd = new FormData(e.target);
+        const id = fd.get('userId');
+        const pwd= fd.get('password');
+
+        const r = await authFetch(`${API_USERS}/${id}`,{
+          method:'PATCH',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ password: pwd })
+        });
+
+        if (r.ok){
+          $('#rMsg').textContent = 'Contraseña actualizada';
+          toastOk('Contraseña actualizada');
+          e.target.reset();
+        } else {
+          const msg = await readErr(r);
+          $('#rMsg').textContent = 'No se pudo actualizar';
+          await Swal.fire({ icon:'error', title:'No se pudo actualizar', text: msg });
+        }
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     $('#btnReload').addEventListener('click', load);

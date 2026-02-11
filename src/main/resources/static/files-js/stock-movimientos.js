@@ -23,11 +23,11 @@
 
   // ====== i18n de "Motivo" ======
   const REASON_ES = {
-    SALE:        'Venta',
-    PURCHASE:    'Compra',
-    DELIVERY:    'Entrega',      // entregas históricas, si quedara alguna
-    RESERVATION: 'Movimiento',   // registros viejos de reservas (sin nombrarlas)
-    ADJUST:      'Ajuste'
+    SALE: 'Venta',
+    PURCHASE: 'Compra',
+    ADJUST: 'Ajuste',
+    CANCEL_PURCHASE: 'Anulación (Compra)',
+    CANCEL_SALE: 'Anulación (Venta)'
   };
 
   // ====== Zona horaria y formateo seguro ======
@@ -62,10 +62,29 @@
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g,'');
 
+
+  const CANCEL_RE = /(anul|cancel)/i;
+
   // Heurística para distinguir "Compra" de "Entrega"
   // (arregla los casos donde la compra quedó grabada como DELIVERY)
   function normalizeReason(m){
     const base = (m.reason || '').toUpperCase();
+
+     // Si el back ya lo manda bien, respetarlo
+    if (base === 'CANCEL_PURCHASE' || base === 'CANCEL_SALE') return base;
+
+    const delta = Number(m.delta || 0);
+    const src   = (m.sourceType || '').toUpperCase();
+    const note  = String(m.note || '');
+    // Heurística: anulación de compra => baja stock, pero viene de PURCHASE (o nota lo sugiere)
+    if (base === 'SALE' && (src === 'PURCHASE' || (delta < 0 && CANCEL_RE.test(note)))) {
+      return 'CANCEL_PURCHASE';
+    }
+    // Heurística: anulación de venta => sube stock, pero viene de SALE (o nota lo sugiere)
+    if (base === 'PURCHASE' && (src === 'SALE' || (delta > 0 && CANCEL_RE.test(note)))) {
+      return 'CANCEL_SALE';
+    }
+
 
     if (base === 'DELIVERY') {
       const delta = Number(m.delta || 0);
@@ -111,6 +130,8 @@
     localReasonFilter = null;
     if (reason === 'PURCHASE') {
       localReasonFilter = 'PURCHASE';
+    } else if (reason === 'CANCEL_PURCHASE' || reason === 'CANCEL_SALE') {
+     localReasonFilter = reason;  
     } else if (reason) {
       p.set('reason', reason);
     }
@@ -187,6 +208,12 @@
           String(m.warehouseId||'') === whRaw
         );
         wasLocal = true;
+      }
+
+      // Filtro local por anulaciones
+      if (localReasonFilter === 'CANCEL_PURCHASE' || localReasonFilter === 'CANCEL_SALE') {
+         rows = rows.filter(m => normalizeReason(m) === localReasonFilter);
+         wasLocal = true;
       }
 
       // Filtro local por motivo "Compra"

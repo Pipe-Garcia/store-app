@@ -69,6 +69,9 @@ public class SaleService implements ISaleService{
     private IStockReservationRepository repoReservation;
 
     @Autowired
+    private StockMovementService stockMovements;
+
+    @Autowired
     private AuditService audit;
 
     /* ============ Helpers de auditoría (Sale) ============ */
@@ -726,27 +729,25 @@ public class SaleService implements ISaleService{
         Sale sale = repoSale.findById(idSale)
                 .orElseThrow(() -> new EntityNotFoundException("Sale not found"));
 
-        // Snapshot antes
         Map<String,Object> before = snap(sale);
 
-        // Si ya está anulada, devolvemos tal cual
         if (sale.getStatus() == DocumentStatus.CANCELLED) {
             return convertSaleToDto(sale);
         }
-
 
         boolean hasNonCancelledDeliveries =
                 sale.getDeliveries() != null &&
                         sale.getDeliveries().stream()
                                 .anyMatch(d -> d != null
                                         && d.getStatus() != com.appTest.store.models.enums.DeliveryStatus.CANCELLED);
+
         if (hasNonCancelledDeliveries) {
             throw new IllegalStateException(
                     "Cannot cancel a sale that has active deliveries. Cancel deliveries first."
             );
         }
 
-        // Revertir stock
+        // 1) Revertir stock (esto hoy te lo loggea como PURCHASE)
         if (sale.getSaleDetailList() != null) {
             for (SaleDetail sd : sale.getSaleDetailList()) {
                 if (sd.getMaterial() == null) continue;
@@ -768,11 +769,19 @@ public class SaleService implements ISaleService{
             }
         }
 
-        // Marcar como anulada
+        // ✅ 2) Retag de movimientos de esta request: PURCHASE -> CANCEL_SALE
+        stockMovements.retagForCurrentRequest(
+                Set.of("PURCHASE", "DELIVERY"),
+                "CANCEL_SALE",
+                "Sale",
+                idSale,
+                "Anulación de venta #" + idSale
+        );
+
+        // 3) Marcar como anulada
         sale.setStatus(DocumentStatus.CANCELLED);
         repoSale.save(sale);
 
-        // Snapshot después
         Map<String,Object> after = snap(sale);
         List<Change> changes = diff(before, after);
         String message = summarize(changes);

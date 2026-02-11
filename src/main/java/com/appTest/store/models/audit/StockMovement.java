@@ -22,8 +22,8 @@ public class StockMovement {
     @Column(nullable=false, precision=19, scale=3) private BigDecimal toQty;
     @Column(nullable=false, precision=19, scale=3) private BigDecimal delta;
 
-    @Column(nullable=false, length=40) private String reason;      // SALE, DELIVERY, RESERVATION...
-    @Column(length=40) private String sourceType;                   // SALE, DELIVERY, ORDER...
+    @Column(nullable=false, length=40) private String reason;
+    @Column(length=40) private String sourceType;
     private Long sourceId;
 
     private Long userId;

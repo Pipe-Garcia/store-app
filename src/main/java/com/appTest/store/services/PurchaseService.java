@@ -32,6 +32,9 @@ public class PurchaseService implements IPurchaseService {
 
     @Autowired private IWarehouseRepository repoWare;
 
+    @Autowired
+    private StockMovementService stockMovements;
+
     @Autowired private IStockService servStock;
     @Autowired private ISupplierRepository repoSup;
 
@@ -308,6 +311,14 @@ public class PurchaseService implements IPurchaseService {
             BigDecimal qty = d.getQuantity();
             servStock.decreaseStock(materialId, warehouseId, qty);
         }
+
+        stockMovements.retagForCurrentRequest(
+                Set.of("SALE"),
+                "CANCEL_PURCHASE",
+                "Purchase",
+                id,
+                "Anulación de compra #" + id
+        );
 
         // 3) Marcar CANCELLED
         Map<String,Object> before = snap(p);
