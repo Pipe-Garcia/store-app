@@ -16,31 +16,31 @@ const fmtDate = s=>{
   const d = new Date(iso + 'T00:00:00');
   return isNaN(d) ? '—' : d.toLocaleDateString('es-AR');
 };
+
 function go(page){
   const base = location.pathname.replace(/[^/]+$/, '');
   location.href = `${base}${page}`;
 }
 
-let __toastRoot;
-function notify(m,type='info'){
-  if(!__toastRoot){
-    __toastRoot=document.createElement('div');
-    Object.assign(__toastRoot.style,{
-      position:'fixed',
-      top:'36px',
-      right:'16px',
-      display:'flex',
-      flexDirection:'column',
-      gap:'8px',
-      zIndex:9999
-    });
-    document.body.appendChild(__toastRoot);
+/* ================== TOASTS (SweetAlert2) ================== */
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
   }
-  const n=document.createElement('div');
-  n.className=`notification ${type}`;
-  n.textContent=m;
-  __toastRoot.appendChild(n);
-  setTimeout(()=>n.remove(),4200);
+});
+
+function notify(msg, type='info'){
+  const icon = 
+    type === 'error'   ? 'error'   : 
+    type === 'success' ? 'success' : 
+    type === 'warning' ? 'warning' : 'info';
+  Toast.fire({ icon: icon, title: msg });
 }
 
 // Helpers por detalle
@@ -55,7 +55,6 @@ const getDetBudgeted = d =>
   );
 
 const getDetSold = d => {
-  // 1) Si viene un campo explícito de "vendidas desde este presupuesto", lo usamos.
   const direct =
     d.quantitySoldFromBudget ??
     d.soldFromBudget ??
@@ -67,21 +66,11 @@ const getDetSold = d => {
 
   if (direct != null) return Number(direct) || 0;
 
-  // 2) Modelo nuevo: committed = vendidas NO entregadas, delivered = entregadas
-  const committed = Number(
-    d.committedUnits ??
-    d.unitsCommitted ??
-    0
-  );
-  const delivered = Number(
-    d.deliveredUnits ??
-    d.unitsDelivered ??
-    0
-  );
+  const committed = Number(d.committedUnits ?? d.unitsCommitted ?? 0);
+  const delivered = Number(d.deliveredUnits ?? d.unitsDelivered ?? 0);
   const sum = committed + delivered;
   if (sum > 0) return sum;
 
-  // 3) Fallback: vendidas ≈ presupuestadas - pendiente
   const q   = getDetBudgeted(d);
   const rem = getDetRemaining(d);
   if (q && rem >= 0 && rem <= q) return q - rem;
@@ -106,17 +95,17 @@ const getDetRemaining = d => {
   return Math.max(0, q - s);
 };
 
-function buildUnitsLabel(units) {
-  const total = Number(units || 0);
-  if (!total) return '0';
+// "10 - Nombre Materiales"
+function buildUnitsLabel(units, details, qtySelector) {
+  const totalUnits = Number(units || 0);
+  if (!totalUnits) return '0';
   
-  // Devuelve simple: "11 unidades" o "1 unidad"
-  return total === 1 ? '1 unidad' : `${total} unidades`;
-
+  if (!details || !qtySelector) {
+      return totalUnits === 1 ? '1 unidad' : `${totalUnits} unidades`;
+  }
 
   const names = [];
-
-  // 1) Intento principal: usar la cantidad que viene de qtySelector (vendidas / pendientes)
+  // 1. Buscar nombres
   for (const det of details) {
     const q = Number(qtySelector(det) || 0);
     if (q > 0) {
@@ -127,7 +116,7 @@ function buildUnitsLabel(units) {
     }
   }
 
-  // 2) Fallback: si no encontró nombres pero hay detalles, usamos los materiales presupuestados
+  // 2. Fallback
   if (!names.length) {
     for (const det of details) {
       const qBudget = Number(getDetBudgeted(det) || 0);
@@ -140,16 +129,22 @@ function buildUnitsLabel(units) {
     }
   }
 
-  // 3) Si aun así no hay nombres, devolvemos solo el número
-  if (!names.length) return String(totalUnits);
+  // 3. Si no hay nombres, solo mostrar cantidad
+  if (!names.length) {
+      return totalUnits === 1 ? '1 unidad' : `${totalUnits} unidades`;
+  }
 
+  // 4. Construir string de nombres
+  let namesStr = '';
   if (names.length === 1) {
-    return `${totalUnits} ${names[0]}`;
+    namesStr = names[0];
+  } else if (names.length === 2) {
+    namesStr = `${names[0]} y ${names[1]}`;
+  } else {
+    namesStr = `${names[0]}, ${names[1]} y otros`;
   }
-  if (names.length === 2) {
-    return `${totalUnits} ${names[0]} y ${names[1]}`;
-  }
-  return `${totalUnits} ${names[0]} y otros`;
+
+  return `${totalUnits} - ${namesStr}`;
 }
 
 
@@ -160,30 +155,6 @@ const getMatName = d =>
   d.materialName ||
   d.material?.name ||
   `Material #${d.materialId ?? d.idMaterial ?? ''}`;
-
-// Estado por soldOut
-function estadoFromHeader(h){
-  // remainingUnits = pendiente de ENTREGA
-  const remaining = Number(
-    h?.remainingUnits ??
-    h?.unitsRemaining ??
-    h?.totalRemainingUnits ??
-    0
-  );
-
-  const soldOut =
-    (typeof h?.soldOut === 'boolean')
-      ? h.soldOut
-      : (remaining <= 0);
-
-  return {
-    code: soldOut ? 'SOLD_OUT' : 'PENDING',
-    label: soldOut
-      ? 'SIN PENDIENTE (todo entregado)'
-      : 'CON PENDIENTE por entregar',
-    cls: soldOut ? 'completed' : 'pending'
-  };
-}
 
 
 document.addEventListener('DOMContentLoaded', init);
@@ -200,11 +171,6 @@ async function init(){
     return go('pedidos.html');
   }
 
-  // wire botones
-  const edit = $('#btnEditar');
-  if (edit) edit.href = `editar-pedido.html?id=${id}`;
-  
-
   try{
     const { header, details } = await loadBudget(id);
     renderHeader(id, header, details);
@@ -219,7 +185,6 @@ async function loadBudget(orderId){
   let header = null;
   let details = [];
 
-  // 1) Intento principal: /orders/{id}/view
   try{
     const rView = await authFetch(API_URL_ORDER_VIEW(orderId));
     if (rView.ok){
@@ -231,21 +196,18 @@ async function loadBudget(orderId){
     console.warn('Error en /orders/{id}/view', e);
   }
 
-  // 2) Fallback a /orders/{id} si hace falta
   if (!header){
     const r = await authFetch(`${API_URL_ORDERS}/${orderId}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     header = await safeJson(r);
   }
 
-  // 3) Si no hubo detalles en la VIEW, intentamos /order-details
   if (!Array.isArray(details) || !details.length){
     let det = [];
     let r = await authFetch(API_URL_ORDER_DETAILS_BYORD(orderId));
     if (r.ok){
       det = await safeJson(r);
     }else{
-      // último fallback: listar todo y filtrar
       r = await authFetch(API_URL_ORDER_DETAILS);
       if (r.ok){
         const all = await safeJson(r);
@@ -259,117 +221,109 @@ async function loadBudget(orderId){
 }
 
 function renderHeader(orderId, header, details){
-  $('#id-pedido').textContent      = header.idOrders ?? header.id ?? orderId;
+  const realId = header.idOrders ?? header.id ?? orderId;
+  $('#id-pedido').textContent      = realId;
   const cliente = header.clientName ??
     [header.client?.name, header.client?.surname].filter(Boolean).join(' ');
   $('#cliente').textContent        = (cliente || '—');
   $('#fecha-creacion').textContent = fmtDate(header.dateCreate);
   $('#fecha-entrega').textContent  = fmtDate(header.dateDelivery);
 
-  // total presupuesto: preferimos lo que diga el back, si no, sumamos
   let total = Number(header.total ?? header.totalArs ?? 0);
   if (!total && Array.isArray(details) && details.length){
     total = details.reduce((acc,d)=> acc + getDetBudgeted(d) * getDetPrice(d), 0);
   }
   $('#total').textContent = fmtARS.format(total);
 
-  // ======== UNIDADES VENDIDAS / PENDIENTES =========
-
-  // Vendidas (modelo nuevo): totalSoldUnits
-  let soldUnits = Number(
-    header.totalSoldUnits ??
-    header.soldUnits ??
-    NaN
-  );
-
-  // Pendiente de ENTREGA (no de venta): remainingUnits
-  let remainingToDeliver = Number(
-    header.remainingUnits ??
-    header.unitsRemaining ??
-    NaN
-  );
-
-  // Pendiente de VENDER: totalPendingToSellUnits (solo para lógica del botón)
-  let pendingToSell = Number(
-    header.totalPendingToSellUnits ??
-    header.totalPendingSellUnits ??
-    header.pendingToSellUnits ??
-    NaN
-  );
+  // ======== CÁLCULOS (Mantenemos lógica para botones, pero no mostramos pendientes) =========
+  let soldUnits = Number(header.totalSoldUnits ?? header.soldUnits ?? NaN);
+  let remainingToDeliver = Number(header.remainingUnits ?? header.unitsRemaining ?? NaN);
+  let pendingToSell = Number(header.totalPendingToSellUnits ?? header.totalPendingSellUnits ?? header.pendingToSellUnits ?? NaN);
 
   if (Array.isArray(details) && details.length){
     const sumRem  = details.reduce((a,d)=> a + getDetRemaining(d), 0);
-
-    // Si el back no mandó remaining, lo reconstruimos desde detalles
     if (Number.isNaN(remainingToDeliver)) remainingToDeliver = sumRem;
 
-    // Si no vino totalSoldUnits, intentamos deducirlo desde detalles
     if (Number.isNaN(soldUnits)) {
       const sumSold = details.reduce((a,d)=> a + getDetSold(d), 0);
       if (sumSold > 0) soldUnits = sumSold;
     }
 
-    // Si no vino pendiente por vender, lo estimamos como presupuestado - vendido
     if (Number.isNaN(pendingToSell)) {
       const totalBudgeted = details.reduce((a,d)=> a + getDetBudgeted(d), 0);
       if (!Number.isNaN(soldUnits)) {
         pendingToSell = Math.max(0, totalBudgeted - soldUnits);
       } else {
-        // último recurso: igualar a lo pendiente de entrega
         pendingToSell = sumRem;
       }
     }
   }
 
-  if (Number.isNaN(soldUnits))         soldUnits         = 0;
+  if (Number.isNaN(soldUnits))          soldUnits         = 0;
   if (Number.isNaN(remainingToDeliver)) remainingToDeliver = 0;
-  if (Number.isNaN(pendingToSell))     pendingToSell     = 0;
+  if (Number.isNaN(pendingToSell))      pendingToSell     = 0;
 
-  // Etiquetas user-friendly
+  // Render etiquetas solo de VENDIDAS
   const vendidasLabel  = buildUnitsLabel(soldUnits, details, getDetSold);
-  const pendienteLabel = buildUnitsLabel(remainingToDeliver, details, getDetRemaining);
-
   $('#vendidas').textContent  = vendidasLabel;
-  $('#pendiente').textContent = pendienteLabel;
 
-  // Estado lógico (respecto de ENTREGA)
-  const est = estadoFromHeader({
-    ...header,
-    remainingUnits: remainingToDeliver
-  });
-  const pill = $('#estado');
-  pill.textContent = est.label;
-  pill.className = `pill ${est.cls}`;
+  // IMPORTANTE: Mantenemos el cálculo de fullySold para la lógica de los botones
+  const fullySold = (typeof header.fullySold === 'boolean') ? header.fullySold : (pendingToSell <= 0);
 
-  // ======== Botón "Crear venta" =========
+  // ======== LÓGICA BOTÓN "CREAR VENTA" =========
   const btnVenta = $('#btnCrearVenta');
   if (btnVenta) {
-    const fullySold =
-      (typeof header.fullySold === 'boolean')
-        ? header.fullySold
-        : (pendingToSell <= 0);
-
     if (fullySold) {
-      // Presupuesto completamente VENDIDO ⇒ no tiene sentido crear otra venta desde acá
       btnVenta.classList.add('btn-disabled');
+      btnVenta.style.opacity = '0.6';
+      btnVenta.style.cursor = 'not-allowed';
       btnVenta.title = 'Este presupuesto ya no tiene unidades pendientes por vender';
-
       btnVenta.onclick = (ev)=>{
         ev.preventDefault();
-        notify(
-          'Este presupuesto ya no tiene unidades pendientes por vender. ' +
-          'Si necesitás hacer otra venta, creala directamente desde "Ventas".',
-          'info'
-        );
+        Swal.fire({
+            title: 'Sin pendiente',
+            text: 'Este presupuesto ya se ha vendido por completo.',
+            icon: 'info'
+        });
       };
     } else {
-      // Quedan unidades por vender ⇒ botón activo
       btnVenta.classList.remove('btn-disabled');
+      btnVenta.style.opacity = '1';
+      btnVenta.style.cursor = 'pointer';
       btnVenta.title = 'Crear venta a partir de este presupuesto';
       btnVenta.onclick = (ev)=>{
         ev.preventDefault();
         go(`crear-venta.html?orderId=${encodeURIComponent(orderId)}`);
       };
+    }
+  }
+
+  // ======== LÓGICA BOTÓN "EDITAR" =========
+  const btnEditar = $('#btnEditar');
+  if (btnEditar) {
+    if (fullySold) {
+      btnEditar.classList.add('btn-disabled');
+      btnEditar.removeAttribute('href'); 
+      btnEditar.style.opacity = '0.6';
+      btnEditar.style.cursor = 'not-allowed';
+      btnEditar.title = 'No se puede editar un presupuesto completado';
+      
+      btnEditar.onclick = (ev) => {
+        ev.preventDefault();
+        Swal.fire({
+            title: 'No editable',
+            text: 'Este presupuesto ya no tiene pendientes por vender, por lo que no se puede editar para proteger la integridad de los datos.',
+            icon: 'warning',
+            confirmButtonColor: '#3085d6'
+        });
+      };
+    } else {
+      btnEditar.classList.remove('btn-disabled');
+      btnEditar.href = `editar-pedido.html?id=${encodeURIComponent(realId)}`;
+      btnEditar.style.opacity = '1';
+      btnEditar.style.cursor = 'pointer';
+      btnEditar.title = 'Editar presupuesto';
+      btnEditar.onclick = null;
     }
   }
 }
@@ -378,7 +332,6 @@ function renderDetails(details){
   const cont = $('#tablaMateriales');
   const msg  = $('#msgMateriales');
 
-  // limpiar filas viejas
   cont.querySelectorAll('.trow').forEach(e => e.remove());
 
   if (!Array.isArray(details) || !details.length){
@@ -391,9 +344,9 @@ function renderDetails(details){
   if (msg) msg.style.display = 'none';
 
   for (const det of details){
-    const q   = getDetBudgeted(det);   // presupuestado
-    const pu  = getDetPrice(det);      // precio unitario
-    const sub = q * pu;                // total
+    const q   = getDetBudgeted(det);   
+    const pu  = getDetPrice(det);      
+    const sub = q * pu;                
 
     const row = document.createElement('div');
     row.className = 'trow';

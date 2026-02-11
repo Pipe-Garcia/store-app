@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="../files-css/style.css">
   <link rel="stylesheet" href="../files-css/ver-pedido.css">
   <link rel="stylesheet" href="../files-css/nav.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
   
@@ -17,12 +18,10 @@
     <div class="detail-header">
       <div class="title-group">
         <h1>Presupuesto <span id="id-pedido">...</span></h1>
-      
       </div>
       <div class="btn-group">
-      <div class="actions-toolbar">
-        <button id="btnCrearVenta" class="btn primary">Crear Venta</button>
-        
+        <div class="actions-toolbar">
+          <button id="btnCrearVenta" class="btn primary">Crear Venta</button>
           <a id="btnEditar" class="btn primary">Editar</a>
           <a class="btn outline" href="pedidos.html">Volver</a>
         </div>
@@ -48,24 +47,12 @@
         <span class="value strong" id="cliente">—</span>
       </div>
 
-      <div class="data-row">
-        <span class="label">Estado de entrega</span>
-        <span class="value">
-          <span id="estado" class="pill pending">—</span>
-        </span>
-      </div>
-
-      <div class="data-row">
+      <div class="data-row" style="border-bottom: none;">
         <span class="label">Unidades vendidas</span>
         <span class="value" id="vendidas">0</span>
       </div>
 
-      <div class="data-row" style="border-bottom: none;">
-        <span class="label">Pendiente por entregar</span>
-        <span class="value" id="pendiente">0</span>
-      </div>
-
-    </section>
+      </section>
 
     <section class="items-section">
       <h3>Detalle de materiales</h3>
@@ -73,7 +60,7 @@
       <div class="tabla-clean" id="tablaMateriales">
         <div class="thead">
           <div>Material</div>
-          <div class="text-center">Presupuestado</div>
+          <div class="text-center">Cantidad presupuestada</div>
           <div class="text-right">Precio Unit.</div>
           <div class="text-right">Total</div>
         </div>
@@ -86,7 +73,6 @@
       
       <p id="msgMateriales" class="empty-msg" style="display:none;"></p>
     </section>
-
 
   </main>
 

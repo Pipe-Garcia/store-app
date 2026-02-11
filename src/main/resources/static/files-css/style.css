@@ -86,7 +86,6 @@ body {
  
   .acciones button {
       margin-right: 5px;
-      background-color: #dc3545;
       color: white;
       border: none;
       padding: 5px 8px;
@@ -182,6 +181,7 @@ body {
 }
 
 .acciones button {
+    border:1px solid #bd8b8b !important;
   padding: 8px 12px; /* Espacio interno para los botones */
   border: none; 
   border-radius: 4px; 
@@ -192,7 +192,6 @@ body {
   align-items: center; /* Centra el contenido verticalmente */
   justify-content: center; /* Centra el contenido horizontalmente */
   gap: 5px; /* Espacio entre ícono y texto */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Sombra sutil */
 }
 
 .acciones button:hover {

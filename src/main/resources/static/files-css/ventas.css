@@ -347,83 +347,66 @@ input:disabled{
   border-color:#e9ecef;
 }
 
-/* ==========================================================
-   TOM SELECT (cliente) — mismo tamaño que los otros inputs
-   (Override fuerte por si tenés estilos inline en ventas.html)
-   ========================================================== */
-.filters label .ts-wrapper{ width:100% !important; }
-.filters .ts-control{
-  border:1px solid #dfe3e6 !important;
-  border-radius:8px !important;
-  padding:0 10px !important;
-  width:100% !important;           /* <- NO fijo 200 */
-  min-width:140px !important;      /* <- igual a inputs */
-  min-height:38px !important;
-  height:38px !important;
-  box-shadow:none !important;
-  font-size:.95rem !important;
-  font-family:inherit !important;
-  background:#fff !important;
-  color:#495057 !important;
-  display:flex !important;
-  align-items:center !important;
-  flex-wrap:nowrap !important;
-  overflow:hidden !important;
-}
 
-.filters .ts-control > .item{
-  background:transparent !important;
-  border:none !important;
-  margin:0 !important;
-  padding:0 !important;
-  color:inherit !important;
-  font-size:.95rem !important;
-  line-height:1.5 !important;
-  white-space:nowrap !important;
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-  width:100% !important;
-}
+    .ts-control input {
+        font-size: 1rem !important;
+        color: inherit;
+        background: transparent !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 100% !important;
+        width: 100% !important;
+        position: relative;
+        top: 0;
+  
+    }
 
-.filters .ts-control input{
-  font-size:.95rem !important;
-  color:inherit !important;
-  background:transparent !important;
-  margin:0 !important;
-  padding:0 !important;
-  height:100% !important;
-  width:100% !important;
-  position:relative !important;
-  top:0 !important;
-}
+    /* 4. OCULTAR EL ITEM AL ESCRIBIR */
+    .ts-wrapper.single.input-active .ts-control .item {
+        display: none !important;
+    }
 
-.filters .ts-wrapper.single.input-active .ts-control .item{ display:none !important; }
+  
+    .ts-wrapper.focus .ts-control {
+        outline: 0;
+        border-radius: 8px;
+    }
 
-.filters .ts-wrapper.focus .ts-control{
-  border-color:#3b82f6 !important;
-  outline:none !important;
-  box-shadow:0 0 0 0.25rem rgba(59,130,246,.18) !important;
-}
+    /* 6. MENÚ DESPLEGABLE */
+    .ts-dropdown {
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        margin-top: 4px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        z-index: 9999;
+        background: #fff;
+        width: 200px !important; 
+    }
 
-.filters .ts-dropdown{
-  border:1px solid #ced4da;
-  border-radius:8px;
-  margin-top:4px;
-  box-shadow:0 4px 6px -1px rgba(0,0,0,.1);
-  z-index:9999;
-  background:#fff;
-  width:100% !important; /* <- igual al control */
-}
+    /* 7. OPCIONES DEL MENÚ */
+    .ts-dropdown .option {
+        padding: 8px 12px;
+        cursor: pointer;
+    }
 
-.filters .ts-dropdown .option{ padding:8px 12px; cursor:pointer; }
-.filters .ts-dropdown .active{ background:#e9ecef; color:#000; }
+    .ts-dropdown .active {
+        background-color: #e9ecef;
+        color: #000;
+    }
 
-.filters .ts-wrapper.single .ts-control::after{
-  border-color:#6c757d transparent transparent transparent !important;
-  border-width:5px 5px 0 5px !important;
-  right:10px !important;
-}
+    /* 8. FLECHITA */
+    .ts-wrapper.single .ts-control::after {
+        border-color: #6c757d transparent transparent transparent !important;
+        border-width: 5px 5px 0 5px !important;
+        right: 10px !important;
+    }
 
+    .ts-dropdown, .ts-control, .ts-control input {
+    color: #555 !important;
+    font-family: inherit;
+    font-size: 16px !important;
+    line-height: 18px;
+    }
 /* ==========================================================
    RESPONSIVE (idéntico criterio que entregas)
    ========================================================== */
@@ -437,7 +420,7 @@ input:disabled{
 
   #lista-ventas .fila{
     grid-template-columns: 110px 2fr .9fr 1.2fr 1.4fr;
-    padding:8px 10px;
+    padding:10px 10px;
   }
 
   /* En pantallas medianas, cliente a la izquierda (como entregas) */
@@ -490,4 +473,14 @@ input:disabled{
 .btn.btn-small{
   padding:6px 10px;
   font-size:.85rem;
+}
+
+.fila{
+    display: grid;
+    align-items: center;
+    grid-template-columns: repeat(6, 1fr);
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    text-align: center;
+    gap: 10px;
 }
