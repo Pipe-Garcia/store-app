@@ -294,7 +294,7 @@ function renderLista(lista) {
     fila.className = rowClass;
     fila.innerHTML = `
       <div>#${id}</div>
-      <div style="font-weight:600;">${nom}</div>
+      <div>${nom}</div>
       <div>${dni}</div>
       <div>${tel}</div>
       <div style="text-align:center;">${pillHtml}</div>

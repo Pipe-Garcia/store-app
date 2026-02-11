@@ -1,7 +1,6 @@
-/* ==========================================================
-   PRESUPUESTOS / PEDIDOS - RESPONSIVE
-   ========================================================== */
-
+body{
+  font-family: 'Segoe UI', sans-serif;
+}
 :root{
   --gap: 14px;
   --radius: 12px;
@@ -80,7 +79,7 @@
   display:flex;
   flex-wrap:wrap;
   align-items:flex-end;
-  gap:28px;
+  gap:12px;
   margin-bottom: 15px;
 }
 
@@ -98,7 +97,7 @@
 .filters input[type="number"],
 .filters select,
 .filters input[type="text"]{
-  padding:8px 10px;
+  padding:9px 10px;
   border:1px solid #dfe3e6;
   border-radius:8px;
   background:#fff;
@@ -280,8 +279,9 @@
 
 /* Deshabilitado (por si lo usás más adelante) */
 .btn-disabled{
-  opacity: .55;
-  cursor: not-allowed;
+    opacity: .45;
+    filter: grayscale(1);
+    cursor: not-allowed;
 }
 
 
@@ -537,8 +537,6 @@ a {
         font-family: inherit;
         background-color: #fff;
         color: #212529;
-        
-        /* Flexbox para centrar texto verticalmente */
         display: flex !important;
         align-items: center !important;
         flex-wrap: nowrap !important;
@@ -559,6 +557,7 @@ a {
     }
 
     /* 3. INPUT DE ESCRITURA */
+
     .ts-control input {
         font-size: 1rem !important;
         color: inherit;
@@ -569,6 +568,7 @@ a {
         width: 100% !important;
         position: relative;
         top: 0;
+  
     }
 
     /* 4. OCULTAR EL ITEM AL ESCRIBIR */
@@ -576,11 +576,10 @@ a {
         display: none !important;
     }
 
-    /* 5. FOCUS */
+  
     .ts-wrapper.focus .ts-control {
-        border-color: #86b7fe !important;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
         outline: 0;
+        border-radius: 8px;
     }
 
     /* 6. MENÚ DESPLEGABLE */
@@ -610,4 +609,10 @@ a {
         border-color: #6c757d transparent transparent transparent !important;
         border-width: 5px 5px 0 5px !important;
         right: 10px !important;
+    }
+
+    .ts-dropdown, .ts-control, .ts-control input {
+    color: #555 !important;
+    font-size: 16px !important;
+    line-height: 18px;
     }

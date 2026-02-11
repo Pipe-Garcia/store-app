@@ -287,9 +287,9 @@
   function buildQuery(){
     const p = new URLSearchParams();
 
-    const d      = $('f-desde')?.value || '';
-    const h      = $('f-hasta')?.value || '';
-    const actor  = ($('f-actor')?.value || '').trim();
+    const d       = $('f-desde')?.value || '';
+    const h       = $('f-hasta')?.value || '';
+    const actor   = ($('f-actor')?.value || '').trim();
     const action = $('f-action')?.value || '';
     const entity = $('f-entity')?.value || '';
     const status = $('f-status')?.value || '';
@@ -299,9 +299,9 @@
     if (actor) p.set('actor', actor);
 
     if (action === 'CREATE' || action === 'UPDATE' || action === 'DELETE') {
-      p.set('actionGroup', action);     // incluye *_CREATE / *_UPDATE / *_DELETE
+      p.set('actionGroup', action);    
     } else if (action) {
-      p.set('action', action);          // LOGIN / LOGOUT / CANCEL / etc.
+      p.set('action', action);         
     }
 
     if (entity) p.set('entity', entity);
@@ -442,7 +442,7 @@
       if (el) el.value = '';
     });
 
-    // limpiar restricciones de fechas
+    // ✅ CORRECCIÓN: Limpiar restricciones de fechas
     if ($('f-desde')) $('f-desde').max = '';
     if ($('f-hasta')) $('f-hasta').min = '';
 
@@ -477,17 +477,8 @@
     el.addEventListener(evt, debouncedSearch);
   });
 
-  // Restricción de fechas (reutilizable)
-  if (typeof window.setupDateRangeConstraint === 'function'){
-    window.setupDateRangeConstraint('f-desde', 'f-hasta');
-  }
-
-  load();
-})();
-
-// Reutilizable: restricción Desde/Hasta
-if (typeof window.setupDateRangeConstraint !== 'function'){
-  window.setupDateRangeConstraint = function(idDesde, idHasta){
+  // ✅ CORRECCIÓN: Definición interna de la función
+  function setupDateRangeConstraint(idDesde, idHasta){
     const elDesde = document.getElementById(idDesde);
     const elHasta = document.getElementById(idHasta);
     if (!elDesde || !elHasta) return;
@@ -507,5 +498,10 @@ if (typeof window.setupDateRangeConstraint !== 'function'){
         elDesde.dispatchEvent(new Event('change'));
       }
     });
-  };
-}
+  }
+
+  // ✅ CORRECCIÓN: Ejecución segura
+  setupDateRangeConstraint('f-desde', 'f-hasta');
+
+  load();
+})();

@@ -41,7 +41,7 @@
 .filters input[type="date"],
 .filters select,
 .filters input[type="text"]{
-  padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
+  padding:11px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
   min-width: 180px;
 }
 #btnLimpiar{ align-self:flex-end; }

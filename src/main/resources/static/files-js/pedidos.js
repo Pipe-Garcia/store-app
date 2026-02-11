@@ -486,6 +486,11 @@ function render(lista){
     const totalStr = fmtARS.format(total);
     const est   = getEstadoCode(o);
 
+    // ✅ LÓGICA DE BOTÓN EDITAR DESHABILITADO
+    const editBtn = (est === 'SOLD_OUT')
+      ? `<button class="btn outline" disabled style="opacity: .45; filter: grayscale(1); cursor: not-allowed; " title="No editable (Todo vendido)">✏️</button>`
+      : `<a class="btn outline" href="editar-pedido.html?id=${id}" title="Editar">✏️</a>`;
+
     const row = document.createElement('div');
     row.className='fila row';
     
@@ -496,7 +501,7 @@ function render(lista){
       <div>${pill(est)}</div>
       <div class="acciones">
         <a class="btn outline" href="ver-pedido.html?id=${id}" title="Ver">👁️</a>
-        <a class="btn outline" href="editar-pedido.html?id=${id}" title="Editar">✏️</a>
+        ${editBtn}
       </div>
     `;
     cont.appendChild(row);
