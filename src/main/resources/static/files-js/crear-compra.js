@@ -250,15 +250,44 @@ function renderTabla(){
     const priceCell = document.createElement("div");
     priceCell.textContent = fmtARS.format(Number(f.unitPrice||0));
 
+    // === Celda de Subtotal (Se prepara arriba para usarla en el input) ===
+    const subCell = document.createElement("div");
+
     // === Cantidad ===
     const qtyCell = document.createElement("div");
     const qty = document.createElement("input");
     qty.type = "number"; qty.min="1"; qty.step="1";
-    qty.value = Number(f.quantity||1);
+    // Si la cantidad temporalmente es 0, mostramos el input vacío para facilitar el tipeo
+    qty.value = f.quantity === 0 ? "" : Number(f.quantity || 1);
+    
+    // Función para recalcular solo los números sin re-dibujar la tabla entera
+    const actualizarSubtotalYTotal = () => {
+      const sub = Number(f.unitPrice || 0) * Number(f.quantity || 0);
+      subCell.textContent = fmtARS.format(sub);
+      
+      let nuevoTotal = 0;
+      filas.forEach(fila => nuevoTotal += Number(fila.unitPrice || 0) * Number(fila.quantity || 0));
+      $("#totalCompra").textContent = fmtARS.format(nuevoTotal);
+    };
+
     qty.addEventListener("input", ()=>{
-      const v = Math.max(1, parseInt(qty.value||"1",10));
-      f.quantity = v; qty.value = v; renderTabla();
+      if (qty.value === "") {
+        f.quantity = 0; // Estado temporal para no romper sumas
+      } else {
+        f.quantity = parseInt(qty.value, 10);
+      }
+      actualizarSubtotalYTotal();
     });
+
+    // Si el usuario hace clic afuera y dejó el input vacío o en 0, lo corregimos a 1
+    qty.addEventListener("blur", ()=>{
+      if (qty.value === "" || parseInt(qty.value, 10) < 1) {
+        qty.value = 1;
+        f.quantity = 1;
+        actualizarSubtotalYTotal();
+      }
+    });
+
     qtyCell.appendChild(qty);
 
     // === Depósito ===
@@ -267,11 +296,9 @@ function renderTabla(){
     let disabledMsg = null;
 
     if (!f.materialSupplierId){
-      // todavía no eligió material
       disabledMsg = "Elegí un material primero";
     } else if (Array.isArray(f.allowedWarehouses)) {
       if (f.allowedWarehouses.length === 0) {
-        // material con 0 depósitos configurados
         disabledMsg = "Sin depósito configurado";
       } else {
         selDep.innerHTML = `<option value="">Seleccione…</option>`;
@@ -283,7 +310,6 @@ function renderTabla(){
         }
       }
     } else {
-      // ya eligió material pero todavía no cargamos depósitos (fetch en curso)
       disabledMsg = "Cargando depósitos…";
     }
 
@@ -302,10 +328,9 @@ function renderTabla(){
 
     depCell.appendChild(selDep);
 
-    // === Subtotal ===
+    // === Calcular subtotal inicial de la fila ===
     const sub = Number(f.unitPrice||0) * Number(f.quantity||0);
     total += sub;
-    const subCell = document.createElement("div");
     subCell.textContent = fmtARS.format(sub);
 
     // === Acciones ===
@@ -313,7 +338,7 @@ function renderTabla(){
     actions.className = "acciones";
     const btnDel = document.createElement("button");
     btnDel.className = "btn danger";
-    btnDel.textContent = "Eliminar";
+    btnDel.textContent = "🗑️";
     btnDel.addEventListener("click", ()=> eliminarFila(f.rowId));
     actions.appendChild(btnDel);
 

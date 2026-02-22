@@ -139,7 +139,6 @@ a.btn.muted:hover{ transform:none; }
 .tabla{
   width:100%;
   display:block;
-  overflow-x:auto;
 }
 
 /* ==========================================================
@@ -269,6 +268,7 @@ a.btn.muted:hover{ transform:none; }
 
 .form-page.narrow{ max-width:900px; margin:0 auto; }
 .form-page .card{
+  border: 1px solid #e9ecef;
   background:#fff;
   padding:16px;
   border-radius:12px;
@@ -476,6 +476,7 @@ input:disabled{
 }
 
 .fila{
+    border-radius: 10px;
     display: grid;
     align-items: center;
     grid-template-columns: repeat(6, 1fr);
@@ -484,3 +485,14 @@ input:disabled{
     text-align: center;
     gap: 10px;
 }
+
+   .btn.danger.small{
+    background:#f84052; 
+    color:#fff; 
+    padding:8px 12px;
+    margin-left: 40px;
+    margin-right: 40px;
+    border-radius: 3px;
+    }
+
+    .btn.danger.small:hover { background:#c92a2a; }

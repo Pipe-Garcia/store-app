@@ -372,6 +372,7 @@ function addRow(prefill){
     }
   }
 
+  // VALIDACIÓN DE STOCK MÁXIMO
   const validateMaxQty = () => {
     const mid = Number(wrapper.querySelector('.in-mat-id').value || 0);
     const opt = whSel.selectedOptions[0];
@@ -383,8 +384,18 @@ function addRow(prefill){
       cap = Math.min(cap, ORDER_REMAIN.get(mid));
     }
     
+    // Si la cantidad supera la capacidad, la corregimos y lanzamos el Modal central
     if (isFinite(cap) && Number(qty.value) > cap) {
       qty.value = String(cap);
+      
+      // ✅ ALERTA MODAL MUCHO MÁS VISIBLE
+      Swal.fire({
+        title: 'Stock insuficiente',
+        text: `La cantidad ingresada supera el stock. Se ajustó automáticamente al máximo disponible (${cap} unidades).`,
+        icon: 'warning',
+        confirmButtonColor: '#1c7ed6', // Color ámbar/naranja de advertencia
+        confirmButtonText: 'Entendido'
+      });
     }
   };
 
@@ -491,7 +502,6 @@ function getDetDelivered(d){
   ) || 0;
 }
 
-// ✅ Pendiente por VENDER (no por entregar)
 function getPendingToSell(d){
   // si en el futuro el back lo manda explícito, lo tomamos
   const explicit = d.pendingToSellUnits ?? d.remainingToSellUnits ?? d.unitsPendingToSell;

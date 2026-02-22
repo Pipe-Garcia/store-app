@@ -414,7 +414,7 @@ async function guardarEntrega(ev){
   // 👇 CONFIRMACIÓN ANTES DE ENVIAR 👇
   Swal.fire({
     title: '¿Confirmar entrega?',
-    text: "Se registrará la entrega y se descontará stock de los depósitos seleccionados.",
+    text: "Se registrará la entrega, podrás ver la información en el detalle de la venta.",
     icon: 'question',
     showCancelButton: true,
     confirmButtonColor: '#28a745', // Verde

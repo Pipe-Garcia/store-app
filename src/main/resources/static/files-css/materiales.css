@@ -18,10 +18,12 @@
 }
 
 .page{     
-  max-width: 1900px;
-  margin: 0 auto;
-  padding: 24px;
+      max-width: none;
+    width: 100%;
+    padding: 24px;
+    box-sizing: border-box;
   }
+  
 .encabezado-lista-materiales {
   display:flex; align-items:center; margin:.5rem 0 1rem; flex-direction: row; gap: 45px;
 }
@@ -29,6 +31,7 @@
 .encabezado-lista-materiales .enc-actions { display:flex; gap:1rem;}
 
 .card{
+  border: 1px solid #e9ecef;
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
   box-shadow: var(--shadow);
@@ -333,18 +336,14 @@ a.btn{ text-decoration:none; }
   all: unset; /* reseteo de estilos viejos */
 }
 
-/* Contenedor de la tabla */
 .tabla.materiales {
   padding: var(--card-pad);
   box-shadow: var(--shadow);
   border-radius: 12px;
   background: #fff;
-  /* igual que entregas: si la pantalla es más chica, se hace scroll horizontal */
   overflow-x: auto;
 }
 
-/* Fila genérica (encabezado + datos) */
-/* Columnas: Código | Nombre | Marca | Stock | Precio | Estado | Acciones */
 .tabla.materiales .fila {
   display: grid;
   grid-template-columns: 1fr 2fr 1.2fr 0.8fr 1fr 0.9fr 1.1fr;
@@ -354,7 +353,6 @@ a.btn{ text-decoration:none; }
   border-radius: 10px;
   padding: 12px 14px;
   border: 1px solid #eef1f3;
-  margin: 9px 0;
 }
 
 /* Encabezado */
@@ -368,7 +366,6 @@ a.btn{ text-decoration:none; }
   border: 1px solid #e9ecef;
 }
 
-/* Filas de datos */
 .tabla.materiales .fila:not(.encabezado):nth-child(odd) {
   background: #fcfcfd;
 }
@@ -376,12 +373,10 @@ a.btn{ text-decoration:none; }
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
 }
 
-/* Fila "deshabilitada" para INACTIVOS */
 .tabla.materiales .fila.disabled {
   opacity: .7;
 }
 
-/* Centrar números de stock / precio / estado */
 .tabla.materiales .fila > div:nth-child(4),
 .tabla.materiales .fila > div:nth-child(5),
 .tabla.materiales .fila > div:nth-child(6) {

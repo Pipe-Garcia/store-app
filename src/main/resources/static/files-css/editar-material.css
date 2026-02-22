@@ -34,32 +34,39 @@
 .actions{ display:flex; justify-content:flex-start; gap:.6rem; margin-top:6px; }
 
 .btn{
-  background: var(--accent); color:#fff; border:none;
-  padding:.6rem 1rem; border-radius:10px; cursor:pointer; font-weight:600;
+   display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s, transform 0.02s;
+  letter-spacing: 0.3px;
 }
 .btn:disabled{ opacity:.6; cursor:not-allowed; }
-.btn.outline{ background:#fff; color:var(--ink); border:1px solid var(--line); }
+.btn.outline{ background:#fff; color:var(--ink); border:1px solid var(--line); text-decoration: none;}
 .btn.outline:hover{ background:#f3f4f6; }
 
 /* Header que ya venís usando */
 .header{ background:#0e1726; border-bottom:1px solid #0e1726; }
 .ul-header a{ color:#c7ced9; }
 .ul-header a.active{ color:#fff; background:#101b2b; }
-/* ==========================================================
-   ESTILOS ESTANDARIZADOS (Igual a Crear Material)
-   Pegar al final de editar-material.css
-   ========================================================== */
+
 
 /* 1. Layout del Formulario */
 .form-page.narrow { 
   max-width: 900px; 
   margin: 0 auto; 
 }
-
 /* 2. Tarjeta del Formulario (Blanca, limpia) */
 .form-page .card {
+  border: 1px solid #e9ecef;
   background: #fff;
-  border-radius: 12px; /* Valor fijo por si no hay variable */
+  border-radius: 12px; 
   padding: 24px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   border: none;
@@ -108,7 +115,6 @@
 
 /* 5. Botones */
 .form-actions { 
-  margin-top: 24px; 
   display: flex; 
   gap: 12px; 
   justify-content: flex-start; 
