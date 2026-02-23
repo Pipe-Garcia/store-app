@@ -32,7 +32,7 @@ public class SaleController {
     private ISaleRepository repoSale;
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_CASHIER','ROLE_OWNER')")
     public ResponseEntity<List<SaleDTO>> getAllSales() {
         List<Sale> saleList = servSale.getAllSales();
         List<SaleDTO> saleDTOList = saleList.stream()
@@ -42,7 +42,7 @@ public class SaleController {
     }
 
     @GetMapping ("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_CASHIER','ROLE_OWNER')")
     public ResponseEntity<SaleDTO> getSaleById(@PathVariable Long id) {
         Sale sale = servSale.getSaleById(id);
         if (sale == null) return ResponseEntity.notFound().build();
@@ -50,7 +50,7 @@ public class SaleController {
     }
 
     @GetMapping ("/date/{date}")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_CASHIER','ROLE_OWNER')")
     public ResponseEntity<SaleSummaryByDateDTO> getSaleSummaryByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
@@ -59,7 +59,7 @@ public class SaleController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_CASHIER','ROLE_OWNER')")
     public ResponseEntity<List<SaleDTO>> search(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
@@ -72,7 +72,7 @@ public class SaleController {
     }
 
     @GetMapping ("/highest")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_CASHIER','ROLE_OWNER')")
     public ResponseEntity<SaleHighestDTO> getHighestSale() {
         SaleHighestDTO saleHighestDTO  = servSale.getHighestSale();
         if (saleHighestDTO == null) return ResponseEntity.notFound().build();
@@ -80,7 +80,7 @@ public class SaleController {
     }
 
     @GetMapping("/{id}/details")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_CASHIER','ROLE_OWNER')")
     public List<SaleDetailLiteDTO> getSaleDetails(@PathVariable Long id) {
         return servSale.getSaleDetailsLite(id);
     }
