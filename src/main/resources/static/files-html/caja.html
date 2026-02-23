@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>💰 Caja</title>
+
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/nav.css"/>
+  <link rel="stylesheet" href="../files-css/caja.css"/>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="page">
+    <div class="page-head">
+      <div class="head-left">
+        <h1>Caja</h1>
+        <p id="sessionInfo" class="muted session-info">—</p>
+      </div>
+
+      <div class="actions">
+        <a class="btn outline" href="caja-resumen.html">📊 Resumen del día</a>
+        <button id="btnGasto" class="btn outline">➖ Registrar gasto</button>
+        <button id="btnAbrir" class="btn primary">Abrir caja</button>
+        <button id="btnCerrar" class="btn danger" style="display:none;">Cerrar caja</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <section class="filters card">
+      <div class="row">
+        <label>Desde
+          <input type="date" id="fFrom">
+        </label>
+
+        <label>Hasta
+          <input type="date" id="fTo">
+        </label>
+
+        <label>Tipo
+          <select id="fType">
+            <option value="">Todos</option>
+            <option value="IN">Ingresos</option>
+            <option value="OUT">Egresos</option>
+          </select>
+        </label>
+
+        <label>Método
+          <select id="fMethod">
+            <option value="">Todos</option>
+            <option value="CASH">Efectivo</option>
+            <option value="TRANSFER">Transferencia</option>
+            <option value="CARD">Tarjeta</option>
+            <option value="OTHER">Otro</option>
+          </select>
+        </label>
+
+        <label class="search">Buscar
+          <input id="fText" type="text" placeholder="venta #, motivo, usuario…">
+        </label>
+
+        <label class="pagesize">Tamaño pág.
+          <select id="fPageSize">
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </label>
+
+        <button id="btnClear" class="btn outline">Limpiar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="table-wrap">
+        <div class="tabla caja" id="tblMov">
+          <div class="fila encabezado">
+            <div>Fecha/Hora</div>
+            <div>Tipo</div>
+            <div>Concepto</div>
+            <div>Método</div>
+            <div class="text-right">Importe</div>
+            <div>Referencia</div>
+            <div>Usuario</div>
+            <div>Nota</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="pager">
+      <div class="info" id="pg-info"></div>
+      <button class="btn" id="pg-prev">« Anterior</button>
+      <button class="btn" id="pg-next">Siguiente »</button>
+    </div>
+  </main>
+
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+
+  <script src="../files-js/header.js"></script>
+  <script src="../files-js/role-guard.js"></script>
+  <script>
+    guard.onlyAllow(['owner','cashier'], 'index.html');
+  </script>
+  <script src="../files-js/menu-guard.js"></script>
+  <script src="../files-js/caja.js"></script>
+</body>
+</html>

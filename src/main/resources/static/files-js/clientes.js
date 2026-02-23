@@ -152,7 +152,12 @@ async function reloadFromBackend() {
     const url = q.toString() ? `${API_URL_CLI}?${q.toString()}` : API_URL_CLI;
     const res = await authFetch(url);
     if (!res.ok) {
-      if (res.status === 401 || res.status === 403) go('login.html');
+      if (res.status === 401) { go('login.html'); return; }
+      if (res.status === 403) {
+        notify('Sin permisos para ver clientes con este usuario.', 'error');
+        go('index.html');
+        return;
+      }
       throw new Error(`HTTP ${res.status}`);
     }
 

@@ -13,8 +13,6 @@
   <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
   
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-
 </head>
 <body>
   <div id="app-header"></div>
@@ -23,18 +21,16 @@
     <div class="page-head">
       <h1>Ventas</h1>
       <div class="actions">
-        <a class="btn primary" href="../files-html/crear-venta.html">+ Nueva venta</a>
+        <a class="btn primary" id="btnNuevaVenta" href="../files-html/crear-venta.html">+ Nueva venta</a>
         <button id="btn-export-sales" class="btn outline" style="border: 0.6px solid black; margin-left: 10px;">⬇ Exportar</button>
       </div>
-      
-      
     </div>
 
     <hr><br>
 
     <section class="filters card">
       <div class="row">
-        
+
         <label>Desde
           <input type="date" id="fDesde"/>
         </label>
@@ -49,6 +45,16 @@
             <option value="PENDING_DELIVERY">Pendiente a entregar</option>
             <option value="DELIVERED">Entregada</option>
             <option value="CANCELLED">Anulada</option>
+          </select>
+        </label>
+
+        <!-- ✅ NUEVO: filtro de pago (visible para OWNER/CASHIER) -->
+        <label id="wrapEstadoPago">Pago
+          <select id="fEstadoPago">
+            <option value="">Todos</option>
+            <option value="DUE">Pendiente a cobrar</option>
+            <option value="PARTIAL">Parcial</option>
+            <option value="PAID">Pagado</option>
           </select>
         </label>
 
@@ -72,7 +78,7 @@
           <div>Estado</div>
           <div>Acciones</div>
         </div>
-        </div>
+      </div>
     </section>
 
     <div class="pager">
@@ -87,6 +93,5 @@
   <script src="../files-js/header.js"></script>
   <script src="../files-js/menu-guard.js"></script>
   <script src="../files-js/ventas.js"></script>
-
 </body>
 </html>

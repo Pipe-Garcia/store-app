@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📊 Caja | Resumen</title>
+
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/nav.css"/>
+  <link rel="stylesheet" href="../files-css/caja-resumen.css"/>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="page">
+    <div class="page-head">
+      <div>
+        <h1>Resumen del día</h1>
+        <p class="muted" id="sumInfo">—</p>
+      </div>
+      <div class="resumen-toolbar">
+        <a class="btn outline" href="caja.html">Volver</a>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <section class="filters card">
+      <div class="row">
+        <label>Fecha
+          <input type="date" id="fDate">
+        </label>
+        <button id="btnReload" class="btn outline">Recargar</button>
+      </div>
+    </section>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <small>Ingresos</small>
+        <strong id="kpiIn">$ 0,00</strong>
+      </div>
+      <div class="kpi">
+        <small>Egresos</small>
+        <strong id="kpiOut">$ 0,00</strong>
+      </div>
+      <div class="kpi">
+        <small>Neto (Ingresos - Egresos)</small>
+        <strong id="kpiNet">$ 0,00</strong>
+      </div>
+    </div>
+
+    <h3 class="section-title">Ingresos por método</h3>
+
+    <div class="methods-grid">
+      <div class="method">
+        <div class="name">Efectivo</div>
+        <div class="val" id="mCash">$ 0,00</div>
+      </div>
+      <div class="method">
+        <div class="name">Transferencia</div>
+        <div class="val" id="mTransfer">$ 0,00</div>
+      </div>
+      <div class="method">
+        <div class="name">Tarjeta</div>
+        <div class="val" id="mCard">$ 0,00</div>
+      </div>
+      <div class="method">
+        <div class="name">Otro</div>
+        <div class="val" id="mOther">$ 0,00</div>
+      </div>
+    </div>
+
+    <p class="note">* El resumen se calcula desde los movimientos de caja del día seleccionado.</p>
+  </main>
+
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+
+  <script src="../files-js/header.js"></script>
+  <script src="../files-js/role-guard.js"></script>
+  <script>
+    guard.onlyAllow(['owner','cashier'], 'index.html');
+  </script>
+  <script src="../files-js/menu-guard.js"></script>
+  <script src="../files-js/caja-resumen.js"></script>
+</body>
+</html>

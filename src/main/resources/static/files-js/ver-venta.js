@@ -52,6 +52,10 @@ function getDeliveryStateCode(v){
   return 'PENDING_DELIVERY';
 }
 
+function getRole(){
+  return (document.documentElement.getAttribute('data-role') || '').toLowerCase();
+}
+
 function notify(msg,type='info'){
   const n=document.createElement('div');
   n.className=`notification ${type}`;
@@ -81,6 +85,17 @@ async function init(){
     const r = await authFetch(`${API_SALES}/${saleId}`);
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     saleDTO = await safeJson(r);
+
+    const role = getRole() || 'employee';
+
+    // Cajero: no edita ni crea entregas
+    if (role === 'cashier'){
+      const btnEdit = document.getElementById('btnEditar');
+      if (btnEdit) btnEdit.style.display = 'none';
+
+      const btnCrear = document.getElementById('btnCrearEntrega');
+      if (btnCrear) btnCrear.style.display = 'none';
+    }
 
     renderCabecera(saleDTO);
 
@@ -191,13 +206,22 @@ function refreshHeaderTotals(){
   if (hint) hint.textContent = `Saldo: ${fmtARS.format(saldoNum)}`;
   
   const btnPay = document.getElementById('btnRegistrarPago2');
-  if(btnPay) {
-      if(saldoNum <= 0.01) {
-          btnPay.style.display = 'none';
-      } else {
-          btnPay.style.display = 'inline-flex';
-          btnPay.onclick = openPayDialog;
-      }
+  const role = getRole() || 'employee';
+
+  if (btnPay) {
+    // Solo DUEÑO o CAJERO pueden registrar pagos
+    const canPay = (role === 'owner' || role === 'cashier');
+
+    if (!canPay) {
+      btnPay.style.display = 'none';
+      btnPay.onclick = null;
+    } else if (saldoNum <= 0.01) {
+      btnPay.style.display = 'none';
+      btnPay.onclick = null;
+    } else {
+      btnPay.style.display = 'inline-flex';
+      btnPay.onclick = openPayDialog;
+    }
   }
 
   try{

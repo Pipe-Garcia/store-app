@@ -30,6 +30,7 @@ public class User {
 
     public enum Role {
         ROLE_EMPLOYEE,
+        ROLE_CASHIER,
         ROLE_OWNER
     }
 
