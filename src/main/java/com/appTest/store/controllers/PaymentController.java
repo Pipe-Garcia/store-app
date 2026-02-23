@@ -23,7 +23,7 @@ public class PaymentController {
     private IPaymentService servPayment;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_CASHIER','ROLE_OWNER')")
     public ResponseEntity<List<PaymentDTO>> getAllPayments() {
         List<Payment> paymentList = servPayment.getAllPayments();
 
@@ -35,7 +35,7 @@ public class PaymentController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_CASHIER','ROLE_OWNER')")
     public ResponseEntity<PaymentDTO> getPaymentById(@PathVariable Long id) {
         Payment payment = servPayment.getPaymentById(id);
         if (payment == null) {
@@ -46,20 +46,20 @@ public class PaymentController {
     }
 
     @GetMapping("/by-sale/{saleId}")
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_CASHIER','ROLE_OWNER')")
     public ResponseEntity<List<PaymentDTO>> bySale(@PathVariable Long saleId) {
         return ResponseEntity.ok(servPayment.findBySaleId(saleId));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_CASHIER','ROLE_OWNER')")
     public ResponseEntity<PaymentDTO> createPayment(@RequestBody @Valid PaymentCreateDTO dto) {
         PaymentDTO createdPayment = servPayment.createPayment(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdPayment);
     }
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('ROLE_EMPLOYEE','ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_CASHIER','ROLE_OWNER')")
     public ResponseEntity<PaymentDTO> updatePayment(@RequestBody @Valid PaymentUpdateDTO dto) {
         servPayment.updatePayment(dto);
         Payment payment = servPayment.getPaymentById(dto.getIdPayment());
@@ -67,7 +67,7 @@ public class PaymentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_OWNER')")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
     public ResponseEntity<String> deletePaymentById(@PathVariable Long id) {
         Payment payment = servPayment.getPaymentById(id);
         if (payment != null) {

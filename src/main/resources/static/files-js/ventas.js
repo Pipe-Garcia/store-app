@@ -1,5 +1,4 @@
 // /static/files-js/ventas.js
-
 const { authFetch, getToken, safeJson } = window.api;
 
 const API_URL_SALES   = '/sales';
@@ -25,7 +24,6 @@ const Toast = Swal.mixin({
     toast.addEventListener('mouseleave', Swal.resumeTimer);
   }
 });
-
 function notify(msg, type='info') {
   const icon =
     type === 'error'   ? 'error'   :
@@ -47,6 +45,40 @@ let infoPager, btnPrev, btnNext;
 
 let LAST_SALES = [];
 let clientSelectInstance = null;
+
+let CURRENT_ROLE = ''; // owner | employee | cashier
+
+function getRole(){
+  return (document.documentElement.getAttribute('data-role') || '').toLowerCase();
+}
+function onRoleReady(cb){
+  const r = getRole();
+  if (r) { cb(r); return; }
+  document.addEventListener('app:auth-ready', ()=> cb(getRole()), { once:true });
+  setTimeout(()=> cb(getRole()), 1500);
+}
+
+function applyRoleUI(role){
+  CURRENT_ROLE = role || 'employee';
+
+  // filtro Pago visible solo para OWNER/CASHIER
+  const wrapPago = document.getElementById('wrapEstadoPago');
+  if (wrapPago){
+    wrapPago.style.display = (CURRENT_ROLE === 'owner' || CURRENT_ROLE === 'cashier') ? '' : 'none';
+  }
+
+  // Cajero: no crea ventas
+  const btnNueva = document.getElementById('btnNuevaVenta');
+  if (btnNueva){
+    btnNueva.style.display = (CURRENT_ROLE === 'cashier') ? 'none' : '';
+  }
+
+  // Cajero: por defecto mostrar “Pendiente a cobrar”
+  const selPago = document.getElementById('fEstadoPago');
+  if (selPago && CURRENT_ROLE === 'cashier'){
+    selPago.value = 'DUE';
+  }
+}
 
 // ================== Bootstrap ==================
 window.addEventListener('DOMContentLoaded', async ()=>{
@@ -88,7 +120,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     });
   }
 
-  // flash (desde crear/editar)
+  // flash
   const flash = localStorage.getItem('flash');
   if (flash){
     try{
@@ -109,7 +141,19 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   setupListActions();
   setupDateRangeConstraint('fDesde','fHasta');
 
-  await reloadFromFilters();
+  // Esperar rol para setear defaults (especial cajero)
+  onRoleReady(async (r)=>{
+    applyRoleUI(r);
+    await reloadFromFilters();
+  });
+
+  // Fallback si por algún motivo no llega evento
+  setTimeout(async ()=>{
+    if (!CURRENT_ROLE){
+      applyRoleUI(getRole() || 'employee');
+      await reloadFromFilters();
+    }
+  }, 1600);
 });
 
 // ================== Filtros ==================
@@ -120,23 +164,22 @@ function bindFilters(){
   $('#fHasta')        ?.addEventListener('change', deb);
   $('#fEstadoEntrega')?.addEventListener('change', deb);
   $('#fCliente')      ?.addEventListener('change', deb);
-
-  // opcional (tu HTML actual NO lo tiene)
-  $('#fTexto')        ?.addEventListener('input', deb);
+  $('#fEstadoPago')   ?.addEventListener('change', deb);
 
   $('#btnLimpiar')?.addEventListener('click', ()=>{
     if ($('#fDesde')) $('#fDesde').value = '';
     if ($('#fHasta')) $('#fHasta').value = '';
     if ($('#fEstadoEntrega')) $('#fEstadoEntrega').value = '';
+    if ($('#fEstadoPago')) $('#fEstadoPago').value = '';
 
     if (clientSelectInstance) clientSelectInstance.clear();
     else if ($('#fCliente')) $('#fCliente').value = '';
 
-    if ($('#fTexto')) $('#fTexto').value = '';
-
-    // limpiar restricciones
     if ($('#fDesde')) $('#fDesde').max = '';
     if ($('#fHasta')) $('#fHasta').min = '';
+
+    // Cajero: default due
+    if (CURRENT_ROLE === 'cashier' && $('#fEstadoPago')) $('#fEstadoPago').value = 'DUE';
 
     reloadFromFilters();
   });
@@ -153,10 +196,13 @@ function buildQueryFromFilters(){
   const clientId = $('#fCliente')?.value || '';
   if (clientId) q.set('clientId', clientId);
 
+  // paymentStatus (solo si es un valor real del back)
+  const pay = ($('#fEstadoPago')?.value || '').toUpperCase();
+  if (['PENDING','PARTIAL','PAID'].includes(pay)) q.set('paymentStatus', pay);
+
   return q.toString();
 }
 
-// 🔹 para export: incluye también state (incluye CANCELLED)
 function buildSearchQuery(){
   const q = new URLSearchParams(buildQueryFromFilters());
   const st = ($('#fEstadoEntrega')?.value || '').toUpperCase();
@@ -247,14 +293,7 @@ async function reloadFromFilters(){
     LAST_SALES = data;
     let view = data.slice();
 
-    // Texto libre opcional (si existe input)
-    const textEl = $('#fTexto');
-    const text = norm(textEl?.value || '');
-    if (text){
-      view = view.filter(v => norm(v.clientName || '').includes(text));
-    }
-
-    // Estado (front-only) con soporte CANCELLED real
+    // Estado entrega/anulación
     const stFilter = ($('#fEstadoEntrega')?.value || '').toUpperCase();
     if (stFilter){
       if (stFilter === 'CANCELLED'){
@@ -267,7 +306,25 @@ async function reloadFromFilters(){
       }
     }
 
-    // Orden por fecha desc y luego id desc
+    // Pago (front-only para DUE)
+    const payFilter = ($('#fEstadoPago')?.value || '').toUpperCase();
+
+    if (payFilter === 'DUE'){
+      view = view.filter(v => {
+        if (getSaleStatusCode(v) === 'CANCELLED') return false;
+        const bal = getBalance(v);
+        return bal > 0.01;
+      });
+    } else if (['PENDING','PARTIAL','PAID'].includes(payFilter)){
+      view = view.filter(v => getPaymentStatusCode(v) === payFilter);
+    }
+
+    // Cajero: por defecto ver sólo pendientes a cobrar
+    if (CURRENT_ROLE === 'cashier' && (!payFilter || payFilter === '')){
+      view = view.filter(v => getSaleStatusCode(v) !== 'CANCELLED' && getBalance(v) > 0.01);
+    }
+
+    // Orden
     view.sort((a,b)=>{
       const da = String(a.dateSale || a.date || '');
       const db = String(b.dateSale || b.date || '');
@@ -287,7 +344,7 @@ async function reloadFromFilters(){
   }
 }
 
-// ================== Estado de venta / entrega ==================
+// ================== Estado venta/entrega/pago ==================
 function getSoldUnits(v){
   return Number(v.totalUnits ?? v.unitsSold ?? v.totalQuantity ?? v.quantityTotal ?? v.unitsTotal ?? 0);
 }
@@ -305,16 +362,12 @@ function getSaleStatusCode(v) {
 }
 
 function getDeliveryStateCode(v){
-  // Venta directa (sin presupuesto) => entregada
   const hasOrder = !!(v.orderId ?? v.ordersId ?? v.order_id);
   if (!hasOrder) return 'DELIVERED';
 
   const explicit = (v.deliveryStatus ?? v.deliveryState ?? '').toString().toUpperCase();
   if (['DELIVERED','COMPLETED','FULL','ENTREGADA','DIRECT'].includes(explicit)) return 'DELIVERED';
   if (['PENDING','PARTIAL','IN_PROGRESS','PENDIENTE'].includes(explicit)) return 'PENDING_DELIVERY';
-
-  const fully = v.fullyDelivered ?? v.allDelivered ?? v.deliveryCompleted;
-  if (typeof fully === 'boolean') return fully ? 'DELIVERED' : 'PENDING_DELIVERY';
 
   const sold      = getSoldUnits(v);
   const delivered = getDeliveredUnits(v);
@@ -331,20 +384,59 @@ function getDeliveryStateCode(v){
   return 'PENDING_DELIVERY';
 }
 
+function getPaymentStatusCode(v){
+  const raw = (v.paymentStatus || v.payStatus || '').toString().toUpperCase();
+  if (['PENDING','PARTIAL','PAID'].includes(raw)) return raw;
+  // fallback por balance
+  const bal = getBalance(v);
+  if (bal <= 0.01) return 'PAID';
+  const paid = Number(v.paid ?? 0);
+  return paid > 0 ? 'PARTIAL' : 'PENDING';
+}
+
+function getBalance(v){
+  const total = Number(v.total ?? v.totalArs ?? v.amount ?? 0);
+  const paid  = Number(v.paid ?? v.totalPaid ?? 0);
+  return Math.max(0, total - paid);
+}
+
 const UI_SALE_STATUS = { ACTIVE:'ACTIVA', CANCELLED:'ANULADA' };
 const UI_DELIVERY_STATUS = { DELIVERED:'ENTREGADA', PENDING_DELIVERY:'PENDIENTE A ENTREGAR' };
+const UI_PAY_STATUS = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', PAID:'PAGADO' };
 
 function deliveryPillHtml(code){
   const cls = (code === 'DELIVERED') ? 'completed' : 'pending';
   const label = UI_DELIVERY_STATUS[code] || code;
   return `<span class="pill ${cls}">${label}</span>`;
 }
+function payPillHtml(code){
+  const cls =
+    code === 'PAID' ? 'completed' :
+    code === 'PARTIAL' ? 'partial' : 'pending';
+  const label = UI_PAY_STATUS[code] || code;
+  return `<span class="pill ${cls}">${label}</span>`;
+}
 
-function saleStatusPillHtml(saleStatusCode, deliveryCode){
-  if (saleStatusCode === 'CANCELLED'){
+function estadoCellHtml(v){
+  const saleStatus = getSaleStatusCode(v);
+  if (saleStatus === 'CANCELLED'){
     return `<span class="pill cancelled">${UI_SALE_STATUS.CANCELLED}</span>`;
   }
-  return deliveryPillHtml(deliveryCode);
+
+  const del = getDeliveryStateCode(v);
+
+  // Employee: solo entrega (no pago)
+  if (CURRENT_ROLE === 'employee'){
+    return deliveryPillHtml(del);
+  }
+
+  const pay = getPaymentStatusCode(v);
+  return `
+    <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+      ${deliveryPillHtml(del)}
+      ${payPillHtml(pay)}
+    </div>
+  `;
 }
 
 // ================== Render paginado ==================
@@ -425,28 +517,33 @@ function renderLista(lista){
     const totalStr = fmtARS.format(total);
 
     const saleStatus = getSaleStatusCode(v);
-    const stEntrega  = getDeliveryStateCode(v);
+    const bal = getBalance(v);
+    const due = (saleStatus !== 'CANCELLED' && bal > 0.01);
 
     const isCancelled = saleStatus === 'CANCELLED';
-    const isDelivered = stEntrega === 'DELIVERED';
+    const isCashier = CURRENT_ROLE === 'cashier';
 
-    const disableEdit = isCancelled || isDelivered;
+    // Acciones base
+    const viewBtn = `<a class="btn outline" href="ver-venta.html?id=${id}" title="Ver detalle">👁️</a>`;
+    const pdfBtn  = `<button type="button" class="btn outline btn-pdf" data-id="${id}" title="Descargar PDF">🧾</button>`;
 
-    const editHtml = disableEdit
-      ? `<a class="btn outline muted is-disabled"
-            href="#"
-            data-disabled-msg="${isCancelled ? 'No se puede editar una venta ANULADA' : 'No se puede editar una venta ENTREGADA'}"
-            title="${isCancelled ? 'Venta anulada' : 'Venta entregada'}">✏️</a>`
-      : `<a class="btn outline" href="editar-venta.html?id=${id}" title="Editar Venta">✏️</a>`;
+    // Cobrar (cajero/owner) si hay saldo
+    const cobrarBtn = (due && (CURRENT_ROLE === 'cashier' || CURRENT_ROLE === 'owner'))
+      ? `<a class="btn outline" href="registrar-pago.html?saleId=${id}" title="Registrar pago">💵</a>`
+      : '';
 
-    const cancelHtml = isCancelled
-      ? `<button type="button" class="btn outline muted is-disabled"
-                data-disabled-msg="Venta anulada"
-                title="Venta anulada">⛔</button>`
-      : `<button type="button" class="btn danger btn-cancel"
-                data-id="${id}"
-                data-desc="${cli} (${totalStr})"
-                title="Anular Venta" style="background: #fff">⛔</button>`;
+    // Editar/anular (no cajero)
+    const editBtn = (!isCashier)
+      ? (isCancelled
+        ? `<a class="btn outline muted is-disabled" href="#" data-disabled-msg="No se puede editar una venta ANULADA" title="Venta anulada">✏️</a>`
+        : `<a class="btn outline" href="editar-venta.html?id=${id}" title="Editar Venta">✏️</a>`)
+      : '';
+
+    const cancelBtn = (!isCashier)
+      ? (isCancelled
+        ? `<button type="button" class="btn outline muted is-disabled" data-disabled-msg="Venta anulada" title="Venta anulada">⛔</button>`
+        : `<button type="button" class="btn danger btn-cancel" data-id="${id}" data-desc="${cli} (${totalStr})" title="Anular Venta" style="background:#fff">⛔</button>`)
+      : '';
 
     const row = document.createElement('div');
     row.className = 'fila';
@@ -454,12 +551,13 @@ function renderLista(lista){
       <div>${fecha}</div>
       <div>${cli}</div>
       <div>${totalStr}</div>
-      <div>${saleStatusPillHtml(saleStatus, stEntrega)}</div>
-      <div class="acciones">
-        <a class="btn outline" href="ver-venta.html?id=${id}" title="Ver detalle">👁️</a>
-        ${editHtml}
-        <button type="button" class="btn outline btn-pdf" data-id="${id}" title="Descargar PDF">🧾</button>
-        ${cancelHtml}
+      <div>${estadoCellHtml(v)}</div>
+      <div class="acciones" style="display:flex; gap:6px; flex-wrap:wrap;">
+        ${viewBtn}
+        ${cobrarBtn}
+        ${editBtn}
+        ${pdfBtn}
+        ${cancelBtn}
       </div>
     `;
     cont.appendChild(row);
@@ -520,7 +618,7 @@ Esta acción no se puede deshacer.`,
     const r = await authFetch(`${API_URL_SALES}/${id}/cancel`, { method:'POST' });
 
     if (r.status === 403){
-      await Swal.fire('Permiso denegado', 'Se requiere rol OWNER para anular ventas.', 'error');
+      await Swal.fire('Permiso denegado', 'Se requiere rol DUEÑO para anular ventas.', 'error');
       return;
     }
     if (!r.ok){
@@ -532,17 +630,7 @@ Esta acción no se puede deshacer.`,
       throw new Error(msg);
     }
 
-    const data = await safeJson(r).catch(()=>null);
-    const alreadyCancelled = data && (data.status || '').toString().toUpperCase() === 'CANCELLED';
-
-    await Swal.fire(
-      alreadyCancelled ? 'Venta ya anulada' : 'Venta anulada',
-      alreadyCancelled
-        ? 'Esta venta ya estaba marcada como ANULADA.'
-        : 'La venta fue anulada correctamente y el stock fue actualizado.',
-      'success'
-    );
-
+    await Swal.fire('Venta anulada', 'La venta fue anulada correctamente.', 'success');
     await reloadFromFilters();
 
   } catch (e) {

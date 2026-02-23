@@ -35,15 +35,13 @@ body {
 }
 .page-head h1 { margin-left: 15px; }
 
-/* ====== Cards (Estilo Estándar) ====== */
 .card {
+  border: 1px solid #e9ecef;
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
   box-shadow: var(--shadow);
   margin: 10px 0 14px 0;
 }
-
-/* ====== Filtros (Estilo Proveedores) ====== */
 .filters.card {
   margin-bottom: 20px;
   padding: var(--card-pad);

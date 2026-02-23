@@ -28,7 +28,7 @@ public class ClientController {
     private IClientRepository repoClient;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_OWNER','ROLE_EMPLOYEE','ROLE_CASHIER')")
     public ResponseEntity<List<ClientDTO>> getAllClients(
             @RequestParam(required = false) Boolean includeDeleted
     ) {
@@ -40,7 +40,7 @@ public class ClientController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_OWNER','ROLE_EMPLOYEE','ROLE_CASHIER')")
     public ResponseEntity<ClientDTO> getClientById(@PathVariable Long id) {
         Client client = servClient.getClientById(id);
         if (client == null) return ResponseEntity.notFound().build();
@@ -48,7 +48,7 @@ public class ClientController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('EMPLOYEE','OWNER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_OWNER','ROLE_EMPLOYEE','ROLE_CASHIER')")
     public ResponseEntity<ClientDTO> createClient(@RequestBody @Valid ClientCreateDTO dto) {
         ClientDTO createdClient = servClient.createClient(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdClient);

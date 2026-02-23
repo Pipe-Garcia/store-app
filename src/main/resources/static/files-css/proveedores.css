@@ -109,16 +109,15 @@ a.btn{ text-decoration:none; }
     margin: 0 auto;
 }
 .form-page .card {
-  background: #fff;          /* Fondo BLANCO */
+  border: 1px solid #e9ecef;
+  background: #fff;         
   border-radius: var(--radius);
-  padding: var(--card-pad);  /* Padding estándar */
+  padding: var(--card-pad);
   box-shadow: var(--shadow);
-  border: none;
-  margin: 0;                 /* Quitamos el margen gigante */
-  max-width: 100%;           /* Quitamos el límite de 600px */
+  margin: 0;                 
+  max-width: 100%;        
 }
 .form-page .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-/* Para posicionar el autocomplete debajo del input */
 .form-page .grid > div { position: relative; }
 
 .form-page label { display:block; font-size:.9rem; color:#444; margin-bottom:6px; }

@@ -1,0 +1,164 @@
+/* /static/files-css/caja.css */
+body{ background:#f6f8fb; }
+
+.page{
+  max-width:1600px;
+  margin:0 auto;
+  padding:24px;
+}
+
+.page-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+}
+
+.page-head h1{ margin:0; }
+
+.session-info{
+  margin:6px 0 0;
+  color:#6b7280;
+}
+
+.page-head .actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Cards (similar a auditoría) */
+.card{
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 1px 2px rgba(0,0,0,.06);
+  border:1px solid #eef1f3;
+  padding:14px 16px;
+}
+
+/* Divider */
+.divider{
+  border:none;
+  border-top:1px solid #e5e7eb;
+  margin:14px 0 18px;
+}
+
+/* Filtros */
+.filters.card{ padding:14px 16px; }
+
+.filters .row{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-end;
+  gap:10px;
+}
+
+.filters label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  font-size:.95rem;
+  color:#555;
+  min-width:160px;
+}
+
+.filters label.search{ min-width:260px; }
+.filters label.pagesize{ min-width:140px; }
+
+.filters input[type="date"],
+.filters input[type="text"],
+.filters select{
+  padding:8px 10px;
+  border:1px solid #dfe3e6;
+  border-radius:8px;
+  background:#fff;
+  min-height:36px;
+}
+
+/* Wrap tabla para scroll */
+.table-wrap{
+  overflow:auto;
+  border-radius:12px;
+}
+
+/* Tabla grid (mismo estilo que movimientos/auditoría) */
+.tabla{
+  display:grid;
+  gap:10px;
+  min-width:1250px; /* para que no rompa en pantallas chicas */
+}
+
+.tabla .fila{
+  display:grid;
+  align-items:center;
+  gap:10px;
+  background:#fff;
+  border-radius:10px;
+  padding:12px 14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.06);
+  border:1px solid #eef1f3;
+}
+
+.tabla .fila.encabezado{
+  background:#f1f3f5;
+  font-weight:800;
+  box-shadow:none;
+  position:sticky;
+  top:0;
+  z-index:1;
+  border:1px solid #e9ecef;
+}
+
+/* filas alternadas + hover */
+.tabla .fila:not(.encabezado):nth-child(odd){ background:#fcfcfd; }
+.tabla .fila:not(.encabezado):hover{
+  box-shadow:0 6px 16px rgba(0,0,0,.06);
+}
+
+/* ===== 8 columnas EXACTAS ===== */
+.tabla.caja .fila{
+  grid-template-columns:
+    190px             /* Fecha/Hora */
+    110px             /* Tipo */
+    minmax(320px,1fr) /* Concepto */
+    150px             /* Método */
+    140px             /* Importe */
+    150px             /* Referencia */
+    130px             /* Usuario */
+    minmax(220px,1fr) /* Nota */
+}
+
+.text-right{ text-align:right; justify-self:end; }
+
+/* Pills IN/OUT un poco más claras */
+.tabla.caja .pill{
+  font-size:.78rem;
+  font-weight:800;
+  border-radius:999px;
+  padding:4px 10px;
+  border:1px solid transparent;
+}
+
+.tabla.caja .pill.completed{ background:#e6f7ef; color:#0a6c3e; border-color:#bfe9d3; }
+.tabla.caja .pill.cancelled{ background:#ffecec; color:#9a1c1c; border-color:#ffcccc; }
+
+/* Paginación */
+.pager{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  padding-top:10px;
+}
+.pager .info{
+  margin-right:auto;
+  color:#666;
+  font-size:.92rem;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}

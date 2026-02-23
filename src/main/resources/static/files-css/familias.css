@@ -30,6 +30,7 @@
   border-radius:10px;
   padding:.6rem .75rem;
 }
+
 .in.sm{ padding:.45rem .65rem; max-width:260px; }
 .in:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(29,78,216,.12); }
 
@@ -39,7 +40,7 @@
 }
 .btn.primary{ background:var(--accent); color:#fff; }
 .btn.primary:hover{ filter:brightness(1.02); }
-.btn.outline{ background:transparent; border:1px solid var(--grid); color:#111; }
+.btn.outline{ background:transparent; border:1px solid var(--grid); color:#111; text-decoration: none;}
 .btn.outline:hover{ background:#f9fafb; }
 
 .new-row{ display:grid; grid-template-columns:1fr auto; gap:10px; }

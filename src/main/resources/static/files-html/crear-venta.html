@@ -13,98 +13,107 @@
 
   <div id="app-header"></div>
 
-<main class="page form-page narrow seccion-crearEntrega">
-  <div class="page-head">
-    <h1>Nueva venta</h1>
-  </div>
+  <main class="page form-page narrow seccion-crearEntrega">
+    <div class="page-head">
+      <h1>Nueva venta</h1>
+    </div>
 
-  <section class="card">
-    <form id="form-venta"> <div class="grid">
-        <div>
-          <label>Fecha</label>
-          <input id="fecha" type="date" required>
-        </div>
-        
-        <div>
-          <label>Cliente</label>
-          <div class="autocomplete-wrapper" id="ac-cliente-wrapper">
-            <input type="text" id="cliente-search" placeholder="Buscar cliente..." autocomplete="off">
-            <input type="hidden" id="cliente">
-            <div class="autocomplete-list"></div>
+    <section class="card">
+      <form id="form-venta">
+        <div class="grid">
+          <div>
+            <label>Fecha</label>
+            <input id="fecha" type="date" required>
+          </div>
+
+          <div>
+            <label>Cliente</label>
+            <div class="autocomplete-wrapper" id="ac-cliente-wrapper">
+              <input type="text" id="cliente-search" placeholder="Buscar cliente..." autocomplete="off">
+              <input type="hidden" id="cliente">
+              <div class="autocomplete-list"></div>
+            </div>
+          </div>
+
+          <div>
+            <label for="orderSelect">Presupuesto (opcional)</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <select id="orderSelect">
+                <option value="">—</option>
+              </select>
+              <button type="button" id="btnClearOrder" class="btn outline" style="display:none;">Limpiar</button>
+            </div>
+            <small class="field-hint">
+              Solo se listan presupuestos con unidades pendientes.
+            </small>
           </div>
         </div>
 
-        <div>
-          <label for="orderSelect">Presupuesto (opcional)</label>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <select id="orderSelect">
-              <option value="">—</option>
-            </select>
-            <button type="button" id="btnClearOrder" class="btn outline" style="display:none;">Limpiar</button>
+        <hr class="hr">
+
+        <h3 class="subhead">Ítems</h3>
+        <div class="tabla" id="items">
+          <div class="fila encabezado">
+            <div>Material</div>
+            <div>Depósito</div>
+            <div>Cantidad</div>
+            <div>Precio</div>
+            <div>Subtotal</div>
+            <div>Acciones</div>
           </div>
-          <small class="field-hint">
-            Solo se listan presupuestos con unidades pendientes.
-          </small>
         </div>
-      </div>
 
-      <hr class="hr">
-
-      <h3 class="subhead">Ítems</h3>
-      <div class="tabla" id="items">
-        <div class="fila encabezado" >
-          <div>Material</div>
-          <div>Depósito</div>
-          <div>Cantidad</div>
-          <div>Precio</div>
-          <div>Subtotal</div>
-          <div>Quitar</div>
+        <div class="form-actions" style="margin-top: 10px;">
+          <button class="btn outline" id="btnAdd">+ Agregar ítem</button>
         </div>
-      </div>
-      
-      <div class="form-actions" style="margin-top: 10px;">
-        <button class="btn outline" id="btnAdd">+ Agregar ítem</button>
-      </div>
 
-      <div class="subtotales">
-        <div>Total: <strong id="total">$ 0,00</strong></div>
-      </div>
-
-      <hr class="hr">
-
-      <h3 class="subhead">Pago</h3>
-      <div class="grid">
-        <div>
-          <label>Importe</label>
-          <input id="pagoImporte" type="number" min="0.01" step="0.01" required>
+        <div class="subtotales">
+          <div>Total: <strong id="total">$ 0,00</strong></div>
         </div>
-        <div>
-          <label>Fecha de Pago</label>
-          <input id="pagoFecha" type="date" required>
-        </div>
-        <div>
-          <label>Método</label>
-          <select id="pagoMetodo" required>
-            <option value="">Seleccionar...</option> <option>Efectivo</option>
-            <option>Transferencia</option>
-            <option>Débito Mastercard</option>
-            <option>Crédito Visa</option>
-          </select>
-        </div>
-      </div>
 
-      <div class="form-actions main-actions">
-        <button type="button" class="btn primary" id="btnGuardar">Crear venta</button>
-        <a class="btn outline" href="../files-html/ventas.html">Cancelar</a>
-      </div>
-    </form>
-  </section>
-</main>
+        <hr class="hr">
 
-<script src="../files-js/core/api.js"></script>
-<script>window.api.setBaseUrl('http://localhost:8088');</script>
-<script src="../files-js/header.js"></script>
-<script src="../files-js/menu-guard.js"></script>
-<script src="../files-js/crear-venta.js"></script>
+        <!-- ✅ BLOQUE PAGO (se oculta para EMPLEADO) -->
+        <div id="payBlock">
+          <h3 class="subhead">Pago</h3>
+          <p id="payHint" class="field-hint" style="margin-top:-6px;">
+            Los pagos se registran al momento de cobrar (Caja / Detalle de venta).
+          </p>
+
+          <div class="grid">
+            <div>
+              <label>Importe</label>
+              <input id="pagoImporte" type="number" min="0.01" step="0.01">
+            </div>
+            <div>
+              <label>Fecha de Pago</label>
+              <input id="pagoFecha" type="date">
+            </div>
+            <div>
+              <label>Método</label>
+              <select id="pagoMetodo">
+                <option value="">Seleccionar...</option>
+                <option value="CASH">Efectivo</option>
+                <option value="TRANSFER">Transferencia</option>
+                <option value="CARD">Tarjeta</option>
+                <option value="OTHER">Otro</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions main-actions">
+          <button type="button" class="btn primary" id="btnGuardar">Crear venta</button>
+          <a class="btn outline" href="../files-html/ventas.html">Cancelar</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+  <script src="../files-js/header.js"></script>
+  <script src="../files-js/menu-guard.js"></script>
+  <script src="../files-js/crear-venta.js"></script>
 </body>
 </html>

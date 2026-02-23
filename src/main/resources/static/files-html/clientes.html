@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/clientes.css"/>
   <link rel="stylesheet" href="../files-css/nav.css">
+  <link rel="stylesheet" href="../files-css/caja.css"/>
 </head>
 <body>
   <div id="app-header"></div>
@@ -60,6 +61,11 @@
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
   <script src="../files-js/menu-guard.js"></script>
+  <script src="../files-js/role-guard.js"></script>
+  <script>
+    // Clientes: lo pueden ver DUEÑO, EMPLEADO y CAJERO
+    guard.onlyAllow(['owner','employee','cashier'], 'index.html');
+  </script>
   <script src="../files-js/clientes.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
