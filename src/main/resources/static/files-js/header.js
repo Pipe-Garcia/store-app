@@ -30,7 +30,7 @@
     if (file === here) a.classList.add('is-active');
   });
 
-  // Toggle de tema -> emite evento para que los charts se re-tinten
+  // Toggle de tema
   const btn = mount.querySelector('#themeToggle');
   if (btn) btn.addEventListener('click', ()=>{
     const root = document.documentElement;
@@ -46,13 +46,12 @@
 })();
 
 function initHeaderUser(){
-  const api = window.api;              // <— única fuente de verdad
+  const api = window.api;
   const root = document.getElementById('app-header');
   if (!root || !api) return;
 
   const nav = root.querySelector('.site-nav') || root;
 
-  // Construyo el bloque derecho (igual a tu versión)
   const right = document.createElement('div');
   right.className = 'header-user';
   right.innerHTML = `
@@ -71,6 +70,7 @@ function initHeaderUser(){
       <button id="logoutBtn" class="danger" role="menuitem">Cerrar sesión</button>
     </div>
   `;
+
   const themeBtn = nav.querySelector('#themeToggle');
   if (themeBtn) nav.insertBefore(right, themeBtn); else nav.appendChild(right);
 
@@ -82,89 +82,83 @@ function initHeaderUser(){
   const menu = document.getElementById('userMenu');
 
   if (btn && menu) {
-    // Abrir/cerrar menú
     btn.addEventListener('click', (ev)=>{
-      // Evita que el click llegue al listener global y lo cierre
       ev.stopPropagation();
       const open = menu.hidden;
       menu.hidden = !open;
       btn.setAttribute('aria-expanded', String(open));
     });
 
-    // Cerrar al hacer click fuera
     document.addEventListener('click', (e)=>{
-      // Si el menú está abierto y el click no fue ni dentro del menú
-      // ni en ninguna parte del botón (ni sus hijos), lo cerramos
-      if (
-        !menu.hidden &&
-        !menu.contains(e.target) &&
-        !btn.contains(e.target)
-      ) {
+      if (!menu.hidden && !menu.contains(e.target) && !btn.contains(e.target)) {
         menu.hidden = true;
         btn.setAttribute('aria-expanded', 'false');
       }
     });
   }
 
-  // Logout unificado
+  // Logout
   document.getElementById('logoutBtn')?.addEventListener('click', ()=>{
-    api.logout(); // limpia token
-    location.href = '../files-html/login.html'; // navegamos desde acá
+    api.logout();
+    location.href = '../files-html/login.html';
   });
 
-  // —— Rol/visibilidad y nombre ——
   const pathIsUsers = /(^|\/)usuarios\.html(\?|$)/.test(location.pathname);
 
   const ROLE_LABEL = {
     owner:    'DUEÑO',
+    cashier:  'CAJERO',
     employee: 'EMPLEADO',
     guest:    'INVITADO'
   };
 
-  function applyRole({ owner, displayName, roleLabel }) {
+  function applyRole({ roleKey, displayName }) {
     const name = displayName || 'Usuario';
-    const roleText = roleLabel || (owner ? ROLE_LABEL.owner : ROLE_LABEL.employee);
+    const roleText = ROLE_LABEL[roleKey] || ROLE_LABEL.employee;
 
     document.getElementById('userName').textContent = name;
     document.getElementById('uName').textContent    = name;
     document.getElementById('uRole').textContent    = roleText;
 
-    // visibilidad de "Usuarios"
-    if (usersItem) usersItem.hidden = !owner;
+    // Solo OWNER ve "Usuarios"
+    if (usersItem) usersItem.hidden = (roleKey !== 'owner');
 
-    // atributo para CSS / guards de la app (queda en inglés como antes)
-    document.documentElement.setAttribute('data-role', owner ? 'owner' : 'employee');
+    // Atributo global para guards
+    document.documentElement.setAttribute('data-role', roleKey);
 
     // Guard sólo en usuarios.html
-    if (pathIsUsers && !owner) {
-      try { localStorage.setItem('flash', JSON.stringify({type:'error', message:'Acceso restringido a OWNER'})); } catch (_){}
+    if (pathIsUsers && roleKey !== 'owner') {
+      try { localStorage.setItem('flash', JSON.stringify({type:'error', message:'Acceso restringido a DUEÑO'})); } catch (_){}
       location.replace('../files-html/index.html');
     }
 
-    // Aviso global
-    document.dispatchEvent(new CustomEvent('app:auth-ready', { detail:{ owner } }));
+    // Evento global
+    document.dispatchEvent(new CustomEvent('app:auth-ready', { detail:{ role: roleKey, owner: roleKey==='owner', cashier: roleKey==='cashier' } }));
   }
 
-
-  // Si no hay token, pintamos invitado y salimos (no redirigimos)
+  // Sin token => invitado
   if (!api.getToken()){
-    applyRole({ owner:false, displayName:'Invitado', roleLabel: ROLE_LABEL.guest });
+    applyRole({ roleKey:'guest', displayName:'Invitado' });
     return;
   }
 
-  // 1) Intentar /auth/me usando api.js (misma baseURL y headers)
   (async ()=>{
-    const me = await api.me(); // { ok, data } o { ok:false }
+    // 1) /auth/me
+    const me = await api.me();
     if (me?.ok) {
       const d = me.data || {};
       const name = [d.name, d.surname].filter(Boolean).join(' ') || d.username || 'Usuario';
       const role = String(d.role || d.authority || '').toUpperCase();
-      const owner = role === 'ROLE_OWNER' || role === 'OWNER';
-      applyRole({ owner, displayName:name });
+
+      const isOwner   = role === 'ROLE_OWNER'   || role === 'OWNER';
+      const isCashier = role === 'ROLE_CASHIER' || role === 'CASHIER';
+
+      const roleKey = isOwner ? 'owner' : (isCashier ? 'cashier' : 'employee');
+      applyRole({ roleKey, displayName:name });
       return;
     }
 
-    // 2) Fallback: decodificar JWT desde api.js
+    // 2) Fallback JWT
     const payload = api.decodeJwtPayload(api.getToken()) || {};
     const roles = new Set(
       []
@@ -173,9 +167,13 @@ function initHeaderUser(){
         .flat()
         .map(x => String(x).toUpperCase())
     );
-    const owner = roles.has('ROLE_OWNER') || roles.has('OWNER');
-    const name =
-      payload.name || payload.preferred_username || payload.username || 'Usuario';
-    applyRole({ owner, displayName:name });
+
+    const isOwner   = roles.has('ROLE_OWNER')   || roles.has('OWNER');
+    const isCashier = roles.has('ROLE_CASHIER') || roles.has('CASHIER');
+
+    const roleKey = isOwner ? 'owner' : (isCashier ? 'cashier' : 'employee');
+    const name = payload.name || payload.preferred_username || payload.username || 'Usuario';
+
+    applyRole({ roleKey, displayName:name });
   })();
 }

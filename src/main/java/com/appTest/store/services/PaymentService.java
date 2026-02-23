@@ -22,8 +22,10 @@ public class PaymentService implements IPaymentService{
     private IPaymentRepository repoPayment;
 
     @Autowired
-    
     private ISaleRepository repoSale;
+
+    @Autowired
+    private CashService cashService;
 
     @Override
     public List<Payment> getAllPayments() {
@@ -114,9 +116,12 @@ public class PaymentService implements IPaymentService{
         payment.setStatus(calculatePaymentStatus(totalPaidAfter, saleTotal));
 
         Payment savedPayment = repoPayment.save(payment);
+
+        // ✅ Caja: movimiento IN automático por cobro de venta
+        cashService.recordSalePayment(savedPayment);
+
         return convertPaymentToDto(savedPayment);
     }
-
 
     @Override
     @Transactional
@@ -126,10 +131,8 @@ public class PaymentService implements IPaymentService{
 
         Sale sale = payment.getSale();
 
-        // Si cambia el importe, hay que validar contra el saldo
         if (dto.getAmount() != null) {
 
-            // Total de la venta
             BigDecimal saleTotal = (sale.getSaleDetailList() == null)
                     ? BigDecimal.ZERO
                     : sale.getSaleDetailList().stream()
@@ -140,12 +143,11 @@ public class PaymentService implements IPaymentService{
                     })
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            // Suma de los otros pagos (excepto el que estamos editando)
             BigDecimal othersPaid = BigDecimal.ZERO;
             if (sale.getPaymentList() != null) {
                 for (Payment p : sale.getPaymentList()) {
                     if (p.getIdPayment() != null && p.getIdPayment().equals(payment.getIdPayment())) {
-                        continue; // saltamos el actual
+                        continue;
                     }
                     if (p.getAmount() != null) {
                         othersPaid = othersPaid.add(p.getAmount());
@@ -161,7 +163,6 @@ public class PaymentService implements IPaymentService{
                 );
             }
 
-            // Sólo ahora actualizamos el importe y el status
             payment.setAmount(dto.getAmount());
             payment.setStatus(calculatePaymentStatus(newTotalPaid, saleTotal));
         }
@@ -175,7 +176,6 @@ public class PaymentService implements IPaymentService{
 
         repoPayment.save(payment);
     }
-
 
     private String calculatePaymentStatus(BigDecimal totalPaid, BigDecimal saleTotal) {
         if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {

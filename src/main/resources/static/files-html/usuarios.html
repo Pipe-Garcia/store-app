@@ -5,14 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>👤 Usuarios | Store</title>
 
-  <!-- Evita parpadeo hasta verificar rol -->
   <style>html{visibility:hidden}</style>
 
-  <!-- Guard OWNER: JWT -> /auth/me (8088) -->
   <script>
   (function(){
     const API_ME = 'http://localhost:8088/auth/me';
-
     const token = localStorage.getItem('accessToken') || localStorage.getItem('token') ||
                   sessionStorage.getItem('accessToken') || sessionStorage.getItem('token');
 
@@ -59,7 +56,6 @@
   <link rel="stylesheet" href="../files-css/usuarios.css"/>
   <link rel="stylesheet" href="../files-css/nav.css"/>
 
-  <!-- SweetAlert2 (si ya lo tenés local, reemplazá este src por tu archivo local) -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
@@ -67,7 +63,7 @@
 
   <main class="wrap">
     <h1>Administración de usuarios</h1>
-    <p class="muted">Sólo disponible para <b>OWNER</b>.</p>
+    <p class="muted">Sólo disponible para <b>DUEÑO</b>.</p>
 
     <section class="grid">
       <section class="card">
@@ -78,10 +74,13 @@
           <input name="name" placeholder="Nombre" />
           <input name="lastName" placeholder="Apellido" />
           <input name="phone" placeholder="Teléfono" />
+
           <select name="role" required>
             <option value="ROLE_EMPLOYEE">Empleado</option>
-            <option value="ROLE_OWNER">Owner</option>
+            <option value="ROLE_CASHIER">Cajero</option>
+            <option value="ROLE_OWNER">Dueño</option>
           </select>
+
           <input class="full" name="password" type="password" placeholder="Contraseña" required />
           <button class="btn" id="btnCreate">Crear</button>
         </form>
@@ -112,7 +111,6 @@
     </section>
   </main>
 
-  <!-- Header + menú usuario (igual que el resto) -->
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
@@ -141,6 +139,16 @@
 
     function toastOk(text){ Toast.fire({ icon:'success', title: text }); }
     function toastErr(text){ Toast.fire({ icon:'error', title: text }); }
+
+    const ROLE_OPTIONS = {
+      ROLE_EMPLOYEE: 'Empleado',
+      ROLE_CASHIER:  'Cajero',
+      ROLE_OWNER:    'Dueño'
+    };
+
+    function roleLabel(code){
+      return ROLE_OPTIONS[code] || (code || '').replace('ROLE_','');
+    }
 
     async function readErr(r){
       try{
@@ -182,7 +190,6 @@
 
       list.forEach(u=>{
         const isSelf = selfId && String(u.id) === String(selfId);
-        const nextRole = u.role==='ROLE_OWNER'?'ROLE_EMPLOYEE':'ROLE_OWNER';
 
         const row=document.createElement('div');
         row.className='fila filaUsr';
@@ -192,13 +199,13 @@
           <div>${u.email||''}</div>
           <div>
             <span class="pill role ${u.role==='ROLE_OWNER' ? 'owner' : ''}">
-              ${(u.role||'').replace('ROLE_','')}
+              ${roleLabel(u.role)}
             </span>
           </div>
           <div>${u.enabled? '✔️' : '❌'}</div>
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button class="btn outline" data-act="role" data-id="${u.id}" data-role="${nextRole}" ${isSelf?'disabled':''}>
-              ${u.role==='ROLE_OWNER'?'Hacer Empleado':'Hacer Owner'}
+            <button class="btn outline" data-act="role" data-id="${u.id}" data-cur="${u.role||'ROLE_EMPLOYEE'}" ${isSelf?'disabled':''}>
+              Cambiar rol
             </button>
             <button class="btn outline" data-act="toggle" data-id="${u.id}" data-enabled="${u.enabled ? '1':'0'}" ${isSelf?'disabled':''}>
               ${u.enabled?'Desactivar':'Activar'}
@@ -253,22 +260,26 @@
           else { toastErr(await readErr(r)); }
 
         } else if (act==='role'){
-          const role = btn.dataset.role;
+          const cur = btn.dataset.cur || 'ROLE_EMPLOYEE';
 
           const res = await Swal.fire({
             icon:'question',
             title:'Cambiar rol',
-            text:`¿Confirmás cambiar el rol a ${role.replace('ROLE_','')}?`,
+            input:'select',
+            inputOptions: ROLE_OPTIONS,
+            inputValue: cur,
             showCancelButton:true,
             confirmButtonText:'Cambiar',
-            cancelButtonText:'Cancelar'
+            cancelButtonText:'Cancelar',
+            reverseButtons:true,
+            inputValidator: (v)=> !v ? 'Seleccioná un rol' : undefined
           });
           if(!res.isConfirmed) return;
 
           const r = await authFetch(`${API_USERS}/${id}`,{
             method:'PATCH',
             headers:{ 'Content-Type':'application/json' },
-            body: JSON.stringify({ role })
+            body: JSON.stringify({ role: res.value })
           });
           if(r.ok){ toastOk('Rol actualizado'); load(); }
           else { toastErr(await readErr(r)); }
@@ -282,6 +293,7 @@
             showCancelButton:true,
             confirmButtonText:'Actualizar',
             cancelButtonText:'Cancelar',
+            reverseButtons:true,
             inputValidator: (v)=> !v ? 'Ingresá una contraseña' : undefined
           });
           if(!res.isConfirmed) return;
