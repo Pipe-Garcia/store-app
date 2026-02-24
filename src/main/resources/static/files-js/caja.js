@@ -76,6 +76,22 @@ function pillType(dir, reason) {
   const r = String(reason || '').toUpperCase();
 
   if (r === 'WITHDRAWAL') return `<span class="pill pending">RETIRO</span>`;
+
+  // ✅ Anulaciones 
+  if (r === 'SALE_CANCEL' || r === 'PURCHASE_CANCEL') {
+    return `<span class="pill pending">ANULACIÓN</span>`;
+  }
+
+  // ✅ Fallback legacy: anulación de compra venía como PURCHASE + IN
+  if (r === 'PURCHASE' && d === 'IN') {
+    return `<span class="pill pending">ANULACIÓN</span>`;
+  }
+
+  // ✅ Fallback legacy: si alguna vez lo modelás como SALE_PAYMENT + OUT
+  if (r === 'SALE_PAYMENT' && d === 'OUT') {
+    return `<span class="pill pending">ANULACIÓN</span>`;
+  }
+
   if (d === 'IN') return `<span class="pill completed">INGRESO</span>`;
   return `<span class="pill cancelled">EGRESO</span>`;
 }
@@ -300,7 +316,10 @@ function normalizeMovement(m) {
   const when = m.timestamp ?? null;
   const user = m.userName ?? '—';
 
-  const saleId = (m.sourceType === 'Sale' || reason === 'SALE_PAYMENT') ? (m.sourceId ?? null) : null;
+  const saleId =
+  (m.sourceType === 'Sale' || reason === 'SALE_PAYMENT' || reason === 'SALE_CANCEL')
+    ? (m.sourceId ?? null)
+    : null;
   let note = (m.note ?? '').toString().trim();
 
   let concept = '—';
@@ -328,6 +347,27 @@ function normalizeMovement(m) {
   if (reason === 'PURCHASE') {
     concept = 'Compra';
     ref = (m.sourceId != null) ? `Compra #${m.sourceId}` : 'Compra';
+  }
+
+  // ✅ Fallback legacy: anulación de compra venía como PURCHASE + IN
+  if (reason === 'PURCHASE' && dir === 'IN') {
+    concept = 'Anulación de compra';
+    ref = (m.sourceId != null) ? `Compra #${m.sourceId}` : 'Compra';
+  }
+
+  // ✅ ANULACIÓN DE COMPRA
+  if (reason === 'PURCHASE_CANCEL') {
+    concept = 'Anulación de compra';
+    ref = (m.sourceId != null) ? `Compra #${m.sourceId}` : 'Compra';
+    // si la nota repite, la dejamos igual o la limpiamos:
+    // if (note.toLowerCase().startsWith('anulación compra')) note = '';
+  }
+
+  // ✅ ANULACIÓN DE VENTA (reverso de cobro)
+  if (saleId && reason === 'SALE_CANCEL') {
+    concept = `Anulación de venta #${saleId}`;
+    ref = `Venta #${saleId}`;
+    // if (note.toLowerCase().includes(`venta #${saleId}`.toLowerCase())) note = '';
   }
 
   if (reason === 'WITHDRAWAL') {

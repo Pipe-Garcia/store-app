@@ -47,55 +47,92 @@ function sumAmounts(list) {
   return (list || []).reduce((a, x) => a + Number(x.amount || 0), 0);
 }
 
+async function apiList(dateStr, reason, direction) {
+  const q = new URLSearchParams();
+  q.set('from', dateStr);
+  q.set('to', dateStr);
+  if (reason) q.set('reason', reason);
+  if (direction) q.set('direction', direction);
+  q.set('page', '0');
+  q.set('size', '5000');
+
+  const r = await authFetch(`/cash/movements?${q.toString()}`);
+  if (!r.ok) return [];
+  let data = await tryJson(r);
+  if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
+  return Array.isArray(data) ? data : [];
+}
+
+function sumAmounts(list) {
+  return (list || []).reduce((a, x) => a + Number(x.amount || 0), 0);
+}
+
 async function load() {
   const date = $('#fDate').value || todayStr();
 
-  // Summary del back: openingCash + systemCashExpected (solo caja física)
+
+  // Solo para apertura (si tu summary anda bien)
   const sum = await apiSummary(date);
+  const openingCash = Number(sum?.openingCash || 0);
 
-  // ===== INGRESOS (FINANCIEROS): desde summary.rows (solo IN) =====
+  // Movimientos relevantes (con tolerancia legacy)
+  const [
+    salePaysIN,
+    saleCancOUT,
+    expensesOUT,
+    purchOUT,
+    purchCancIN,
+    withdrawalsOUT,
+    // legacy por si todavía no existe PURCHASE_CANCEL
+    purchLegacyCancelIN
+  ] = await Promise.all([
+    apiList(date, 'SALE_PAYMENT', 'IN'),
+    apiList(date, 'SALE_CANCEL',  'OUT'),
+    apiList(date, 'EXPENSE',      'OUT'),
+    apiList(date, 'PURCHASE',     'OUT'),
+    apiList(date, 'PURCHASE_CANCEL', 'IN'),
+    apiList(date, 'WITHDRAWAL',   'OUT'),
+    apiList(date, 'PURCHASE',     'IN'), // legacy: IN+PURCHASE = anulación
+  ]);
+
+  const sumSalePay   = sumAmounts(salePaysIN);
+  const sumSaleCancel= sumAmounts(saleCancOUT);
+
+  const gastos       = sumAmounts(expensesOUT);
+
+  const comprasOut   = sumAmounts(purchOUT);
+  const comprasCanc  = sumAmounts(purchCancIN) + sumAmounts(purchLegacyCancelIN);
+  const comprasNet   = Math.max(0, comprasOut - comprasCanc);
+
+  const retiro       = sumAmounts(withdrawalsOUT);
+
+  // ✅ Ingresos financieros reales
+  const ingresos = Math.max(0, sumSalePay - sumSaleCancel);
+
+  // ✅ Egresos financieros reales
+  const egresos = gastos + comprasNet;
+
+  // ✅ Neto financiero
+  const neto = ingresos - egresos;
+
+  // ✅ Ingresos por método (netos: restamos anulaciones por método)
   const byMethod = { CASH: 0, TRANSFER: 0, CARD: 0, OTHER: 0 };
-  let sumIn = 0;
 
-  const rows = Array.isArray(sum?.rows) ? sum.rows : [];
-  for (const r of rows) {
-    const dir = String(r.direction || '').toUpperCase();
-    const method = String(r.method || '').toUpperCase();
-    const total = Number(r.total || 0);
-
-    if (dir === 'IN') {
-      sumIn += total;
-      const key = Object.prototype.hasOwnProperty.call(byMethod, method) ? method : 'OTHER';
-      byMethod[key] += total;
-    }
+  for (const m of salePaysIN) {
+    const method = String(m.method || 'OTHER').toUpperCase();
+    const key = Object.prototype.hasOwnProperty.call(byMethod, method) ? method : 'OTHER';
+    byMethod[key] += Number(m.amount || 0);
+  }
+  for (const m of saleCancOUT) {
+    const method = String(m.method || 'OTHER').toUpperCase();
+    const key = Object.prototype.hasOwnProperty.call(byMethod, method) ? method : 'OTHER';
+    byMethod[key] -= Number(m.amount || 0);
   }
 
-  // ===== EGRESOS (FINANCIEROS): gastos + compras =====
-  // - EXPENSE: gasto real (caja física, siempre CASH)
-  // - PURCHASE: compra (no sale de la caja física, pero es egreso financiero del día)
-  // - WITHDRAWAL: NO es egreso (se muestra aparte)
-  const expenses    = await apiListByReason(date, 'EXPENSE');
-  const purchases   = await apiListByReason(date, 'PURCHASE');
-  const withdrawals = await apiListByReason(date, 'WITHDRAWAL');
-
-  const sumOutExpenses  = sumAmounts(expenses);
-  const sumOutPurchases = sumAmounts(purchases);
-  const sumWithdraw     = sumAmounts(withdrawals);
-
-  const sumOutFinancial = sumOutExpenses + sumOutPurchases;     // ✅ esto va al KPI "Egresos"
-  const netFinancial    = sumIn - sumOutFinancial;              // ✅ esto va al KPI "Neto"
-
-  // ===== Caja física (para “efectivo p/ mañana”) =====
-  // systemCashExpected = opening + cashIn(CASH) - cashOut(EXPENSE CASH)
-  // carryOverExpected = systemExpected - withdrawals
-  const openingCash = Number(sum?.openingCash || 0);
-  const systemExpected = Number(sum?.systemCashExpected || 0);
-  const carryOverExpected = Math.max(0, systemExpected - sumWithdraw);
-
-  // KPIs
-  $('#kpiIn').textContent  = fmtARS.format(sumIn);
-  $('#kpiOut').textContent = fmtARS.format(sumOutFinancial);
-  $('#kpiNet').textContent = fmtARS.format(netFinancial);
+  // KPI cards
+  $('#kpiIn').textContent  = fmtARS.format(ingresos);
+  $('#kpiOut').textContent = fmtARS.format(egresos);
+  $('#kpiNet').textContent = fmtARS.format(neto);
 
   // Ingresos por método
   Object.entries(byMethod).forEach(([k, v]) => {
@@ -104,11 +141,19 @@ async function load() {
     if (el) el.textContent = fmtARS.format(v);
   });
 
-  // Info superior
+  // Efectivo p/ mañana (estimado, caja física)
+  // Apertura + (cobros CASH - anulaciones CASH) - gastos CASH - retiro
+  const cashIn  = byMethod.CASH;
+  const cashOut = gastos; // gastos siempre cash en tu modelo
+  const systemCashExpected = openingCash + cashIn - cashOut;
+  const carryOverExpected  = Math.max(0, systemCashExpected - retiro);
+
+  const anulaciones = sumSaleCancel + comprasCanc;
+
   $('#sumInfo').textContent =
     `Fecha: ${date} · Apertura: ${fmtARS.format(openingCash)} · ` +
-    `Gastos: ${fmtARS.format(sumOutExpenses)} · Compras: ${fmtARS.format(sumOutPurchases)} · ` +
-    `Retiro: ${fmtARS.format(sumWithdraw)} · ` +
+    `Gastos: ${fmtARS.format(gastos)} · Compras: ${fmtARS.format(comprasNet)} · ` +
+    `Anulaciones: ${fmtARS.format(anulaciones)} · Retiro: ${fmtARS.format(retiro)} · ` +
     `Efectivo p/ mañana (estimado): ${fmtARS.format(carryOverExpected)}`;
 }
 

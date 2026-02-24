@@ -395,7 +395,7 @@ public class CashService {
 
         m.setAmount(amount);
         m.setMethod("OTHER");
-        m.setReason(CashMovement.Reason.PURCHASE);
+        m.setReason(CashMovement.Reason.PURCHASE_CANCEL);
 
         m.setSourceType("Purchase");
         m.setSourceId(purchaseId);
@@ -403,6 +403,34 @@ public class CashService {
 
         String prov = (supplierName != null && !supplierName.isBlank()) ? supplierName.trim() : "—";
         m.setNote("Anulación compra #" + purchaseId + " · Proveedor: " + prov);
+
+        movementRepo.save(m);
+    }
+
+    @Transactional
+    public void recordSaleCancelPayment(Payment payment, LocalDate businessDate){
+        if (payment == null || payment.getSale() == null) return;
+        if (payment.getAmount() == null || payment.getAmount().signum() <= 0) return;
+
+        LocalDate d = (businessDate != null) ? businessDate : todayAR();
+
+        CashSession session = ensureSessionForDate(d, "Sesión automática (anulación de venta)");
+
+        CashMovement m = new CashMovement();
+        m.setSession(session);
+        m.setBusinessDate(d);
+        m.setTimestamp(nowAR());
+
+        // reverso del cobro
+        m.setDirection(CashMovement.Direction.OUT);
+        m.setAmount(nz(payment.getAmount()));
+        m.setMethod(normalizeMethod(payment.getMethodPayment()));
+        m.setReason(CashMovement.Reason.SALE_CANCEL);
+
+        m.setSourceType("Sale");
+        m.setSourceId(payment.getSale().getIdSale());
+        m.setUserName(currentUser());
+        m.setNote("Anulación cobro venta #" + payment.getSale().getIdSale());
 
         movementRepo.save(m);
     }

@@ -16,7 +16,7 @@ public class CashMovement {
     public enum Direction { IN, OUT }
 
     // ✅ agregamos WITHDRAWAL (retiro al cierre)
-    public enum Reason { SALE_PAYMENT, EXPENSE, PURCHASE, WITHDRAWAL }
+    public enum Reason { SALE_PAYMENT, EXPENSE, PURCHASE, WITHDRAWAL, PURCHASE_CANCEL, SALE_CANCEL }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

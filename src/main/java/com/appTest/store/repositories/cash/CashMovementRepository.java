@@ -37,7 +37,7 @@ public interface CashMovementRepository extends JpaRepository<CashMovement, Long
       where m.businessDate = :date
         and m.direction = 'OUT'
         and upper(m.method) = 'CASH'
-        and m.reason = 'EXPENSE'
+        and m.reason in ('EXPENSE', 'SALE_CANCEL')
     """)
     java.math.BigDecimal sumCashOut(@Param("date") LocalDate date);
 

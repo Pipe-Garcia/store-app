@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import com.appTest.store.models.enums.DocumentStatus;
 import com.appTest.store.models.Delivery;
 import com.appTest.store.models.DeliveryItem;
+
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -795,6 +797,20 @@ public class SaleService implements ISaleService{
         // 3) Marcar como anulada
         sale.setStatus(DocumentStatus.CANCELLED);
         repoSale.save(sale);
+
+        // ✅ CAJA: reverso de cobros (SALE_CANCEL)
+        // =====================
+        final ZoneId AR_TZ = ZoneId.of("America/Argentina/Buenos_Aires");
+        final LocalDate cancelDate = LocalDate.now(AR_TZ);
+
+        // Traer pagos por repo (más confiable que sale.getPaymentList())
+        List<Payment> payments = repoPayment.findBySale_IdSale(idSale);
+
+        if (payments != null && !payments.isEmpty()) {
+            for (Payment p : payments) {
+                cashService.recordSaleCancelPayment(p, cancelDate);
+            }
+        }
 
         Map<String,Object> after = snap(sale);
         List<Change> changes = diff(before, after);
