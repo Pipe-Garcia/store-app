@@ -2,9 +2,10 @@
 body{ background:#f6f8fb; }
 
 .page{
-  max-width:1600px;
-  margin:0 auto;
-  padding:24px;
+    max-width: none;
+    width: 100%;
+    padding: 24px;
+    box-sizing: border-box;
 }
 
 .page-head{
@@ -86,8 +87,7 @@ body{ background:#f6f8fb; }
 /* Tabla grid (mismo estilo que movimientos/auditoría) */
 .tabla{
   display:grid;
-  gap:10px;
-  min-width:1250px; /* para que no rompa en pantallas chicas */
+  min-width:850px; /* para que no rompa en pantallas chicas */
 }
 
 .tabla .fila{
@@ -96,7 +96,7 @@ body{ background:#f6f8fb; }
   gap:10px;
   background:#fff;
   border-radius:10px;
-  padding:12px 14px;
+  padding:14px 14px;
   box-shadow:0 1px 2px rgba(0,0,0,.06);
   border:1px solid #eef1f3;
 }
@@ -119,15 +119,7 @@ body{ background:#f6f8fb; }
 
 /* ===== 8 columnas EXACTAS ===== */
 .tabla.caja .fila{
-  grid-template-columns:
-    190px             /* Fecha/Hora */
-    110px             /* Tipo */
-    minmax(320px,1fr) /* Concepto */
-    150px             /* Método */
-    140px             /* Importe */
-    150px             /* Referencia */
-    130px             /* Usuario */
-    minmax(220px,1fr) /* Nota */
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
 }
 
 .text-right{ text-align:right; justify-self:end; }

@@ -542,14 +542,49 @@ async function refreshSession() {
   setSessionInfo();
 }
 
+/* ===== Lógica Filtros Fecha (Restricciones) ===== */
+function setupDateRangeConstraint(idDesde, idHasta) {
+  const elDesde = document.getElementById(idDesde);
+  const elHasta = document.getElementById(idHasta);
+  if (!elDesde || !elHasta) return;
+
+  elDesde.addEventListener('change', () => {
+    elHasta.min = elDesde.value;
+    if (elHasta.value && elHasta.value < elDesde.value) {
+      elHasta.value = elDesde.value;
+      elHasta.dispatchEvent(new Event('change'));
+    }
+  });
+
+  elHasta.addEventListener('change', () => {
+    elDesde.max = elHasta.value;
+    if (elDesde.value && elDesde.value > elHasta.value) {
+      elDesde.value = elHasta.value;
+      elDesde.dispatchEvent(new Event('change'));
+    }
+  });
+}
+
 /* ===== Bootstrap ===== */
 window.addEventListener('DOMContentLoaded', async () => {
   if (!getToken()) { location.href = '../files-html/login.html'; return; }
 
   // defaults a HOY (AR)
   const t = todayStr();
-  if ($('#fFrom')) $('#fFrom').value = t;
-  if ($('#fTo')) $('#fTo').value = t;
+  const fFrom = $('#fFrom');
+  const fTo = $('#fTo');
+  
+  if (fFrom) fFrom.value = t;
+  if (fTo) fTo.value = t;
+
+  // Activar la restricción de fechas
+  setupDateRangeConstraint('fFrom', 'fTo');
+  
+  // Seteamos los max/min iniciales correspondientes a la fecha de hoy
+  if (fFrom && fTo) {
+    fTo.min = t;
+    fFrom.max = t;
+  }
 
   PAGE_SIZE = Number($('#fPageSize')?.value || 10);
 
@@ -586,8 +621,18 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   $('#btnClear')?.addEventListener('click', () => {
     const t = todayStr();
-    $('#fFrom').value = t;
-    $('#fTo').value = t;
+    
+    // Limpiamos restricciones primero para evitar conflictos
+    if (fFrom) fFrom.max = '';
+    if (fTo) fTo.min = '';
+
+    if (fFrom) fFrom.value = t;
+    if (fTo) fTo.value = t;
+
+    // Restauramos las restricciones para "hoy"
+    if (fFrom) fFrom.max = t;
+    if (fTo) fTo.min = t;
+
     $('#fType').value = '';
     $('#fMethod').value = '';
     $('#fText').value = '';
@@ -603,4 +648,4 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   await refreshSession();
   await loadAll();
-});
+}); 

@@ -8,7 +8,9 @@
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/ventas.css"/>
   <link rel="stylesheet" href="../files-css/nav.css"/>
-  <link rel="stylesheet" href="../files-css/registrar-pago2.css"/>
+  <link rel="stylesheet" href="../files-css/registrar-pago.css"/>
+  
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
   <div id="app-header"></div>
@@ -16,13 +18,18 @@
   <main class="page">
     <div class="page-head">
       <h1>Registrar pago</h1>
-      <a id="btnVolver" class="btn outline">Volver</a>
+      <div class="actions">
+          <a id="btnVolver" class="btn outline">Volver</a>
+      </div>
     </div>
 
     <div class="grid-2">
-      <!-- Resumen -->
-      <section class="card">
-        <div class="card-head"><h3>Resumen de la venta</h3></div>
+      <section class="card summary-card">
+        <div class="card-head">
+            <h3>Resumen de la venta</h3>
+            <p class="hint" id="saleInfo">Cargando datos...</p>
+        </div>
+        
         <div class="summary">
           <div class="pill-kpi">
             <small>Total</small>
@@ -32,16 +39,14 @@
             <small>Pagado</small>
             <strong id="kpiPaid">—</strong>
           </div>
-          <div class="pill-kpi">
-            <small>Saldo</small>
+          <div class="pill-kpi highlight">
+            <small>Saldo pendiente</small>
             <strong id="kpiBalance">—</strong>
           </div>
         </div>
-        <p class="hint" id="saleInfo">—</p>
       </section>
 
-      <!-- Formulario -->
-      <section class="card">
+      <section class="card form-card">
         <div class="card-head"><h3>Nuevo pago</h3></div>
 
         <form id="form-pago" class="form-grid" autocomplete="off">
@@ -63,19 +68,17 @@
 
           <div class="full">
             <label>
-              <span>Importe</span>
+              <span>Importe a pagar</span>
               <div class="input-addon">
                 <input id="importe" type="number" step="0.01" min="0.01" placeholder="0.00" required/>
               </div>
             </label>
           </div>
 
-          <div class="full actions" style="margin-top:6px;">
-            <button class="btn green" type="submit" id="btnGuardar">Guardar pago</button>
+          <div class="full actions form-actions">
+            <button class="btn primary" type="submit" id="btnGuardar">Registrar pago</button>
             <button class="btn outline" type="button" id="btnCancelar">Cancelar</button>
           </div>
-
-          <p id="msg" class="hint full"></p>
         </form>
       </section>
     </div>
