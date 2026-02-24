@@ -60,13 +60,6 @@ async function apiHistory({from, to, page, size}){
   return await tryJson(r);
 }
 
-function pillNet(v){
-  const n = Number(v || 0);
-  if (n < 0) return `<span class="pill cancelled">NEGATIVO</span>`;
-  if (n > 0) return `<span class="pill completed">POSITIVO</span>`;
-  return `<span class="pill pending">NEUTRO</span>`;
-}
-
 function renderPager(){
   const totalPages = TOTAL_ELEMS ? Math.ceil(TOTAL_ELEMS / PAGE_SIZE) : 0;
   const current = totalPages ? (PAGE + 1) : 0;
@@ -78,16 +71,17 @@ function renderPager(){
 
 function renderTable(rows){
   const cont = $('#tblSessions');
+  // NUEVO ORDEN DE ENCABEZADOS
   cont.innerHTML = `
     <div class="fila encabezado">
       <div>Caja</div>
       <div>Día</div>
       <div>Usuario que cerró</div>
-      <div class="text-right">Neto</div>
-      <div class="text-right">Apertura</div>
-      <div class="text-right">Efectivo p/ mañana</div>
-      <div class="text-right">Retiro</div>
-      <div class="text-right">Acciones</div>
+      <div class="text-center">Apertura</div>
+      <div class="text-center">Neto</div>
+      <div class="text-center">Retiro</div>
+      <div class="text-center">Efectivo p/ mañana</div>
+      <div class="text-center">Acciones</div>
     </div>
   `;
 
@@ -109,22 +103,33 @@ function renderTable(rows){
     const carry = Number(r.carryOverCash ?? 0);
     const withdraw = Number(r.withdrawalCash ?? 0);
 
+    // Lógica para el color del Neto
+    let netColorStyle = '';
+    if (net > 0) {
+      netColorStyle = 'color: #16a34a;'; // Verde
+    } else if (net < 0) {
+      netColorStyle = 'color: #dc2626;'; // Rojo
+    }
+
     const tr = document.createElement('div');
     tr.className = 'fila';
+    
+    // NUEVO ORDEN DE DATOS (Apertura -> Neto -> Retiro -> Efectivo p/ mañana)
     tr.innerHTML = `
       <div class="mono">#${sid}</div>
       <div>${weekdayLong(date)}</div>
       <div>${closedBy}</div>
 
-      <div class="text-right strong-text">
-        ${fmtARS.format(net)} <span class="net-pill">${pillNet(net)}</span>
+      <div class="text-center">${fmtARS.format(opening)}</div>
+      
+      <div class="text-center strong-text" style="${netColorStyle}">
+        ${fmtARS.format(net)}
       </div>
 
-      <div class="text-right">${fmtARS.format(opening)}</div>
-      <div class="text-right">${fmtARS.format(carry)}</div>
-      <div class="text-right">${fmtARS.format(withdraw)}</div>
+      <div class="text-center">${fmtARS.format(withdraw)}</div>
+      <div class="text-center">${fmtARS.format(carry)}</div>
 
-      <div class="text-right">
+      <div class="text-center">
         <a class="btn outline small"
            href="caja.html?sessionId=${encodeURIComponent(sid)}&date=${encodeURIComponent(date)}&readonly=1">
            Ver movimientos
@@ -145,36 +150,83 @@ async function load(){
   let rows = pageData?.content ?? [];
   TOTAL_ELEMS = Number(pageData?.totalElements ?? rows.length ?? 0);
 
-  // filtro local por texto (usuario / fecha / id)
+  // filtro local por texto (usuario / id de caja) -> SE QUITÓ LA FECHA
   if (f.q){
     rows = rows.filter(x => {
       const sid = String(x.sessionId ?? '');
-      const date = String(x.businessDate ?? '');
       const closedBy = String(x.closedBy ?? '');
-      const hay = `${sid} ${date} ${closedBy}`.toLowerCase();
+      const hay = `${sid} ${closedBy}`.toLowerCase();
       return hay.includes(f.q);
     });
-    // ojo: totalElems queda de server; no lo cambiamos (solo es filtro visual)
   }
 
   renderTable(rows);
   renderPager();
 }
 
+/* ===== Lógica Filtros Fecha (Restricciones) ===== */
+function setupDateRangeConstraint(idDesde, idHasta) {
+  const elDesde = document.getElementById(idDesde);
+  const elHasta = document.getElementById(idHasta);
+  if (!elDesde || !elHasta) return;
+
+  elDesde.addEventListener('change', () => {
+    elHasta.min = elDesde.value;
+    if (elHasta.value && elHasta.value < elDesde.value) {
+      elHasta.value = elDesde.value;
+      elHasta.dispatchEvent(new Event('change'));
+    }
+  });
+
+  elHasta.addEventListener('change', () => {
+    elDesde.max = elHasta.value;
+    if (elDesde.value && elDesde.value > elHasta.value) {
+      elDesde.value = elHasta.value;
+      elDesde.dispatchEvent(new Event('change'));
+    }
+  });
+}
+
 window.addEventListener('DOMContentLoaded', async ()=>{
   if (!getToken()){ location.href='../files-html/login.html'; return; }
 
   const t = todayStr();
-  $('#fTo').value = t;
-  $('#fFrom').value = ymdMinusDays(t, 30);
+  const tMinus30 = ymdMinusDays(t, 30);
+  
+  const fFrom = $('#fFrom');
+  const fTo = $('#fTo');
+
+  if(fTo) fTo.value = t;
+  if(fFrom) fFrom.value = tMinus30;
+
+  // Inicializar restricciones
+  setupDateRangeConstraint('fFrom', 'fTo');
+  if (fFrom && fTo) {
+      fTo.min = tMinus30;
+      fFrom.max = t;
+  }
 
   PAGE_SIZE = Number($('#fPageSize')?.value || 20);
 
   $('#btnReload')?.addEventListener('click', ()=> load().catch(console.error));
+  
   $('#btnClear')?.addEventListener('click', ()=>{
-    const t = todayStr();
-    $('#fTo').value = t;
-    $('#fFrom').value = ymdMinusDays(t, 30);
+    const today = todayStr();
+    const past = ymdMinusDays(today, 30);
+    
+    // Limpiamos restricciones primero
+    if (fFrom) fFrom.max = '';
+    if (fTo) fTo.min = '';
+
+    if(fTo) fTo.value = today;
+    if(fFrom) fFrom.value = past;
+
+    // Restauramos las restricciones
+    if (fFrom && fTo) {
+      fTo.min = past;
+      fFrom.max = today;
+    }
+
     $('#fText').value = '';
     PAGE = 0;
     load().catch(console.error);

@@ -402,7 +402,7 @@ function getBalance(v){
 
 const UI_SALE_STATUS = { ACTIVE:'ACTIVA', CANCELLED:'ANULADA' };
 const UI_DELIVERY_STATUS = { DELIVERED:'ENTREGADA', PENDING_DELIVERY:'PENDIENTE A ENTREGAR' };
-const UI_PAY_STATUS = { PENDING:'PENDIENTE', PARTIAL:'PARCIAL', PAID:'PAGADO' };
+const UI_PAY_STATUS = { PENDING:'PENDIENTE A COBRAR', PARTIAL:'PARCIAL', PAID:'PAGADO' };
 
 function deliveryPillHtml(code){
   const cls = (code === 'DELIVERED') ? 'completed' : 'pending';
