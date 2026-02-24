@@ -6,9 +6,11 @@ import com.appTest.store.models.cash.CashSession;
 import com.appTest.store.repositories.cash.CashMovementRepository;
 import com.appTest.store.repositories.cash.CashSessionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.*;
@@ -97,11 +99,73 @@ public class CashService {
         sessionRepo.save(s);
     }
 
+    private void ensureNotClosedToday(LocalDate today){
+        sessionRepo.findTopByBusinessDateOrderByIdDesc(today).ifPresent(s -> {
+            if (s.getStatus() == CashSession.Status.CLOSED){
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "La caja ya fue CERRADA hoy. No se puede reabrir hasta mañana."
+                );
+            }
+        });
+    }
+
+
+    /**
+     * ✅ Asegura una sesión para una fecha (para poder colgar movimientos).
+     * Prioridad:
+     *  1) Si hay OPEN ese día → usarla
+     *  2) Si hay alguna sesión (CLOSED) ese día → usarla
+     *  3) Si no hay ninguna:
+     *     - si es HOY → crea OPEN con openingCash sugerido (carryOver)
+     *     - si es otra fecha → crea CLOSED “técnica” para trazabilidad
+     */
+    @Transactional
+    public CashSession ensureSessionForDate(LocalDate businessDate, String noteForAutoCreate){
+        autoCloseStaleOpenSessionIfAny();
+
+        LocalDate d = (businessDate != null) ? businessDate : todayAR();
+
+        var open = sessionRepo.findFirstByBusinessDateAndStatus(d, CashSession.Status.OPEN);
+        if (open.isPresent()) return open.get();
+
+        var any = sessionRepo.findTopByBusinessDateOrderByIdDesc(d);
+        if (any.isPresent()) return any.get();
+
+        CashSession s = new CashSession();
+        s.setBusinessDate(d);
+        s.setOpenedAt(nowAR());
+        s.setOpenedBy("system");
+        s.setOpeningCash(BigDecimal.ZERO);
+        s.setNote(noteForAutoCreate);
+
+        if (d.equals(todayAR())){
+            // ✅ “inicio del día” automático (para permitir movimientos aunque nadie haya abierto todavía)
+            s.setStatus(CashSession.Status.OPEN);
+            s.setOpenedBy(currentUser());
+            s.setOpeningCash(suggestOpeningCash());
+        } else {
+            // ✅ sesión técnica histórica
+            s.setStatus(CashSession.Status.CLOSED);
+            s.setClosedAt(nowAR());
+            s.setClosedBy("system");
+            s.setSystemCash(BigDecimal.ZERO);
+            s.setCountedCash(BigDecimal.ZERO);
+            s.setDifferenceCash(BigDecimal.ZERO);
+            s.setWithdrawalCash(BigDecimal.ZERO);
+            s.setCarryOverCash(BigDecimal.ZERO);
+        }
+
+        return sessionRepo.save(s);
+    }
+
     @Transactional
     public CashSession openToday(BigDecimal openingCash, String note){
         autoCloseStaleOpenSessionIfAny();
 
         LocalDate today = todayAR();
+
+        ensureNotClosedToday(today);
 
         var existing = sessionRepo.findFirstByBusinessDateAndStatus(today, CashSession.Status.OPEN);
         if (existing.isPresent()) return existing.get();
@@ -122,6 +186,9 @@ public class CashService {
         autoCloseStaleOpenSessionIfAny();
 
         LocalDate today = todayAR();
+
+        ensureNotClosedToday(today);
+
         return sessionRepo.findFirstByBusinessDateAndStatus(today, CashSession.Status.OPEN)
                 .orElseGet(() -> {
                     if (isOwner()){
@@ -262,5 +329,81 @@ public class CashService {
         return sessionRepo.findTopByStatusOrderByBusinessDateDescIdDesc(CashSession.Status.CLOSED)
                 .map(s -> nz(s.getCarryOverCash()))
                 .orElse(BigDecimal.ZERO);
+    }
+
+    /* ============================================================
+       ✅ NUEVO: COMPRAS como egreso automático (NO caja física)
+       - method: OTHER
+       - reason: PURCHASE
+       - direction: OUT
+       ============================================================ */
+
+    @Transactional
+    public void recordPurchaseOut(Long purchaseId, LocalDate businessDate, BigDecimal amount, String supplierName){
+        if (purchaseId == null) return;
+        if (amount == null || amount.signum() <= 0) return;
+
+        CashSession session = ensureSessionForDate(
+                businessDate,
+                "Sesión automática (registro de compra)"
+        );
+
+        LocalDate d = (businessDate != null) ? businessDate : todayAR();
+
+        CashMovement m = new CashMovement();
+        m.setSession(session);
+        m.setBusinessDate(d);
+        m.setTimestamp(nowAR());
+        m.setDirection(CashMovement.Direction.OUT);
+
+        m.setAmount(amount);
+        m.setMethod("OTHER"); // ✅ NO impacta caja física
+        m.setReason(CashMovement.Reason.PURCHASE);
+
+        m.setSourceType("Purchase");
+        m.setSourceId(purchaseId);
+        m.setUserName(currentUser());
+
+        String prov = (supplierName != null && !supplierName.isBlank()) ? supplierName.trim() : "—";
+        m.setNote("Compra #" + purchaseId + " · Proveedor: " + prov);
+
+        movementRepo.save(m);
+    }
+
+    /**
+     * ✅ Anulación de compra:
+     * registramos el reverso como IN / PURCHASE / OTHER
+     * (deja trazabilidad y en el resumen del día se “compensa”).
+     */
+    @Transactional
+    public void recordPurchaseCancel(Long purchaseId, LocalDate businessDate, BigDecimal amount, String supplierName){
+        if (purchaseId == null) return;
+        if (amount == null || amount.signum() <= 0) return;
+
+        CashSession session = ensureSessionForDate(
+                businessDate,
+                "Sesión automática (anulación de compra)"
+        );
+
+        LocalDate d = (businessDate != null) ? businessDate : todayAR();
+
+        CashMovement m = new CashMovement();
+        m.setSession(session);
+        m.setBusinessDate(d);
+        m.setTimestamp(nowAR());
+        m.setDirection(CashMovement.Direction.IN);
+
+        m.setAmount(amount);
+        m.setMethod("OTHER");
+        m.setReason(CashMovement.Reason.PURCHASE);
+
+        m.setSourceType("Purchase");
+        m.setSourceId(purchaseId);
+        m.setUserName(currentUser());
+
+        String prov = (supplierName != null && !supplierName.isBlank()) ? supplierName.trim() : "—";
+        m.setNote("Anulación compra #" + purchaseId + " · Proveedor: " + prov);
+
+        movementRepo.save(m);
     }
 }

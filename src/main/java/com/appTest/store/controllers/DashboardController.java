@@ -1,8 +1,6 @@
 package com.appTest.store.controllers;
 
-import com.appTest.store.dto.dashboard.DashboardOverviewDTO;
-import com.appTest.store.dto.dashboard.Sales30dDTO;
-import com.appTest.store.dto.dashboard.StockoutRiskDTO;
+import com.appTest.store.dto.dashboard.*;
 import com.appTest.store.services.DashboardService;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,5 +28,15 @@ public class DashboardController {
   @GetMapping("/sales-30d")
   public Sales30dDTO sales30d(){
     return service.salesLast30Days();
+  }
+
+  @GetMapping("/finance/series")
+  public FinanceSeriesDTO financeSeries(@RequestParam(defaultValue = "30") int days){
+    return service.financeSeries(days);
+  }
+
+  @GetMapping("/finance/window")
+  public FinanceWindowDTO financeWindow(@RequestParam(defaultValue = "7") int days){
+    return service.financeWindow(days);
   }
 }

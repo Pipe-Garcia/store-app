@@ -142,7 +142,7 @@ body{ background:#f6f8fb; }
 }
 
 .tabla.caja .pill.completed{ background:#e6f7ef; color:#0a6c3e; border-color:#bfe9d3; }
-.tabla.caja .pill.cancelled{ background:#ffecec; color:#9a1c1c; border-color:#ffcccc; }
+.tabla.caja .pill.cancelled{ background:#ffecec; color: #d20b0b; border-color:#ffcccc; }
 
 /* Paginación */
 .pager{

@@ -1,0 +1,304 @@
+/* /static/files-css/caja-historico.css
+   PRO UI – Histórico de Caja
+*/
+
+:root{
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow-soft: 0 1px 2px rgba(0,0,0,.06);
+  --shadow-hover: 0 10px 24px rgba(0,0,0,.10);
+  --border: color-mix(in oklab, var(--grid, #e9ecef) 90%, #0000);
+  --muted: var(--text-weak, #6b7280);
+  --bg-page: #f6f8fb;
+}
+
+body{
+  background: var(--bg-page);
+}
+
+/* Links (como pediste) */
+a{
+  color: var(--primary, #1c7ed6);
+  text-decoration: none;
+}
+a:hover{ text-decoration: none; }
+
+/* ===== Layout ===== */
+.page{
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 18px 18px 44px;
+}
+
+.page-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:14px;
+  flex-wrap:wrap;
+}
+
+.head-left h1,
+.page-head h1{
+  margin:0;
+  letter-spacing: .2px;
+}
+
+#histInfo{
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: .95rem;
+}
+
+/* divider (si usás .divider global ya) */
+hr.divider{
+  border: 0;
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0 16px;
+}
+
+/* ===== Card + Filters ===== */
+.card{
+  background: var(--card, #fff);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+}
+
+.filters.card{
+  padding: 14px 16px;
+}
+
+.filters .row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:flex-end;
+}
+
+.filters label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width: 170px;
+  font-size: .92rem;
+  color: #3b3f45;
+}
+
+.filters label.search{ min-width: 280px; }
+.filters label.pagesize{ min-width: 150px; }
+
+.filters input[type="date"],
+.filters input[type="text"],
+.filters select{
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--border) 70%, #0000);
+  background: #fff;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s, transform .02s;
+}
+
+.filters input[type="date"]:focus,
+.filters input[type="text"]:focus,
+.filters select:focus{
+  border-color: color-mix(in oklab, var(--primary, #1c7ed6) 55%, #0000);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary, #1c7ed6) 18%, #0000);
+}
+
+.filters input[type="text"]::placeholder{
+  color: color-mix(in oklab, var(--muted) 85%, #0000);
+}
+
+/* ===== Buttons (refina sin romper tus clases globales) ===== */
+.btn{
+  border-radius: 10px;
+  transition: background .15s, border-color .15s, transform .02s, box-shadow .15s;
+}
+.btn:active{ transform: translateY(1px); }
+
+.btn.outline{
+  background: #fff;
+  border-color: color-mix(in oklab, var(--border) 85%, #0000);
+}
+
+.btn.outline:hover{
+  background: #f3f5f7;
+}
+
+.btn.small{
+  padding: 7px 11px;
+  font-size: .9rem;
+  border-radius: 10px;
+}
+
+.actions .btn,
+.filters .btn{
+  white-space: nowrap;
+}
+
+/* ===== Table wrapper ===== */
+.table-wrap{
+  overflow: auto;
+  border-radius: var(--radius);
+}
+
+/* Scrollbar nice (Chromium/Webkit) */
+.table-wrap::-webkit-scrollbar{ height: 10px; }
+.table-wrap::-webkit-scrollbar-thumb{
+  background: color-mix(in oklab, #000 12%, #0000);
+  border-radius: 999px;
+}
+.table-wrap::-webkit-scrollbar-track{
+  background: color-mix(in oklab, #000 5%, #0000);
+  border-radius: 999px;
+}
+
+/* ===== Tabla histórico ===== */
+.tabla.historico{
+  display:grid;
+  min-width: 1180px;
+  gap: 10px;
+  padding: 12px;
+}
+
+.tabla.historico .fila{
+  display:grid;
+  grid-template-columns:
+    90px
+    280px
+    230px
+    170px
+    140px
+    200px
+    140px
+    170px;
+  align-items:center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--card, #fff) 96%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.tabla.historico .fila.encabezado{
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #f1f3f5;
+  font-weight: 800;
+  letter-spacing: .2px;
+  box-shadow: none;
+  border-color: color-mix(in oklab, var(--border) 92%, #0000);
+}
+
+/* zebra + hover */
+.tabla.historico .fila:not(.encabezado):nth-child(odd){
+  background: #fcfcfd;
+}
+
+.tabla.historico .fila:not(.encabezado){
+  transition: transform .06s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.tabla.historico .fila:not(.encabezado):hover{
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-hover);
+  border-color: color-mix(in oklab, var(--primary, #1c7ed6) 18%, var(--border));
+}
+
+/* Typography helpers */
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.text-right{
+  text-align:right;
+  justify-self:end;
+}
+
+.strong-text{
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Neto cell: chip + alignment */
+.net-pill{
+  margin-left: 8px;
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Refuerza pills si tu style.css ya trae .pill */
+.pill{
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: .78rem;
+  font-weight: 800;
+  border: 1px solid transparent;
+  letter-spacing: .2px;
+}
+
+/* si no existen tus clases (completed/cancelled/pending), las dejamos lindas */
+.pill.completed{
+  background:#e6f7ef;
+  color:#0a6c3e;
+  border-color:#bfe9d3;
+}
+.pill.cancelled{
+  background:#ffecec;
+  color:#9a1c1c;
+  border-color:#ffcccc;
+}
+.pill.pending{
+  background:#eef2ff;
+  color:#353ba3;
+  border-color:#dfe3ff;
+}
+
+/* Acciones: botón “Ver movimientos” más pro */
+.tabla.historico .fila a.btn{
+  text-decoration:none;
+}
+
+.tabla.historico .fila a.btn.outline.small:hover{
+  border-color: color-mix(in oklab, var(--primary, #1c7ed6) 30%, var(--border));
+  box-shadow: 0 6px 16px rgba(0,0,0,.08);
+}
+
+/* ===== Pager ===== */
+.pager{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding: 10px 12px 2px;
+}
+
+.pager .info{
+  color: var(--muted);
+  font-size: .92rem;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 980px){
+  .page{ padding: 16px 12px 40px; }
+  .filters label{ min-width: 150px; }
+  .filters label.search{ min-width: 220px; }
+}
+
+@media (max-width: 640px){
+  .filters .row{ gap: 8px; }
+  .filters label{ min-width: 100%; }
+  .filters label.search{ min-width: 100%; }
+  .filters label.pagesize{ min-width: 100%; }
+  .actions{ width: 100%; }
+  .actions .btn{ width: 100%; justify-content:center; }
+  .pager{ flex-direction: column; align-items: stretch; }
+  .pager .btn{ width: 100%; justify-content:center; }
+}

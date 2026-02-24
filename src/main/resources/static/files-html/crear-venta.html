@@ -76,28 +76,38 @@
         <!-- ✅ BLOQUE PAGO (se oculta para EMPLEADO) -->
         <div id="payBlock">
           <h3 class="subhead">Pago</h3>
+
+          <!-- ✅ Toggle: para OWNER el pago es OPCIONAL -->
+          <label style="display:flex;align-items:center;gap:10px;margin:6px 0 10px;">
+            <input type="checkbox" id="payNow">
+            <span>Registrar pago ahora (opcional)</span>
+          </label>
+
           <p id="payHint" class="field-hint" style="margin-top:-6px;">
-            Los pagos se registran al momento de cobrar (Caja / Detalle de venta).
+            Si no registrás el pago ahora, el cobro se hace desde <b>Caja</b> / <b>Detalle de venta</b>.
           </p>
 
-          <div class="grid">
-            <div>
-              <label>Importe</label>
-              <input id="pagoImporte" type="number" min="0.01" step="0.01">
-            </div>
-            <div>
-              <label>Fecha de Pago</label>
-              <input id="pagoFecha" type="date">
-            </div>
-            <div>
-              <label>Método</label>
-              <select id="pagoMetodo">
-                <option value="">Seleccionar...</option>
-                <option value="CASH">Efectivo</option>
-                <option value="TRANSFER">Transferencia</option>
-                <option value="CARD">Tarjeta</option>
-                <option value="OTHER">Otro</option>
-              </select>
+          <!-- Campos de pago (se habilitan solo si payNow está activo) -->
+          <div id="payFields">
+            <div class="grid">
+              <div>
+                <label>Importe</label>
+                <input id="pagoImporte" type="number" min="0.01" step="0.01">
+              </div>
+              <div>
+                <label>Fecha de Pago</label>
+                <input id="pagoFecha" type="date">
+              </div>
+              <div>
+                <label>Método</label>
+                <select id="pagoMetodo">
+                  <option value="">Seleccionar...</option>
+                  <option value="CASH">Efectivo</option>
+                  <option value="TRANSFER">Transferencia</option>
+                  <option value="CARD">Tarjeta</option>
+                  <option value="OTHER">Otro</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>

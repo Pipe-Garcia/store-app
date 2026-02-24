@@ -21,7 +21,8 @@
 
   <div class="dashboard-layout">  
     <nav class="section-nav" aria-label="Atajos de secciones">
-      <a href="#sec-ventas"    class="active">Ventas</a>
+      <a href="#sec-finanzas">Finanzas</a>
+      <a href="#sec-ventas" class="active">Ventas</a>
       <a href="#sec-pedidos">Entregas</a>
       <a href="#sec-stock">Stock & Materiales</a>
       <a href="#sec-clientes">Clientes</a>
@@ -30,6 +31,80 @@
 
     <div class="dashboard-main">
     <hr>
+
+      <!-- ============== FINANZAS (CAJA) ============== -->
+    <section class="area" id="sec-finanzas">
+      <header class="area-head">
+        <h2>Finanzas (Caja)</h2>
+        <small class="muted" id="finRange">—</small>
+      </header>
+
+      <!-- KPIs -->
+      <section class="kpi-grid" id="kpi-fin">
+        <div class="card kpi clickable" id="kpiFinIncomeCard" data-drill="../files-html/caja-resumen.html">
+          <div class="kpi-title">Ingresos · 7 días</div>
+          <div class="kpi-value" id="finIncome7d">$ 0,00</div>
+          <div class="kpi-sub">Cobros registrados en caja</div>
+        </div>
+
+        <div class="card kpi clickable" id="kpiFinOutCard" data-drill="../files-html/caja-resumen.html">
+          <div class="kpi-title">Egresos · 7 días</div>
+          <div class="kpi-value" id="finOut7d">$ 0,00</div>
+          <div class="kpi-sub">Gastos + compras (sin retiros)</div>
+        </div>
+
+        <div class="card kpi">
+          <div class="kpi-title">Neto · 7 días</div>
+          <div class="kpi-value" id="finNet7d">$ 0,00</div>
+          <div class="kpi-sub">Ingresos − Egresos</div>
+        </div>
+
+        <div class="card kpi clickable" id="kpiFinPurchCard" data-drill="../files-html/compras.html">
+          <div class="kpi-title">Compras · 7 días</div>
+          <div class="kpi-value" id="finPurch7d">$ 0,00</div>
+          <div class="kpi-sub">Registradas como egreso financiero</div>
+        </div>
+
+        <div class="card kpi">
+          <div class="kpi-title">Gastos · 7 días</div>
+          <div class="kpi-value" id="finExp7d">$ 0,00</div>
+          <div class="kpi-sub">Siempre desde caja física</div>
+        </div>
+
+        <div class="card kpi">
+          <div class="kpi-title">Retiros · 7 días</div>
+          <div class="kpi-value" id="finWith7d">$ 0,00</div>
+          <div class="kpi-sub">No cuentan como gasto</div>
+        </div>
+      </section>
+
+      <!-- Charts -->
+      <div class="charts-grid">
+        <section class="card chart-card">
+          <div class="card-head">
+            <h3>Ingresos vs Egresos · 30 días</h3>
+          </div>
+          <div class="chart-wrap"><canvas id="chartFin30d"></canvas></div>
+        </section>
+
+        <section class="card chart-card">
+          <div class="card-head"><h3>Egresos · 7 días (por tipo)</h3></div>
+          <div class="chart-wrap" style="max-width: 420px;">
+            <canvas id="chartOutDonut7d"></canvas>
+          </div>
+          <small class="muted">* Los retiros no se muestran porque no cuentan como egreso.</small>
+        </section>
+
+        <section class="card chart-card">
+          <div class="card-head"><h3>Ingresos · 7 días (por método)</h3></div>
+          <div class="chart-wrap" style="max-width: 420px;">
+            <canvas id="chartInMethodDonut7d"></canvas>
+          </div>
+        </section>
+      </div>
+    </section>
+    <hr>
+
     <!-- ============== VENTAS ============== -->
     <section class="area" id="sec-ventas">
       <header class="area-head"><h2>Ventas</h2></header>
@@ -103,7 +178,7 @@
     </section>
     <hr>
     
-        <!-- ============== ENTREGAS ============== -->
+    <!-- ============== ENTREGAS ============== -->
     <section class="area" id="sec-pedidos">
       <header class="area-head"><h2>Entregas</h2></header>
 

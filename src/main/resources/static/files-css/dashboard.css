@@ -502,3 +502,21 @@ hr{ border: none; border-top: 1px solid var(--grid); margin: 24px 0; }
 
 #tablaLowStock a.btn,
 #tablaLowStock .btn{ white-space: nowrap; }
+
+/* ===== Finanzas (Caja) ===== */
+#kpi-fin .kpi-value.neg { color: var(--bad); }
+#kpi-fin .kpi-value.pos { color: var(--ok); }
+#finRange { font-size: .95rem; }
+
+/* Finanzas: 3 columnas fijas en desktop (6 => 2 filas perfectas) */
+#kpi-fin{
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+}
+
+/* responsive */
+@media (max-width: 1100px){
+  #kpi-fin{ grid-template-columns: repeat(2, minmax(240px, 1fr)); }
+}
+@media (max-width: 640px){
+  #kpi-fin{ grid-template-columns: 1fr; }
+}

@@ -21,6 +21,8 @@ const API_URL_SALES        = '/sales';
 const API_URL_SALEDETAILS  = '/sale-details';
 const API_URL_DASH         = '/dashboard/overview';
 const API_URL_SALES30      = '/dashboard/sales-30d';
+const API_URL_FIN_WINDOW = '/dashboard/finance/window';
+const API_URL_FIN_SERIES = '/dashboard/finance/series';
 
 // NOTA: ya NO declaramos getToken/authHeaders/authFetch/safeJson acá.
 // Todo va por window.api (alias arriba).
@@ -205,7 +207,12 @@ function retintCharts(){
         const col=[s1,s2,s3][i%3], fill=[s1f,s2f,s3f][i%3];
         ds.borderColor = col; if (ds.fill||ds.backgroundColor) ds.backgroundColor = fill;
       }
-      if (ch.config.type === 'doughnut'){ ds.backgroundColor=[s1,s2,s3]; ds.borderColor=getCss('--card'); }
+      if (ch.config.type === 'doughnut'){
+        const cols = [s1, s2, s3, s1, s2, s3];
+        const n = Array.isArray(ds.data) ? ds.data.length : 3;
+        ds.backgroundColor = cols.slice(0, n);
+        ds.borderColor = getCss('--card');
+      }
     });
 
     ch.update('none');
@@ -367,6 +374,7 @@ async function cargarDashboard(){
     attachKpiDrillDown({ today, mostSold, masCaro }); 
 
     await renderChartSales7d(); // gráfico de 7 días
+    await cargarFinanzas();
   }catch(e){
     console.error(e);
     notify('No se pudieron cargar los reportes','error');
@@ -1153,3 +1161,319 @@ setTimeout(() => {
     cargarAuditoria();
   }
 }, 1200);
+
+
+/* ============================
+   FINANZAS (CAJA) – Dashboard
+   ============================ */
+
+function fmtISOToAR(iso){
+  if (!iso) return '—';
+  const s = String(iso).slice(0,10);
+  const [y,m,d] = s.split('-');
+  return (y && m && d) ? `${d}/${m}/${y}` : s;
+}
+
+async function fetchFinanceWindow(days=7){
+  const r = await authFetch(`${API_URL_FIN_WINDOW}?days=${encodeURIComponent(days)}`);
+  if (!r.ok) return null;
+  return safeJson(r);
+}
+
+async function fetchFinanceSeries(days=30){
+  const r = await authFetch(`${API_URL_FIN_SERIES}?days=${encodeURIComponent(days)}`);
+  if (!r.ok) return null;
+  return safeJson(r);
+}
+
+function finLabelReason(k){
+  const key = String(k||'').toUpperCase();
+  if (key === 'EXPENSE') return 'Gastos';
+  if (key === 'PURCHASE') return 'Compras';
+  if (key === 'WITHDRAWAL') return 'Retiros (no gasto)';
+  return key || 'Otro';
+}
+
+function finLabelMethod(k){
+  const key = String(k||'').toUpperCase();
+  if (key === 'CASH') return 'Efectivo';
+  if (key === 'TRANSFER') return 'Transferencia';
+  if (key === 'CARD') return 'Tarjeta';
+  if (key === 'OTHER') return 'Otro';
+  return key || 'Otro';
+}
+
+function setMoney(id, val){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = fmtARS.format(Number(val||0));
+}
+
+function setNetStyle(id, val){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('neg','pos');
+  const n = Number(val||0);
+  if (n < 0) el.classList.add('neg');
+  else if (n > 0) el.classList.add('pos');
+}
+
+function wireFinanceDrills(){
+  ['kpiFinIncomeCard','kpiFinOutCard','kpiFinPurchCard'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', ()=>{
+      const to = el.dataset.drill;
+      if (to) location.href = to;
+    });
+  });
+}
+
+let chartFin30 = null;
+let chartOutDonut = null;
+let chartInMethodDonut = null;
+
+async function cargarFinanzas(){
+  try{
+    // Solo si existen los nodos (por si algún rol usa otro index)
+    if (!document.getElementById('sec-finanzas')) return;
+
+    wireFinanceDrills();
+
+    const [win7, series30] = await Promise.all([
+      fetchFinanceWindow(7),
+      fetchFinanceSeries(30)
+    ]);
+
+    if (win7){
+      const from = fmtISOToAR(win7.from);
+      const to   = fmtISOToAR(win7.to);
+      const range = document.getElementById('finRange');
+      if (range) range.textContent = `Últimos 7 días · ${from} → ${to}`;
+
+      setMoney('finIncome7d', win7.incomeTotal);
+      setMoney('finOut7d', win7.expenseTotal);
+      setMoney('finNet7d', win7.netTotal);
+      setMoney('finPurch7d', win7.purchasesTotal);
+      setMoney('finExp7d', win7.expensesTotal);
+      setMoney('finWith7d', win7.withdrawalsTotal);
+
+      setNetStyle('finNet7d', win7.netTotal);
+
+      renderOutDonut7d(win7);
+      renderInMethodDonut7d(win7);
+    }
+
+    if (series30 && Array.isArray(series30.points)){
+      renderFinance30d(series30.points);
+    }
+  }catch(e){
+    console.warn('Finanzas dashboard error:', e);
+  }
+}
+
+// ✅ Plugin: texto centrado en doughnut (Chart.js v4)
+const CenterTextPlugin = {
+  id: 'centerText',
+  afterDraw(chart, args, opts) {
+    if (!opts || opts.display === false) return;
+
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return;
+
+    const meta = chart.getDatasetMeta(0);
+    if (!meta?.data?.length) return;
+
+    // centro del arco
+    const arc = meta.data[0];
+    const x = arc.x;
+    const y = arc.y;
+
+    const line1 = (opts.line1 ?? '').toString();
+    const line2 = (opts.line2 ?? '').toString();
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // colores/tipografías (podés ajustar)
+    ctx.fillStyle = opts.color || getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#111';
+    ctx.font = opts.font1 || '700 18px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    if (line1) ctx.fillText(line1, x, y - (line2 ? 10 : 0));
+
+    if (line2) {
+      ctx.fillStyle = opts.color2 || getComputedStyle(document.documentElement).getPropertyValue('--text-weak').trim() || '#666';
+      ctx.font = opts.font2 || '500 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+      ctx.fillText(line2, x, y + 14);
+    }
+
+    ctx.restore();
+  }
+};
+
+function renderOutDonut7d(win7){
+  const ctx = document.getElementById('chartOutDonut7d')?.getContext('2d');
+  if (!ctx) return;
+  destroyChart(ctx);
+
+  const list = Array.isArray(win7.outByReason) ? win7.outByReason : [];
+  // Queremos mostrar, mínimo: EXPENSE, PURCHASE, WITHDRAWAL (si existen)
+  const order = ['EXPENSE','PURCHASE']; // ✅ retiro NO va
+  const map = new Map(list.map(x => [String(x.key||'').toUpperCase(), Number(x.total||0)]));
+  const labels = [];
+  const data = [];
+
+  order.forEach(k=>{
+    const v = map.get(k);
+    if (v && v > 0){
+      labels.push(finLabelReason(k));
+      data.push(v);
+    }
+  });
+
+  // fallback si viene algo distinto
+  if (!data.length){
+    list.forEach(x=>{
+      const v = Number(x.total||0);
+      if (v > 0){
+        labels.push(finLabelReason(x.key));
+        data.push(v);
+      }
+    });
+  }
+
+  const txt  = getCss('--text');
+  const card = getCss('--card');
+  const s1 = getCss('--series-1');
+  const s2 = getCss('--series-2'); // gastos
+  const s3 = getCss('--series-3'); // compras
+
+  chartOutDonut = registerChart(new Chart(ctx, {
+    type:'doughnut',
+    data:{
+      labels,
+      datasets:[{
+        data,
+        backgroundColor:[s2, s3],
+        borderColor: card,
+        borderWidth: 2
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'bottom', labels:{ color: txt, font:{ weight:'bold' } } },
+        tooltip:{ callbacks:{ label:(i)=>` ${i.label}: ${fmtARS.format(i.parsed||0)}` } }
+      },
+      cutout:'65%'
+    }
+  }));
+}
+
+function renderInMethodDonut7d(win7){
+  const ctx = document.getElementById('chartInMethodDonut7d')?.getContext('2d');
+  if (!ctx) return;
+  destroyChart(ctx);
+
+  const list = Array.isArray(win7.incomeByMethod) ? win7.incomeByMethod : [];
+  const rows = list
+    .map(x => ({ k: String(x.key||'').toUpperCase(), v: Number(x.total||0) }))
+    .filter(x => x.v > 0);
+
+  // Orden humano
+  const order = ['CASH','TRANSFER','CARD','OTHER'];
+  rows.sort((a,b)=> order.indexOf(a.k) - order.indexOf(b.k));
+
+  const labels = rows.map(x => finLabelMethod(x.k));
+  const data   = rows.map(x => x.v);
+
+  const txt  = getCss('--text');
+  const card = getCss('--card');
+  const s1 = getCss('--series-1');
+  const s2 = getCss('--series-2');
+  const s3 = getCss('--series-3');
+
+  chartInMethodDonut = registerChart(new Chart(ctx, {
+    type:'doughnut',
+    data:{
+      labels,
+      datasets:[{
+        data,
+        backgroundColor:[s1, s2, s3, s1], // 4 segmentos soportados
+        borderColor: card,
+        borderWidth: 2
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'bottom', labels:{ color: txt, font:{ weight:'bold' } } },
+        tooltip:{ callbacks:{ label:(i)=>` ${i.label}: ${fmtARS.format(i.parsed||0)}` } }
+      },
+      cutout:'65%'
+    }
+  }));
+}
+
+function renderFinance30d(points){
+  const ctx = document.getElementById('chartFin30d')?.getContext('2d');
+  if (!ctx) return;
+  destroyChart(ctx);
+
+  const sum = (arr, pick) => (arr||[]).reduce((a,x)=> a + Number(pick(x)||0), 0);
+
+  const incomeTotal   = sum(points, p => p.income);
+  const purchasesTotal= sum(points, p => p.purchases);
+  const expensesTotal = sum(points, p => p.expenses);
+
+  const outTotal = purchasesTotal + expensesTotal;
+  const netTotal = incomeTotal - outTotal;
+
+  // (opcional) si querés mostrar neto en texto, usá este id (ver punto 1b)
+  const netEl = document.getElementById('finNet30dInfo');
+  if (netEl) {
+    const sign = netTotal >= 0 ? '+' : '−';
+    netEl.textContent = `Neto 30d: ${sign} ${fmtARS.format(Math.abs(netTotal))}`;
+  }
+
+  const txt  = getCss('--text');
+  const card = getCss('--card');
+  const s1   = getCss('--series-1'); // ingresos
+  const s2   = getCss('--series-2'); // egresos
+
+  registerChart(new Chart(ctx, {
+    type:'doughnut',
+    data:{
+      labels:['Ingresos', 'Egresos'],
+      datasets:[{
+        data:[incomeTotal, outTotal],
+        backgroundColor:[s1, s2],
+        borderColor: card,
+        borderWidth: 2
+      }]
+    },
+    plugins: [CenterTextPlugin], // ✅ aquí
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'bottom', labels:{ color: txt, font:{ weight:'bold' } } },
+        tooltip:{
+          callbacks:{ label:(i)=>` ${i.label}: ${fmtARS.format(i.parsed||0)}` }
+        },
+
+        // ✅ texto al centro
+        centerText: {
+          display: true,
+          line1: `${netTotal >= 0 ? '+' : '−'} ${fmtARS.format(Math.abs(netTotal))}`,
+          line2: 'Neto 30 días',
+          // si querés forzar colores:
+          // color: getCss('--text'),
+          // color2: getCss('--text-weak'),
+        }
+      },
+      cutout:'70%'
+    }
+  }));
+}

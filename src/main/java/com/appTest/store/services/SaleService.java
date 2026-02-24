@@ -69,6 +69,9 @@ public class SaleService implements ISaleService{
     private IStockReservationRepository repoReservation;
 
     @Autowired
+    private CashService cashService;
+
+    @Autowired
     private StockMovementService stockMovements;
 
     @Autowired
@@ -618,19 +621,30 @@ public class SaleService implements ISaleService{
         // Persistir venta
         Sale savedSale = repoSale.save(sale);
 
-        // Pago inicial opcional
+        // Pago inicial opcional (si viene embebido en el create sale)
+        // ✅ IMPORTANTE: acá también debemos impactar en CAJA como IN (igual que PaymentService)
         if (dto.getPayment() != null) {
+
             Payment p = new Payment();
             p.setAmount(dto.getPayment().getAmount());
             p.setDatePayment(dto.getPayment().getDatePayment());
             p.setMethodPayment(dto.getPayment().getMethodPayment());
             p.setSale(savedSale);
-            repoPayment.save(p);
+
+            // (opcional pero recomendado) status coherente con el total de la venta
+            // En una venta recién creada, "alreadyPaid" era 0, así que alcanza con comparar contra totalAmount
+            BigDecimal paidAfter = dto.getPayment().getAmount() != null ? dto.getPayment().getAmount() : BigDecimal.ZERO;
+            p.setStatus(computePaymentStatus(totalAmount, paidAfter));
+
+            Payment savedPayment = repoPayment.save(p);
 
             if (savedSale.getPaymentList() == null) {
                 savedSale.setPaymentList(new ArrayList<>());
             }
-            savedSale.getPaymentList().add(p);
+            savedSale.getPaymentList().add(savedPayment);
+
+            // ✅ Caja: movimiento IN automático por cobro de venta
+            cashService.recordSalePayment(savedPayment);
         }
 
         // Por las dudas, recargamos la venta ya completa

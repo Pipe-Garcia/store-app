@@ -54,7 +54,9 @@ const ORDER_REMAIN = new Map();
 let CURRENT_TOTAL = 0;
 
 let APP_ROLE = '';                 // owner | employee | cashier
-let PAY_ENABLED = true;            // solo para owner
+let PAY_ENABLED = true;            // owner puede ver bloque pago
+let PAY_NOW = false;              // owner: si true, manda payment
+let PAY_DIRTY = false;            // si el user tocó el importe, no lo pisamos
 
 function waitForRole(){
   return new Promise((resolve)=>{
@@ -73,28 +75,56 @@ function setPayMode(enabled){
   PAY_ENABLED = !!enabled;
 
   const block = document.getElementById('payBlock');
-  const imp = document.getElementById('pagoImporte');
-  const fec = document.getElementById('pagoFecha');
-  const met = document.getElementById('pagoMetodo');
+  const chk   = document.getElementById('payNow');
 
   if (!block) return;
 
   block.style.display = enabled ? 'block' : 'none';
 
-  // si está deshabilitado, limpiamos para evitar validaciones tuyas
+  // Empleado: bloque oculto, no hay pago
   if (!enabled){
+    setPayNow(false);
+    return;
+  }
+
+  // Owner: por defecto pago OFF (opcional)
+  if (chk){
+    chk.checked = false;
+    chk.addEventListener('change', () => setPayNow(chk.checked));
+  }
+
+  setPayNow(false);
+}
+
+function setPayNow(enabled){
+  PAY_NOW = !!enabled;
+  PAY_DIRTY = false;
+
+  const fields = document.getElementById('payFields');
+  const imp = document.getElementById('pagoImporte');
+  const fec = document.getElementById('pagoFecha');
+  const met = document.getElementById('pagoMetodo');
+
+  if (fields) fields.style.opacity = PAY_NOW ? '1' : '.6';
+  [imp, fec, met].forEach(el => { if (el) el.disabled = !PAY_NOW; });
+
+  const help = document.getElementById('pagoImporteHelp');
+  if (help) { help.style.display = 'none'; help.textContent = ''; }
+
+  if (!PAY_NOW){
     if (imp) imp.value = '';
     if (fec) fec.value = '';
     if (met) met.value = '';
-    const help = document.getElementById('pagoImporteHelp');
-    if (help) { help.style.display = 'none'; help.textContent = ''; }
-  } else {
-    // defaults razonables
-    if (fec && !fec.value) fec.value = todayStr();
-    if (met && !met.value) met.value = 'CASH';
+    return;
+  }
+
+  // defaults
+  if (fec && !fec.value) fec.value = todayStr();
+  if (met && !met.value) met.value = 'CASH';
+  if (imp && (!imp.value || Number(imp.value) <= 0) && CURRENT_TOTAL > 0) {
+    imp.value = CURRENT_TOTAL.toFixed(2);
   }
 }
-
 /* ===== Init ===== */
 window.addEventListener('DOMContentLoaded', init);
 
@@ -483,8 +513,9 @@ function recalc(){
   if (!PAY_ENABLED) return;
 
   const payInput = $('#pagoImporte');
-  if (payInput) {
-    payInput.value = total > 0 ? total : '';
+  if (PAY_NOW && payInput) {
+    // solo autocompleta si el user no lo tocó
+    if (!PAY_DIRTY) payInput.value = total > 0 ? total.toFixed(2) : '';
     validatePaymentField();
   }
 }
@@ -503,11 +534,17 @@ function setupPaymentField(){
     $imp.insertAdjacentElement('afterend', help);
   }
 
-  $imp.addEventListener('input', validatePaymentField);
+  $imp.addEventListener('input', ()=>{
+    PAY_DIRTY = true;
+    validatePaymentField();
+  });
+
+  $('#pagoFecha')?.addEventListener('change', ()=>{ /* no-op */ });
+  $('#pagoMetodo')?.addEventListener('change', ()=>{ /* no-op */ });
 }
 
 function validatePaymentField(){
-  if (!PAY_ENABLED) return;
+  if (!PAY_ENABLED || !PAY_NOW) return;
 
   const $imp  = $('#pagoImporte');
   const help  = $('#pagoImporteHelp');
@@ -618,10 +655,10 @@ async function guardar(e){
 
   if(!items.length){ notify('Agregá al menos un ítem válido','error'); return; }
 
-  // Owner: valida + manda pago. Empleado: NO valida pago y NO lo manda.
+  // Owner: pago OPCIONAL (solo si PAY_NOW=true). Empleado: nunca manda pago.
   let payment = null;
 
-  if (PAY_ENABLED){
+  if (PAY_ENABLED && PAY_NOW){
     const $imp = $('#pagoImporte');
     const $fec = $('#pagoFecha');
     const $met = $('#pagoMetodo');
@@ -637,8 +674,6 @@ async function guardar(e){
     const diff = Math.abs(amount - CURRENT_TOTAL);
     if (diff > 0.5) {
       notify(`El importe del pago debe coincidir con el total (${fmtARS.format(CURRENT_TOTAL)}).`, 'error');
-      $imp.value = CURRENT_TOTAL;
-      validatePaymentField();
       $imp.focus();
       return;
     }

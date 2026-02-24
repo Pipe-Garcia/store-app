@@ -10,6 +10,14 @@ import com.appTest.store.repositories.*;
 import jakarta.persistence.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.appTest.store.dto.dashboard.*;
+import com.appTest.store.models.cash.CashMovement;
+import com.appTest.store.repositories.cash.CashMovementRepository;
+import com.appTest.store.repositories.cash.CashSessionRepository;
+
+import java.time.ZoneId;
+import java.util.EnumMap;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,6 +28,12 @@ import java.util.stream.Collectors;
 @Service
 public class DashboardService {
 
+    private static final ZoneId AR_TZ = ZoneId.of("America/Argentina/Buenos_Aires");
+    private LocalDate todayAR(){ return LocalDate.now(AR_TZ); }
+
+    private final CashMovementRepository cashMovRepo;
+    private final CashSessionRepository cashSessionRepo;
+
   private final ISaleRepository saleRepo;
   private final IDeliveryRepository deliveryRepo;
   private final IOrdersRepository ordersRepo;
@@ -27,18 +41,24 @@ public class DashboardService {
   private final IStockRepository stockRepo;
   private final IMaterialRepository materialRepo;
 
-  public DashboardService(ISaleRepository saleRepo,
-                          IDeliveryRepository deliveryRepo,
-                          IOrdersRepository ordersRepo,
-                          IStockReservationRepository reservationRepo,
-                          IStockRepository stockRepo,
-                          IMaterialRepository materialRepo) {
-    this.saleRepo = saleRepo;
-    this.deliveryRepo = deliveryRepo;
-    this.ordersRepo = ordersRepo;
-    this.reservationRepo = reservationRepo;
-    this.stockRepo = stockRepo;
-    this.materialRepo = materialRepo;
+  public DashboardService(
+            ISaleRepository saleRepo,
+            IDeliveryRepository deliveryRepo,
+            IOrdersRepository ordersRepo,
+            IStockReservationRepository reservationRepo,
+            IStockRepository stockRepo,
+            IMaterialRepository materialRepo,
+            CashMovementRepository cashMovRepo,
+            CashSessionRepository cashSessionRepo
+  ){
+        this.saleRepo = saleRepo;
+        this.deliveryRepo = deliveryRepo;
+        this.ordersRepo = ordersRepo;
+        this.reservationRepo = reservationRepo;
+        this.stockRepo = stockRepo;
+        this.materialRepo = materialRepo;
+        this.cashMovRepo = cashMovRepo;
+        this.cashSessionRepo = cashSessionRepo;
   }
 
   @Transactional(readOnly = true)
@@ -216,4 +236,118 @@ public class DashboardService {
     return total;
   }
 
+    @Transactional(readOnly = true)
+    public FinanceSeriesDTO financeSeries(int days){
+        int n = Math.max(1, Math.min(days, 365));
+        LocalDate to = todayAR();
+        LocalDate from = to.minusDays(n - 1);
+
+        // base por día
+        Map<LocalDate, Agg> byDate = new LinkedHashMap<>();
+        for (int i = 0; i < n; i++){
+            LocalDate d = from.plusDays(i);
+            byDate.put(d, new Agg());
+        }
+
+        var rows = cashMovRepo.sumByDateDirectionReasonBetween(from, to);
+        for (Object[] r : rows){
+            LocalDate d = (LocalDate) r[0];
+            CashMovement.Direction dir = (CashMovement.Direction) r[1];
+            CashMovement.Reason reason = (CashMovement.Reason) r[2];
+            BigDecimal amt = (BigDecimal) r[3];
+
+            Agg a = byDate.get(d);
+            if (a == null) continue;
+
+            if (dir == CashMovement.Direction.IN){
+                a.income = a.income.add(nz(amt));
+            } else {
+                // OUT
+                if (reason == CashMovement.Reason.WITHDRAWAL){
+                    a.withdrawals = a.withdrawals.add(nz(amt));
+                } else {
+                    a.expense = a.expense.add(nz(amt)); // OUT sin retiro
+                    if (reason == CashMovement.Reason.PURCHASE) a.purchases = a.purchases.add(nz(amt));
+                    if (reason == CashMovement.Reason.EXPENSE)  a.expenses  = a.expenses.add(nz(amt));
+                }
+            }
+        }
+
+        List<FinanceSeriesDTO.Point> points = new ArrayList<>();
+        for (var e : byDate.entrySet()){
+            LocalDate d = e.getKey();
+            Agg a = e.getValue();
+            BigDecimal net = a.income.subtract(a.expense);
+
+            points.add(new FinanceSeriesDTO.Point(
+                    d, a.income, a.expense, a.purchases, a.expenses, a.withdrawals, net
+            ));
+        }
+
+        return new FinanceSeriesDTO(points);
+    }
+
+    @Transactional(readOnly = true)
+    public FinanceWindowDTO financeWindow(int days){
+        int n = Math.max(1, Math.min(days, 90));
+        LocalDate to = todayAR();
+        LocalDate from = to.minusDays(n - 1);
+
+        // Totales (usamos la misma lógica de series, pero agregada)
+        var series = financeSeries(n).points();
+
+        BigDecimal income = BigDecimal.ZERO;
+        BigDecimal expense = BigDecimal.ZERO;
+        BigDecimal purchases = BigDecimal.ZERO;
+        BigDecimal expenses = BigDecimal.ZERO;
+        BigDecimal withdrawals = BigDecimal.ZERO;
+
+        for (var p : series){
+            income = income.add(nz(p.income()));
+            expense = expense.add(nz(p.expense()));
+            purchases = purchases.add(nz(p.purchases()));
+            expenses = expenses.add(nz(p.expenses()));
+            withdrawals = withdrawals.add(nz(p.withdrawals()));
+        }
+
+        BigDecimal net = income.subtract(expense);
+
+        // Breakdown IN por método
+        List<FinanceBreakdownDTO> inByMethod = new ArrayList<>();
+        for (Object[] r : cashMovRepo.sumInByMethodBetween(from, to)){
+            String method = String.valueOf(r[0]);
+            BigDecimal total = (BigDecimal) r[1];
+            inByMethod.add(new FinanceBreakdownDTO(method, nz(total)));
+        }
+
+        // Breakdown OUT por reason (incluye WITHDRAWAL para mostrar)
+        List<FinanceBreakdownDTO> outByReason = new ArrayList<>();
+        for (Object[] r : cashMovRepo.sumOutByReasonBetween(from, to)){
+            String reason = String.valueOf(r[0]);
+            BigDecimal total = (BigDecimal) r[1];
+            outByReason.add(new FinanceBreakdownDTO(reason, nz(total)));
+        }
+
+        return new FinanceWindowDTO(
+                from, to,
+                income, expense,
+                purchases, expenses,
+                withdrawals,
+                net,
+                inByMethod,
+                outByReason
+        );
+    }
+
+    private static BigDecimal nz(BigDecimal v){
+        return v != null ? v : BigDecimal.ZERO;
+    }
+
+    private static class Agg {
+        BigDecimal income = BigDecimal.ZERO;
+        BigDecimal expense = BigDecimal.ZERO;     // OUT sin retiro
+        BigDecimal purchases = BigDecimal.ZERO;   // OUT PURCHASE
+        BigDecimal expenses = BigDecimal.ZERO;    // OUT EXPENSE
+        BigDecimal withdrawals = BigDecimal.ZERO; // OUT WITHDRAWAL
+    }
 }

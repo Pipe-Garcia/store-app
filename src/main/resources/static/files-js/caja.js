@@ -14,6 +14,12 @@ const notify = (msg, type = 'info') => {
   Toast.fire({ icon, title: msg });
 };
 
+/* ===== Query params ===== */
+const QS = new URLSearchParams(location.search);
+const READONLY = QS.get('readonly') === '1';
+const SESSION_ID = QS.get('sessionId') ? Number(QS.get('sessionId')) : null;
+const SESSION_DATE = QS.get('date') || ''; // YYYY-MM-DD opcional (desde histórico)
+
 /* ===== Paginación ===== */
 let PAGE_SIZE = 10;
 let page = 0;
@@ -21,22 +27,21 @@ let FILTRADAS = [];
 
 let OPEN_SESSION = null;        // sesión ABIERTA de hoy (o null)
 let SUGGEST_OPENING = null;     // sugerencia de apertura (carryOver de ayer)
+let VIEW_SESSION = null;        // si READONLY: sesión histórica
+let TODAY_SESSION = null; // última sesión del día (OPEN o CLOSED)
 
 /* ===== Helpers fecha/hora (robusto, sin depender de TZ del navegador) ===== */
 const ymd = (d = new Date()) => {
-  // en-CA => YYYY-MM-DD
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Argentina/Buenos_Aires',
     year: 'numeric', month: '2-digit', day: '2-digit'
   }).format(d);
 };
-
 const todayStr = () => ymd(new Date());
 
 const ymdMinusDays = (baseYmd, days) => {
-  // baseYmd: "YYYY-MM-DD"
   const [Y, M, D] = baseYmd.split('-').map(Number);
-  const dt = new Date(Y, (M - 1), D, 12, 0, 0); // mediodía para evitar problemas DST
+  const dt = new Date(Y, (M - 1), D, 12, 0, 0);
   dt.setDate(dt.getDate() - days);
   return ymd(dt);
 };
@@ -45,7 +50,7 @@ const fmtDateTime = (v) => {
   if (!v) return '—';
   const s = String(v).trim();
 
-  // Si viene como LocalDateTime (sin TZ): "YYYY-MM-DDTHH:mm:ss"
+  // LocalDateTime "YYYY-MM-DDTHH:mm:ss"
   const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/.exec(s);
   if (m) {
     const dd = m[3], mm = m[2], yy = m[1];
@@ -53,7 +58,6 @@ const fmtDateTime = (v) => {
     return ss ? `${dd}/${mm}/${yy} ${hh}:${mi}:${ss}` : `${dd}/${mm}/${yy} ${hh}:${mi}`;
   }
 
-  // fallback: Date parse
   const d = new Date(s);
   if (!isNaN(d)) {
     return new Intl.DateTimeFormat('es-AR', {
@@ -71,35 +75,35 @@ function pillType(dir, reason) {
   const d = String(dir || '').toUpperCase();
   const r = String(reason || '').toUpperCase();
 
-  if (r === 'WITHDRAWAL') {
-    return `<span class="pill pending">RETIRO</span>`;
-  }
+  if (r === 'WITHDRAWAL') return `<span class="pill pending">RETIRO</span>`;
   if (d === 'IN') return `<span class="pill completed">INGRESO</span>`;
   return `<span class="pill cancelled">EGRESO</span>`;
 }
 
 /* ================== API ================== */
-
-async function tryJson(res) {
-  try { return await safeJson(res); } catch { return null; }
-}
+async function tryJson(res) { try { return await safeJson(res); } catch { return null; } }
 
 async function apiGetOpenSession() {
   const r = await authFetch('/cash/sessions/open', { method: 'GET' });
-
   if (r.status === 204) return null;
   if (r.ok) return await tryJson(r);
-
   if (r.status === 403) throw new Error('Sin permisos para ver/abrir caja (requiere CAJERO o DUEÑO).');
   const t = await r.text().catch(() => '');
   throw new Error(`Caja: /cash/sessions/open HTTP ${r.status} ${t}`);
 }
 
+async function apiGetSessionById(id){
+  const r = await authFetch(`/cash/sessions/${encodeURIComponent(id)}`);
+  if (!r.ok){
+    const t = await r.text().catch(()=> '');
+    throw new Error(`No se pudo cargar la caja #${id} (HTTP ${r.status}) ${t}`);
+  }
+  return await tryJson(r);
+}
+
 async function apiOpenSession(openingCash, note) {
   const body = { openingCash, note };
-
   const r = await authFetch('/cash/sessions/open', { method: 'POST', body: JSON.stringify(body) });
-
   if (r.status === 403) {
     const t = await r.text().catch(() => '');
     throw new Error(`Sin permisos para abrir caja (CAJERO/DUEÑO). ${t}`);
@@ -111,14 +115,8 @@ async function apiOpenSession(openingCash, note) {
   return await tryJson(r);
 }
 
-// ✅ CIERRE: countedCash + withdrawalCash + note
 async function apiCloseSession(sessionId, countedCash, withdrawalCash, note) {
-  const body = {
-    countedCash,
-    withdrawalCash: withdrawalCash ?? 0,
-    note
-  };
-
+  const body = { countedCash, withdrawalCash: withdrawalCash ?? 0, note };
   const r = await authFetch('/cash/sessions/close', { method: 'POST', body: JSON.stringify(body) });
 
   if (r.status === 403) {
@@ -132,13 +130,10 @@ async function apiCloseSession(sessionId, countedCash, withdrawalCash, note) {
   return await tryJson(r);
 }
 
-// ✅ GASTO: siempre EFECTIVO => NO mandamos method (backend fuerza CASH)
 async function apiCreateExpense(amount, note, reference) {
   const body = { amount, note, reference };
-
   const r = await authFetch('/cash/expenses', { method: 'POST', body: JSON.stringify(body) });
   if (r.ok) return true;
-
   const t = await r.text().catch(() => '');
   throw new Error(`No se pudo registrar gasto (HTTP ${r.status}) ${t}`);
 }
@@ -146,11 +141,11 @@ async function apiCreateExpense(amount, note, reference) {
 // ✅ Listado real: /cash/movements (Page<CashMovementDTO>)
 async function apiListMovements(params) {
   const q = new URLSearchParams();
+  if (params.sessionId) q.set('sessionId', String(params.sessionId));
   if (params.from) q.set('from', params.from);
   if (params.to) q.set('to', params.to);
-  if (params.direction) q.set('direction', params.direction); // IN/OUT
-  if (params.method) q.set('method', params.method);         // CASH/...
-  // paginado back
+  if (params.direction) q.set('direction', params.direction);
+  if (params.method) q.set('method', params.method);
   q.set('page', '0');
   q.set('size', '1000');
 
@@ -165,14 +160,12 @@ async function apiListMovements(params) {
   return Array.isArray(data) ? data : [];
 }
 
-// summary para sugerencia de apertura
 async function apiSummary(dateStr) {
   const r = await authFetch(`/cash/summary?date=${encodeURIComponent(dateStr)}`);
   if (!r.ok) return null;
   return await tryJson(r);
 }
 
-// suma retiros por fecha (para sugerir apertura)
 async function apiSumByReason(dateStr, reason) {
   const q = new URLSearchParams();
   q.set('from', dateStr);
@@ -189,7 +182,6 @@ async function apiSumByReason(dateStr, reason) {
   return (list || []).reduce((a, x) => a + Number(x.amount || 0), 0);
 }
 
-// ✅ sugerencia: (systemCashExpected de ayer) - (retiros de ayer)
 async function apiSuggestOpeningCash() {
   const today = todayStr();
   const yest = ymdMinusDays(today, 1);
@@ -201,18 +193,17 @@ async function apiSuggestOpeningCash() {
   const withdrawals = await apiSumByReason(yest, 'WITHDRAWAL');
 
   const carry = Math.max(0, systemExpected - withdrawals);
-  // si no hubo nada, no sugerimos
   if (!carry || carry < 0.01) return null;
   return carry;
 }
 
 /* ================== UI ================== */
-
 function readFilters() {
   return {
+    sessionId: SESSION_ID || null,
     from: $('#fFrom')?.value || '',
     to: $('#fTo')?.value || '',
-    direction: ($('#fType')?.value || '').toUpperCase(),  // reutilizamos tu select "Tipo" => direction
+    direction: ($('#fType')?.value || '').toUpperCase(),
     method: ($('#fMethod')?.value || '').toUpperCase(),
     text: ($('#fText')?.value || '').trim(),
   };
@@ -226,6 +217,58 @@ function setSessionInfo() {
 
   if (!el) return;
 
+  // ✅ modo histórico (solo lectura)
+  if (READONLY && VIEW_SESSION){
+    const id = VIEW_SESSION.id ?? '—';
+    const date = VIEW_SESSION.businessDate ?? '—';
+    const opening = Number(VIEW_SESSION.openingCash ?? 0);
+    const closedAt = VIEW_SESSION.closedAt ? fmtDateTime(VIEW_SESSION.closedAt) : '—';
+    const closedBy = VIEW_SESSION.closedBy ?? '—';
+    const carry = Number(VIEW_SESSION.carryOverCash ?? 0);
+    const withdrawal = Number(VIEW_SESSION.withdrawalCash ?? 0);
+
+    el.textContent =
+      `Caja HISTÓRICA · Sesión #${id} · Fecha: ${date} · Apertura: ${fmtARS.format(opening)} · ` +
+      `Retiro: ${fmtARS.format(withdrawal)} · Efectivo p/ mañana: ${fmtARS.format(carry)} · ` +
+      `Cerró: ${closedBy} (${closedAt})`;
+
+    // ocultar acciones
+    if (btnAbrir) btnAbrir.style.display = 'none';
+    if (btnCerrar) btnCerrar.style.display = 'none';
+    if (btnGasto)  btnGasto.style.display = 'none';
+    return;
+  }
+
+  // ✅ caja cerrada HOY: no se puede reabrir
+  if (!OPEN_SESSION && TODAY_SESSION && String(TODAY_SESSION.status||'').toUpperCase() === 'CLOSED') {
+    const id = TODAY_SESSION.id ?? '—';
+    const date = TODAY_SESSION.businessDate ?? '—';
+    const closedAt = TODAY_SESSION.closedAt ? fmtDateTime(TODAY_SESSION.closedAt) : '—';
+    const closedBy = TODAY_SESSION.closedBy ?? '—';
+    const opening = Number(TODAY_SESSION.openingCash ?? 0);
+    const withdrawal = Number(TODAY_SESSION.withdrawalCash ?? 0);
+    const carry = Number(TODAY_SESSION.carryOverCash ?? 0);
+
+    el.textContent =
+      `Caja CERRADA (hoy) · Sesión #${id} · Fecha: ${date} · Apertura: ${fmtARS.format(opening)} · ` +
+      `Retiro: ${fmtARS.format(withdrawal)} · Efectivo p/ mañana: ${fmtARS.format(carry)} · ` +
+      `Cerró: ${closedBy} (${closedAt})`;
+
+    if (btnAbrir){
+      btnAbrir.style.display = 'inline-flex';
+      btnAbrir.disabled = true;
+      btnAbrir.title = 'La caja ya fue cerrada hoy. Se podrá abrir mañana.';
+      btnAbrir.classList.remove('primary');
+      btnAbrir.classList.add('outline'); // “muted” visual sin tocar CSS
+    }
+    if (btnCerrar) btnCerrar.style.display = 'none';
+    if (btnGasto) { btnGasto.disabled = true; }
+
+    return;
+  }
+
+
+  // ✅ modo normal (hoy)
   if (OPEN_SESSION) {
     const id = OPEN_SESSION.idCashSession ?? OPEN_SESSION.id ?? '—';
     const date = OPEN_SESSION.businessDate ?? '';
@@ -250,33 +293,28 @@ function setSessionInfo() {
 }
 
 function normalizeMovement(m) {
-  const dir = String(m.direction ?? '').toUpperCase(); // IN/OUT
+  const dir = String(m.direction ?? '').toUpperCase();
   const reason = String(m.reason ?? '').toUpperCase();
   const method = String(m.method ?? '').toUpperCase();
   const amount = Number(m.amount ?? 0);
-  const when = m.timestamp ?? m.createdAt ?? m.dateTime ?? m.date ?? null;
-  const user = m.userName ?? m.username ?? m.user ?? '—';
+  const when = m.timestamp ?? null;
+  const user = m.userName ?? '—';
 
-  // sourceId: en cobro de venta es saleId
   const saleId = (m.sourceType === 'Sale' || reason === 'SALE_PAYMENT') ? (m.sourceId ?? null) : null;
-
   let note = (m.note ?? '').toString().trim();
 
   let concept = '—';
   let ref = '—';
 
-  // COBRO
   if (saleId && reason === 'SALE_PAYMENT') {
     concept = `Cobro de venta #${saleId}`;
     ref = `Venta #${saleId}`;
     if (note.toLowerCase() === concept.toLowerCase()) note = '';
   }
 
-  // GASTO (siempre efectivo)
   if (reason === 'EXPENSE') {
     concept = 'Gasto';
     ref = (m.sourceType || 'Manual');
-    // si viene “... · Ref: X”, separo ref
     const marker = '· Ref:';
     if (note.includes(marker)) {
       const parts = note.split(marker);
@@ -287,13 +325,16 @@ function normalizeMovement(m) {
     }
   }
 
-  // RETIRO (no es gasto)
+  if (reason === 'PURCHASE') {
+    concept = 'Compra';
+    ref = (m.sourceId != null) ? `Compra #${m.sourceId}` : 'Compra';
+  }
+
   if (reason === 'WITHDRAWAL') {
     concept = 'Retiro de efectivo';
     ref = 'Cierre';
   }
 
-  // fallback
   if (concept === '—' && note) concept = note;
 
   return { when, dir, reason, concept, method, amount, ref, user, note };
@@ -372,9 +413,9 @@ async function loadAll() {
   const f = readFilters();
   const list = await apiListMovements(f);
 
-  // filtro texto (front) porque el back no tiene "q"
   const q = (f.text || '').toLowerCase();
   let view = list;
+
   if (q) {
     view = list.filter(raw => {
       const m = normalizeMovement(raw);
@@ -387,7 +428,6 @@ async function loadAll() {
     });
   }
 
-  // orden desc por timestamp (string ISO suele ordenar bien)
   view.sort((a, b) => String(b.timestamp ?? '').localeCompare(String(a.timestamp ?? '')));
 
   FILTRADAS = view;
@@ -396,8 +436,11 @@ async function loadAll() {
 }
 
 /* ================== Acciones ================== */
-
 async function openCash() {
+    if (TODAY_SESSION && String(TODAY_SESSION.status||'').toUpperCase() === 'CLOSED') {
+    await Swal.fire('Caja cerrada', 'La caja ya fue cerrada hoy. No se puede reabrir hasta mañana.', 'info');
+    return;
+  }
   const suggested = await apiSuggestOpeningCash().catch(() => null);
 
   const { value: form } = await Swal.fire({
@@ -528,12 +571,60 @@ async function addExpense() {
   await loadAll();
 }
 
+async function apiGetSessionByDate(dateStr){
+  const r = await authFetch(`/cash/sessions/by-date?date=${encodeURIComponent(dateStr)}`);
+  if (r.status === 204) return null;
+  if (r.ok) return await tryJson(r);
+  const t = await r.text().catch(()=> '');
+  throw new Error(`No se pudo cargar la caja del día (HTTP ${r.status}) ${t}`);
+}
+
+/* ===== Lógica Filtros Fecha (Restricciones) ===== */
+function setupDateRangeConstraint(idDesde, idHasta) {
+  const elDesde = document.getElementById(idDesde);
+  const elHasta = document.getElementById(idHasta);
+  if (!elDesde || !elHasta) return;
+
+  elDesde.addEventListener('change', () => {
+    elHasta.min = elDesde.value;
+    if (elHasta.value && elHasta.value < elDesde.value) {
+      elHasta.value = elDesde.value;
+      elHasta.dispatchEvent(new Event('change'));
+    }
+  });
+
+  elHasta.addEventListener('change', () => {
+    elDesde.max = elHasta.value;
+    if (elDesde.value && elDesde.value > elHasta.value) {
+      elDesde.value = elHasta.value;
+      elDesde.dispatchEvent(new Event('change'));
+    }
+  });
+}
+
 /* ===== Session refresh ===== */
 async function refreshSession() {
+  // ✅ histórico
+  if (READONLY && SESSION_ID){
+    VIEW_SESSION = await apiGetSessionById(SESSION_ID);
+    OPEN_SESSION = null;
+    SUGGEST_OPENING = null;
+    setSessionInfo();
+    return;
+  }
+
+  // ✅ normal
+  VIEW_SESSION = null;
+
+  const today = todayStr();
   OPEN_SESSION = await apiGetOpenSession();
 
-  // si NO hay abierta, calculamos sugerencia (1 vez por refresh)
-  if (!OPEN_SESSION) {
+  // si no hay OPEN, buscamos si hoy ya está CLOSED
+  TODAY_SESSION = OPEN_SESSION || await apiGetSessionByDate(today).catch(()=> null);
+
+  if (TODAY_SESSION && String(TODAY_SESSION.status||'').toUpperCase() === 'CLOSED') {
+    SUGGEST_OPENING = null; // hoy ya cerrada => no sugerimos abrir
+  } else if (!OPEN_SESSION) {
     SUGGEST_OPENING = await apiSuggestOpeningCash().catch(() => null);
   } else {
     SUGGEST_OPENING = null;
@@ -546,33 +637,60 @@ async function refreshSession() {
 window.addEventListener('DOMContentLoaded', async () => {
   if (!getToken()) { location.href = '../files-html/login.html'; return; }
 
-  // defaults a HOY (AR)
-  const t = todayStr();
-  if ($('#fFrom')) $('#fFrom').value = t;
-  if ($('#fTo')) $('#fTo').value = t;
+  // defaults a HOY (AR) o al día del histórico
+  const t = SESSION_DATE || todayStr();
+  const fFrom = $('#fFrom');
+  const fTo = $('#fTo');
+  
+  if (fFrom) fFrom.value = t;
+  if (fTo) fTo.value = t;
+
+  // Activar la restricción de fechas
+  setupDateRangeConstraint('fFrom', 'fTo');
+  
+  // Seteamos los max/min iniciales correspondientes a la fecha de hoy
+  if (fFrom && fTo) {
+    fTo.min = t;
+    fFrom.max = t;
+  }
+
+  // si viene sessionId => modo histórico: fijo fechas (pero dejo filtros tipo/método/buscar)
+  if (READONLY && SESSION_ID){
+    $('#fFrom').disabled = true;
+    $('#fTo').disabled = true;
+  }
 
   PAGE_SIZE = Number($('#fPageSize')?.value || 10);
 
-  $('#btnAbrir')?.addEventListener('click', async () => {
-    try { await openCash(); } catch (e) { console.error(e); Swal.fire('Error', e.message || 'No se pudo abrir caja.', 'error'); }
-  });
+  // wire (solo si NO es readonly)
+  if (!READONLY){
+    $('#btnAbrir')?.addEventListener('click', async () => {
+      try { await openCash(); } catch (e) { console.error(e); Swal.fire('Error', e.message || 'No se pudo abrir caja.', 'error'); }
+    });
 
-  $('#btnCerrar')?.addEventListener('click', async () => {
-    try { await closeCash(); } catch (e) { console.error(e); Swal.fire('Error', e.message || 'No se pudo cerrar caja.', 'error'); }
-  });
+    $('#btnCerrar')?.addEventListener('click', async () => {
+      try { await closeCash(); } catch (e) { console.error(e); Swal.fire('Error', e.message || 'No se pudo cerrar caja.', 'error'); }
+    });
 
-  $('#btnGasto')?.addEventListener('click', async () => {
-    try { await addExpense(); } catch (e) { console.error(e); Swal.fire('Error', e.message || 'No se pudo registrar el gasto.', 'error'); }
-  });
+    $('#btnGasto')?.addEventListener('click', async () => {
+      try { await addExpense(); } catch (e) { console.error(e); Swal.fire('Error', e.message || 'No se pudo registrar el gasto.', 'error'); }
+    });
+  }
 
   const reload = async () => {
     try { await loadAll(); }
     catch (e) { console.error(e); notify('No se pudo cargar caja', 'error'); }
   };
 
-  ['fFrom', 'fTo', 'fType', 'fMethod'].forEach(id => {
+  ['fType', 'fMethod'].forEach(id => {
     $('#' + id)?.addEventListener('change', reload);
   });
+
+  // fechas solo si no readonly
+  if (!READONLY){
+    ['fFrom','fTo'].forEach(id => $('#' + id)?.addEventListener('change', reload));
+  }
+
   $('#fText')?.addEventListener('input', () => {
     clearTimeout(window.__cashT);
     window.__cashT = setTimeout(reload, 220);
@@ -585,9 +703,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
 
   $('#btnClear')?.addEventListener('click', () => {
-    const t = todayStr();
-    $('#fFrom').value = t;
-    $('#fTo').value = t;
+    const t = SESSION_DATE || todayStr();
+    // Limpiamos restricciones primero para evitar conflictos
+    if (fFrom) fFrom.max = '';
+    if (fTo) fTo.min = '';
+
+    if (fFrom) fFrom.value = t;
+    if (fTo) fTo.value = t;
+
+    // Restauramos las restricciones para "hoy"
+    if (fFrom) fFrom.max = t;
+    if (fTo) fTo.min = t;
     $('#fType').value = '';
     $('#fMethod').value = '';
     $('#fText').value = '';

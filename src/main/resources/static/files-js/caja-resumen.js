@@ -50,9 +50,10 @@ function sumAmounts(list) {
 async function load() {
   const date = $('#fDate').value || todayStr();
 
+  // Summary del back: openingCash + systemCashExpected (solo caja física)
   const sum = await apiSummary(date);
 
-  // Ingresos por método desde summary.rows (solo IN)
+  // ===== INGRESOS (FINANCIEROS): desde summary.rows (solo IN) =====
   const byMethod = { CASH: 0, TRANSFER: 0, CARD: 0, OTHER: 0 };
   let sumIn = 0;
 
@@ -64,26 +65,37 @@ async function load() {
 
     if (dir === 'IN') {
       sumIn += total;
-      const key = byMethod.hasOwnProperty(method) ? method : 'OTHER';
+      const key = Object.prototype.hasOwnProperty.call(byMethod, method) ? method : 'OTHER';
       byMethod[key] += total;
     }
   }
 
-  // Egresos: SOLO gastos (EXPENSE). Retiro se muestra aparte.
-  const expenses = await apiListByReason(date, 'EXPENSE');
+  // ===== EGRESOS (FINANCIEROS): gastos + compras =====
+  // - EXPENSE: gasto real (caja física, siempre CASH)
+  // - PURCHASE: compra (no sale de la caja física, pero es egreso financiero del día)
+  // - WITHDRAWAL: NO es egreso (se muestra aparte)
+  const expenses    = await apiListByReason(date, 'EXPENSE');
+  const purchases   = await apiListByReason(date, 'PURCHASE');
   const withdrawals = await apiListByReason(date, 'WITHDRAWAL');
 
-  const sumOutExpenses = sumAmounts(expenses);
-  const sumWithdraw = sumAmounts(withdrawals);
+  const sumOutExpenses  = sumAmounts(expenses);
+  const sumOutPurchases = sumAmounts(purchases);
+  const sumWithdraw     = sumAmounts(withdrawals);
 
+  const sumOutFinancial = sumOutExpenses + sumOutPurchases;     // ✅ esto va al KPI "Egresos"
+  const netFinancial    = sumIn - sumOutFinancial;              // ✅ esto va al KPI "Neto"
+
+  // ===== Caja física (para “efectivo p/ mañana”) =====
+  // systemCashExpected = opening + cashIn(CASH) - cashOut(EXPENSE CASH)
+  // carryOverExpected = systemExpected - withdrawals
   const openingCash = Number(sum?.openingCash || 0);
-  const systemExpected = Number(sum?.systemCashExpected || 0); // opening + cashIn - cashOut(gastos)
+  const systemExpected = Number(sum?.systemCashExpected || 0);
   const carryOverExpected = Math.max(0, systemExpected - sumWithdraw);
 
   // KPIs
-  $('#kpiIn').textContent = fmtARS.format(sumIn);
-  $('#kpiOut').textContent = fmtARS.format(sumOutExpenses);
-  $('#kpiNet').textContent = fmtARS.format(sumIn - sumOutExpenses);
+  $('#kpiIn').textContent  = fmtARS.format(sumIn);
+  $('#kpiOut').textContent = fmtARS.format(sumOutFinancial);
+  $('#kpiNet').textContent = fmtARS.format(netFinancial);
 
   // Ingresos por método
   Object.entries(byMethod).forEach(([k, v]) => {
@@ -92,9 +104,10 @@ async function load() {
     if (el) el.textContent = fmtARS.format(v);
   });
 
-  // Info superior (sin tocar HTML)
+  // Info superior
   $('#sumInfo').textContent =
     `Fecha: ${date} · Apertura: ${fmtARS.format(openingCash)} · ` +
+    `Gastos: ${fmtARS.format(sumOutExpenses)} · Compras: ${fmtARS.format(sumOutPurchases)} · ` +
     `Retiro: ${fmtARS.format(sumWithdraw)} · ` +
     `Efectivo p/ mañana (estimado): ${fmtARS.format(carryOverExpected)}`;
 }

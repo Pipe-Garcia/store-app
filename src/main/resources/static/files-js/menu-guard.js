@@ -17,7 +17,7 @@
   onReady(()=>{
     const role = (document.documentElement.getAttribute('data-role')||'').toLowerCase();
 
-    // EMPLEADO: como ya tenías, pero además ocultamos Caja
+    // EMPLEADO: ocultamos caja + histórico
     if (role === 'employee'){
       document.querySelectorAll('a[href$="index.html"]').forEach(a => {
         a.setAttribute('href', 'index-emp.html');
@@ -31,13 +31,14 @@
         'compras.html',
         'usuarios.html',
         'caja.html',
-        'caja-resumen.html'
+        'caja-resumen.html',
+        'caja-historico.html'
       ].forEach(hideByHref);
 
       return;
     }
 
-    // CAJERO: sólo Inicio, Ventas, Caja, Clientes
+    // CAJERO: sólo Inicio, Ventas, Caja, Histórico Caja, Clientes
     if (role === 'cashier'){
       [
         'movimientos.html',

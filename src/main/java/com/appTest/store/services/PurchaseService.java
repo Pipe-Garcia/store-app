@@ -20,6 +20,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,16 +30,16 @@ public class PurchaseService implements IPurchaseService {
     @Autowired private IPurchaseRepository repoPurch;
     @Autowired private IMaterialSupplierRepository repoMatSup;
     @Autowired private IMaterialRepository repoMat;
-
     @Autowired private IWarehouseRepository repoWare;
 
-    @Autowired
-    private StockMovementService stockMovements;
-
+    @Autowired private StockMovementService stockMovements;
     @Autowired private IStockService servStock;
     @Autowired private ISupplierRepository repoSup;
 
     @Autowired private AuditService audit;
+
+    // ✅ NUEVO: Caja (para registrar compras como egreso)
+    @Autowired private CashService cashService;
 
     /* ========= Helpers auditoría (similar a MaterialService) ========= */
 
@@ -159,6 +160,15 @@ public class PurchaseService implements IPurchaseService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    private String supplierLabel(Supplier s){
+        if (s == null) return "—";
+        if (s.getNameCompany() != null && !s.getNameCompany().isBlank()) return s.getNameCompany();
+        String name = s.getName() != null ? s.getName() : "";
+        String sur  = s.getSurname() != null ? s.getSurname() : "";
+        String full = (name + " " + sur).trim();
+        return full.isBlank() ? "—" : full;
+    }
+
     @Override
     @Transactional
     public PurchaseDTO createPurchase(PurchaseCreateDTO dto) {
@@ -202,11 +212,15 @@ public class PurchaseService implements IPurchaseService {
                 .orElseThrow(() -> new EntityNotFoundException("Purchase not found after creation"));
 
         final Long pid = savedPurchase.getIdPurchase();
-        final Map<String,Object> after = snap(savedPurchase);
-        final String proveedor = savedPurchase.getSupplier() != null
-                ? savedPurchase.getSupplier().getNameCompany()
-                : "—";
+        final LocalDate businessDate = (savedPurchase.getDatePurchase() != null) ? savedPurchase.getDatePurchase() : LocalDate.now();
         final BigDecimal total = calculateTotal(savedPurchase);
+        final String proveedor = supplierLabel(savedPurchase.getSupplier());
+
+
+        cashService.recordPurchaseOut(pid, businessDate, total, proveedor);
+
+        // === AUDITORÍA (como ya lo tenías) ===
+        final Map<String,Object> after = snap(savedPurchase);
         final String message = "Proveedor: " + proveedor + " · Total: " + fmt(total);
 
         afterCommit(() -> {
@@ -326,13 +340,16 @@ public class PurchaseService implements IPurchaseService {
         p.setStatus(DocumentStatus.CANCELLED);
         repoPurch.save(p);
 
+        // ✅ CAJA: reverso del egreso de compra (IN / PURCHASE / OTHER)
+        final Long pid = p.getIdPurchase();
+        final LocalDate businessDate = (p.getDatePurchase() != null) ? p.getDatePurchase() : LocalDate.now();
+        final BigDecimal total = calculateTotal(p);
+        final String proveedor = supplierLabel(p.getSupplier());
+
+        cashService.recordPurchaseCancel(pid, businessDate, total, proveedor);
+
         Map<String,Object> after = snap(p);
 
-        final Long pid = p.getIdPurchase();
-        final String proveedor = p.getSupplier() != null
-                ? p.getSupplier().getNameCompany()
-                : "—";
-        final BigDecimal total = calculateTotal(p);
         final String message = "Compra anulada · Proveedor: " + proveedor + " · Total: " + fmt(total);
 
         afterCommit(() -> {

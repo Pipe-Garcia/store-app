@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🧾 Histórico Caja</title>
+
+  <link rel="stylesheet" href="../files-css/style.css"/>
+  <link rel="stylesheet" href="../files-css/nav.css"/>
+  <link rel="stylesheet" href="../files-css/caja-historico.css"/>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="page">
+    <div class="page-head">
+      <div class="head-left">
+        <h1>Histórico de Caja</h1>
+        <p class="muted" id="histInfo">—</p>
+      </div>
+
+      <div class="actions">
+        <a class="btn outline" href="caja.html">Volver a Caja</a>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <section class="filters card">
+      <div class="row">
+        <label>Desde
+          <input type="date" id="fFrom">
+        </label>
+
+        <label>Hasta
+          <input type="date" id="fTo">
+        </label>
+
+        <label class="search">Buscar
+          <input id="fText" type="text" placeholder="usuario, fecha, #caja…">
+        </label>
+
+        <label class="pagesize">Tamaño pág.
+          <select id="fPageSize">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+        </label>
+
+        <button id="btnReload" class="btn outline">Recargar</button>
+        <button id="btnClear" class="btn outline">Limpiar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="table-wrap">
+        <div class="tabla historico" id="tblSessions">
+          <div class="fila encabezado">
+            <div>Caja</div>
+            <div>Día</div>
+            <div>Usuario que cerró</div>
+            <div class="text-right">Neto</div>
+            <div class="text-right">Apertura</div>
+            <div class="text-right">Efectivo p/ mañana</div>
+            <div class="text-right">Retiro</div>
+            <div class="text-right">Acciones</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pager">
+        <div class="info" id="pg-info"></div>
+        <button class="btn" id="pg-prev">« Anterior</button>
+        <button class="btn" id="pg-next">Siguiente »</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="../files-js/core/api.js"></script>
+  <script>window.api.setBaseUrl('http://localhost:8088');</script>
+
+  <script src="../files-js/header.js"></script>
+  <script src="../files-js/role-guard.js"></script>
+  <script>
+    guard.onlyAllow(['owner','cashier'], 'index.html');
+  </script>
+  <script src="../files-js/menu-guard.js"></script>
+
+  <script src="../files-js/caja-historico.js"></script>
+</body>
+</html>
