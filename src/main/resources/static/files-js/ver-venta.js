@@ -110,7 +110,16 @@ async function init(){
 
     await renderItems(saleId);
     await renderPagos(saleId);
-    bindPayDialogEvents();
+
+    // Revisar si venimos de registrar-pago con un mensaje flash
+    const flash = localStorage.getItem('flash');
+    if (flash) {
+        try {
+            const { message, type } = JSON.parse(flash);
+            notify(message, type || 'success');
+        } catch(e) {}
+        localStorage.removeItem('flash');
+    }
 
   }catch(e){
     console.error(e);
@@ -202,9 +211,6 @@ function refreshHeaderTotals(){
       pillPago.textContent = UI_PAY_STATUS[payState];
   }
 
-  const hint = document.getElementById('payHintSaldo');
-  if (hint) hint.textContent = `Saldo: ${fmtARS.format(saldoNum)}`;
-  
   const btnPay = document.getElementById('btnRegistrarPago2');
   const role = getRole() || 'employee';
 
@@ -214,13 +220,12 @@ function refreshHeaderTotals(){
 
     if (!canPay) {
       btnPay.style.display = 'none';
-      btnPay.onclick = null;
     } else if (saldoNum <= 0.01) {
       btnPay.style.display = 'none';
-      btnPay.onclick = null;
     } else {
       btnPay.style.display = 'inline-flex';
-      btnPay.onclick = openPayDialog;
+      // ✅ AHORA REDIRIGE A LA NUEVA INTERFAZ PASANDO EL ID
+      btnPay.href = `registrar-pago.html?saleId=${saleId}`; 
     }
   }
 
@@ -228,7 +233,6 @@ function refreshHeaderTotals(){
     const st = getSaleStatusCode(saleDTO);
     if (st === 'CANCELLED' && btnPay){
       btnPay.style.display = 'none';
-      btnPay.onclick = null;
     }
   }catch(_){}
 }
@@ -383,46 +387,5 @@ async function renderPagos(id){
       <div class="text-center">${UI_PAYSTATE[rawState] || rawState}</div>
       <div class="text-right strong-text">${fmtARS.format(Number(p.amount||0))}</div>`;
     cont.appendChild(row);
-  }
-}
-
-/* =================== MODAL PAGO =================== */
-function openPayDialog(){
-  const dlg = document.getElementById('payDialog');
-  if (!dlg) return;
-  const d = new Date();
-  const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
-  $('#payDate').value = `${yyyy}-${mm}-${dd}`;
-  dlg.showModal();
-}
-
-function bindPayDialogEvents(){
-  const dlg = document.getElementById('payDialog');
-  if (!dlg) return;
-  document.getElementById('payClose')?.addEventListener('click', ()=> dlg.close());
-  document.getElementById('payCancel')?.addEventListener('click', ()=> dlg.close());
-  document.getElementById('payForm')?.addEventListener('submit', onPaySubmit);
-}
-
-async function onPaySubmit(ev){
-  ev.preventDefault();
-  const amount = parseFloat($('#payAmount').value || '0');
-  const datePayment = $('#payDate').value;
-  const methodPayment = $('#payMethod').value;
-
-  if (!(amount>0) || !datePayment || !methodPayment){ notify('Datos incompletos','error'); return; }
-
-  try{
-    const res = await authFetch(API_PAY, {
-      method:'POST',
-      body: JSON.stringify({ amount, datePayment, methodPayment, saleId: Number(saleId) })
-    });
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    document.getElementById('payDialog')?.close();
-    await renderPagos(saleId);
-    notify('Pago registrado','success');
-  }catch(e){
-    console.error(e);
-    notify('Error al registrar pago','error');
   }
 }

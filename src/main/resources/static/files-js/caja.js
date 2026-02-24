@@ -633,6 +633,29 @@ async function refreshSession() {
   setSessionInfo();
 }
 
+/* ===== Lógica Filtros Fecha (Restricciones) ===== */
+function setupDateRangeConstraint(idDesde, idHasta) {
+  const elDesde = document.getElementById(idDesde);
+  const elHasta = document.getElementById(idHasta);
+  if (!elDesde || !elHasta) return;
+
+  elDesde.addEventListener('change', () => {
+    elHasta.min = elDesde.value;
+    if (elHasta.value && elHasta.value < elDesde.value) {
+      elHasta.value = elDesde.value;
+      elHasta.dispatchEvent(new Event('change'));
+    }
+  });
+
+  elHasta.addEventListener('change', () => {
+    elDesde.max = elHasta.value;
+    if (elDesde.value && elDesde.value > elHasta.value) {
+      elDesde.value = elHasta.value;
+      elDesde.dispatchEvent(new Event('change'));
+    }
+  });
+}
+
 /* ===== Bootstrap ===== */
 window.addEventListener('DOMContentLoaded', async () => {
   if (!getToken()) { location.href = '../files-html/login.html'; return; }
@@ -729,4 +752,4 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   await refreshSession();
   await loadAll();
-});
+}); 

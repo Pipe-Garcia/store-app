@@ -135,42 +135,6 @@
     </div>
   </main>
 
-  <dialog id="payDialog" class="pay-dialog">
-    <form method="dialog" id="payForm" class="pay-form" autocomplete="off">
-      <header class="pay-head">
-        <h3>Registrar pago</h3>
-        <button type="button" class="icon-btn" id="payClose" aria-label="Cerrar">✖</button>
-      </header>
-      <div class="pay-body">
-        <div class="row">
-          <label class="stack">
-            <span>Fecha</span>
-            <input id="payDate" type="date" required />
-          </label>
-          <label class="stack">
-            <span>Importe</span>
-            <input id="payAmount" type="number" step="0.01" min="0.01" inputmode="decimal" required />
-            <small class="hint" id="payHintSaldo">Saldo: —</small>
-          </label>
-        </div>
-        <label class="stack">
-          <span>Método de pago</span>
-          <select id="payMethod" required>
-            <option value="">Seleccionar…</option>
-            <option value="CASH">Efectivo</option>
-            <option value="TRANSFER">Transferencia</option>
-            <option value="CARD">Tarjeta</option>
-            <option value="OTHER">Otro</option>
-          </select>
-        </label>
-      </div>
-      <footer class="pay-foot">
-        <button type="submit" class="btn green">Guardar pago</button>
-        <button type="button" class="btn outline" id="payCancel">Cancelar</button>
-      </footer>
-    </form>
-  </dialog>
-
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
