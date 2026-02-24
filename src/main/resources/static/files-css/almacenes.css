@@ -60,7 +60,7 @@ input[type="text"]{
 .btn.outline:hover{ background:#f1f3f5; }
 
 /* ====== Tabla ====== */
-#lista-almacenes{ display:grid; gap:8px; min-width: 700px; }
+#lista-almacenes{ display:grid; min-width: 700px; }
 #lista-almacenes .fila{
   display:grid;
   grid-template-columns: 1.2fr 1.6fr 1fr 1fr;

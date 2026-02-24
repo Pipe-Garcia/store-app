@@ -25,9 +25,10 @@ a:hover{ text-decoration: none; }
 
 /* ===== Layout ===== */
 .page{
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 18px 18px 44px;
+    max-width: none;
+    width: 100%;
+    padding: 24px;
+    box-sizing: border-box;
 }
 
 .page-head{
@@ -129,6 +130,7 @@ hr.divider{
 }
 
 .btn.small{
+  color: black;
   padding: 7px 11px;
   font-size: .9rem;
   border-radius: 10px;
@@ -166,17 +168,8 @@ hr.divider{
 
 .tabla.historico .fila{
   display:grid;
-  grid-template-columns:
-    90px
-    280px
-    230px
-    170px
-    140px
-    200px
-    140px
-    170px;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
   align-items:center;
-  gap: 10px;
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -200,15 +193,6 @@ hr.divider{
   background: #fcfcfd;
 }
 
-.tabla.historico .fila:not(.encabezado){
-  transition: transform .06s ease, box-shadow .15s ease, border-color .15s ease;
-}
-
-.tabla.historico .fila:not(.encabezado):hover{
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-hover);
-  border-color: color-mix(in oklab, var(--primary, #1c7ed6) 18%, var(--border));
-}
 
 /* Typography helpers */
 .mono{
@@ -216,10 +200,7 @@ hr.divider{
   font-variant-numeric: tabular-nums;
 }
 
-.text-right{
-  text-align:right;
-  justify-self:end;
-}
+
 
 .strong-text{
   font-weight: 800;
@@ -267,7 +248,6 @@ hr.divider{
 }
 
 .tabla.historico .fila a.btn.outline.small:hover{
-  border-color: color-mix(in oklab, var(--primary, #1c7ed6) 30%, var(--border));
   box-shadow: 0 6px 16px rgba(0,0,0,.08);
 }
 
