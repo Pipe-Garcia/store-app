@@ -69,8 +69,10 @@ public class CashController {
     // ✅ sugerido para apertura (carryOverCash del último cierre)
     @GetMapping("/sessions/suggest-opening")
     @PreAuthorize("hasAnyAuthority('ROLE_OWNER','ROLE_CASHIER')")
-    public BigDecimal suggestOpening(){
-        return cashService.suggestOpeningCash();
+    public ResponseEntity<BigDecimal> suggestOpening(){
+        BigDecimal v = cashService.suggestOpeningCash();
+        if (v == null || v.signum() <= 0) return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(v);
     }
 
     // ✅ HISTÓRICO: obtener sesión por ID (para encabezado "readonly")

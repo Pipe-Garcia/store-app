@@ -324,8 +324,11 @@ public class CashService {
     }
 
     // ✅ sugerencia de apertura: carryOverCash de la última sesión cerrada
-    @Transactional(readOnly = true)
+    @Transactional
     public BigDecimal suggestOpeningCash(){
+        // por si quedó una OPEN vieja, la cerramos antes de sugerir
+        autoCloseStaleOpenSessionIfAny();
+
         return sessionRepo.findTopByStatusOrderByBusinessDateDescIdDesc(CashSession.Status.CLOSED)
                 .map(s -> nz(s.getCarryOverCash()))
                 .orElse(BigDecimal.ZERO);

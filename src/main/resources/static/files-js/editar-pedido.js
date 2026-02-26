@@ -40,6 +40,20 @@ window.addEventListener('DOMContentLoaded', init);
 
 async function init(){
   if (!getToken()){ go('login.html'); return; }
+  const form = document.getElementById('form-editar-pedido');
+  form?.addEventListener('submit', (e) => e.preventDefault());
+
+  form?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    if (!e.target.closest('#items')) return;
+
+    // ✅ si estás en autocomplete abierto, Enter debe seleccionar
+    const ac = e.target.closest('.autocomplete-wrapper');
+    const list = ac?.querySelector('.autocomplete-list');
+    if (ac && list && list.classList.contains('active')) return;
+
+    e.preventDefault();
+  });
   if (!orderId) { notify('ID no especificado','error'); setTimeout(()=>go('pedidos.html'), 1000); return; }
 
   $('#orderIdDisplay').textContent = `#${orderId}`;
@@ -141,52 +155,137 @@ async function loadOrderData(){
    AUTOCOMPLETE GENÉRICO
    ====================================================== */
 function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
-  const input = wrapper.querySelector('input[type="text"]');
+  const input  = wrapper.querySelector('input[type="text"]');
   const hidden = wrapper.querySelector('input[type="hidden"]');
-  const list = wrapper.querySelector('.autocomplete-list');
+  const list   = wrapper.querySelector('.autocomplete-list');
 
-  input.addEventListener('input', function(e) {
-    const val = this.value.toLowerCase();
-    hidden.value = ''; 
-    closeAllLists(this);
+  let matches = [];
+  let activeIndex = -1;
 
-    if (!val) {
-      list.classList.remove('active');
-      return;
-    }
-
-    const matches = data.filter(item => {
-      const txt = (item[displayKey] || '').toLowerCase();
-      return txt.includes(val);
-    });
-
+  const close = () => {
+    list.classList.remove('active');
     list.innerHTML = '';
-    list.classList.add('active');
+    matches = [];
+    activeIndex = -1;
+  };
 
-    if (matches.length === 0) {
+  const setActive = (idx) => {
+    const items = Array.from(list.children);
+    items.forEach(el => el.classList.remove('is-active'));
+
+    if (idx < 0 || idx >= matches.length) { activeIndex = -1; return; }
+
+    activeIndex = idx;
+    const el = items[idx];
+    if (el) {
+      el.classList.add('is-active');
+      el.scrollIntoView({ block: 'nearest' });
+    }
+  };
+
+  const selectIndex = (idx) => {
+    const item = matches[idx];
+    if (!item) return;
+
+    input.value = item[displayKey];
+    hidden.value = item[idKey];
+
+    close();
+    if (onSelect) onSelect(item);
+  };
+
+  const openWith = (items) => {
+    matches = items || [];
+    list.innerHTML = '';
+    activeIndex = -1;
+
+    if (!matches.length) {
       const div = document.createElement('div');
       div.textContent = 'Sin coincidencias';
-      div.style.cursor = 'default';
       div.style.color = '#999';
+      div.style.cursor = 'default';
       list.appendChild(div);
+      list.classList.add('active');
       return;
     }
 
-    matches.forEach(item => {
+    matches.forEach((item, idx) => {
       const div = document.createElement('div');
       div.textContent = item[displayKey];
-      div.addEventListener('click', function() {
-        input.value = item[displayKey];
-        hidden.value = item[idKey];
-        list.classList.remove('active');
-        if (onSelect) onSelect(item);
+      div.dataset.idx = String(idx);
+
+      // ✅ mousedown para que seleccione aunque el input pierda foco antes del click
+      div.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectIndex(idx);
       });
+
       list.appendChild(div);
     });
+
+    list.classList.add('active');
+  };
+
+  const doSearch = () => {
+    const val = (input.value || '').toLowerCase().trim();
+    hidden.value = '';
+
+    if (!val) { close(); return; }
+
+    const found = data
+      .filter(item => String(item[displayKey] || '').toLowerCase().includes(val))
+      .slice(0, 50);
+
+    openWith(found);
+  };
+
+  input.addEventListener('input', doSearch);
+
+  input.addEventListener('focus', () => {
+    if (input.value) doSearch();
   });
-  
-  input.addEventListener('focus', function(){
-    if(this.value) this.dispatchEvent(new Event('input'));
+
+  input.addEventListener('keydown', (e) => {
+    const isOpen = list.classList.contains('active');
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen) { doSearch(); return; }
+      if (!matches.length) return;
+      setActive(Math.min(activeIndex + 1, matches.length - 1));
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isOpen) { doSearch(); return; }
+      if (!matches.length) return;
+      setActive(Math.max(activeIndex - 1, 0));
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      if (isOpen && matches.length) {
+        e.preventDefault();
+        if (activeIndex < 0) setActive(0);
+        selectIndex(activeIndex < 0 ? 0 : activeIndex);
+      }
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      if (isOpen) { e.preventDefault(); close(); }
+      return;
+    }
+
+    if (e.key === 'Tab') close();
+  });
+
+  // tu document.click ya llama closeAllLists()
+  // solo aseguramos que si borrás texto, se cierre
+  input.addEventListener('blur', () => {
+    // pequeño delay por si se está clickeando un item (mousedown ya lo maneja)
+    setTimeout(() => { /* no cerramos agresivo para no cortar */ }, 0);
   });
 }
 
@@ -242,6 +341,7 @@ function addRow(prefill){
   subDiv.textContent = '$ 0,00';
 
   const btnDel = document.createElement('button');
+  btnDel.type = 'button';
   btnDel.className = 'btn danger small';
   btnDel.innerHTML = '🗑️';
   btnDel.onclick = (e) => { e.preventDefault(); row.remove(); recalc(); };

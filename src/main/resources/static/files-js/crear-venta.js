@@ -133,6 +133,24 @@ async function init(){
 
   APP_ROLE = await waitForRole(); // owner/employee/cashier
 
+  const form = document.getElementById('form-venta');
+  form?.addEventListener('submit', (e) => e.preventDefault());
+  form?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    if (!e.target.closest('#items')) return;
+
+    // ✅ Si estás en un AUTOCOMPLETE abierto, el Enter debe seleccionar, NO bloquearse acá
+    const ac = e.target.closest('.autocomplete-wrapper');
+    const list = ac?.querySelector('.autocomplete-list');
+    if (ac && list && list.classList.contains('active')) return;
+
+    // ✅ Si algún día agregás textarea
+    if (e.target && e.target.tagName === 'TEXTAREA') return;
+
+    // ✅ Evita submit implícito y “click raro” de botones dentro de la grilla
+    e.preventDefault();
+  });
+
   // Cashier no crea ventas
   if (APP_ROLE === 'cashier'){
     await Swal.fire({
@@ -216,47 +234,148 @@ async function init(){
    AUTOCOMPLETE GENÉRICO
    ====================================================== */
 function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
-  const input = wrapper.querySelector('input[type="text"]');
+  const input  = wrapper.querySelector('input[type="text"]');
   const hidden = wrapper.querySelector('input[type="hidden"]');
-  const list = wrapper.querySelector('.autocomplete-list');
+  const list   = wrapper.querySelector('.autocomplete-list');
 
-  input.addEventListener('input', function() {
-    const val = this.value.toLowerCase();
-    hidden.value = '';
-    closeAllLists(this);
-    if (!val) return;
+  let matches = [];
+  let activeIndex = -1;
 
-    const matches = data.filter(item => {
-      const txt = (item[displayKey] || '').toLowerCase();
-      return txt.includes(val);
-    });
-
+  const close = () => {
+    list.classList.remove('active');
     list.innerHTML = '';
-    if (matches.length > 0) list.classList.add('active');
+    matches = [];
+    activeIndex = -1;
+  };
 
-    matches.forEach(item => {
-      const div = document.createElement('div');
-      div.textContent = item[displayKey];
-      div.addEventListener('click', function() {
-        input.value = item[displayKey];
-        hidden.value = item[idKey];
-        list.classList.remove('active');
-        if (onSelect) onSelect(item);
-      });
-      list.appendChild(div);
-    });
+  const openWith = (items) => {
+    matches = items || [];
+    list.innerHTML = '';
+    activeIndex = -1;
 
-    if(matches.length === 0){
+    if (!matches.length) {
       const div = document.createElement('div');
       div.textContent = 'Sin coincidencias';
       div.style.color = '#999';
       div.style.cursor = 'default';
       list.appendChild(div);
       list.classList.add('active');
+      return;
+    }
+
+    matches.forEach((item, idx) => {
+      const div = document.createElement('div');
+      div.textContent = item[displayKey];
+      div.dataset.idx = String(idx);
+      div.setAttribute('role', 'option');
+
+      div.addEventListener('mousedown', (e) => {
+        // mousedown para que funcione aunque el input pierda foco antes del click
+        e.preventDefault();
+        selectIndex(idx);
+      });
+
+      list.appendChild(div);
+    });
+
+    list.classList.add('active');
+  };
+
+  const setActive = (idx) => {
+    const items = Array.from(list.children);
+    items.forEach(el => el.classList.remove('is-active'));
+
+    if (idx < 0 || idx >= matches.length) {
+      activeIndex = -1;
+      return;
+    }
+
+    activeIndex = idx;
+    const el = items[idx];
+    if (el) {
+      el.classList.add('is-active');
+      el.scrollIntoView({ block: 'nearest' });
+    }
+  };
+
+  const selectIndex = (idx) => {
+    const item = matches[idx];
+    if (!item) return;
+
+    input.value = item[displayKey];
+    hidden.value = item[idKey];
+
+    close();
+
+    if (onSelect) onSelect(item);
+  };
+
+  const doSearch = () => {
+    const val = (input.value || '').toLowerCase().trim();
+    hidden.value = '';
+
+    // si vacío => cerramos
+    if (!val) { close(); return; }
+
+    const found = data
+      .filter(item => String(item[displayKey] || '').toLowerCase().includes(val))
+      .slice(0, 50); // cap para no generar listas gigantes
+
+    openWith(found);
+  };
+
+  input.addEventListener('input', () => {
+    // no cierres todas las listas acá; solo maneja la de ESTE wrapper
+    doSearch();
+  });
+
+  input.addEventListener('focus', () => {
+    if (input.value) doSearch();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    const isOpen = list.classList.contains('active');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen) { doSearch(); return; }
+      if (!matches.length) return;
+      setActive(Math.min(activeIndex + 1, matches.length - 1));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isOpen) { doSearch(); return; }
+      if (!matches.length) return;
+      setActive(Math.max(activeIndex - 1, 0));
+      return;
+    }
+    if (e.key === 'Enter') {
+      // ✅ Enter selecciona el item activo si la lista está abierta
+      if (isOpen && matches.length) {
+        e.preventDefault();
+        if (activeIndex < 0) setActive(0); // si no hay activo, toma el primero
+        selectIndex(activeIndex < 0 ? 0 : activeIndex);
+      }
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (isOpen) {
+        e.preventDefault();
+        close();
+      }
+      return;
+    }
+    // Tab: cerramos para no dejar UI colgada
+    if (e.key === 'Tab') {
+      close();
     }
   });
 
-  input.addEventListener('focus', function(){ if(this.value) this.dispatchEvent(new Event('input')); });
+  // Click afuera => cerrar (tu document.addEventListener('click', closeAllLists) ya lo hace,
+  // pero esto es más robusto por wrapper)
+  document.addEventListener('click', (e) => {
+    if (!wrapper.contains(e.target)) close();
+  });
 }
 
 function closeAllLists(elmnt) {
@@ -411,6 +530,7 @@ function addRow(prefill){
 
   // 6. QUITAR
   const del = document.createElement('button');
+  del.type = 'button';
   del.className='btn danger small';
   del.innerHTML='🗑️';
   del.onclick = (e)=>{ e.preventDefault(); row.remove(); requestAnimationFrame(recalc); };

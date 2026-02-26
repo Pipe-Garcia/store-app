@@ -381,8 +381,8 @@ function renderTabla(list){
       <div>${name}</div>
       <div>${brand}</div>
       <div>${stock}</div>
-      <div>${fmtARS.format(price || 0)}</div>
       <div class="estado-cell">${pillStatus}</div>
+      <div>${fmtARS.format(price || 0)}</div>
       <div class="acciones">
         <button class="btn outline"
                 data-view="${id}"

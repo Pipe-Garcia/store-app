@@ -497,8 +497,8 @@ function render(lista){
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cli}</div>
-      <div>${totalStr}</div>
       <div>${pill(est)}</div>
+      <div>${totalStr}</div>
       <div class="acciones">
         <a class="btn outline" href="ver-pedido.html?id=${id}" title="Ver">👁️</a>
         ${editBtn}

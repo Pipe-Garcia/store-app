@@ -199,18 +199,21 @@ async function apiSumByReason(dateStr, reason) {
 }
 
 async function apiSuggestOpeningCash() {
-  const today = todayStr();
-  const yest = ymdMinusDays(today, 1);
+  const r = await authFetch('/cash/sessions/suggest-opening', { method: 'GET' });
 
-  const sum = await apiSummary(yest);
-  if (!sum) return null;
+  // 204 => no hay sugerencia
+  if (r.status === 204) return null;
 
-  const systemExpected = Number(sum.systemCashExpected || 0);
-  const withdrawals = await apiSumByReason(yest, 'WITHDRAWAL');
+  if (!r.ok) return null;
 
-  const carry = Math.max(0, systemExpected - withdrawals);
-  if (!carry || carry < 0.01) return null;
-  return carry;
+  // puede venir como JSON number o como texto "15000"
+  const txt = (await r.text().catch(() => '')).trim();
+  const n = Number(txt);
+
+  if (!isFinite(n) || n <= 0) return null;
+  if (n < 0.01) return null;
+
+  return n;
 }
 
 /* ================== UI ================== */
@@ -490,7 +493,7 @@ async function openCash() {
       <div style="text-align:left;display:grid;gap:10px;">
         <label>Monto inicial (efectivo)</label>
         <input id="sw-open-amount" class="swal2-input" style="margin:0;" type="number" min="0" step="0.01" placeholder="0.00">
-        ${suggested != null ? `<small class="muted">Sugerido (según ayer): <b>${fmtARS.format(suggested)}</b></small>` : ``}
+        ${suggested != null ? `<small class="muted">Sugerido (según último cierre): <b>${fmtARS.format(suggested)}</b></small>` : ``}
         <label>Nota (opcional)</label>
         <input id="sw-open-note" class="swal2-input" style="margin:0;" type="text" placeholder="Observaciones…">
       </div>
@@ -530,23 +533,50 @@ async function closeCash() {
 
   const { value: form } = await Swal.fire({
     title: 'Cerrar caja',
-    width: 560,
+    icon: 'warning',
+    width: 580,
     html: `
       <div style="text-align:left;display:grid;gap:10px;">
+        <p style="margin:0;color:#555;">
+          Vas a <b>cerrar la caja de hoy</b>. Luego <b>no se puede reabrir</b> hasta mañana.
+        </p>
+
         <label>Efectivo contado (cierre)</label>
         <input id="sw-close-counted" class="swal2-input" style="margin:0;" type="number" min="0" step="0.01" placeholder="0.00">
+
         <label>Retiro al cierre (opcional)</label>
         <input id="sw-close-withdraw" class="swal2-input" style="margin:0;" type="number" min="0" step="0.01" placeholder="0.00">
         <small class="muted">El retiro NO se cuenta como gasto. Sirve para calcular el efectivo que queda para abrir mañana.</small>
+
         <label>Nota (opcional)</label>
         <input id="sw-close-note" class="swal2-input" style="margin:0;" type="text" placeholder="Observaciones…">
+
+        <label style="display:flex;gap:10px;align-items:flex-start;margin-top:6px;">
+          <input id="sw-close-confirm" type="checkbox" style="margin-top:3px;">
+          <span>Confirmo que quiero <b>cerrar la caja</b> y entiendo que <b>no podré reabrir hoy</b>.</span>
+        </label>
       </div>
     `,
     focusConfirm: false,
     showCancelButton: true,
-    confirmButtonText: 'Cerrar',
-    cancelButtonText: 'Cancelar',
+    confirmButtonText: 'Cerrar caja',
+    cancelButtonText: 'Cancelar operación',
+    didOpen: () => {
+      const btn = Swal.getConfirmButton();
+      const chk = document.getElementById('sw-close-confirm');
+      if (btn) btn.disabled = true;
+
+      chk?.addEventListener('change', () => {
+        if (btn) btn.disabled = !chk.checked;
+      });
+    },
     preConfirm: () => {
+      const chk = document.getElementById('sw-close-confirm');
+      if (!chk?.checked) {
+        Swal.showValidationMessage('Tenés que confirmar el cierre marcando el checkbox.');
+        return false;
+      }
+
       const countedCash = Number(document.getElementById('sw-close-counted').value || 0);
       const withdrawalCash = Number(document.getElementById('sw-close-withdraw').value || 0);
       const note = (document.getElementById('sw-close-note').value || '').trim();
@@ -557,6 +587,7 @@ async function closeCash() {
         Swal.showValidationMessage('El retiro no puede ser mayor que el contado.');
         return false;
       }
+
       return { countedCash, withdrawalCash, note };
     }
   });
@@ -673,28 +704,6 @@ async function refreshSession() {
   setSessionInfo();
 }
 
-/* ===== Lógica Filtros Fecha (Restricciones) ===== */
-function setupDateRangeConstraint(idDesde, idHasta) {
-  const elDesde = document.getElementById(idDesde);
-  const elHasta = document.getElementById(idHasta);
-  if (!elDesde || !elHasta) return;
-
-  elDesde.addEventListener('change', () => {
-    elHasta.min = elDesde.value;
-    if (elHasta.value && elHasta.value < elDesde.value) {
-      elHasta.value = elDesde.value;
-      elHasta.dispatchEvent(new Event('change'));
-    }
-  });
-
-  elHasta.addEventListener('change', () => {
-    elDesde.max = elHasta.value;
-    if (elDesde.value && elDesde.value > elHasta.value) {
-      elDesde.value = elHasta.value;
-      elDesde.dispatchEvent(new Event('change'));
-    }
-  });
-}
 
 /* ===== Bootstrap ===== */
 window.addEventListener('DOMContentLoaded', async () => {

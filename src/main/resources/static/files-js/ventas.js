@@ -495,8 +495,8 @@ function renderLista(lista){
     <div class="fila encabezado">
       <div>Fecha</div>
       <div>Cliente</div>
-      <div>Total</div>
       <div>Estado</div>
+      <div>Total</div>
       <div>Acciones</div>
     </div>
   `;
@@ -550,8 +550,8 @@ function renderLista(lista){
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cli}</div>
-      <div>${totalStr}</div>
       <div>${estadoCellHtml(v)}</div>
+      <div>${totalStr}</div>
       <div class="acciones" style="display:flex; gap:6px; flex-wrap:wrap;">
         ${viewBtn}
         ${cobrarBtn}
