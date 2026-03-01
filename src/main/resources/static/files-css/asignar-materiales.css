@@ -85,3 +85,72 @@
     margin: 20px auto;
     max-width: 800px;
 }
+
+/* ==========================================================
+   AUTOCOMPLETE ESTILO FLOTANTE
+   ========================================================== */
+.autocomplete-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.autocomplete-list {
+  display: none !important; /* Oculto por defecto, reforzado */
+  position: absolute;
+  top: 100%; 
+  left: 0;
+  width: 100%;
+  z-index: 9999; 
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-top: none;
+  max-height: 250px; 
+  overflow-y: auto;
+  box-shadow: 0px 4px 6px rgba(0,0,0,0.1); 
+  border-radius: 0 0 8px 8px;
+}
+
+.autocomplete-list.active {
+  display: block !important; /* Visible cuando está activo, reforzado */
+}
+
+.autocomplete-list div {
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+/* Hover y selección con flechas */
+.autocomplete-list div:hover,
+.autocomplete-list div.is-active {
+  background-color: #eef2ff;
+  color: #1e40af;
+  cursor: pointer;
+}
+
+/* ==========================================================
+   OCULTAR FLECHAS EN INPUTS NUMÉRICOS
+   ========================================================== */
+#precio-unitario::-webkit-outer-spin-button,
+#precio-unitario::-webkit-inner-spin-button,
+#tiempo-entrega::-webkit-outer-spin-button,
+#tiempo-entrega::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* ==========================================================
+   ALINEACIÓN A LA DERECHA (Para precios en la tabla)
+   ========================================================== */
+.tabla .fila .text-right {
+  text-align: right !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center;
+  width: 100%;
+}
+
+.tabla .fila .acciones {
+  display: flex;
+  justify-content: center;
+}
+

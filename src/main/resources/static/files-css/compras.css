@@ -304,3 +304,84 @@ a.btn{ text-decoration:none; }
   border-width: 5px 5px 0 5px !important;
   right: 10px !important;
 }
+/* ==========================================================
+   AUTOCOMPLETE ESTILO FLOTANTE (Compras)
+   ========================================================== */
+
+/* Contenedor relativo */
+.autocomplete-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Lista oculta por defecto y flotante */
+.autocomplete-list {
+  display: none; 
+  position: absolute;
+  top: 100%; 
+  left: 0;
+  width: 100%;
+  z-index: 9999; 
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-top: none;
+  max-height: 250px; 
+  overflow-y: auto;
+  box-shadow: 0px 4px 6px rgba(0,0,0,0.1); 
+  border-radius: 0 0 8px 8px;
+}
+
+/* Se muestra cuando se activa */
+.autocomplete-list.active {
+  display: block;
+}
+
+.autocomplete-list div {
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+/* Hover y selección con flechas */
+.autocomplete-list div:hover,
+.autocomplete-list div.is-active {
+  background-color: #eef2ff;
+  color: #1e40af;
+  cursor: pointer;
+}
+
+/* ==========================================================
+   FILTRO ID (Ocultar flechas)
+   ========================================================== */
+#buscarId::-webkit-outer-spin-button,
+#buscarId::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* ==========================================================
+   ESTILOS PARA EL INPUT NUMÉRICO (ID)
+   ========================================================== */
+.filters input[type="number"] {
+  padding: 9px 10px;
+  border: 1px solid #dfe3e6;
+  border-radius: 8px;
+  background: #fff;
+  width: 100%;
+  min-width: 140px;
+  font-size: 0.95rem;
+  color: #495057;
+  outline: none;
+  font-family: inherit;
+}
+
+.filters input[type="number"]:focus {
+  border-color: #3b82f6;
+}
+
+.tabla .fila .text-right {
+  text-align: right !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center;
+  width: 100%;
+}

@@ -2,10 +2,11 @@ const API_URL_SUPPLIERS = 'http://localhost:8088/suppliers';
 const API_URL_MAT       = 'http://localhost:8088/materials';
 const API_URL_MAT_SUP   = 'http://localhost:8088/material-suppliers';
 
-const token = localStorage.getItem('token');
+const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
 const supplierId = new URLSearchParams(window.location.search).get('id');
 
 let materiales = [];
+let materialesAsignados = []; // ✅ Llevamos registro de lo que ya tiene el proveedor
 
 /* ================== TOASTS (SweetAlert2) ================== */
 const Toast = Swal.mixin({
@@ -60,12 +61,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!res.ok) throw new Error(`Error cargando proveedor (HTTP ${res.status})`);
     const p = await res.json();
 
-    // Soportar HTML viejo y nuevo:
-    const elId      = $id('proveedorId', 'provId', 'supplierId');
-    const elNombre  = $id('proveedorNombre', 'provName', 'supplierName');
-    const elEmpresa = $id('proveedorEmpresa', 'provCompany', 'nameCompany', 'company');
-    const elEmail   = $id('provEmail', 'proveedorEmail');
-    const elTel     = $id('provPhone', 'proveedorPhone');
+    const elId        = $id('proveedorId', 'provId', 'supplierId');
+    const elNombre    = $id('proveedorNombre', 'provName', 'supplierName');
+    const elEmpresa   = $id('proveedorEmpresa', 'provCompany', 'nameCompany', 'company');
+    const elEmail     = $id('provEmail', 'proveedorEmail');
+    const elTel       = $id('provPhone', 'proveedorPhone');
 
     safeText(elId, p.idSupplier);
     safeText(elNombre, `${p.name ?? ''} ${p.surname ?? ''}`.trim());
@@ -74,66 +74,155 @@ document.addEventListener('DOMContentLoaded', async () => {
     safeText(elTel, p.phoneNumber);
 
     if (Array.isArray(p.materials)) {
-      renderMateriales(p.materials);
+      materialesAsignados = p.materials; // ✅ Guardamos la lista actual
+      renderMateriales(materialesAsignados);
     }
   } catch (err) {
     console.error(err);
     notify('No se pudo cargar el proveedor', 'error');
   }
 
-  // Cargar materiales disponibles (para autocomplete)
-  try{
+  // Cargar materiales disponibles (A prueba de fallos con paginación)
+  try {
     const resMat = await fetch(API_URL_MAT, { headers: { 'Authorization': `Bearer ${token}` } });
-    materiales = resMat.ok ? await resMat.json() : [];
-  }catch(e){
+    if (resMat.ok) {
+      const dataMat = await resMat.json();
+      // Si viene paginado (dataMat.content) o como lista directa
+      materiales = Array.isArray(dataMat) ? dataMat : (dataMat.content || []);
+    } else {
+      materiales = [];
+    }
+  } catch(e) {
     console.error('Error cargando materiales', e);
     materiales = [];
   }
 
-  // Autocomplete
-  const inputMaterial = $id('material-input');
-  const contenedorSugerencias = $id('suggestions');
-
-  function closeSuggestions(){
-    if (!contenedorSugerencias) return;
-    contenedorSugerencias.innerHTML = '';
-    contenedorSugerencias.classList.remove('open');
-  }
-
-  if (inputMaterial && contenedorSugerencias){
-    inputMaterial.addEventListener('input', () => {
-      const texto = inputMaterial.value.trim().toLowerCase();
-      contenedorSugerencias.innerHTML = '';
-      if (!texto){ closeSuggestions(); return; }
-
-      const sugerencias = materiales.filter(m => (m.name || '').toLowerCase().includes(texto));
-      if (!sugerencias.length){ closeSuggestions(); return; }
-
-      sugerencias.forEach(m => {
-        const div = document.createElement('div');
-        div.textContent = m.name;
-        div.addEventListener('click', () => {
-          inputMaterial.value = m.name;
-          closeSuggestions();
-        });
-        contenedorSugerencias.appendChild(div);
-      });
-      contenedorSugerencias.classList.add('open');
-    });
-
-    document.addEventListener('click', (e)=>{
-      if (!contenedorSugerencias.contains(e.target) && e.target !== inputMaterial){
-        closeSuggestions();
-      }
-    });
-    inputMaterial.addEventListener('keydown', (e)=>{
-      if (e.key === 'Escape') closeSuggestions();
-    });
-  }
+  // Inicializar Autocomplete con teclado
+  setupMaterialAutocomplete();
 
   const btn = $id('btnAddMat');
   if (btn) btn.addEventListener('click', agregarMaterialProveedor);
 });
+
+// ==========================================
+//  NUEVO AUTOCOMPLETE CON NAVEGACIÓN TECLADO
+// ==========================================
+function setupMaterialAutocomplete() {
+  const input = $id('material-input');
+  const list  = $id('suggestions');
+  if (!input || !list) return;
+
+  let activeIndex = -1;
+  let matches = [];
+
+  const closeSuggestions = () => {
+    list.innerHTML = '';
+    list.classList.remove('active');
+    activeIndex = -1;
+  };
+
+  const setActive = (idx) => {
+    const items = Array.from(list.children);
+    items.forEach(el => el.classList.remove('is-active'));
+
+    if (idx < 0 || idx >= matches.length) {
+      activeIndex = -1;
+      return;
+    }
+
+    activeIndex = idx;
+    const el = items[idx];
+    if (el) {
+      el.classList.add('is-active');
+      el.scrollIntoView({ block: 'nearest' });
+    }
+  };
+
+  const selectIndex = (idx) => {
+    const item = matches[idx];
+    if (!item) return;
+    input.value = item.name;
+    closeSuggestions();
+  };
+
+  const doSearch = () => {
+    const val = (input.value || '').toLowerCase().trim();
+    if (!val) { closeSuggestions(); return; }
+
+    matches = materiales
+      .filter(m => (m.name || '').toLowerCase().includes(val))
+      .slice(0, 50);
+
+    list.innerHTML = '';
+    activeIndex = -1;
+
+    if (!matches.length) {
+      const div = document.createElement('div');
+      div.textContent = 'Sin coincidencias';
+      div.style.color = '#999';
+      div.style.cursor = 'default';
+      list.appendChild(div);
+      list.classList.add('active');
+      return;
+    }
+
+    matches.forEach((m, idx) => {
+      const div = document.createElement('div');
+      div.textContent = m.name;
+      div.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // Evita que el input pierda foco antes del click
+        selectIndex(idx);
+      });
+      list.appendChild(div);
+    });
+
+    list.classList.add('active');
+  };
+
+  input.addEventListener('input', doSearch);
+  input.addEventListener('focus', () => { if(input.value) doSearch(); });
+
+  input.addEventListener('keydown', (e) => {
+    const isOpen = list.classList.contains('active');
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen) doSearch();
+      else setActive(Math.min(activeIndex + 1, matches.length - 1));
+      return;
+    }
+    
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isOpen) doSearch();
+      else setActive(Math.max(activeIndex - 1, 0));
+      return;
+    }
+    
+    if (e.key === 'Enter') {
+      if (isOpen && matches.length) {
+        e.preventDefault();
+        selectIndex(activeIndex < 0 ? 0 : activeIndex);
+      }
+      return;
+    }
+    
+    if (e.key === 'Escape') {
+      if (isOpen) {
+        e.preventDefault();
+        closeSuggestions();
+      }
+      return;
+    }
+  });
+
+  // Cerrar si se hace click afuera
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !list.contains(e.target)) {
+      closeSuggestions();
+    }
+  });
+}
 
 // ===== Render de materiales asignados =====
 function renderMateriales(lista) {
@@ -143,7 +232,7 @@ function renderMateriales(lista) {
   cont.innerHTML = `
     <div class="fila encabezado">
       <div>Material</div>
-      <div>Precio unitario</div>
+      <div class="text-right">Precio unitario</div>
       <div>Entrega (días)</div>
       <div>Acciones</div>
     </div>
@@ -161,12 +250,11 @@ function renderMateriales(lista) {
     const row = document.createElement('div');
     row.className = 'fila';
     
-    // Usamos data-del para evitar problemas de scope global con onclick
     row.innerHTML = `
       <div>${m.materialName || '-'}</div>
-      <div>$${m.priceUnit ?? 0}</div>
+      <div class="text-right">$${m.priceUnit ?? 0}</div>
       <div>${m.deliveryTimeDays ?? '-'}</div>
-      <div>
+      <div class="acciones">
         <button class="btn danger btn-eliminar" data-id="${m.idMaterialSupplier}">🗑️ Eliminar</button>
       </div>
     `;
@@ -185,7 +273,6 @@ function renderMateriales(lista) {
 
 // ===== Eliminar material asignado (CON CONFIRMACIÓN) =====
 async function eliminarMaterialProveedor(idMatSup) {
-  
   Swal.fire({
     title: '¿Quitar material?',
     text: "Se eliminará la asociación de este material con el proveedor.",
@@ -213,7 +300,8 @@ async function eliminarMaterialProveedor(idMatSup) {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const p = await provRes.json();
-        renderMateriales(p.materials || []);
+        materialesAsignados = p.materials || []; // ✅ Actualizamos el estado local
+        renderMateriales(materialesAsignados);
       } catch (err) {
         console.error(err);
         notify("No se pudo eliminar el material", "error");
@@ -239,6 +327,15 @@ async function agregarMaterialProveedor(e) {
   if (!material) return notify('Material no encontrado.', 'error');
   if (isNaN(precio)) return notify('Precio inválido', 'error');
   if (inputTiempo && inputTiempo.value && isNaN(tiempo)) return notify('Tiempo de entrega inválido', 'error');
+
+  // ✅ VALIDACIÓN: Evitar duplicados
+  const yaEstaAsignado = materialesAsignados.some(m => 
+    (m.materialName || '').toLowerCase() === nombre.toLowerCase()
+  );
+
+  if (yaEstaAsignado) {
+    return notify('Este material ya está asignado a este proveedor.', 'warning');
+  }
 
   try {
     const body = {
@@ -266,12 +363,17 @@ async function agregarMaterialProveedor(e) {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const p = await provRes.json();
-    renderMateriales(p.materials || []);
+    materialesAsignados = p.materials || []; // ✅ Actualizamos el estado local
+    renderMateriales(materialesAsignados);
 
     // limpiar inputs
     if (inputNombre) inputNombre.value = '';
     if (inputPrecio) inputPrecio.value = '';
     if (inputTiempo) inputTiempo.value = '';
+    
+    // Devolvemos el foco al input del nombre por si quiere cargar otro rápido
+    if (inputNombre) inputNombre.focus();
+    
   } catch (err) {
     console.error(err);
     notify('No se pudo asignar el material', 'error');

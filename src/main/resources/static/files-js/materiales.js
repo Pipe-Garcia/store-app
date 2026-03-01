@@ -151,10 +151,10 @@ function validateRanges(){
 
 /**
  * Arma el querystring que entiende /materials/search:
- *  - q          → texto (combina código + nombre)
- *  - familyId   → familia seleccionada
- *  - minPrice   → precio mínimo
- *  - maxPrice   → precio máximo
+ * - q          → texto (combina código + nombre)
+ * - familyId   → familia seleccionada
+ * - minPrice   → precio mínimo
+ * - maxPrice   → precio máximo
  * (includeDeleted se agrega aparte según el combo de estado).
  */
 function buildSearchQuery(){
@@ -382,8 +382,8 @@ function renderTabla(list){
       <div>${brand}</div>
       <div>${stock}</div>
       <div class="estado-cell">${pillStatus}</div>
-      <div>${fmtARS.format(price || 0)}</div>
-      <div class="acciones">
+      <div class="text-right">${fmtARS.format(price || 0)}</div>
+      <div class="acciones text-right">
         <button class="btn outline"
                 data-view="${id}"
                 title="Ver material">👁️</button>

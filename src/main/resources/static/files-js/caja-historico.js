@@ -71,17 +71,17 @@ function renderPager(){
 
 function renderTable(rows){
   const cont = $('#tblSessions');
-  // NUEVO ORDEN DE ENCABEZADOS
+  // ✅ ENCABEZADOS A LA DERECHA
   cont.innerHTML = `
     <div class="fila encabezado">
       <div>Caja</div>
       <div>Día</div>
       <div>Usuario que cerró</div>
-      <div class="text-center">Apertura</div>
-      <div class="text-center">Neto</div>
-      <div class="text-center">Retiro</div>
-      <div class="text-center">Efectivo p/ mañana</div>
-      <div class="text-center">Acciones</div>
+      <div class="text-right">Apertura</div>
+      <div class="text-right">Neto</div>
+      <div class="text-right">Retiro</div>
+      <div class="text-right">Efectivo p/ mañana</div>
+      <div class="text-right">Acciones</div>
     </div>
   `;
 
@@ -103,7 +103,6 @@ function renderTable(rows){
     const carry = Number(r.carryOverCash ?? 0);
     const withdraw = Number(r.withdrawalCash ?? 0);
 
-    // Lógica para el color del Neto
     let netColorStyle = '';
     if (net > 0) {
       netColorStyle = 'color: #16a34a;'; // Verde
@@ -114,22 +113,22 @@ function renderTable(rows){
     const tr = document.createElement('div');
     tr.className = 'fila';
     
-    // NUEVO ORDEN DE DATOS (Apertura -> Neto -> Retiro -> Efectivo p/ mañana)
+    // ✅ COLUMNAS DE DATOS A LA DERECHA
     tr.innerHTML = `
       <div class="mono">#${sid}</div>
       <div>${weekdayLong(date)}</div>
       <div>${closedBy}</div>
 
-      <div class="text-center">${fmtARS.format(opening)}</div>
+      <div class="text-right">${fmtARS.format(opening)}</div>
       
-      <div class="text-center strong-text" style="${netColorStyle}">
+      <div class="text-right strong-text" style="${netColorStyle}">
         ${fmtARS.format(net)}
       </div>
 
-      <div class="text-center">${fmtARS.format(withdraw)}</div>
-      <div class="text-center">${fmtARS.format(carry)}</div>
+      <div class="text-right">${fmtARS.format(withdraw)}</div>
+      <div class="text-right">${fmtARS.format(carry)}</div>
 
-      <div class="text-center">
+      <div class="text-right">
         <a class="btn outline small"
            href="caja.html?sessionId=${encodeURIComponent(sid)}&date=${encodeURIComponent(date)}&readonly=1">
            Ver movimientos
@@ -146,11 +145,9 @@ async function load(){
 
   const pageData = await apiHistory({ from: f.from, to: f.to, page: PAGE, size: PAGE_SIZE });
 
-  // Spring Page JSON (content / totalElements / number)
   let rows = pageData?.content ?? [];
   TOTAL_ELEMS = Number(pageData?.totalElements ?? rows.length ?? 0);
 
-  // filtro local por texto (usuario / id de caja) -> SE QUITÓ LA FECHA
   if (f.q){
     rows = rows.filter(x => {
       const sid = String(x.sessionId ?? '');
@@ -199,7 +196,6 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   if(fTo) fTo.value = t;
   if(fFrom) fFrom.value = tMinus30;
 
-  // Inicializar restricciones
   setupDateRangeConstraint('fFrom', 'fTo');
   if (fFrom && fTo) {
       fTo.min = tMinus30;
@@ -214,14 +210,12 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     const today = todayStr();
     const past = ymdMinusDays(today, 30);
     
-    // Limpiamos restricciones primero
     if (fFrom) fFrom.max = '';
     if (fTo) fTo.min = '';
 
     if(fTo) fTo.value = today;
     if(fFrom) fFrom.value = past;
 
-    // Restauramos las restricciones
     if (fFrom && fTo) {
       fTo.min = past;
       fFrom.max = today;

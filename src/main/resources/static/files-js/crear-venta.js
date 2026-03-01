@@ -125,6 +125,7 @@ function setPayNow(enabled){
     imp.value = CURRENT_TOTAL.toFixed(2);
   }
 }
+
 /* ===== Init ===== */
 window.addEventListener('DOMContentLoaded', init);
 
@@ -522,18 +523,27 @@ function addRow(prefill){
   qty.value = prefill?.qty ?? 1;
   qty.className='in-qty';
 
-  // 4. PRECIO
-  const price = document.createElement('div'); price.className='price'; price.textContent='$ 0,00';
+  // ✅ 4. PRECIO CON TEXT-RIGHT
+  const price = document.createElement('div'); 
+  price.className='price text-right'; 
+  price.textContent='$ 0,00';
 
-  // 5. SUBTOTAL
-  const sub   = document.createElement('div'); sub.className='sub';   sub.textContent='$ 0,00';
+  // ✅ 5. SUBTOTAL CON TEXT-RIGHT
+  const sub   = document.createElement('div'); 
+  sub.className='sub text-right strong-text';   
+  sub.textContent='$ 0,00';
 
-  // 6. QUITAR
+  // ✅ 6. QUITAR CON TEXT-RIGHT WRAPPER
+  const btnDelWrapper = document.createElement('div');
+  btnDelWrapper.className = 'text-right';
+
   const del = document.createElement('button');
   del.type = 'button';
   del.className='btn danger small';
   del.innerHTML='🗑️';
   del.onclick = (e)=>{ e.preventDefault(); row.remove(); requestAnimationFrame(recalc); };
+  
+  btnDelWrapper.appendChild(del);
 
   if (prefill?.orderBound) row.dataset.orderBound = '1';
 
@@ -592,12 +602,11 @@ function addRow(prefill){
 
     if (isFinite(cap) && Number(qty.value) > cap) {
       qty.value = String(cap);
-      // ✅ ALERTA MODAL MUCHO MÁS VISIBLE
       Swal.fire({
         title: 'Stock insuficiente',
         text: `La cantidad ingresada supera el stock. Se ajustó automáticamente al máximo disponible (${cap} unidades).`,
         icon: 'warning',
-        confirmButtonColor: '#1c7ed6', // Color ámbar/naranja de advertencia
+        confirmButtonColor: '#1c7ed6', 
         confirmButtonText: 'Entendido'
       });
     }
@@ -606,7 +615,8 @@ function addRow(prefill){
   whSel.onchange = () => { validateMaxQty(); recalc(); };
   qty.oninput    = () => { validateMaxQty(); recalc(); };
 
-  row.append(matCol, wrap(whSel), wrap(qty), price, sub, del);
+  // ✅ Agregamos el wrapper en vez del botón directamente
+  row.append(matCol, wrap(whSel), wrap(qty), price, sub, btnDelWrapper);
   cont.appendChild(row);
   recalc();
 }

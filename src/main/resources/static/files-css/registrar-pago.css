@@ -123,3 +123,12 @@ body {
     flex: 1;
     justify-content: center;
 }
+#importe::-webkit-outer-spin-button,
+#importe::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+#importe {
+  text-align: right; /* Alinea los números a la derecha */
+}

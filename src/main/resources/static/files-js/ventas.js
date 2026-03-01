@@ -44,7 +44,7 @@ let FILTRADAS = [];
 let infoPager, btnPrev, btnNext;
 
 let LAST_SALES = [];
-let clientSelectInstance = null;
+let listaClientes = []; // ✅ Guardamos los clientes globales para el autocomplete
 
 let CURRENT_ROLE = ''; // owner | employee | cashier
 
@@ -141,6 +141,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   setupListActions();
   setupDateRangeConstraint('fDesde','fHasta');
 
+  // Cerrar listas autocomplete al hacer click afuera
+  document.addEventListener('click', closeAllLists);
+
   // Esperar rol para setear defaults (especial cajero)
   onRoleReady(async (r)=>{
     applyRoleUI(r);
@@ -163,7 +166,6 @@ function bindFilters(){
   $('#fDesde')        ?.addEventListener('change', deb);
   $('#fHasta')        ?.addEventListener('change', deb);
   $('#fEstadoEntrega')?.addEventListener('change', deb);
-  $('#fCliente')      ?.addEventListener('change', deb);
   $('#fEstadoPago')   ?.addEventListener('change', deb);
 
   $('#btnLimpiar')?.addEventListener('click', ()=>{
@@ -172,8 +174,9 @@ function bindFilters(){
     if ($('#fEstadoEntrega')) $('#fEstadoEntrega').value = '';
     if ($('#fEstadoPago')) $('#fEstadoPago').value = '';
 
-    if (clientSelectInstance) clientSelectInstance.clear();
-    else if ($('#fCliente')) $('#fCliente').value = '';
+    // Limpiar Autocomplete
+    if ($('#fClienteSearch')) $('#fClienteSearch').value = '';
+    if ($('#fCliente')) $('#fCliente').value = '';
 
     if ($('#fDesde')) $('#fDesde').max = '';
     if ($('#fHasta')) $('#fHasta').min = '';
@@ -211,56 +214,120 @@ function buildSearchQuery(){
 }
 
 // ---------------------------------------------------------
-//  TOM SELECT (Clientes)
+//  LÓGICA AUTOCOMPLETE DE CLIENTE
 // ---------------------------------------------------------
 async function cargarClientesFiltro() {
-  const sel = document.getElementById('fCliente');
-  if (!sel) return;
-
   try {
     const r = await authFetch(API_URL_CLIENTS);
     let data = r.ok ? await safeJson(r) : [];
-    const list = Array.isArray(data) ? data : (data?.content || []);
-
-    if (clientSelectInstance) {
-      clientSelectInstance.destroy();
-      clientSelectInstance = null;
-    }
-
-    sel.innerHTML = '<option value="">Todos</option>';
-
-    (list || [])
-      .slice()
-      .sort((a,b)=>{
-        const na = `${a?.name||''} ${a?.surname||''}`.trim();
-        const nb = `${b?.name||''} ${b?.surname||''}`.trim();
-        return na.localeCompare(nb);
-      })
-      .forEach(c => {
-        const id = c.idClient ?? c.id;
-        const fullName = `${c.name || ''} ${c.surname || ''}`.trim() || `#${id}`;
-        const opt = document.createElement('option');
-        opt.value = String(id ?? '');
-        opt.textContent = fullName;
-        sel.appendChild(opt);
-      });
-
-    clientSelectInstance = new TomSelect('#fCliente', {
-      create: false,
-      sortField: { field: "text", direction: "asc" },
-      placeholder: "Buscar cliente...",
-      allowEmptyOption: true,
-      plugins: ['no_active_items'],
-      onChange: function() {
-        sel.dispatchEvent(new Event('change'));
-      }
-    });
-
+    listaClientes = Array.isArray(data) ? data : (data?.content || []);
+    
+    setupClientAutocomplete();
   } catch (e) {
     console.error('No se pudieron cargar clientes para el filtro', e);
   }
 }
 
+function setupClientAutocomplete(){
+  const wrapper = $('#ac-cliente-wrapper');
+  if(!wrapper) return;
+
+  const mapped = listaClientes.map(c => ({
+    id: c.idClient ?? c.id,
+    fullName: `${c.name||''} ${c.surname||''}`.trim()
+  }));
+
+  setupAutocomplete(wrapper, mapped, () => {
+    // Cuando selecciona un cliente, disparamos la búsqueda
+    reloadFromFilters();
+  }, 'fullName', 'id');
+}
+
+function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
+  const input  = wrapper.querySelector('input[type="text"]');
+  const hidden = wrapper.querySelector('input[type="hidden"]');
+  const list   = wrapper.querySelector('.autocomplete-list');
+  let matches = [], activeIndex = -1;
+
+  const close = () => {
+    list.classList.remove('active'); list.innerHTML = '';
+    matches = []; activeIndex = -1;
+  };
+
+  const setActive = (idx) => {
+    const items = Array.from(list.children);
+    items.forEach(el => el.classList.remove('is-active'));
+    if (idx < 0 || idx >= matches.length) { activeIndex = -1; return; }
+    activeIndex = idx;
+    const el = items[idx];
+    if (el) { el.classList.add('is-active'); el.scrollIntoView({ block: 'nearest' }); }
+  };
+
+  const selectIndex = (idx) => {
+    const item = matches[idx];
+    if (!item) return;
+    input.value = item[displayKey];
+    hidden.value = item[idKey];
+    close();
+    if (onSelect) onSelect(item);
+  };
+
+  const openWith = (items) => {
+    matches = items || []; list.innerHTML = ''; activeIndex = -1;
+    if (!matches.length) {
+      const div = document.createElement('div');
+      div.textContent = 'Sin coincidencias'; div.style.color = '#999'; div.style.cursor = 'default';
+      list.appendChild(div); list.classList.add('active'); return;
+    }
+    matches.forEach((item, idx) => {
+      const div = document.createElement('div');
+      div.textContent = item[displayKey]; div.dataset.idx = String(idx);
+      div.addEventListener('mousedown', (e) => { e.preventDefault(); selectIndex(idx); });
+      list.appendChild(div);
+    });
+    list.classList.add('active');
+  };
+
+  const doSearch = () => {
+    const val = (input.value || '').toLowerCase().trim();
+    hidden.value = ''; // Si borra, sacamos el ID
+    if (!val) { close(); if(onSelect) onSelect(null); return; }
+    const found = data.filter(item => String(item[displayKey] || '').toLowerCase().includes(val)).slice(0, 50);
+    openWith(found);
+  };
+
+  input.addEventListener('input', doSearch);
+  input.addEventListener('focus', () => { if (input.value) doSearch(); });
+  
+  // Si pierde el foco y quedó vacío, ejecutamos el onSelect(null) para limpiar la tabla
+  input.addEventListener('blur', () => {
+      setTimeout(() => { if (!input.value && !hidden.value && onSelect) onSelect(null); }, 150);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    const isOpen = list.classList.contains('active');
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (!isOpen) doSearch(); else setActive(Math.min(activeIndex + 1, matches.length - 1)); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); if (!isOpen) doSearch(); else setActive(Math.max(activeIndex - 1, 0)); return; }
+    if (e.key === 'Enter') {
+      if (isOpen && matches.length) {
+        e.preventDefault();
+        selectIndex(activeIndex < 0 ? 0 : activeIndex);
+      }
+      return;
+    }
+    if (e.key === 'Escape') { if (isOpen) { e.preventDefault(); close(); } return; }
+    if (e.key === 'Tab') close();
+  });
+}
+
+function closeAllLists(elmnt) {
+  const x = document.getElementsByClassName("autocomplete-list");
+  for (let i = 0; i < x.length; i++) {
+    if (elmnt != x[i] && elmnt != x[i].previousElementSibling) x[i].classList.remove("active");
+  }
+}
+
+// ---------------------------------------------------------
 async function fetchSalesFromServer(){
   const qs = buildQueryFromFilters();
   let data = [];
@@ -470,9 +537,9 @@ function renderListSkeleton(){
     <div class="fila encabezado">
       <div>Fecha</div>
       <div>Cliente</div>
-      <div>Total</div>
       <div>Estado</div>
-      <div>Acciones</div>
+      <div class="text-right">Total</div>
+      <div class="text-right">Acciones</div>
     </div>
     <div class="fila">
       <div style="grid-column:1/-1;color:#777;">Cargando…</div>
@@ -496,8 +563,8 @@ function renderLista(lista){
       <div>Fecha</div>
       <div>Cliente</div>
       <div>Estado</div>
-      <div>Total</div>
-      <div>Acciones</div>
+      <div class="text-right">Total</div>
+      <div class="text-right">Acciones</div>
     </div>
   `;
 
@@ -547,12 +614,14 @@ function renderLista(lista){
 
     const row = document.createElement('div');
     row.className = 'fila';
+    
+    // ✅ CLASE TEXT-RIGHT AÑADIDA AL TOTAL Y ACCIONES
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cli}</div>
       <div>${estadoCellHtml(v)}</div>
-      <div>${totalStr}</div>
-      <div class="acciones" style="display:flex; gap:6px; flex-wrap:wrap;">
+      <div class="text-right strong-text">${totalStr}</div>
+      <div class="acciones text-right" style="display:flex; gap:6px; flex-wrap:wrap;">
         ${viewBtn}
         ${cobrarBtn}
         ${editBtn}

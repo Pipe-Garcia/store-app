@@ -10,11 +10,6 @@
   <link rel="stylesheet" href="../files-css/nav.css">
   
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  
-  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
-
-
 </head>
 <body>
   <div id="app-header"></div>
@@ -40,9 +35,11 @@
         </label>
 
         <label>Cliente
-          <select id="fClient" class="in">
-            <option value="">Todos</option>
-          </select>
+          <div class="autocomplete-wrapper" id="ac-cliente-wrapper">
+            <input type="text" id="fClienteSearch" class="in" placeholder="Buscar cliente..." autocomplete="off">
+            <input type="hidden" id="fClient"> 
+            <div class="autocomplete-list"></div>
+          </div>
         </label>
 
         <label>Desde
@@ -62,7 +59,7 @@
           </select>
         </label>
 
-        <button id="btnClear" class="btn outline">Limpiar</button>
+        <button id="btnClear" class="btn outline" style="align-self: flex-end;">Limpiar</button>
       </div>
     </section>
 

@@ -266,7 +266,7 @@ a.btn.muted:hover{ transform:none; }
 .muted{ color:var(--c-muted); }
 .detail-grid .muted{ color:var(--c-muted); }
 
-.form-page.narrow{ max-width:900px; margin:0 auto; }
+.form-page.narrow{ max-width:1000px; margin:0 auto; }
 .form-page .card{
   border: 1px solid #e9ecef;
   background:#fff;
@@ -479,7 +479,7 @@ input:disabled{
     border-radius: 10px;
     display: grid;
     align-items: center;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 0.5fr;
     padding: 10px;
     border-bottom: 1px solid #ccc;
     text-align: center;
@@ -489,10 +489,40 @@ input:disabled{
    .btn.danger.small{
     background:#f84052; 
     color:#fff; 
-    padding:8px 12px;
-    margin-left: 40px;
-    margin-right: 40px;
+    padding:8px 10px;
+    margin-right: 15px;
     border-radius: 3px;
     }
 
     .btn.danger.small:hover { background:#c92a2a; }
+
+#items .fila .text-right {
+    text-align: right !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center;
+    width: 100%;
+}
+
+#items .fila .text-right button {
+    margin-left: auto;
+}
+.autocomplete-list div:hover,
+.autocomplete-list div.is-active {
+  background-color: #eef2ff; 
+  color: #1e40af; 
+  cursor: pointer;
+}
+
+.tabla .text-right {
+    text-align: right ;
+    display: flex ;
+    justify-content: flex-end !important;
+    align-items: center;
+    width: 100%;
+}
+
+.tabla .fila .acciones.text-right {
+    gap: 6px;
+    flex-wrap: wrap;
+}

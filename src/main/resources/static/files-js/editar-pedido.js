@@ -1,3 +1,4 @@
+// /static/files-js/editar-pedido.js
 const { authFetch, safeJson, getToken } = window.api;
 
 const API_URL_ORDERS    = '/orders';
@@ -331,20 +332,26 @@ function addRow(prefill){
   qtyIn.value = prefill?.quantity ?? 1;   
   qtyIn.min = 1;
 
+  // ✅ APLICANDO TEXT-RIGHT A LAS COLUMNAS
   const priceDiv = document.createElement('div');
-  priceDiv.className = 'price';
+  priceDiv.className = 'price text-right';
   priceDiv.textContent = '$ 0,00';
   priceDiv.dataset.val = prefill?.price != null ? Number(prefill.price) : 0;
 
   const subDiv = document.createElement('div');
-  subDiv.className = 'col-subtotal';
+  subDiv.className = 'col-subtotal text-right strong-text';
   subDiv.textContent = '$ 0,00';
+
+  const btnDelWrapper = document.createElement('div');
+  btnDelWrapper.className = 'text-right';
 
   const btnDel = document.createElement('button');
   btnDel.type = 'button';
   btnDel.className = 'btn danger small';
   btnDel.innerHTML = '🗑️';
   btnDel.onclick = (e) => { e.preventDefault(); row.remove(); recalc(); };
+
+  btnDelWrapper.appendChild(btnDel);
 
   const wrapper = matCol.querySelector('.autocomplete-wrapper');
   
@@ -374,7 +381,7 @@ function addRow(prefill){
 
   qtyIn.oninput = recalc;
 
-  row.append(matCol, wrap(qtyIn), priceDiv, subDiv, btnDel);
+  row.append(matCol, wrap(qtyIn), priceDiv, subDiv, btnDelWrapper);
   cont.appendChild(row);
   recalc();
 }

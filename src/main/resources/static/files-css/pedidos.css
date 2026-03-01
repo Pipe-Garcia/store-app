@@ -54,9 +54,7 @@ body{
 #lista-presupuestos .fila:not(.encabezado):nth-child(odd){ background:#fcfcfd; }
 #lista-presupuestos .fila:not(.encabezado):hover{ box-shadow: 0 6px 16px rgba(0,0,0,.06); }
 
-#lista-presupuestos .fila > div:nth-child(3),
-#lista-presupuestos .fila > div:nth-child(4),
-#lista-presupuestos .fila > div:nth-child(5){ text-align:right; }
+
 
 .tag{ display:inline-block; padding:4px 10px; border-radius:999px; font-size:.85rem; font-weight:700; }
 .tag.reservado{ background:#e8f1fd; color:#1b4fa3; border:1px solid #d0e2ff; }
@@ -228,9 +226,7 @@ body{
 }
 
 
-#lista-presupuestos .fila > div:nth-child(3){
-  text-align:right;
-}
+
 #lista-presupuestos .fila > div:nth-child(4),
 #lista-presupuestos .fila > div:nth-child(5){
   text-align:center;
@@ -285,7 +281,7 @@ body{
 
 
 .form-page.narrow { 
-  max-width: 900px;
+  max-width: 1000px;
     margin: 0 auto;
 }
 
@@ -619,3 +615,37 @@ a {
     }
 
     .btn.danger.small:hover { background:#c92a2a; }
+
+
+    .text-right {
+  text-align: right !important;
+  justify-self: end; /* Alinea el contenedor dentro de la grilla */
+}
+
+.acciones.text-right,
+.text-right button {
+  margin-left: auto;
+  display: block;
+}
+
+#fOrderId::-webkit-outer-spin-button,
+#fOrderId::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.text-right {
+  text-align: right !important;
+  justify-self: end;
+}
+.acciones.text-right {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.autocomplete-list div:hover,
+.autocomplete-list div.is-active {
+  background-color: #eef2ff; /* Color de fondo cuando está seleccionado */
+  color: #1e40af; /* Color del texto para resaltar */
+  cursor: pointer;
+}

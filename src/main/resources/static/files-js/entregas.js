@@ -1,3 +1,4 @@
+// /static/files-js/entregas.js
 const { authFetch, safeJson, getToken } = window.api;
 
 const API_URL_DELIVERIES        = '/deliveries';
@@ -9,7 +10,7 @@ const norm = (s)=> (s||'').toString().toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 const debounce = (fn,delay=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; };
 
-let clientSelectInstance = null;
+let listaClientes = []; // ✅ Guardamos los clientes globales para el autocomplete
 
 /* ================== TOASTS (SweetAlert2) ================== */
 const Toast = Swal.mixin({
@@ -137,6 +138,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   await loadDeliveries();
 
   setupDateRangeConstraint('fFrom', 'fTo');
+  
+  // Cerrar listas autocomplete al hacer click afuera
+  document.addEventListener('click', closeAllLists);
 });
 
 // ================== Filtros ==================
@@ -145,7 +149,6 @@ function wireFilters(){
   const debLocal  = debounce(applyFilters, 120);
 
   $('#fSaleId')?.addEventListener('input',  ()=>{ debSearch(); debLocal(); });
-  $('#fClient')?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
   $('#fFrom')  ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
   $('#fTo')    ?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
   $('#fStatus')?.addEventListener('change', ()=>{ debSearch(); debLocal(); });
@@ -157,8 +160,9 @@ function wireFilters(){
     ['fSaleId','fFrom','fTo','fStatus','fText']
       .forEach(id => { const el = $('#'+id); if (el) el.value=''; });
 
-    if (clientSelectInstance) clientSelectInstance.clear();
-    else if ($('#fClient')) $('#fClient').value = '';
+    // Limpiar Autocomplete
+    if ($('#fClienteSearch')) $('#fClienteSearch').value = '';
+    if ($('#fClient')) $('#fClient').value = '';
 
     $('#fFrom').max = '';
     $('#fTo').min = '';
@@ -169,55 +173,126 @@ function wireFilters(){
 }
 
 // ---------------------------------------------------------
-//  TOM SELECT INTEGRATION (Clientes)
+//  LÓGICA AUTOCOMPLETE DE CLIENTE
 // ---------------------------------------------------------
-async function loadClients(){
-  const sel=$('#fClient');
-  if (!sel) return;
-
-  try{
+async function loadClients() {
+  try {
     const r = await authFetch(API_URL_CLIENTS);
     let data = r.ok ? await safeJson(r) : [];
-    if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
-
-    if (clientSelectInstance) {
-      clientSelectInstance.destroy();
-      clientSelectInstance = null;
-    }
-
-    sel.innerHTML = `<option value="">Todos</option>`;
-    (data||[])
-      .sort((a,b)=>`${a.name||''} ${a.surname||''}`.localeCompare(`${b.name||''} ${b.surname||''}`))
-      .forEach(c=>{
-        const id = c.idClient ?? c.id;
-        const nm = `${c.name||''} ${c.surname||''}`.trim() || `#${id}`;
-        const opt=document.createElement('option');
-        opt.value = String(id ?? '');
-        opt.textContent = nm;
-        sel.appendChild(opt);
-      });
-
-    clientSelectInstance = new TomSelect('#fClient', {
-      create: false,
-      sortField: { field: "text", direction: "asc" },
-      placeholder: "Buscar cliente...",
-      allowEmptyOption: true,
-      plugins: ['no_active_items'],
-      onChange: function() {
-        sel.dispatchEvent(new Event('change'));
-      }
-    });
-
-  }catch(e){ console.warn('clients',e); }
+    listaClientes = Array.isArray(data) ? data : (data?.content || []);
+    
+    setupClientAutocomplete();
+  } catch (e) {
+    console.error('No se pudieron cargar clientes para el filtro', e);
+  }
 }
 
+function setupClientAutocomplete(){
+  const wrapper = $('#ac-cliente-wrapper');
+  if(!wrapper) return;
+
+  const mapped = listaClientes.map(c => ({
+    id: c.idClient ?? c.id,
+    fullName: `${c.name||''} ${c.surname||''}`.trim()
+  }));
+
+  setupAutocomplete(wrapper, mapped, () => {
+    // Al seleccionar cliente, disparamos búsqueda
+    loadDeliveries();
+  }, 'fullName', 'id');
+}
+
+function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
+  const input  = wrapper.querySelector('input[type="text"]');
+  const hidden = wrapper.querySelector('input[type="hidden"]');
+  const list   = wrapper.querySelector('.autocomplete-list');
+  let matches = [], activeIndex = -1;
+
+  const close = () => {
+    list.classList.remove('active'); list.innerHTML = '';
+    matches = []; activeIndex = -1;
+  };
+
+  const setActive = (idx) => {
+    const items = Array.from(list.children);
+    items.forEach(el => el.classList.remove('is-active'));
+    if (idx < 0 || idx >= matches.length) { activeIndex = -1; return; }
+    activeIndex = idx;
+    const el = items[idx];
+    if (el) { el.classList.add('is-active'); el.scrollIntoView({ block: 'nearest' }); }
+  };
+
+  const selectIndex = (idx) => {
+    const item = matches[idx];
+    if (!item) return;
+    input.value = item[displayKey];
+    hidden.value = item[idKey];
+    close();
+    if (onSelect) onSelect(item);
+  };
+
+  const openWith = (items) => {
+    matches = items || []; list.innerHTML = ''; activeIndex = -1;
+    if (!matches.length) {
+      const div = document.createElement('div');
+      div.textContent = 'Sin coincidencias'; div.style.color = '#999'; div.style.cursor = 'default';
+      list.appendChild(div); list.classList.add('active'); return;
+    }
+    matches.forEach((item, idx) => {
+      const div = document.createElement('div');
+      div.textContent = item[displayKey]; div.dataset.idx = String(idx);
+      div.addEventListener('mousedown', (e) => { e.preventDefault(); selectIndex(idx); });
+      list.appendChild(div);
+    });
+    list.classList.add('active');
+  };
+
+  const doSearch = () => {
+    const val = (input.value || '').toLowerCase().trim();
+    hidden.value = ''; // Limpia el ID si el usuario escribe
+    if (!val) { close(); if(onSelect) onSelect(null); return; }
+    const found = data.filter(item => String(item[displayKey] || '').toLowerCase().includes(val)).slice(0, 50);
+    openWith(found);
+  };
+
+  input.addEventListener('input', doSearch);
+  input.addEventListener('focus', () => { if (input.value) doSearch(); });
+  
+  // Ejecutar filtro al limpiar input
+  input.addEventListener('blur', () => {
+      setTimeout(() => { if (!input.value && !hidden.value && onSelect) onSelect(null); }, 150);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    const isOpen = list.classList.contains('active');
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (!isOpen) doSearch(); else setActive(Math.min(activeIndex + 1, matches.length - 1)); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); if (!isOpen) doSearch(); else setActive(Math.max(activeIndex - 1, 0)); return; }
+    if (e.key === 'Enter') {
+      if (isOpen && matches.length) {
+        e.preventDefault();
+        selectIndex(activeIndex < 0 ? 0 : activeIndex);
+      }
+      return;
+    }
+    if (e.key === 'Escape') { if (isOpen) { e.preventDefault(); close(); } return; }
+    if (e.key === 'Tab') close();
+  });
+}
+
+function closeAllLists(elmnt) {
+  const x = document.getElementsByClassName("autocomplete-list");
+  for (let i = 0; i < x.length; i++) {
+    if (elmnt != x[i] && elmnt != x[i].previousElementSibling) x[i].classList.remove("active");
+  }
+}
+
+// ---------------------------------------------------------
+
 function readFilterValues(){
-  const sel = $('#fClient');
   return {
     saleId : $('#fSaleId')?.value || '',
     status : $('#fStatus')?.value || '',
-    clientId: sel?.value || '',
-    clientNameSel: sel?.selectedOptions?.[0]?.textContent || '',
+    clientId: $('#fClient')?.value || '',
     from   : $('#fFrom')?.value || '',
     to     : $('#fTo')?.value || '',
     text   : ($('#fText')?.value || '').trim().toLowerCase()
@@ -265,7 +340,7 @@ async function loadDeliveries(){
 
 // ================== Aplicar filtros locales + paginar ==================
 function applyFilters(){
-  const { status, saleId, clientId, clientNameSel, from, to, text } = readFilterValues();
+  const { status, saleId, clientId, from, to, text } = readFilterValues();
   let list = ENTREGAS.slice();
 
   if (saleId){
@@ -273,11 +348,7 @@ function applyFilters(){
   }
 
   if (clientId){
-    const targetName = norm(clientNameSel);
-    list = list.filter(e => 
-      String(getClientId(e) ?? '') === String(clientId) ||
-      norm(getClientName(e)) === targetName
-    );
+    list = list.filter(e => String(getClientId(e) ?? '') === String(clientId));
   }
 
   if (status) list = list.filter(e => normStatus(getStatus(e)) === status.toUpperCase());
@@ -338,8 +409,8 @@ function render(lista){
       <div>Fecha</div>
       <div>Cliente</div>
       <div>Venta</div>
-      <div>Estado</div>
-      <div>Acciones</div>
+      <div class="text-right">Estado</div>
+      <div class="text-right">Acciones</div>
     </div>
   `;
 
@@ -381,13 +452,14 @@ function render(lista){
 
     const row = document.createElement('div');
     row.className='fila';
+    // ✅ CLASE TEXT-RIGHT APLICADA
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cliente}</div>
       <div>${saleId ? `#${saleId}` : '—'}</div>
-      <div>${pill(stN)}</div>
+      <div class="text-right">${pill(stN)}</div>
 
-      <div class="acciones">
+      <div class="acciones text-right" style="display:flex; gap:6px; flex-wrap:wrap;">
         <button type="button"
                 class="btn outline btn-remito ${disableRemito ? 'muted is-disabled' : ''}"
                 data-id="${idDel}"

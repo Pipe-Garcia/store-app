@@ -57,9 +57,9 @@
             <div>Material</div>
             <div>Depósito</div>
             <div>Cantidad</div>
-            <div>Precio</div>
-            <div>Subtotal</div>
-            <div>Acciones</div>
+            <div class="text-right">Precio</div>
+            <div class="text-right">Subtotal</div>
+            <div class="text-right">Acciones</div>
           </div>
         </div>
 
@@ -73,11 +73,9 @@
 
         <hr class="hr">
 
-        <!-- ✅ BLOQUE PAGO (se oculta para EMPLEADO) -->
         <div id="payBlock">
           <h3 class="subhead">Pago</h3>
 
-          <!-- ✅ Toggle: para OWNER el pago es OPCIONAL -->
           <label style="display:flex;align-items:center;gap:10px;margin:6px 0 10px;">
             <input type="checkbox" id="payNow">
             <span>Registrar pago ahora (opcional)</span>
@@ -87,7 +85,6 @@
             Si no registrás el pago ahora, el cobro se hace desde <b>Caja</b> / <b>Detalle de venta</b>.
           </p>
 
-          <!-- Campos de pago (se habilitan solo si payNow está activo) -->
           <div id="payFields">
             <div class="grid">
               <div>

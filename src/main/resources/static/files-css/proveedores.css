@@ -37,7 +37,7 @@
   display:flex; flex-direction:column; gap:6px; font-size:.95rem; color:#555;
 }
 .filters input[type="text"]{
-  padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
+  padding:10px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
   min-width: 180px;
 }
 #filtroEstado{
@@ -202,3 +202,26 @@ a.btn{ text-decoration:none; }
 .filters select {
   padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff; min-height: 36px;
 }
+
+.filters input[type="number"] {
+  padding: 10px 5px;
+  border: 1px solid #dfe3e6;
+  border-radius: 8px;
+  background: #fff;
+  width: 100%;
+  min-width: 140px;
+  color: #495057;
+  outline: none;
+}
+
+.filters input[type="number"]:focus {
+  border-color: #3b82f6;
+}
+
+/* Ocultar las flechas de incremento/decremento */
+#filtroDni::-webkit-outer-spin-button,
+#filtroDni::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+

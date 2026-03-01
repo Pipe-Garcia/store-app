@@ -514,24 +514,46 @@ a.btn{ text-decoration:none; }
     min-width: 100%;
   }
 
-  /* Tabla: filas más compactas y 2 columnas lógicas */
-  .tabla.materiales .fila {
+   .tabla.materiales .fila {
     grid-template-columns: 1.2fr 1.8fr;
     font-size: 0.9rem;
     padding: 8px 8px;
   }
 
-  /* Código + nombre ocupan la primera fila ya como vienen */
-  /* Las demás celdas van cayendo abajo en parejas */
-
-  /* Acciones al final, en toda la fila */
   .tabla.materiales .fila > div:nth-child(7) {
     grid-column: 1 / -1;
     justify-content: flex-start;
   }
 
-  /* Encabezado sin sticky (para que no tape todo en pantallas muy bajas) */
+
   .tabla.materiales .fila.encabezado {
     position: static;
   }
+}
+
+#priceArs::-webkit-outer-spin-button,
+#priceArs::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+
+#f_min::-webkit-outer-spin-button,
+#f_min::-webkit-inner-spin-button,
+#f_max::-webkit-outer-spin-button,
+#f_max::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* Alinear texto a la derecha en la grilla */
+.text-right {
+  text-align: right;
+  justify-self: end;
+}
+
+/* Si la columna de acciones se deformó un poco, esto la mantiene ordenada */
+.acciones.text-right {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
 }

@@ -22,7 +22,6 @@
     </div>
   </div>
 
-  <!-- Info proveedor -->
   <section class="card">
     <div class="detail-grid">
       <div>
@@ -40,15 +39,18 @@
     </div>
   </section>
 
-  <!-- Formulario de materiales -->
   <section class="card">
     <h3 class="subhead">Agregar material</h3>
     <div class="grid">
+      
       <div>
         <label for="material-input">Material</label>
-        <input type="text" id="material-input" placeholder="Buscar material..." autocomplete="off" />
-        <div id="suggestions" class="autocomplete-list"></div>
+        <div class="autocomplete-wrapper" id="ac-material-wrapper">
+          <input type="text" id="material-input" placeholder="Buscar material..." autocomplete="off" />
+          <div id="suggestions" class="autocomplete-list"></div>
+        </div>
       </div>
+
       <div>
         <label for="precio-unitario">Precio unitario</label>
         <input type="number" id="precio-unitario" step="0.01" required />
@@ -64,7 +66,6 @@
     </div>
   </section>
 
-  <!-- Lista de materiales asignados -->
   <section class="card">
   <h3 class="subhead">Materiales asignados</h3>
   <div class="tabla" id="lista-mat-proveedor">
@@ -74,8 +75,7 @@
       <div>Entrega (días)</div>
       <div>Acciones</div>
     </div>
-    <!-- filas dinámicas -->
-  </div>
+    </div>
 </section>
 
 </main>

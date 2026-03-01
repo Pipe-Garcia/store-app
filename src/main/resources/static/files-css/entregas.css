@@ -339,69 +339,64 @@ a.btn.muted:hover { transform: none; }
 
 .btn.danger:hover{ background:#c92a2a!important; }
 
+
 /* ==========================================================
-   TOM SELECT (desde cambios-febrero)
+   NUEVO AUTOCOMPLETE ESTILO FLOTANTE
    ========================================================== */
-.ts-control {
-  border: 1px solid #ced4da !important;
-  border-radius: 6px !important;
-  padding: 0 12px !important;
-  width: 200px !important;
-  min-height: 38px !important;
-  height: 38px !important;
-  box-shadow: none !important;
-  font-size: 1rem;
-  font-family: inherit;
-  background-color: #fff;
-  color: #212529;
-  display: flex !important;
-  align-items: center !important;
-  flex-wrap: nowrap !important;
-  overflow: hidden;
-}
-.ts-control > .item {
-  background: transparent !important;
-  border: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  color: inherit !important;
-  font-size: 1rem !important;
-  line-height: 1.5 !important;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+
+/* El contenedor debe ser relativo para que la lista sepa de dónde colgarse */
+.autocomplete-wrapper {
+  position: relative;
   width: 100%;
 }
-.ts-control input {
-  font-size: 1rem !important;
-  color: inherit;
-  background: transparent !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  height: 100% !important;
-  width: 100% !important;
-  position: relative;
-  top: 0;
+
+/* La lista flota por encima de los demás elementos y arranca OCULTA */
+.autocomplete-list {
+  display: none; /* ✅ OCULTA CUANDO ESTÁ VACÍA */
+  position: absolute;
+  top: 100%; 
+  left: 0;
+  width: 100%;
+  z-index: 9999; /* Flota por encima de todo */
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-top: none;
+  max-height: 250px; 
+  overflow-y: auto;
+  box-shadow: 0px 4px 6px rgba(0,0,0,0.1); 
+  border-radius: 0 0 8px 8px;
 }
-.ts-wrapper.single.input-active .ts-control .item { display: none !important; }
-.ts-wrapper.focus .ts-control {
-  border-color: #86b7fe !important;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-  outline: 0;
+
+/* Solo se muestra cuando el JavaScript le pone la clase "active" */
+.autocomplete-list.active {
+  display: block;
 }
-.ts-dropdown {
-  border: 1px solid #ced4da;
-  border-radius: 6px;
-  margin-top: 4px;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-  z-index: 9999;
-  background: #fff;
-  width: 200px !important; 
+
+/* Espaciado de cada ítem de la lista */
+.autocomplete-list div {
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  border-bottom: 1px solid #f1f1f1;
 }
-.ts-dropdown .option { padding: 8px 12px; cursor: pointer; }
-.ts-dropdown .active { background-color: #e9ecef; color: #000; }
-.ts-wrapper.single .ts-control::after {
-  border-color: #6c757d transparent transparent transparent !important;
-  border-width: 5px 5px 0 5px !important;
-  right: 10px !important;
+
+/* Estilos para la selección con flechas en el buscador de clientes */
+.autocomplete-list div:hover,
+.autocomplete-list div.is-active {
+  background-color: #eef2ff;
+  color: #1e40af;
+  cursor: pointer;
 }
+
+
+/* ==========================================================
+   MODIFICACIONES VARIAS
+   ========================================================== */
+
+/* Ocultar flechas del input ID de venta en Entregas */
+#fSaleId::-webkit-outer-spin-button,
+#fSaleId::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+

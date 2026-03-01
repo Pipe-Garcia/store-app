@@ -9,12 +9,7 @@
   <link rel="stylesheet" href="../files-css/compras.css"/>
   <link rel="stylesheet" href="../files-css/nav.css">
 
-  <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-  <!-- TomSelect (proveedor con búsqueda) -->
-  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 </head>
 
 <body>
@@ -41,14 +36,17 @@
 
     <section class="filters card">
       <div class="row">
-        <label>Buscar
-          <input type="text" id="buscarTexto" placeholder="ID o proveedor..."/>
+        
+     <label>ID Compra
+          <input type="number" id="buscarId" class="in" placeholder="ID" min="1"/>
         </label>
 
         <label>Proveedor
-          <select id="buscarProveedor" class="in">
-            <option value="">Todos</option>
-          </select>
+          <div class="autocomplete-wrapper" id="ac-proveedor-wrapper">
+            <input type="text" id="buscarProveedorSearch" class="in" placeholder="Buscar proveedor..." autocomplete="off">
+            <input type="hidden" id="buscarProveedor"> 
+            <div class="autocomplete-list"></div>
+          </div>
         </label>
 
         <label>Estado
@@ -67,7 +65,7 @@
           <input type="date" id="buscarHasta"/>
         </label>
 
-        <button id="btnLimpiar" class="btn outline">Limpiar</button>
+        <button id="btnLimpiar" class="btn outline" style="align-self: flex-end;">Limpiar</button>
       </div>
     </section>
 

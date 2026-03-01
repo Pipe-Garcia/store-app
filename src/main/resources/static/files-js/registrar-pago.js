@@ -92,7 +92,6 @@ async function guardarPago(ev){
   const amount = parseFloat($('#importe').value || '0');
   const datePayment = $('#fecha').value;
   const methodPayment = $('#metodo').value;
-  // Obtenemos el texto visible del select para la alerta (Ej: "Efectivo", "Transferencia")
   const methodText = $('#metodo').options[$('#metodo').selectedIndex].text;
 
   if(!(amount>0) || !datePayment || !methodPayment){

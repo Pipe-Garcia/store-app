@@ -58,9 +58,6 @@ let compras = [];     // [PurchaseDTO]
 let proveedores = []; // [{idSupplier, nameCompany,...}]
 let provById = new Map();
 
-// TomSelect
-let supplierSelectInstance = null;
-
 // 🔹 paginación (front)
 const PAGE_SIZE = 8;
 let page = 0;
@@ -118,18 +115,19 @@ window.addEventListener("DOMContentLoaded", async ()=>{
   // filtros
   $("#buscarDesde")?.addEventListener("change", applyFilters);
   $("#buscarHasta")?.addEventListener("change", applyFilters);
-  $("#buscarTexto")?.addEventListener("input", applyFilters);
-
-  // TomSelect dispara change manual en onChange
-  $("#buscarProveedor")?.addEventListener("change", applyFilters);
-
+  
+  // Evento al input numérico de ID
+  $("#buscarId")?.addEventListener("input", applyFilters);
   $("#buscarEstado")?.addEventListener("change", applyFilters);
   $("#btnLimpiar")?.addEventListener("click", limpiarFiltros);
+  
+  // Cerrar Autocomplete al clickear afuera
+  document.addEventListener('click', closeAllLists);
 
   // Export
   setupExport();
 
-  // ✅ Restricción de fechas Desde/Hasta
+  // Restricción de fechas Desde/Hasta
   setupDateRangeConstraint('buscarDesde', 'buscarHasta');
 });
 
@@ -159,7 +157,7 @@ async function cargarDatosBase(){
       (p.nameCompany || `${p.name??''} ${p.surname??''}`.trim() || `#${p.idSupplier}`)
     ]));
 
-    initProveedorFiltro();
+    setupProveedorAutocomplete();
 
     // ordenar por fecha desc
     compras.sort((a,b)=>{
@@ -179,15 +177,11 @@ async function cargarDatosBase(){
 function limpiarFiltros(){
   $("#buscarDesde").value     = "";
   $("#buscarHasta").value     = "";
-  $("#buscarTexto").value     = "";
+  if($("#buscarId")) $("#buscarId").value = "";
 
-  // Limpiar proveedor (TomSelect si existe)
-  if (supplierSelectInstance) {
-    supplierSelectInstance.clear();
-  } else {
-    const selProv = $("#buscarProveedor");
-    if (selProv) selProv.value = "";
-  }
+  // Limpiar Autocomplete
+  if($("#buscarProveedorSearch")) $("#buscarProveedorSearch").value = "";
+  if($("#buscarProveedor"))       $("#buscarProveedor").value = "";
 
   const selSt = $("#buscarEstado");
   if (selSt) selSt.value = "";
@@ -200,58 +194,125 @@ function limpiarFiltros(){
 }
 
 // ---------------------------------------------------------
-//  TOM SELECT INTEGRATION (Proveedor)
+//  LÓGICA AUTOCOMPLETE DE PROVEEDOR
 // ---------------------------------------------------------
-function initProveedorFiltro(){
-  const sel = document.getElementById('buscarProveedor');
-  if (!sel) return;
+function setupProveedorAutocomplete() {
+  const wrapper = $('#ac-proveedor-wrapper');
+  if (!wrapper) return;
 
-  // destruir instancia anterior si existe
-  if (supplierSelectInstance) {
-    supplierSelectInstance.destroy();
-    supplierSelectInstance = null;
-  }
+  const mapped = proveedores.map(p => {
+    const nombre = [p.name, p.surname].filter(Boolean).join(' ');
+    const empresa = p.nameCompany || '';
+    const display = empresa ? (nombre ? `${empresa} (${nombre})` : empresa) : nombre;
+    
+    return {
+      id: p.idSupplier ?? p.id,
+      fullName: display.trim() || `Proveedor #${p.idSupplier ?? p.id}`
+    };
+  });
 
-  sel.innerHTML = '<option value="">Todos</option>';
+  setupAutocomplete(wrapper, mapped, () => {
+    applyFilters();
+  }, 'fullName', 'id');
+}
 
-  proveedores
-    .slice()
-    .sort((a,b)=>{
-      const na = (a.nameCompany || `${a.name||''} ${a.surname||''}`).trim();
-      const nb = (b.nameCompany || `${b.name||''} ${b.surname||''}`).trim();
-      return na.localeCompare(nb);
-    })
-    .forEach(p=>{
-      const opt = document.createElement('option');
-      opt.value = p.idSupplier;
-      const label = (p.nameCompany || `${p.name||''} ${p.surname||''}`).trim()
-                    || `#${p.idSupplier}`;
-      opt.textContent = label;
-      sel.appendChild(opt);
-    });
+function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
+  const input  = wrapper.querySelector('input[type="text"]');
+  const hidden = wrapper.querySelector('input[type="hidden"]');
+  const list   = wrapper.querySelector('.autocomplete-list');
+  let matches = [], activeIndex = -1;
 
-  // inicializar TomSelect
-  supplierSelectInstance = new TomSelect('#buscarProveedor', {
-    create: false,
-    sortField: { field: "text", direction: "asc" },
-    placeholder: "Buscar proveedor...",
-    allowEmptyOption: true,
-    plugins: ['no_active_items'],
-    onChange: function() {
-      // Disparamos change manual para que applyFilters lo detecte
-      sel.dispatchEvent(new Event('change'));
+  const close = () => {
+    list.classList.remove('active'); list.innerHTML = '';
+    matches = []; activeIndex = -1;
+  };
+
+  const setActive = (idx) => {
+    const items = Array.from(list.children);
+    items.forEach(el => el.classList.remove('is-active'));
+    if (idx < 0 || idx >= matches.length) { activeIndex = -1; return; }
+    activeIndex = idx;
+    const el = items[idx];
+    if (el) { el.classList.add('is-active'); el.scrollIntoView({ block: 'nearest' }); }
+  };
+
+  const selectIndex = (idx) => {
+    const item = matches[idx];
+    if (!item) return;
+    input.value = item[displayKey];
+    hidden.value = item[idKey];
+    close();
+    if (onSelect) onSelect(item);
+  };
+
+  const openWith = (items) => {
+    matches = items || []; list.innerHTML = ''; activeIndex = -1;
+    if (!matches.length) {
+      const div = document.createElement('div');
+      div.textContent = 'Sin coincidencias'; div.style.color = '#999'; div.style.cursor = 'default';
+      list.appendChild(div); list.classList.add('active'); return;
     }
+    matches.forEach((item, idx) => {
+      const div = document.createElement('div');
+      div.textContent = item[displayKey]; div.dataset.idx = String(idx);
+      div.addEventListener('mousedown', (e) => { e.preventDefault(); selectIndex(idx); });
+      list.appendChild(div);
+    });
+    list.classList.add('active');
+  };
+
+  const doSearch = () => {
+    const val = (input.value || '').toLowerCase().trim();
+    hidden.value = ''; // Limpia el ID si el usuario escribe
+    if (!val) { close(); if(onSelect) onSelect(null); return; }
+    const found = data.filter(item => String(item[displayKey] || '').toLowerCase().includes(val)).slice(0, 50);
+    openWith(found);
+  };
+
+  input.addEventListener('input', doSearch);
+  input.addEventListener('focus', () => { if (input.value) doSearch(); });
+  
+  input.addEventListener('blur', () => {
+      setTimeout(() => { if (!input.value && !hidden.value && onSelect) onSelect(null); }, 150);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    const isOpen = list.classList.contains('active');
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (!isOpen) doSearch(); else setActive(Math.min(activeIndex + 1, matches.length - 1)); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); if (!isOpen) doSearch(); else setActive(Math.max(activeIndex - 1, 0)); return; }
+    if (e.key === 'Enter') {
+      if (isOpen && matches.length) {
+        e.preventDefault();
+        selectIndex(activeIndex < 0 ? 0 : activeIndex);
+      }
+      return;
+    }
+    if (e.key === 'Escape') { if (isOpen) { e.preventDefault(); close(); } return; }
+    if (e.key === 'Tab') close();
   });
 }
+
+function closeAllLists(elmnt) {
+  const x = document.getElementsByClassName("autocomplete-list");
+  for (let i = 0; i < x.length; i++) {
+    if (elmnt != x[i] && elmnt != x[i].previousElementSibling) x[i].classList.remove("active");
+  }
+}
+// ---------------------------------------------------------
 
 function applyFilters(){
   const desde = $("#buscarDesde").value || "";
   const hasta = $("#buscarHasta").value || "";
-  const q     = ($("#buscarTexto").value || "").toLowerCase();
+  const qId   = ($("#buscarId")?.value || "").trim(); // Lectura del ID
   const supplierId = $("#buscarProveedor") ? $("#buscarProveedor").value : "";
   const statusSel  = $("#buscarEstado") ? ($("#buscarEstado").value || "") : "";
 
   let list = compras.slice();
+
+  // Filtro estricto por ID
+  if (qId){
+    list = list.filter(c => String(c.idPurchase || "") === qId);
+  }
 
   if (supplierId){
     list = list.filter(c =>
@@ -274,13 +335,6 @@ function applyFilters(){
     const iso = dateISO(c.datePurchase);
     return !iso || iso <= hasta;
   });
-
-  if (q){
-    list = list.filter(c =>
-      String(c.idPurchase||"").includes(q) ||
-      (displaySupplier(c)||"").toLowerCase().includes(q)
-    );
-  }
 
   comprasFiltradas = list;
   page = 0;
@@ -340,13 +394,15 @@ function renderPager(totalElems, totalPages){
 // ========= Render =========
 function renderLista(lista){
   const cont = $("#lista-compras");
+  
+  // ✅ Nuevo orden de encabezados: ID, Fecha, Proveedor, Estado, Total, Acciones
   cont.innerHTML = `
     <div class="fila encabezado">
       <div>ID</div>
       <div>Fecha</div>
       <div>Proveedor</div>
-      <div>Total</div>
       <div>Estado</div>
+      <div class="text-right">Total</div>
       <div>Acciones</div>
     </div>
   `;
@@ -379,12 +435,14 @@ function renderLista(lista){
 
     const row = document.createElement("div");
     row.className="fila";
+    
+    // ✅ Nuevo orden de datos y Total con text-right
     row.innerHTML = `
       <div>${id || "-"}</div>
       <div>${fmtDate(c.datePurchase)}</div>
       <div>${displaySupplier(c)}</div>
-      <div>${fmtARS.format(total)}</div>
       <div>${purchaseStatusPillHtml(st)}</div>
+      <div class="text-right strong-text">${fmtARS.format(total)}</div>
       <div class="acciones">
         <a class="btn outline" href="detalle-compra.html?id=${id}" title="Ver detalle">👁️</a>
         ${editBtnHtml}

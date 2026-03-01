@@ -46,10 +46,21 @@
               <option value="">Seleccionar…</option>
             </select>
           </div>
-
+          
           <div>
             <label for="measurementUnit">Unidad de medida</label>
             <input id="measurementUnit" type="text" placeholder="unidad, caja, kg…">
+          </div>
+
+          <div>
+            <label for="warehouseId">Depósito inicial</label>
+            <select id="warehouseId" required>
+              <option value="">Seleccionar…</option>
+            </select> </div>
+            
+          <div>
+            <label for="initialQuantity">Cantidad inicial</label>
+            <input id="initialQuantity" type="number" step="1" min="0" required>
           </div>
 
           <div style="grid-column:1/-1;">
@@ -57,16 +68,9 @@
             <textarea id="description" rows="3" placeholder="Detalle del material"></textarea>
           </div>
 
-          <div>
-            <label for="warehouseId">Depósito inicial</label>
-            <select id="warehouseId" required>
-              <option value="">Seleccionar…</option>git
-          <div>
-            <label for="initialQuantity">Cantidad inicial</label>
-            <input id="initialQuantity" type="number" step="1" min="0" required>
-          </div>
-
-        </div> <div class="form-actions">
+        </div> 
+        
+        <div class="form-actions" style="margin-top: 20px;">
           <button type="submit" class="btn primary">Crear material</button>
           <button type="button" class="btn outline" id="btnCancelar">Cancelar</button>
         </div>

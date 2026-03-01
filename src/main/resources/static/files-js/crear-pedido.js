@@ -221,7 +221,6 @@ function closeAllLists(elmnt) {
   }
 }
 
-
 function setupClientAutocomplete(){
   const wrapper = $('#ac-cliente-wrapper');
   if(!wrapper) return;
@@ -257,19 +256,25 @@ function addRow(){
   qtyIn.value = 1; 
   qtyIn.min = 1;
 
+  // APLICANDO TEXT-RIGHT A LAS COLUMNAS DE PRECIO
   const priceDiv = document.createElement('div');
-  priceDiv.className = 'price'; 
+  priceDiv.className = 'price text-right'; 
   priceDiv.textContent = '$ 0,00';
 
   const subDiv = document.createElement('div');
-  subDiv.className = 'col-subtotal'; 
+  subDiv.className = 'col-subtotal text-right strong-text'; 
   subDiv.textContent = '$ 0,00';
+
+  const btnDelWrapper = document.createElement('div');
+  btnDelWrapper.className = 'text-right'; // Para empujar el botón al final
 
   const btnDel = document.createElement('button');
   btnDel.type = 'button';
   btnDel.className = 'btn danger small';
   btnDel.innerHTML = '🗑️';
   btnDel.onclick = (e) => { e.preventDefault(); row.remove(); recalc(); };
+
+  btnDelWrapper.appendChild(btnDel);
 
   // 3. Activar Autocomplete para esta fila
   const wrapper = matCol.querySelector('.autocomplete-wrapper');
@@ -283,7 +288,7 @@ function addRow(){
 
   qtyIn.oninput = recalc;
 
-  row.append(matCol, wrap(qtyIn), priceDiv, subDiv, btnDel);
+  row.append(matCol, wrap(qtyIn), priceDiv, subDiv, btnDelWrapper);
   cont.appendChild(row);
 }
 
