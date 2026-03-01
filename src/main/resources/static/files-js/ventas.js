@@ -539,7 +539,7 @@ function renderListSkeleton(){
       <div>Cliente</div>
       <div>Estado</div>
       <div class="text-right">Total</div>
-      <div class="text-right">Acciones</div>
+      <div>Acciones</div>
     </div>
     <div class="fila">
       <div style="grid-column:1/-1;color:#777;">Cargando…</div>
@@ -564,7 +564,7 @@ function renderLista(lista){
       <div>Cliente</div>
       <div>Estado</div>
       <div class="text-right">Total</div>
-      <div class="text-right">Acciones</div>
+      <div>Acciones</div>
     </div>
   `;
 
@@ -621,7 +621,7 @@ function renderLista(lista){
       <div>${cli}</div>
       <div>${estadoCellHtml(v)}</div>
       <div class="text-right strong-text">${totalStr}</div>
-      <div class="acciones text-right" style="display:flex; gap:6px; flex-wrap:wrap;">
+      <div class="acciones" style="display:flex; gap:6px; flex-wrap:wrap;">
         ${viewBtn}
         ${cobrarBtn}
         ${editBtn}

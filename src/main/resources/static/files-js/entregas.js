@@ -49,12 +49,28 @@ const fmtDate = (s)=>{
 // getters tolerantes
 const getDeliveryId = x => x?.idDelivery ?? x?.id ?? x?.deliveryId ?? null;
 const getSaleId     = x => x?.saleId ?? x?.salesId ?? x?.idSale ?? x?.sale?.idSale ?? x?.sale?.id ?? null;
-const getClientId   = x => x?.clientId ?? x?.client?.idClient ?? x?.client?.id ?? null;
-const getClientName = x => (
-  x?.clientName ??
-  x?.customerName ??
-  [x?.client?.name, x?.client?.surname].filter(Boolean).join(' ')
-).trim();
+const getClientId = (x) =>
+  x?.clientId ??
+  x?.client?.idClient ??
+  x?.client?.id ??
+  x?.sale?.clientId ??
+  x?.sale?.client?.idClient ??
+  x?.sale?.client?.id ??
+  x?.orders?.clientId ??
+  x?.orders?.client?.idClient ??
+  null;
+
+const getClientName = (x) => {
+  const v =
+    x?.clientName ??
+    x?.customerName ??
+    x?.sale?.clientName ??
+    x?.sale?.customerName ??
+    (([x?.client?.name, x?.client?.surname].filter(Boolean).join(' ') || '') ||
+    ([x?.sale?.client?.name, x?.sale?.client?.surname].filter(Boolean).join(' ') || '')) ??
+    '';
+  return String(v).trim();
+};
 const getDateISO    = x => (x?.deliveryDate ?? x?.date ?? '').toString().slice(0,10) || '';
 const getStatus     = x => (x?.status ?? '').toString().toUpperCase();
 
@@ -348,7 +364,14 @@ function applyFilters(){
   }
 
   if (clientId){
-    list = list.filter(e => String(getClientId(e) ?? '') === String(clientId));
+    const wantedName = norm($('#fClienteSearch')?.value || '');
+    list = list.filter(e => {
+      const cid = getClientId(e);
+      if (cid != null) return String(cid) === String(clientId);
+      // fallback si el back no manda clientId pero sí manda nombre
+      if (wantedName) return norm(getClientName(e)) === wantedName;
+      return true;
+    });
   }
 
   if (status) list = list.filter(e => normStatus(getStatus(e)) === status.toUpperCase());

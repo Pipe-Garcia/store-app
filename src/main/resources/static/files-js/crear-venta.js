@@ -45,6 +45,178 @@ function todayStr(){
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 const sleep = (ms)=> new Promise(r=>setTimeout(r,ms));
 
+// ================== INPUT SANITIZERS ==================
+function onlyDigits(s){
+  return String(s ?? '').replace(/\D+/g, '');
+}
+
+/**
+ * Devuelve un string numérico NORMALIZADO para backend:
+ * - solo dígitos + 1 separador decimal
+ * - acepta "," o "."
+ * - normaliza a "." como decimal
+ * - máx 2 decimales
+ * Ej: "$ 80.000,50" -> "80000.50"
+ */
+function sanitizeMoneyString(raw){
+  let s = String(raw ?? '').trim();
+
+  // quitar todo menos dígitos, coma y punto
+  s = s.replace(/[^\d.,]/g, '');
+  if (!s) return '';
+
+  // si hay comas y puntos, asumimos que:
+  // - el ÚLTIMO separador es decimal
+  // - los anteriores eran miles
+  const lastComma = s.lastIndexOf(',');
+  const lastDot   = s.lastIndexOf('.');
+  const decPos = Math.max(lastComma, lastDot);
+
+  let intPart = s;
+  let decPart = '';
+
+  if (decPos >= 0){
+    intPart = s.slice(0, decPos);
+    decPart = s.slice(decPos + 1);
+  }
+
+  // int: solo dígitos
+  intPart = intPart.replace(/\D+/g, '');
+
+  // dec: solo dígitos, máx 2
+  decPart = decPart.replace(/\D+/g, '').slice(0, 2);
+
+  // si no quedó nada
+  if (!intPart && !decPart) return '';
+
+  return decPart ? `${intPart || '0'}.${decPart}` : `${intPart || '0'}`;
+}
+
+function parseMoney(raw){
+  const s = sanitizeMoneyString(raw);
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseMoney0(raw){
+  return parseMoney(raw) ?? 0;
+}
+
+// ===== Money input PRO: muestra ARS pero guarda raw limpio en dataset.raw =====
+const fmtARSInput = new Intl.NumberFormat('es-AR', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2
+});
+
+function moneyEditStringFromRaw(raw){
+  // "80000.5" -> "80000,5" (sin miles, sin $)
+  const s = String(raw ?? '').trim();
+  return s ? s.replace('.', ',') : '';
+}
+
+function moneyDisplayString(n, withSymbol=true){
+  const txt = fmtARSInput.format(Number(n || 0));
+  return withSymbol ? `$ ${txt}` : txt;
+}
+
+function setMoneyInput(el, n, { withSymbol=true } = {}){
+  if (!el) return;
+  const raw = Number(n || 0).toFixed(2);
+  // guardamos raw limpio para backend
+  el.dataset.raw = raw;
+  // mostramos ARS bonito
+  el.value = moneyDisplayString(Number(raw), withSymbol);
+}
+
+function clearMoneyInput(el){
+  if (!el) return;
+  el.value = '';
+  el.dataset.raw = '';
+}
+
+/**
+ * PRO:
+ * - input: solo deja números y 1 decimal (', o .')
+ * - focus: vuelve a "modo edición" (sin miles / sin $)
+ * - blur: formatea ARS (miles + coma) y mantiene dataset.raw
+ */
+function bindMoneyInputPro(id, {
+  withSymbol = true,
+  invalidTitle = 'Importe inválido',
+  invalidText  = 'Ingresá un importe válido (>= 0).'
+} = {}){
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  const setRaw = (raw) => { el.dataset.raw = raw ? String(raw) : ''; };
+
+  el.addEventListener('focus', () => {
+    const n = parseMoney(el.dataset.raw || el.value);
+    if (n != null){
+      const raw = sanitizeMoneyString(String(n));
+      setRaw(raw);
+      el.value = moneyEditStringFromRaw(raw); // editable
+    }
+    setTimeout(() => el.select?.(), 0);
+  });
+
+  el.addEventListener('input', () => {
+    const raw = sanitizeMoneyString(el.value);
+    setRaw(raw);
+    el.value = moneyEditStringFromRaw(raw); // editable (sin miles)
+  });
+
+  // pegar: lo sanitizamos
+  el.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const txt = (e.clipboardData || window.clipboardData).getData('text');
+    const raw = sanitizeMoneyString(txt);
+    setRaw(raw);
+    el.value = moneyEditStringFromRaw(raw);
+    el.dispatchEvent(new Event('input'));
+  });
+
+  el.addEventListener('blur', async () => {
+    const raw = el.dataset.raw || sanitizeMoneyString(el.value);
+    if (!raw) { clearMoneyInput(el); return; }
+
+    const n = parseMoney(raw);
+    if (n == null || n < 0) {
+      el.classList.add('invalid');
+      await Swal.fire(invalidTitle, invalidText, 'warning');
+      clearMoneyInput(el);
+      return;
+    }
+    el.classList.remove('invalid');
+
+    // normalizo raw y muestro ARS
+    const rawNorm = n.toFixed(2);
+    setRaw(rawNorm);
+    el.value = moneyDisplayString(n, withSymbol);
+  });
+}
+
+// helper: SIEMPRE leer importe desde dataset.raw (o value si no existe)
+function getMoneyNumber(elOrId){
+  const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
+  const raw = el?.dataset?.raw || el?.value || '';
+  return parseMoney0(raw);
+}
+
+function alertInvalidQtyAndFix(inputEl){
+  Swal.fire({
+    icon: 'warning',
+    title: 'Cantidad inválida',
+    text: 'Ingresá una cantidad válida (número entero mayor a 0).',
+    confirmButtonText: 'Entendido'
+  }).then(() => {
+    inputEl.value = '1';
+    inputEl.focus();
+    inputEl.select();
+  });
+}
+
 /* ===== Estado ===== */
 let materials=[], warehouses=[], clients=[];
 let lockedClientId = null;
@@ -112,7 +284,7 @@ function setPayNow(enabled){
   if (help) { help.style.display = 'none'; help.textContent = ''; }
 
   if (!PAY_NOW){
-    if (imp) imp.value = '';
+    if (imp) clearMoneyInput(imp);
     if (fec) fec.value = '';
     if (met) met.value = '';
     return;
@@ -121,8 +293,8 @@ function setPayNow(enabled){
   // defaults
   if (fec && !fec.value) fec.value = todayStr();
   if (met && !met.value) met.value = 'CASH';
-  if (imp && (!imp.value || Number(imp.value) <= 0) && CURRENT_TOTAL > 0) {
-    imp.value = CURRENT_TOTAL.toFixed(2);
+  if (imp && (!imp.dataset.raw && !imp.value) && CURRENT_TOTAL > 0) {
+    setMoneyInput(imp, CURRENT_TOTAL, { withSymbol:true });
   }
 }
 
@@ -515,13 +687,16 @@ function addRow(prefill){
   // 2. DEPÓSITO
   const whSel = document.createElement('select');
   whSel.className='in-wh';
-  whSel.innerHTML = `<option value="">(Seleccione material)</option>`;
+  whSel.innerHTML = `<option value="">(Seleccione Material)</option>`;
 
   // 3. CANTIDAD
   const qty = document.createElement('input');
-  qty.type='number'; qty.min='1'; qty.step='1';
-  qty.value = prefill?.qty ?? 1;
-  qty.className='in-qty';
+  qty.type = 'text';
+  qty.inputMode = 'numeric';
+  qty.autocomplete = 'off';
+  qty.placeholder = '1';
+  qty.value = String(prefill?.qty ?? 1);
+  qty.className = 'in-qty';
 
   // ✅ 4. PRECIO CON TEXT-RIGHT
   const price = document.createElement('div'); 
@@ -558,7 +733,7 @@ function addRow(prefill){
     try{
       const r = await authFetch(API_URL_STOCKS_BY_MAT(selectedMat.idMaterial));
       const list = r.ok ? await r.json() : [];
-      whSel.innerHTML = `<option value="">Depósito...</option>`;
+      whSel.innerHTML = `<option value="">(Seleccionar Depósito)</option>`;
 
       list.forEach(w=>{
         const o=document.createElement('option');
@@ -613,7 +788,28 @@ function addRow(prefill){
   };
 
   whSel.onchange = () => { validateMaxQty(); recalc(); };
-  qty.oninput    = () => { validateMaxQty(); recalc(); };
+
+  // ✅ Solo dígitos + validar al salir
+  qty.addEventListener('input', () => {
+    const cleaned = onlyDigits(qty.value);
+    if (qty.value !== cleaned) qty.value = cleaned;
+    validateMaxQty();
+    recalc();
+  });
+
+  qty.addEventListener('blur', () => {
+    const q = Number(onlyDigits(qty.value));
+    if (!q || q <= 0) {
+      alertInvalidQtyAndFix(qty);
+      // recalcular después del fix
+      setTimeout(() => { validateMaxQty(); recalc(); }, 0);
+      return;
+    }
+    // normaliza (quita ceros raros)
+    qty.value = String(q);
+    validateMaxQty();
+    recalc();
+  });
 
   // ✅ Agregamos el wrapper en vez del botón directamente
   row.append(matCol, wrap(whSel), wrap(qty), price, sub, btnDelWrapper);
@@ -644,8 +840,11 @@ function recalc(){
 
   const payInput = $('#pagoImporte');
   if (PAY_NOW && payInput) {
-    // solo autocompleta si el user no lo tocó
-    if (!PAY_DIRTY) payInput.value = total > 0 ? total.toFixed(2) : '';
+    // ✅ solo auto-completa si el user no lo tocó y NO está editando justo ahora
+    if (!PAY_DIRTY && document.activeElement !== payInput) {
+      if (total > 0) setMoneyInput(payInput, total, { withSymbol:true });
+      else clearMoneyInput(payInput);
+    }
     validatePaymentField();
   }
 }
@@ -654,6 +853,13 @@ function recalc(){
 function setupPaymentField(){
   const $imp = $('#pagoImporte');
   if (!$imp) return;
+
+  // ✅ activar modo PRO (formato ARS en blur)
+  bindMoneyInputPro('pagoImporte', {
+    withSymbol: true,
+    invalidTitle: 'Importe inválido',
+    invalidText: 'Ingresá un importe válido (>= 0).'
+  });
 
   let help = document.getElementById('pagoImporteHelp');
   if (!help){
@@ -664,13 +870,17 @@ function setupPaymentField(){
     $imp.insertAdjacentElement('afterend', help);
   }
 
+  // ✅ marcar dirty si el user toca el importe
   $imp.addEventListener('input', ()=>{
     PAY_DIRTY = true;
     validatePaymentField();
   });
 
-  $('#pagoFecha')?.addEventListener('change', ()=>{ /* no-op */ });
-  $('#pagoMetodo')?.addEventListener('change', ()=>{ /* no-op */ });
+  // al salir, ya queda formateado y revalidamos
+  $imp.addEventListener('blur', ()=> validatePaymentField());
+
+  $('#pagoFecha')?.addEventListener('change', ()=>{});
+  $('#pagoMetodo')?.addEventListener('change', ()=>{});
 }
 
 function validatePaymentField(){
@@ -681,7 +891,7 @@ function validatePaymentField(){
   if (!$imp || !help) return;
 
   const total = Number(CURRENT_TOTAL || 0);
-  const val   = Number($imp.value || 0);
+  const val = getMoneyNumber($imp);
 
   if (!total || !val){
     $imp.classList.remove('input-error');
@@ -779,8 +989,23 @@ async function guardar(e){
   for (const row of rows){
     const matId = Number(row.querySelector('.in-mat-id').value || 0);
     const whId  = Number(row.querySelector('.in-wh').value || 0);
-    const qty   = Number(row.querySelector('.in-qty').value || 0);
-    if (matId && whId && qty>0) items.push({ materialId: matId, warehouseId: whId, quantity: qty });
+    const qtyRaw = row.querySelector('.in-qty')?.value ?? '';
+    const qty = Number(onlyDigits(qtyRaw));
+
+    if (!qty || qty <= 0) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Cantidad inválida',
+        text: 'Hay un ítem con cantidad inválida. Corregilo para continuar.',
+        confirmButtonText: 'OK'
+      });
+      row.querySelector('.in-qty')?.focus();
+      return;
+    }
+
+    if (matId && whId) {
+      items.push({ materialId: matId, warehouseId: whId, quantity: qty });
+    }
   }
 
   if(!items.length){ notify('Agregá al menos un ítem válido','error'); return; }
@@ -793,7 +1018,7 @@ async function guardar(e){
     const $fec = $('#pagoFecha');
     const $met = $('#pagoMetodo');
 
-    const amount = Number($imp.value || 0);
+    const amount = getMoneyNumber($imp);
     const method = ($met.value || '').trim();
     const pdate  = $fec.value;
 
@@ -812,7 +1037,7 @@ async function guardar(e){
   }
 
   const confirmHtml = PAY_ENABLED
-    ? `Se registrará una venta por <b>${fmtARS.format(CURRENT_TOTAL)}</b> y el pago quedará aplicado.`
+    ? `Se registrará una venta por <b>${fmtARS.format(CURRENT_TOTAL)}</b> y el stock será descontado.`
     : `Se registrará una venta por <b>${fmtARS.format(CURRENT_TOTAL)}</b>.<br>El cobro se realizará desde <b>Caja</b>.`;
 
   const result = await Swal.fire({

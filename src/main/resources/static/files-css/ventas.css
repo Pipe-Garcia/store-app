@@ -266,7 +266,7 @@ a.btn.muted:hover{ transform:none; }
 .muted{ color:var(--c-muted); }
 .detail-grid .muted{ color:var(--c-muted); }
 
-.form-page.narrow{ max-width:1000px; margin:0 auto; }
+.form-page.narrow{ max-width:1050px; margin:0 auto; }
 .form-page .card{
   border: 1px solid #e9ecef;
   background:#fff;

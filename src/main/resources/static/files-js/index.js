@@ -1199,8 +1199,7 @@ function finLabelMethod(k){
   if (key === 'CASH') return 'Efectivo';
   if (key === 'TRANSFER') return 'Transferencia';
   if (key === 'CARD') return 'Tarjeta';
-  if (key === 'OTHER') return 'Otro';
-  return key || 'Otro';
+  return key || '—';
 }
 
 function setMoney(id, val){
@@ -1379,10 +1378,11 @@ function renderInMethodDonut7d(win7){
   const list = Array.isArray(win7.incomeByMethod) ? win7.incomeByMethod : [];
   const rows = list
     .map(x => ({ k: String(x.key||'').toUpperCase(), v: Number(x.total||0) }))
-    .filter(x => x.v > 0);
+    .filter(x => x.v > 0)
+    .filter(x => x.k !== 'OTHER'); // ✅ fuera "OTRO"
 
   // Orden humano
-  const order = ['CASH','TRANSFER','CARD','OTHER'];
+  const order = ['CASH','TRANSFER','CARD'];
   rows.sort((a,b)=> order.indexOf(a.k) - order.indexOf(b.k));
 
   const labels = rows.map(x => finLabelMethod(x.k));
@@ -1400,7 +1400,7 @@ function renderInMethodDonut7d(win7){
       labels,
       datasets:[{
         data,
-        backgroundColor:[s1, s2, s3, s1], // 4 segmentos soportados
+        backgroundColor:[s1, s2, s3],
         borderColor: card,
         borderWidth: 2
       }]

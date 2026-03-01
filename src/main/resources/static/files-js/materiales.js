@@ -36,6 +36,151 @@ function escapeHtml(s){
 
 const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
 
+let LAST_PRICE_EDIT = null;
+let __priceAlertLock = false;
+
+function sanitizeMoneyString(raw){
+  let s = String(raw ?? '').replace(/\s+/g,'');
+  // deja solo dígitos y separadores
+  s = s.replace(/[^0-9.,]/g,'');
+
+  if (!s) return '';
+
+  const lastDot = s.lastIndexOf('.');
+  const lastCom = s.lastIndexOf(',');
+  const decPos  = Math.max(lastDot, lastCom);
+
+  if (decPos >= 0){
+    const intPart = s.slice(0, decPos).replace(/[.,]/g,'');
+    const decPart = s.slice(decPos + 1).replace(/[.,]/g,'').slice(0, 2); // max 2 dec
+    return decPart.length ? `${intPart}.${decPart}` : intPart;
+  }
+
+  // sin decimales: saco separadores
+  return s.replace(/[.,]/g,'');
+}
+
+function parseMoney(raw){
+  const s = sanitizeMoneyString(raw);
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+// ===== Money input PRO: muestra ARS pero guarda raw limpio =====
+const fmtARSInput = new Intl.NumberFormat('es-AR', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2
+});
+
+function moneyEditStringFromRaw(raw){
+  // raw interno usa punto decimal: "80000.5" -> "80000,5" (sin miles)
+  const s = String(raw ?? '').trim();
+  return s ? s.replace('.', ',') : '';
+}
+
+function moneyDisplayString(n, withSymbol=true){
+  const txt = fmtARSInput.format(Number(n || 0));
+  return withSymbol ? `$ ${txt}` : txt;
+}
+
+function bindMoneyInputPro(id, { withSymbol = false } = {}){
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  const setRaw = (raw) => { el.dataset.raw = raw ? String(raw) : ''; };
+
+  // al enfocar: vuelvo a modo edición (sin miles, sin $)
+  el.addEventListener('focus', () => {
+    // si venía formateado, lo parseo y regenero raw
+    const n = parseMoney(el.dataset.raw || el.value);
+    if (n != null) {
+      const raw = sanitizeMoneyString(String(n));
+      setRaw(raw);
+      el.value = moneyEditStringFromRaw(raw);
+    } else {
+      // si no hay número, dejo como esté
+    }
+    // select all para editar rápido (opcional)
+    setTimeout(() => el.select?.(), 0);
+  });
+
+  // mientras escribe: sanitizo y voy guardando raw
+  el.addEventListener('input', () => {
+    const before = el.value;
+    const raw = sanitizeMoneyString(before);   // queda "1234.56"
+    setRaw(raw);
+
+    // lo muestro en modo edición (sin miles, sin $)
+    const edit = moneyEditStringFromRaw(raw);
+    if (before !== edit) el.value = edit;
+  });
+
+  // al salir: muestro ARS (con miles) pero dejo raw en dataset
+  el.addEventListener('blur', async () => {
+    const raw = el.dataset.raw || sanitizeMoneyString(el.value);
+    if (!raw) { el.value = ''; setRaw(''); return; }
+
+    const n = parseMoney(raw);
+    if (n == null || n < 0) {
+      el.classList.add('invalid');
+      await Swal.fire('Precio inválido', 'Ingresá un número válido (>= 0).', 'warning');
+      el.value = '';
+      setRaw('');
+      return;
+    }
+
+    el.classList.remove('invalid');
+
+    // normalizo raw a 2 dec (pero sin obligar .00 visualmente)
+    const rawNorm = n.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+    setRaw(rawNorm);
+
+    // visual ARS
+    el.value = moneyDisplayString(n, withSymbol);
+  });
+}
+
+// helper: obtener número para lógica/payload
+function getMoneyNumber(id){
+  const el = typeof id === 'string' ? document.getElementById(id) : id;
+  const raw = el?.dataset?.raw || el?.value || '';
+  return parseMoney(raw);
+}
+
+function bindMoneyInput(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  // sanitiza mientras escribe (no deja letras / múltiples separadores)
+  el.addEventListener('input', () => {
+    const before = el.value;
+    const after  = sanitizeMoneyString(before);
+    if (before !== after) el.value = after;
+  });
+
+  // normaliza al salir (opcional: deja 2 dec si los hay)
+  el.addEventListener('blur', async () => {
+    if (!el.value) return;
+
+    const n = parseMoney(el.value);
+    if (n == null){
+      el.classList.add('invalid');
+      if (!__priceAlertLock){
+        __priceAlertLock = true;
+        await Swal.fire('Precio inválido', 'Ingresá solo números (opcional: decimales).', 'warning');
+        __priceAlertLock = false;
+      }
+      el.value = '';
+      return;
+    }
+
+    // deja “bonito”: sin .00, pero con hasta 2 dec
+    const fixed = n.toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1');
+    el.value = fixed;
+  });
+}
+
 /* ============ Notificaciones con SweetAlert2 (Toast) ============ */
 const Toast = Swal.mixin({
   toast: true,
@@ -113,8 +258,11 @@ function bindFiltros(){
 
   $('#f_code') ?.addEventListener('input', deb);
   $('#f_name') ?.addEventListener('input', deb);
-  $('#f_min')  ?.addEventListener('input', deb);
-  $('#f_max')  ?.addEventListener('input', deb);
+  bindMoneyInputPro('f_min', { withSymbol:false });
+  bindMoneyInputPro('f_max', { withSymbol:false });
+
+  $('#f_min')?.addEventListener('input', ()=>{ LAST_PRICE_EDIT = 'min'; deb(); });
+  $('#f_max')?.addEventListener('input', ()=>{ LAST_PRICE_EDIT = 'max'; deb(); });
 
   $('#f_family')?.addEventListener('change', buscarServidor);
   $('#f_stock') ?.addEventListener('change', buscarServidor);
@@ -124,28 +272,50 @@ function bindFiltros(){
 }
 
 function validateRanges(){
-  const min = Number($('#f_min')?.value || 0);
-  const max = Number($('#f_max')?.value || 0);
-  const elMin = $('#f_min'), elMax = $('#f_max');
+  const elMin = $('#f_min');
+  const elMax = $('#f_max');
+
   elMin?.classList.remove('invalid');
   elMax?.classList.remove('invalid');
 
-  if (elMin?.value && min < 0) {
+  const hasMin = !!(elMin?.value || '').trim();
+  const hasMax = !!(elMax?.value || '').trim();
+
+  const min = getMoneyNumber('f_min');
+  const max = getMoneyNumber('f_max');
+
+  // inválidos
+  if (hasMin && (min == null || min < 0)){
     elMin.classList.add('invalid');
-    notify('Precio mínimo inválido', 'error');
+    Swal.fire('Precio mínimo inválido', 'Ingresá un número válido (>= 0).', 'warning');
     return false;
   }
-  if (elMax?.value && max < 0) {
+  if (hasMax && (max == null || max < 0)){
     elMax.classList.add('invalid');
-    notify('Precio máximo inválido', 'error');
+    Swal.fire('Precio máximo inválido', 'Ingresá un número válido (>= 0).', 'warning');
     return false;
   }
-  if (elMin?.value && elMax?.value && min > max) {
-    elMin.classList.add('invalid');
-    elMax.classList.add('invalid');
-    notify('El mínimo no puede ser mayor que el máximo', 'error');
-    return false;
+
+  // coherencia min/max (autocorrige en vez de bloquear)
+  if (hasMin && hasMax && min != null && max != null && min > max){
+    // si el user estaba editando MIN, subimos MAX; si editaba MAX, bajamos MIN
+    if (LAST_PRICE_EDIT === 'min') elMax.value = elMin.value;
+    else if (LAST_PRICE_EDIT === 'max') elMin.value = elMax.value;
+    else {
+      const tmp = elMin.value;
+      elMin.value = elMax.value;
+      elMax.value = tmp;
+    }
+
+    Swal.fire({
+      icon: 'info',
+      title: 'Rango ajustado',
+      text: 'El mínimo no puede ser mayor que el máximo. Se corrigió automáticamente.',
+      timer: 1600,
+      showConfirmButton: false
+    });
   }
+
   return true;
 }
 
@@ -170,10 +340,18 @@ function buildSearchQuery(){
   if (name) terms.push(name);
   if (terms.length) p.set('q', terms.join(' '));
 
-  const min = $('#f_min')?.value;
-  if (min) p.set('minPrice', min);
+  const elMin = document.getElementById('f_min');
+  const elMax = document.getElementById('f_max');
 
-  const max = $('#f_max')?.value;
+  const min = (elMin?.value || '').trim()
+    ? (elMin.dataset.raw || sanitizeMoneyString(elMin.value))
+    : '';
+
+  const max = (elMax?.value || '').trim()
+    ? (elMax.dataset.raw || sanitizeMoneyString(elMax.value))
+    : '';
+
+  if (min) p.set('minPrice', min);
   if (max) p.set('maxPrice', max);
 
   return p.toString();
@@ -198,12 +376,21 @@ async function cargarFamiliasFiltro(){
 
 function limpiarFiltros(){
   ['f_code','f_name','f_family','f_min','f_max','f_stock','f_status'].forEach(id=>{
-    const el=$('#'+id);
+    const el = $('#'+id);
     if(!el) return;
+
     if (id === 'f_status') el.value = 'ACTIVE';
     else el.value = '';
+
+    // ✅ IMPORTANTÍSIMO: si es money PRO, borrar el raw también
+    if (id === 'f_min' || id === 'f_max') {
+      el.dataset.raw = '';
+    }
+
     el.classList && el.classList.remove('invalid');
   });
+
+  LAST_PRICE_EDIT = null;
   buscarServidor();
 }
 
