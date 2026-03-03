@@ -290,6 +290,11 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
     if (e.key === 'Escape') { if (isOpen) { e.preventDefault(); close(); } return; }
     if (e.key === 'Tab') close();
   });
+
+  // ✅ NUEVO: Validación en vivo para evitar que se ingresen números en el buscador de proveedores
+  input.addEventListener('input', function() {
+    this.value = this.value.replace(/[0-9]/g, '');
+  });
 }
 
 function closeAllLists(elmnt) {
@@ -395,7 +400,7 @@ function renderPager(totalElems, totalPages){
 function renderLista(lista){
   const cont = $("#lista-compras");
   
-  // ✅ Nuevo orden de encabezados: ID, Fecha, Proveedor, Estado, Total, Acciones
+  // Nuevo orden de encabezados: ID, Fecha, Proveedor, Estado, Total, Acciones
   cont.innerHTML = `
     <div class="fila encabezado">
       <div>ID</div>
@@ -436,7 +441,7 @@ function renderLista(lista){
     const row = document.createElement("div");
     row.className="fila";
     
-    // ✅ Nuevo orden de datos y Total con text-right
+    // Nuevo orden de datos y Total con text-right
     row.innerHTML = `
       <div>${id || "-"}</div>
       <div>${fmtDate(c.datePurchase)}</div>

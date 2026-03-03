@@ -119,8 +119,17 @@ window.addEventListener('DOMContentLoaded', async () => {
 function bindFilters() {
   const deb = debounce(applyLocalFilters, 300);
 
-  $('#filtroDni')?.addEventListener('input', deb);
-  $('#filtroNombre')?.addEventListener('input', deb);
+  // ✅ NUEVO: Validación en vivo para DNI (solo números)
+  $('#filtroDni')?.addEventListener('input', function() {
+    this.value = this.value.replace(/[^0-9]/g, ''); // Elimina todo lo que NO sea número
+    deb();
+  });
+
+  // ✅ NUEVO: Validación en vivo para Nombre (sin números)
+  $('#filtroNombre')?.addEventListener('input', function() {
+    this.value = this.value.replace(/[0-9]/g, ''); // Elimina cualquier número
+    deb();
+  });
   
   // Cambiar estado recarga desde backend (para incluir/excluir inactivos)
   $('#filtroEstado')?.addEventListener('change', reloadFromBackend);

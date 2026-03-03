@@ -74,8 +74,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  $('#filtroNombre')    ?.addEventListener('input', () => { currentPage = 0; applyFilters(); });
-  $('#filtroLocalidad')?.addEventListener('input', () => { currentPage = 0; applyFilters(); });
+  // ✅ NUEVO: Validación en vivo para evitar números en el Nombre
+  $('#filtroNombre')?.addEventListener('input', function() {
+    this.value = this.value.replace(/[0-9]/g, '');
+    currentPage = 0; 
+    applyFilters(); 
+  });
+
+  // ✅ NUEVO: Validación en vivo para evitar números en la Localidad
+  $('#filtroLocalidad')?.addEventListener('input', function() {
+    this.value = this.value.replace(/[0-9]/g, '');
+    currentPage = 0; 
+    applyFilters(); 
+  });
+
   $('#btnLimpiar')      ?.addEventListener('click', limpiarFiltros);
 
   // ✅ LÓGICA DE MENSAJE FLASH (Cartel de éxito al volver de crear)

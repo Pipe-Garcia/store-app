@@ -17,9 +17,9 @@
 
 /* ====== Cards ====== */
 .card{
+  border: 1px solid #e9ecef;
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
-  box-shadow: var(--shadow);
   margin: 10px 0 14px 0;
 }
 
@@ -204,7 +204,7 @@ a.btn{ text-decoration:none; }
 }
 
 .filters input[type="number"] {
-  padding: 10px 5px;
+  padding: 10px 10px;
   border: 1px solid #dfe3e6;
   border-radius: 8px;
   background: #fff;
@@ -225,3 +225,10 @@ a.btn{ text-decoration:none; }
   margin: 0;
 }
 
+
+.filters input:focus,
+.filters select:focus {
+  border-color: #a5b4fc !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+  outline: none !important;
+}
