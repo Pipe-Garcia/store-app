@@ -143,8 +143,17 @@ function debounce(fn, delay = 250) {
 function bindFilters() {
   const deb = debounce(applyLocalFilters, 300);
 
-  $('#filtroDni')?.addEventListener('input', deb);
-  $('#filtroEmpresa')?.addEventListener('input', deb);
+  // ✅ NUEVO: Validación en vivo para DNI (solo números)
+  $('#filtroDni')?.addEventListener('input', function() {
+    this.value = this.value.replace(/[^0-9]/g, ''); 
+    deb();
+  });
+
+  // ✅ NUEVO: Validación en vivo para Empresa (sin números)
+  $('#filtroEmpresa')?.addEventListener('input', function() {
+    this.value = this.value.replace(/[0-9]/g, ''); 
+    deb();
+  });
 
   // Cambio de estado → hay que ir al backend porque puede requerir includeDeleted
   $('#filtroEstado')?.addEventListener('change', reloadFromBackend);

@@ -31,7 +31,7 @@
 .encabezado-lista-materiales .enc-actions { display:flex; gap:1rem;}
 
 .card{
-  border: 1px solid #e9ecef;
+  border: 1px solid #e9ecef !important;
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
   box-shadow: var(--shadow);
@@ -259,6 +259,7 @@ a.btn{ text-decoration:none; }
 
 /* ====== Card de filtros ====== */
 .filtros.card {
+  border: 1px solid #e9ecef;
   background: #fff;
   border-radius: var(--radius);
   padding: var(--card-pad);
@@ -283,7 +284,7 @@ a.btn{ text-decoration:none; }
 
 /* Inputs/selects dentro de filtros */
 .filtros .in {
-  padding: 8px 10px;
+  padding: 10px 10px;
   border: 1px solid #dfe3e6;
   border-radius: 8px;
   background: #fff !important;
@@ -337,6 +338,7 @@ a.btn{ text-decoration:none; }
 }
 
 .tabla.materiales {
+  border: 1px solid #e9ecef;
   padding: var(--card-pad);
   box-shadow: var(--shadow);
   border-radius: 12px;
@@ -556,4 +558,13 @@ a.btn{ text-decoration:none; }
   display: flex;
   justify-content: flex-end;
   gap: 5px;
+}
+/* ==========================================================
+   EFECTO FOCUS PARA INPUTS Y SELECTS (Filtros)
+   ========================================================== */
+.filtros input:focus,
+.filtros select:focus {
+  border-color: #a5b4fc ;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) ;
+  outline: none ;
 }

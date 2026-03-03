@@ -5,7 +5,7 @@ body{
   --gap: 14px;
   --radius: 12px;
   --card-pad: 14px 16px;
-  --shadow: 0 1px 2px rgba(0,0,0,.06);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.237);
 
   --c-text:#212529;
   --c-muted:#6b7280;
@@ -32,10 +32,10 @@ body{
 .page-head h1{ margin-left: 15px; }
 
 .card{
+  border: 1px solid #e9ecef;
   background:#fff;
   border-radius:var(--radius);
   padding:var(--card-pad);
-  box-shadow: var(--shadow);
 }
 
 #lista-presupuestos{ display:grid; min-width: 820px; }
@@ -78,7 +78,6 @@ body{
   flex-wrap:wrap;
   align-items:flex-end;
   gap:12px;
-  margin-bottom: 15px;
 }
 
 .filters label{
@@ -88,7 +87,6 @@ body{
   font-size:0.95rem; 
   color:#555; 
   min-width: 160px;
-  font-weight: 600;
 }
 
 .filters input[type="date"],
@@ -184,8 +182,8 @@ body{
   background:#fff;
   border-radius:var(--radius);
   padding:var(--card-pad);
-  box-shadow: var(--shadow);
   overflow-x:auto;
+  border: 1px solid #e9ecef;
 }
 
 /* Contenedor de filas */

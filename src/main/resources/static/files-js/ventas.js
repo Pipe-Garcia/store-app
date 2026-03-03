@@ -318,6 +318,11 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
     if (e.key === 'Escape') { if (isOpen) { e.preventDefault(); close(); } return; }
     if (e.key === 'Tab') close();
   });
+
+  // ✅ NUEVO: Validación "en vivo" para prohibir números en el input de cliente
+  input.addEventListener('input', function() {
+    this.value = this.value.replace(/[0-9]/g, ''); 
+  });
 }
 
 function closeAllLists(elmnt) {
@@ -615,7 +620,7 @@ function renderLista(lista){
     const row = document.createElement('div');
     row.className = 'fila';
     
-    // ✅ CLASE TEXT-RIGHT AÑADIDA AL TOTAL Y ACCIONES
+    // CLASE TEXT-RIGHT AÑADIDA AL TOTAL Y ACCIONES
     row.innerHTML = `
       <div>${fecha}</div>
       <div>${cli}</div>

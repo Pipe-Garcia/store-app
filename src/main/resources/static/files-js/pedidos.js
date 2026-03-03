@@ -263,6 +263,11 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
     if (e.key === 'Escape') { if (isOpen) { e.preventDefault(); close(); } return; }
     if (e.key === 'Tab') close();
   });
+
+  // ✅ NUEVO: Validación "en vivo" para prohibir números en el input de cliente
+  input.addEventListener('input', function() {
+    this.value = this.value.replace(/[0-9]/g, ''); 
+  });
 }
 
 function closeAllLists(elmnt) {

@@ -12,11 +12,7 @@
   --bg-page: #f6f8fb;
 }
 
-body{
-  background: var(--bg-page);
-}
-
-/* Links (como pediste) */
+/* Links */
 a{
   color: var(--primary, #1c7ed6);
   text-decoration: none;
@@ -32,17 +28,19 @@ a:hover{ text-decoration: none; }
 }
 
 .page-head{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  gap:14px;
-  flex-wrap:wrap;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* ✅ Centra verticalmente el botón y el título */
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
-.head-left h1,
+.head-right h1,
 .page-head h1{
-  margin:0;
+  margin: 0;
   letter-spacing: .2px;
+  text-align: right; /* ✅ Asegura que el texto se tire a la derecha */
 }
 
 #histInfo{
@@ -51,7 +49,7 @@ a:hover{ text-decoration: none; }
   font-size: .95rem;
 }
 
-/* divider (si usás .divider global ya) */
+/* divider */
 hr.divider{
   border: 0;
   height: 1px;
@@ -69,6 +67,7 @@ hr.divider{
 
 .filters.card{
   padding: 14px 16px;
+  margin-bottom: 12px;
 }
 
 .filters .row{
@@ -101,18 +100,20 @@ hr.divider{
   transition: border-color .15s, box-shadow .15s, transform .02s;
 }
 
+/* ✅ Focus unificado con el resto del sistema */
 .filters input[type="date"]:focus,
 .filters input[type="text"]:focus,
 .filters select:focus{
-  border-color: color-mix(in oklab, var(--primary, #1c7ed6) 55%, #0000);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary, #1c7ed6) 18%, #0000);
+  border-color: #a5b4fc !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+  outline: none !important;
 }
 
 .filters input[type="text"]::placeholder{
   color: color-mix(in oklab, var(--muted) 85%, #0000);
 }
 
-/* ===== Buttons (refina sin romper tus clases globales) ===== */
+/* ===== Buttons ===== */
 .btn{
   border-radius: 10px;
   transition: background .15s, border-color .15s, transform .02s, box-shadow .15s;
@@ -146,7 +147,6 @@ hr.divider{
   border-radius: var(--radius);
 }
 
-/* Scrollbar nice (Chromium/Webkit) */
 .table-wrap::-webkit-scrollbar{ height: 10px; }
 .table-wrap::-webkit-scrollbar-thumb{
   background: color-mix(in oklab, #000 12%, #0000);
@@ -191,14 +191,11 @@ hr.divider{
   background: #fcfcfd;
 }
 
-
 /* Typography helpers */
 .mono{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-variant-numeric: tabular-nums;
 }
-
-
 
 .strong-text{
   font-weight: 800;
@@ -213,7 +210,6 @@ hr.divider{
   align-items: center;
 }
 
-/* Refuerza pills si tu style.css ya trae .pill */
 .pill{
   border-radius: 999px;
   padding: 4px 10px;
@@ -276,7 +272,14 @@ hr.divider{
   .actions .btn{ width: 100%; justify-content:center; }
   .pager{ flex-direction: column; align-items: stretch; }
   .pager .btn{ width: 100%; justify-content:center; }
+  
+  .page-head {
+      flex-direction: column-reverse; /* En celulares, primero el título, luego el botón */
+      align-items: flex-start;
+  }
+  .head-right h1 { text-align: left; }
 }
+
 .tabla.historico .fila .text-right {
     text-align: right !important;
     display: flex !important;

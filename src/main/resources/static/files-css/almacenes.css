@@ -18,9 +18,9 @@
 
 /* ====== Cards ====== */
 .card{
+  border: 1px solid #e9ecef;
   background:#fff; border-radius:var(--radius);
   padding:var(--card-pad);
-  box-shadow: var(--shadow);
   margin: 10px 0 14px 0;
 }
 
@@ -28,7 +28,7 @@
 .row{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; }
 label{ display:flex; flex-direction:column; gap:6px; font-size:.95rem; color:#555; }
 input[type="text"]{
-  padding:8px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
+  padding:10px 10px; border:1px solid #dfe3e6; border-radius:8px; background:#fff;
   min-width: 200px;
 }
 
@@ -114,7 +114,6 @@ input[type="text"]{
   max-width: 100%;
 }
 
-/* 2. Grid de 2 columnas */
 .form-page .grid { 
   display: grid; 
   grid-template-columns: 1fr 1fr; 
@@ -133,7 +132,6 @@ input[type="text"]{
   font-weight: normal;
 }
 
-/* 4. Estilo de Inputs (Igual a Clientes/Materiales) */
 .form-page input[type="text"],
 .form-page input[type="number"],
 .form-page input[type="email"],
@@ -157,10 +155,17 @@ input[type="text"]{
   border: 2px solid; /* Borde grueso azul al hacer clic */
 }
 
-/* 6. Botones alineados a la izquierda */
 .form-actions {
   margin-top: 20px;
   display: flex;
   gap: 10px;
   justify-content: flex-start;
+}
+
+
+.filters input:focus,
+.filters select:focus {
+  border-color: #a5b4fc !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+  outline: none !important;
 }
