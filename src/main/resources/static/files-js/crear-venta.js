@@ -50,6 +50,127 @@ function onlyDigits(s){
   return String(s ?? '').replace(/\D+/g, '');
 }
 
+function qtyIntFromEl(el){
+  return Number(onlyDigits(el?.value ?? '')) || 0;
+}
+
+function getRowMatId(row){
+  return Number(row.querySelector('.in-mat-id')?.value || 0);
+}
+
+function getRowWhId(row){
+  return Number(row.querySelector('.in-wh')?.value || 0);
+}
+
+function sumQtySameMatWh(mid, whId, excludeRow){
+  let sum = 0;
+  document.querySelectorAll('#items .fila:not(.encabezado)').forEach(r=>{
+    if (r === excludeRow) return;
+    if (getRowMatId(r) === mid && getRowWhId(r) === whId){
+      sum += qtyIntFromEl(r.querySelector('.in-qty'));
+    }
+  });
+  return sum;
+}
+
+function sumOrderBoundQty(mid, excludeRow){
+  let sum = 0;
+  document.querySelectorAll('#items .fila:not(.encabezado)').forEach(r=>{
+    if (r === excludeRow) return;
+    if (r.dataset.orderBound === '1' && getRowMatId(r) === mid){
+      sum += qtyIntFromEl(r.querySelector('.in-qty'));
+    }
+  });
+  return sum;
+}
+
+function pendingAvailableForRow(mid, row){
+  // ORDER_REMAIN = pendiente TOTAL por material (del presupuesto)
+  if (!currentOrderId) return null;
+  if (!ORDER_REMAIN.has(mid)) return null;
+
+  const totalPending = Number(ORDER_REMAIN.get(mid) || 0);
+  const otherBound   = sumOrderBoundQty(mid, row);
+  return Math.max(0, totalPending - otherBound);
+}
+
+function applyRowBadges(row){
+  if (!row) return;
+
+  const matId = getRowMatId(row);
+  const qtyEl = row.querySelector('.in-qty');
+  if (!qtyEl) return;
+
+  // Celda de cantidad (wrapper div del wrap(qty))
+  const qtyCell = qtyEl.parentElement;
+  if (!qtyCell) return;
+
+  // Limpieza previa (por si se re-llama muchas veces)
+  qtyCell.querySelectorAll('.qty-badge').forEach(n => n.remove());
+  row.classList.remove('row-extra','row-bound');
+  row.style.borderLeft = '';
+  row.style.paddingLeft = '';
+
+  // Reset del input
+  qtyEl.style.paddingLeft = '';
+  qtyEl.removeAttribute('title');
+
+  // Si todavía no hay material seleccionado, no mostramos nada
+  if (!matId) return;
+
+  // Determinar tipo
+  let kind = null;
+  if (row.dataset.orderExtra === '1') kind = 'extra';
+  else if (row.dataset.orderBound === '1') kind = 'bound';
+  if (!kind) return;
+
+  const isExtra = (kind === 'extra');
+  const label = isExtra ? 'ADICIONAL' : 'PRESUPUESTO';
+
+  const tooltip = isExtra
+    ? 'Unidades agregadas fuera del presupuesto'
+    : 'Unidades pendientes del presupuesto';
+
+  // ⚠️ Overlay: badge dentro de la misma celda, superpuesto al input
+  qtyCell.style.position = 'relative';
+
+  // Dejamos espacio para el badge adentro del input
+  // (ajustá este número si querés más/menos espacio)
+  qtyEl.style.paddingLeft = isExtra ? '92px' : '112px';
+  qtyEl.title = tooltip; // tooltip también al pasar por el input
+
+  const badge = document.createElement('span');
+  badge.className = 'qty-badge';
+  badge.textContent = label;
+  badge.title = tooltip;
+
+  // Estilo “pill” superpuesta dentro del input
+  badge.style.position = 'absolute';
+  badge.style.left = '10px';
+  badge.style.top = '50%';
+  badge.style.transform = 'translateY(-50%)';
+  badge.style.fontSize = '11px';
+  badge.style.fontWeight = '700';
+  badge.style.padding = '3px 8px';
+  badge.style.borderRadius = '999px';
+  badge.style.whiteSpace = 'nowrap';
+  badge.style.border = '1px solid rgba(0,0,0,.10)';
+  badge.style.pointerEvents = 'auto'; // para que el title funcione sobre la pill
+  badge.style.userSelect = 'none';
+
+  // Colores
+  badge.style.background = isExtra ? '#FEF3C7' : '#E0E7FF';
+  badge.style.color      = isExtra ? '#92400E' : '#3730A3';
+
+  // Insertamos badge encima (sin cambiar altura)
+  qtyCell.appendChild(badge);
+
+  // Borde sutil de fila (opcional, queda muy bien)
+  row.classList.add(isExtra ? 'row-extra' : 'row-bound');
+  row.style.borderLeft = isExtra ? '4px solid #f59e0b' : '4px solid #6366f1';
+  row.style.paddingLeft = '8px';
+}
+
 /**
  * Devuelve un string numérico NORMALIZADO para backend:
  * - solo dígitos + 1 separador decimal
@@ -721,6 +842,7 @@ function addRow(prefill){
   btnDelWrapper.appendChild(del);
 
   if (prefill?.orderBound) row.dataset.orderBound = '1';
+  if (prefill?.orderExtra) row.dataset.orderExtra = '1';
 
   const wrapper = matCol.querySelector('.autocomplete-wrapper');
 
@@ -764,28 +886,98 @@ function addRow(prefill){
   }
 
   // VALIDACIÓN DE STOCK MÁXIMO
-  const validateMaxQty = () => {
-    const mid = Number(wrapper.querySelector('.in-mat-id').value || 0);
+  const validateMaxQty = (opts = { silent:false }) => {
+    const mid = Number(wrapper.querySelector('.in-mat-id')?.value || 0);
+    const whId = Number(whSel.value || 0);
+
+    // si no hay material o depósito, no validamos stock todavía
+    if (!mid || !whId) return;
+
     const opt = whSel.selectedOptions[0];
     const avail = Number(opt?.dataset?.available || 0);
 
-    let cap = avail > 0 ? avail : Infinity;
+    // ✅ cap real por STOCK: lo que queda disponible menos lo que ya “se usó” en otros renglones
+    const usedElsewhere = sumQtySameMatWh(mid, whId, row);
+    const stockCap = Math.max(0, avail - usedElsewhere);
 
-    if (currentOrderId && ORDER_REMAIN.has(mid)){
-      cap = Math.min(cap, ORDER_REMAIN.get(mid));
-    }
+    const wanted = qtyIntFromEl(qty);
 
-    if (isFinite(cap) && Number(qty.value) > cap) {
-      qty.value = String(cap);
-      Swal.fire({
-        title: 'Stock insuficiente',
-        text: `La cantidad ingresada supera el stock. Se ajustó automáticamente al máximo disponible (${cap} unidades).`,
-        icon: 'warning',
-        confirmButtonColor: '#1c7ed6', 
-        confirmButtonText: 'Entendido'
-      });
+    if (wanted > stockCap) {
+      qty.value = stockCap > 0 ? String(stockCap) : '';
+      if (!opts.silent) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Stock insuficiente',
+          text: `En el depósito seleccionado quedan ${stockCap} unidades disponibles (ya consideramos otros renglones).`,
+          confirmButtonText: 'Entendido'
+        });
+      }
     }
   };
+
+  async function splitIfExceedsPending(){
+    if (!currentOrderId) return;
+    if (row.dataset.orderBound !== '1') return;
+
+    const mid = Number(wrapper.querySelector('.in-mat-id')?.value || 0);
+    if (!mid || !ORDER_REMAIN.has(mid)) return;
+
+    const wanted = qtyIntFromEl(qty);
+    if (!wanted) return;
+
+    const pendingAvail = pendingAvailableForRow(mid, row);
+    if (pendingAvail == null) return;
+
+    // ✅ si no excede lo pendiente disponible para ESTE renglón, nada que hacer
+    if (wanted <= pendingAvail) return;
+
+    const extra = wanted - pendingAvail;
+
+    // Caso A: ya no quedaba pendiente => este renglón pasa a ser ADICIONAL
+    if (pendingAvail <= 0) {
+      delete row.dataset.orderBound; // deja de ser “pendiente”
+      row.dataset.orderExtra = '1';
+      applyRowBadges(row);
+
+      await Swal.fire({
+        icon: 'info',
+        title: 'Cantidad adicional',
+        html: `Este material ya no tiene unidades pendientes en el presupuesto.<br>
+              Se tomará <b>${wanted}</b> como <b>ADICIONAL</b> (fuera del presupuesto).`,
+        confirmButtonText: 'OK'
+      });
+      return;
+    }
+
+    // Caso B: split (pendiente + adicional)
+    qty.value = String(pendingAvail);
+
+    // Creamos renglón adicional con el excedente
+    const whId = Number(whSel.value || 0) || undefined;
+
+    addRow({
+      materialId: mid,
+      warehouseId: whId,
+      qty: extra,
+      orderBound: false,   // ✅ adicional
+      orderExtra: true
+    });
+    applyRowBadges(row);
+
+    await Swal.fire({
+      icon: 'info',
+      title: 'Se separó “pendiente” y “adicional”',
+      html: `
+        Del presupuesto: <b>${pendingAvail}</b> unidad(es)<br>
+        Adicional: <b>${extra}</b> unidad(es) (fuera del presupuesto)
+      `,
+      confirmButtonText: 'Entendido'
+    });
+
+    // Revalida stock (por si el split genera conflicto con otros renglones)
+    validateMaxQty({ silent:true });
+    recalc();
+  }
 
   whSel.onchange = () => { validateMaxQty(); recalc(); };
 
@@ -793,27 +985,47 @@ function addRow(prefill){
   qty.addEventListener('input', () => {
     const cleaned = onlyDigits(qty.value);
     if (qty.value !== cleaned) qty.value = cleaned;
-    validateMaxQty();
+    validateMaxQty({ silent:true });
     recalc();
   });
 
-  qty.addEventListener('blur', () => {
-    const q = Number(onlyDigits(qty.value));
-    if (!q || q <= 0) {
+  qty.addEventListener('blur', async () => {
+    const q = qtyIntFromEl(qty);
+
+    // si vacío o <=0, validamos normal (pero antes revalidamos stock)
+    validateMaxQty({ silent:true });
+
+    const q2 = qtyIntFromEl(qty);
+    if (!q2 || q2 <= 0) {
+      // si no hay depósito/material todavía, usamos tu fallback de “1”
+      const mid = Number(wrapper.querySelector('.in-mat-id')?.value || 0);
+      const whId = Number(whSel.value || 0);
+
+      // si hay material+depósito pero stockCap quedó 0, no fuerces a “1”
+      if (mid && whId && !qty.value) {
+        await Swal.fire('Sin stock', 'No hay stock disponible en el depósito seleccionado.', 'warning');
+        return;
+      }
+
       alertInvalidQtyAndFix(qty);
-      // recalcular después del fix
-      setTimeout(() => { validateMaxQty(); recalc(); }, 0);
+      setTimeout(() => { validateMaxQty({ silent:true }); recalc(); }, 0);
       return;
     }
-    // normaliza (quita ceros raros)
-    qty.value = String(q);
-    validateMaxQty();
+
+    qty.value = String(q2);
+
+    // ✅ acá hacemos el split si excede “pendiente”
+    await splitIfExceedsPending();
+
+    // ✅ stock siempre manda
+    validateMaxQty({ silent:true });
     recalc();
   });
 
   // ✅ Agregamos el wrapper en vez del botón directamente
   row.append(matCol, wrap(whSel), wrap(qty), price, sub, btnDelWrapper);
   cont.appendChild(row);
+  applyRowBadges(row);
   recalc();
 }
 
@@ -1036,9 +1248,13 @@ async function guardar(e){
     payment = { amount, methodPayment: method, datePayment: pdate };
   }
 
-  const confirmHtml = PAY_ENABLED
-    ? `Se registrará una venta por <b>${fmtARS.format(CURRENT_TOTAL)}</b> y el stock será descontado.`
-    : `Se registrará una venta por <b>${fmtARS.format(CURRENT_TOTAL)}</b>.<br>El cobro se realizará desde <b>Caja</b>.`;
+  const willRegisterPayment = !!payment;
+
+  // ✅ Mensaje de confirmación (depende de si HAY pago)
+  const confirmHtml = willRegisterPayment
+    ? `Se registrará una venta por <b>${fmtARS.format(CURRENT_TOTAL)}</b> y el pago quedará aplicado.`
+    : `Se registrará una venta por <b>${fmtARS.format(CURRENT_TOTAL)}</b>.<br>
+      El cobro quedará <b>pendiente</b> (se registra desde <b>Caja</b> o <b>Detalle de venta</b>).`;
 
   const result = await Swal.fire({
     title: '¿Confirmar venta?',
@@ -1060,14 +1276,16 @@ async function guardar(e){
     orderId: currentOrderId
   };
 
-  if (PAY_ENABLED && payment) payload.payment = payment;
+  if (payment) payload.payment = payment;
 
   try{
     const res = await authFetch(API_URL_SALES, { method:'POST', body: JSON.stringify(payload) });
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
 
     localStorage.setItem('flash', JSON.stringify({
-      message: PAY_ENABLED ? 'Venta registrada con pago' : 'Venta registrada (pendiente de cobro en Caja)',
+      message: willRegisterPayment
+        ? 'Venta registrada con pago'
+        : 'Venta registrada (pendiente de cobro en Caja)',
       type: 'success'
     }));
 

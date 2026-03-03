@@ -112,3 +112,12 @@
   background: rgba(29, 78, 216, .12);
   outline: 1px solid rgba(29, 78, 216, .25);
 }
+
+/* resaltado sutil para UX */
+#items .fila.row-extra {
+  background: rgba(253, 230, 138, 0.18); /* ámbar suave */
+}
+
+#items .fila.row-bound {
+  background: rgba(199, 210, 254, 0.14); /* indigo suave */
+}

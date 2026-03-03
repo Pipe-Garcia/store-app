@@ -538,29 +538,22 @@ public class SaleService implements ISaleService{
             Long warehouseId = item.getWarehouseId();
             BigDecimal qty   = item.getQuantity();
 
-            // === Si la venta viene de un presupuesto, respetar lo pendiente de ese presupuesto ===
+            // Si viene de presupuesto, permitimos vender "adicional" por encima de lo pendiente.
+            // El pendiente se usa para reportes/estado del pedido, no como tope duro.
             if (isOrderSale) {
                 BigDecimal pendingForMat = pendingByMaterial.get(matId);
 
-                // Si el material forma parte del presupuesto, limitamos por lo pendiente
+                // Si el material estaba en el presupuesto, pendingForMat puede ser 0.
+                // En ambos casos permitimos vender igual.
                 if (pendingForMat != null) {
                     if (pendingForMat.compareTo(BigDecimal.ZERO) <= 0) {
-                        throw new IllegalStateException(
-                                "Order #" + dto.getOrderId() +
-                                        " has no pending units for material ID " + matId + "."
-                        );
-                    }
-                    if (qty.compareTo(pendingForMat) > 0) {
-                        throw new IllegalArgumentException(
-                                "Requested quantity " + qty +
-                                        " for material ID " + matId +
-                                        " exceeds pending units (" + pendingForMat +
-                                        ") in order #" + dto.getOrderId() + "."
-                        );
+                        log.info("Order #{}: material {} sin pendiente; venta se toma como ADICIONAL (qty={})",
+                                dto.getOrderId(), matId, qty);
+                    } else if (qty.compareTo(pendingForMat) > 0) {
+                        log.info("Order #{}: material {} excede pendiente (pendiente={}, qty={}); excedente es ADICIONAL",
+                                dto.getOrderId(), matId, pendingForMat, qty);
                     }
                 }
-                // Si pendingForMat == null → ese material no estaba en el presupuesto.
-                // Permitimos agregarlo igualmente; la regla fuerte es que el pedido no esté en 0 global.
             }
 
             // Ahora sí buscamos el material
