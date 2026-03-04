@@ -35,14 +35,20 @@
         'caja-historico.html'
       ].forEach(hideByHref);
 
+      const auditBtn = document.getElementById('auditBtn');
+      const li = auditBtn?.closest('li');
+      if (li) li.style.display = 'none';
+      document.getElementById('auditMenu')?.remove();
+
       return;
     }
 
-    // CAJERO: sólo Inicio, Ventas, Caja, Histórico Caja, Clientes
+    // CAJERO: sólo Inicio, Ventas, Caja, Clientes
     if (role === 'cashier'){
       [
         'movimientos.html',
         'stock-movimientos.html',
+        'caja-historico.html',    
         'materiales.html',
         'pedidos.html',
         'entregas.html',
@@ -52,6 +58,12 @@
         'usuarios.html',
         'auditorias.html'
       ].forEach(hideByHref);
+
+      // ✅ ocultar dropdown Auditoría completo
+      const auditBtn = document.getElementById('auditBtn');
+      const li = auditBtn?.closest('li');
+      if (li) li.style.display = 'none';
+      document.getElementById('auditMenu')?.remove();
 
       return;
     }
