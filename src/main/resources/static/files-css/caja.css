@@ -7,7 +7,7 @@
 
 .page-head{
   display:flex;
-  align-items:flex-end;
+  align-items:center; /* Alinea perfectamente el título con los botones */
   justify-content:space-between;
   gap:14px;
   flex-wrap:wrap;
@@ -15,9 +15,39 @@
 
 .page-head h1{ margin:0; }
 
-.session-info{
-  margin:6px 0 0;
-  color:#6b7280;
+/* Contenedor y estilo de las etiquetas informativas (Chips) */
+.session-info-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px; /* Le da aire respecto al título de arriba */
+}
+
+.caja-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.caja-badge strong {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+/* Etiqueta estándar (gris) */
+.caja-badge.badge-std {
+  background-color: #f1f3f5;
+  color: #495057;
+  border: 1px solid #dee2e6;
+}
+
+/* Etiqueta destacada (azul claro para el estado) */
+.caja-badge.badge-hl {
+  background-color: #e7f5ff;
+  color: #1864ab;
+  border: 1px solid #d0ebff;
 }
 
 .page-head .actions{
@@ -25,6 +55,19 @@
   gap:10px;
   flex-wrap:wrap;
   align-items:center;
+}
+
+/* ==========================================================
+   TAMAÑO PERSONALIZADO PARA BOTONES DE CAJA
+   ========================================================== */
+.page-head .actions .btn-sm {
+  padding: 6px 12px;       /* Relleno interno: 6px arriba/abajo, 12px izquierda/derecha */
+  font-size: 0.85rem;      /* Tamaño de la letra un poco más chico */
+  min-height: 32px;        /* Altura mínima para que queden parejos */
+  border-radius: 8px;      /* Bordes un pelín menos redondeados para que acompañen el tamaño */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* Cards (similar a auditoría) */
@@ -40,13 +83,14 @@
 .divider{
   border:none;
   border-top:1px solid #e5e7eb;
-  margin:14px 0 18px;
+  margin:16px 0 18px;
 }
 
 /* Filtros */
 .filters.card{ 
   margin-bottom: 12px;
-  padding:14px 16px; }
+  padding:14px 16px; 
+}
 
 .filters .row{
   display:flex;
@@ -75,6 +119,7 @@
   border-radius:8px;
   background:#fff;
   min-height:36px;
+  transition: border-color .15s, box-shadow .15s, transform .02s;
 }
 
 /* Wrap tabla para scroll */
@@ -134,6 +179,7 @@
 
 .tabla.caja .pill.completed{ background:#e6f7ef; color:#0a6c3e; border-color:#bfe9d3; }
 .tabla.caja .pill.cancelled{ background:#ffecec; color: #d20b0b; border-color:#ffcccc; }
+.tabla.caja .pill.pending{ background:#eef2ff; color:#353ba3; border-color:#dfe3ff; }
 
 /* Paginación */
 .pager{

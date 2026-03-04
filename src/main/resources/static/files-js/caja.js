@@ -77,17 +77,14 @@ function pillType(dir, reason) {
 
   if (r === 'WITHDRAWAL') return `<span class="pill pending">RETIRO</span>`;
 
-  // ✅ Anulaciones 
   if (r === 'SALE_CANCEL' || r === 'PURCHASE_CANCEL') {
     return `<span class="pill pending">ANULACIÓN</span>`;
   }
 
-  // ✅ Fallback legacy: anulación de compra venía como PURCHASE + IN
   if (r === 'PURCHASE' && d === 'IN') {
     return `<span class="pill pending">ANULACIÓN</span>`;
   }
 
-  // ✅ Fallback legacy: si alguna vez lo modelás como SALE_PAYMENT + OUT
   if (r === 'SALE_PAYMENT' && d === 'OUT') {
     return `<span class="pill pending">ANULACIÓN</span>`;
   }
@@ -154,7 +151,6 @@ async function apiCreateExpense(amount, note, reference) {
   throw new Error(`No se pudo registrar gasto (HTTP ${r.status}) ${t}`);
 }
 
-// ✅ Listado real: /cash/movements (Page<CashMovementDTO>)
 async function apiListMovements(params) {
   const q = new URLSearchParams();
   if (params.sessionId) q.set('sessionId', String(params.sessionId));
@@ -200,19 +196,14 @@ async function apiSumByReason(dateStr, reason) {
 
 async function apiSuggestOpeningCash() {
   const r = await authFetch('/cash/sessions/suggest-opening', { method: 'GET' });
-
-  // 204 => no hay sugerencia
   if (r.status === 204) return null;
-
   if (!r.ok) return null;
 
-  // puede venir como JSON number o como texto "15000"
   const txt = (await r.text().catch(() => '')).trim();
   const n = Number(txt);
 
   if (!isFinite(n) || n <= 0) return null;
   if (n < 0.01) return null;
-
   return n;
 }
 
@@ -226,6 +217,12 @@ function readFilters() {
     method: ($('#fMethod')?.value || '').toUpperCase(),
     text: ($('#fText')?.value || '').trim(),
   };
+}
+
+// ✅ NUEVO: Función para generar HTML de los chips
+function makeBadge(label, value, isHighlight = false) {
+    const cls = isHighlight ? 'badge-hl' : 'badge-std';
+    return `<span class="caja-badge ${cls}"><strong>${label}:</strong> ${value}</span>`;
 }
 
 function setSessionInfo() {
@@ -246,12 +243,16 @@ function setSessionInfo() {
     const carry = Number(VIEW_SESSION.carryOverCash ?? 0);
     const withdrawal = Number(VIEW_SESSION.withdrawalCash ?? 0);
 
-    el.textContent =
-      `Caja HISTÓRICA · Sesión #${id} · Fecha: ${date} · Apertura: ${fmtARS.format(opening)} · ` +
-      `Retiro: ${fmtARS.format(withdrawal)} · Efectivo p/ mañana: ${fmtARS.format(carry)} · ` +
-      `Cerró: ${closedBy} (${closedAt})`;
+    el.innerHTML = `
+      ${makeBadge('Estado', 'Histórica')}
+      ${makeBadge('Sesión', `#${id}`)}
+      ${makeBadge('Fecha', date)}
+      ${makeBadge('Apertura', fmtARS.format(opening))}
+      ${makeBadge('Retiro', fmtARS.format(withdrawal))}
+      ${makeBadge('Efectivo sig. día', fmtARS.format(carry))}
+      ${makeBadge('Cierre', `${closedBy} (${closedAt})`)}
+    `;
 
-    // ocultar acciones
     if (btnAbrir) btnAbrir.style.display = 'none';
     if (btnCerrar) btnCerrar.style.display = 'none';
     if (btnGasto)  btnGasto.style.display = 'none';
@@ -268,42 +269,56 @@ function setSessionInfo() {
     const withdrawal = Number(TODAY_SESSION.withdrawalCash ?? 0);
     const carry = Number(TODAY_SESSION.carryOverCash ?? 0);
 
-    el.textContent =
-      `Caja CERRADA (hoy) · Sesión #${id} · Fecha: ${date} · Apertura: ${fmtARS.format(opening)} · ` +
-      `Retiro: ${fmtARS.format(withdrawal)} · Efectivo p/ mañana: ${fmtARS.format(carry)} · ` +
-      `Cerró: ${closedBy} (${closedAt})`;
+    el.innerHTML = `
+      ${makeBadge('Estado', 'Cerrada (Hoy)', true)}
+      ${makeBadge('Sesión', `#${id}`)}
+      ${makeBadge('Fecha', date)}
+      ${makeBadge('Apertura', fmtARS.format(opening))}
+      ${makeBadge('Retiro', fmtARS.format(withdrawal))}
+      ${makeBadge('Efectivo p/ mañana', fmtARS.format(carry))}
+      ${makeBadge('Cerró', `${closedBy} (${closedAt})`)}
+    `;
 
     if (btnAbrir){
       btnAbrir.style.display = 'inline-flex';
       btnAbrir.disabled = true;
       btnAbrir.title = 'La caja ya fue cerrada hoy. Se podrá abrir mañana.';
       btnAbrir.classList.remove('primary');
-      btnAbrir.classList.add('outline'); // “muted” visual sin tocar CSS
+      btnAbrir.classList.add('outline'); 
     }
     if (btnCerrar) btnCerrar.style.display = 'none';
     if (btnGasto) { btnGasto.disabled = true; }
-
     return;
   }
 
 
-  // ✅ modo normal (hoy)
+  // ✅ modo normal (hoy) - ABIERTA
   if (OPEN_SESSION) {
     const id = OPEN_SESSION.idCashSession ?? OPEN_SESSION.id ?? '—';
     const date = OPEN_SESSION.businessDate ?? '';
     const openedAt = OPEN_SESSION.openedAt ?? '';
     const openingCash = Number(OPEN_SESSION.openingCash ?? 0);
 
-    el.textContent =
-      `Caja ABIERTA · Sesión #${id} · Fecha: ${date || '—'} · Apertura: ${fmtDateTime(openedAt)} · ` +
-      `Monto inicial: ${fmtARS.format(openingCash)}`;
+    el.innerHTML = `
+      ${makeBadge('Estado', 'Abierta', true)}
+      ${makeBadge('Sesión', `#${id}`)}
+      ${makeBadge('Fecha', date || '—')}
+      ${makeBadge('Apertura', fmtDateTime(openedAt))}
+      ${makeBadge('Monto inicial', fmtARS.format(openingCash))}
+    `;
 
     if (btnAbrir) btnAbrir.style.display = 'none';
     if (btnCerrar) btnCerrar.style.display = 'inline-flex';
     if (btnGasto) btnGasto.disabled = false;
   } else {
-    const sug = (SUGGEST_OPENING != null) ? ` · Sugerido para abrir hoy: ${fmtARS.format(SUGGEST_OPENING)}` : '';
-    el.textContent = `Caja CERRADA · Para registrar cobros/gastos, abrí la caja${sug}.`;
+    // ✅ modo normal - CERRADA AUN (esperando apertura)
+    const sug = (SUGGEST_OPENING != null) ? ` ${makeBadge('Sugerido p/ abrir', fmtARS.format(SUGGEST_OPENING))}` : '';
+    
+    el.innerHTML = `
+      ${makeBadge('Estado', 'Cerrada', true)}
+      ${makeBadge('Aviso', 'Para registrar cobros o gastos, abrí la caja.')}
+      ${sug}
+    `;
 
     if (btnAbrir) btnAbrir.style.display = 'inline-flex';
     if (btnCerrar) btnCerrar.style.display = 'none';
@@ -352,25 +367,19 @@ function normalizeMovement(m) {
     ref = (m.sourceId != null) ? `Compra #${m.sourceId}` : 'Compra';
   }
 
-  // ✅ Fallback legacy: anulación de compra venía como PURCHASE + IN
   if (reason === 'PURCHASE' && dir === 'IN') {
     concept = 'Anulación de compra';
     ref = (m.sourceId != null) ? `Compra #${m.sourceId}` : 'Compra';
   }
 
-  // ✅ ANULACIÓN DE COMPRA
   if (reason === 'PURCHASE_CANCEL') {
     concept = 'Anulación de compra';
     ref = (m.sourceId != null) ? `Compra #${m.sourceId}` : 'Compra';
-    // si la nota repite, la dejamos igual o la limpiamos:
-    // if (note.toLowerCase().startsWith('anulación compra')) note = '';
   }
 
-  // ✅ ANULACIÓN DE VENTA (reverso de cobro)
   if (saleId && reason === 'SALE_CANCEL') {
     concept = `Anulación de venta #${saleId}`;
     ref = `Venta #${saleId}`;
-    // if (note.toLowerCase().includes(`venta #${saleId}`.toLowerCase())) note = '';
   }
 
   if (reason === 'WITHDRAWAL') {
@@ -704,7 +713,6 @@ async function refreshSession() {
   setSessionInfo();
 }
 
-
 /* ===== Bootstrap ===== */
 window.addEventListener('DOMContentLoaded', async () => {
   if (!getToken()) { location.href = '../files-html/login.html'; return; }
@@ -801,4 +809,4 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   await refreshSession();
   await loadAll();
-}); 
+});

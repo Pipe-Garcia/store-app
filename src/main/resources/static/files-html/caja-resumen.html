@@ -16,64 +16,99 @@
 
   <main class="page">
     <div class="page-head">
-      <div>
+      <div class="head-left">
         <h1>Resumen del día</h1>
-        <p class="muted" id="sumInfo">—</p>
       </div>
-      <div class="resumen-toolbar">
-        <a class="btn outline" href="caja.html">Volver</a>
-      </div>
-    </div>
-
-    <hr class="divider">
-
-    <section class="filters card">
-      <div class="row">
-        <label>Fecha
-          <input type="date" id="fDate">
-        </label>
-        <button id="btnReload" class="btn outline">Buscar</button>
-      </div>
-    </section>
-
-    <div class="kpi-grid">
-      <div class="kpi">
-        <small>Ingresos</small>
-        <strong id="kpiIn">$ 0,00</strong>
-      </div>
-      <div class="kpi">
-        <small>Egresos</small>
-        <strong id="kpiOut">$ 0,00</strong>
-      </div>
-      <div class="kpi">
-        <small>Neto (Ingresos - Egresos)</small>
-        <strong id="kpiNet">$ 0,00</strong>
+      <div class="actions">
+        <a class="btn outline" href="caja.html">« Volver a Caja</a>
       </div>
     </div>
 
-    <h3 class="section-title">Ingresos por método</h3>
+    <hr>
+    <br>
 
-    <div class="methods-grid">
-      <div class="method">
-        <div class="name">Efectivo</div>
-        <div class="val" id="mCash">$ 0,00</div>
-      </div>
-      <div class="method">
-        <div class="name">Transferencia</div>
-        <div class="val" id="mTransfer">$ 0,00</div>
-      </div>
-      <div class="method">
-        <div class="name">Tarjeta</div>
-        <div class="val" id="mCard">$ 0,00</div>
-      </div>
-      <div class="method">
-        <div class="name">Otro</div>
-        <div class="val" id="mOther">$ 0,00</div>
-      </div>
-    </div>
+    <div class="resumen-wrapper">
+      
+      <div class="resumen-left">
+        <section class="filters card" style="margin-bottom: 24px;">
+          <div class="row">
+            <label>Fecha
+              <input type="date" id="fDate">
+            </label>
+            <button id="btnReload" class="btn outline">Buscar</button>
+          </div>
+        </section>
 
-    <p class="note">* El resumen se calcula desde los movimientos de caja del día seleccionado.</p>
-  </main>
+        <h3 class="section-title" style="margin-top:0;">Detalle Operativo</h3>
+        <section class="card detail-card">
+          <div class="detail-row">
+            <span>Apertura de caja</span>
+            <strong id="valApertura">$ 0,00</strong>
+          </div>
+          <div class="detail-row">
+            <span>Gastos</span>
+            <strong id="valGastos">$ 0,00</strong>
+          </div>
+          <div class="detail-row">
+            <span>Compras</span>
+            <strong id="valCompras">$ 0,00</strong>
+          </div>
+          <div class="detail-row">
+            <span>Anulaciones</span>
+            <strong id="valAnulaciones">$ 0,00</strong>
+          </div>
+          <div class="detail-row">
+            <span>Retiro de caja</span>
+            <strong id="valRetiro">$ 0,00</strong>
+          </div>
+          <div class="detail-row total">
+            <span>Efectivo p/ mañana (est.)</span>
+            <strong id="valManana">$ 0,00</strong>
+          </div>
+        </section>
+        
+        <p class="note">* El resumen se calcula desde los movimientos de caja del día seleccionado.</p>
+      </div>
+
+      <div class="resumen-right">
+        <h3 class="section-title" style="margin-top:0;">Resumen Financiero</h3>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <small>Ingresos</small>
+            <strong id="kpiIn">$ 0,00</strong>
+          </div>
+          <div class="kpi">
+            <small>Egresos</small>
+            <strong id="kpiOut">$ 0,00</strong>
+          </div>
+          <div class="kpi kpi-neto">
+            <small>Neto (Ingresos - Egresos)</small>
+            <strong id="kpiNet">$ 0,00</strong>
+          </div>
+        </div>
+
+        <h3 class="section-title">Ingresos por método</h3>
+        <div class="methods-grid">
+          <div class="method">
+            <div class="name">Efectivo</div>
+            <div class="val" id="mCash">$ 0,00</div>
+          </div>
+          <div class="method">
+            <div class="name">Transferencia</div>
+            <div class="val" id="mTransfer">$ 0,00</div>
+          </div>
+          <div class="method">
+            <div class="name">Tarjeta</div>
+            <div class="val" id="mCard">$ 0,00</div>
+          </div>
+          <div class="method">
+            <div class="name">Otro</div>
+            <div class="val" id="mOther">$ 0,00</div>
+          </div>
+        </div>
+      </div>
+
+    </div> </main>
 
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>

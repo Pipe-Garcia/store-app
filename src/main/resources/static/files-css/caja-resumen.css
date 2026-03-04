@@ -1,52 +1,48 @@
 /* /static/files-css/caja-resumen.css */
 
 .page{
-  max-width: 1600px;
+  max-width: 1400px; /* Un poco más contenido para que las 2 columnas no se estiren al infinito */
   margin: 0 auto;
   padding: 22px 22px 44px;
 }
 
 .page-head{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  gap:14px;
-  flex-wrap:wrap;
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Alineación centrada para título y botón */
+  gap: 14px;
+  flex-wrap: wrap;
   margin-bottom: 6px;
 }
 
+.head-left h1,
 .page-head h1{
-  margin:0;
+  margin: 0;
   letter-spacing: .2px;
 }
 
-#sumInfo{
-  margin: 8px 0 0;
-  color: var(--text-weak, #6b7280);
-}
-
-.resumen-toolbar{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  flex-wrap:wrap;
-}
-
-/* Evitar underline feo en el botón volver (por si style.css lo re-aplica) */
-.resumen-toolbar a.btn{
+.actions a.btn{
   text-decoration: none !important;
 }
 
 /* Separación más prolija del divisor */
 hr.divider{
-  margin: 14px 0 16px;
+  margin: 14px 0 24px;
   border: none;
   border-top: 1px solid var(--grid, #e5e7eb);
 }
 
-/* Filtros */
+/* ================= GRID PRINCIPAL (2 COLUMNAS) ================= */
+.resumen-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr; /* La columna derecha toma un poco más de espacio */
+  gap: 40px;
+  align-items: flex-start;
+}
+
+/* ================= FILTROS ================= */
 .filters.card{
-  padding: 14px 16px;
+  padding: 18px 20px;
   border-radius: 14px;
 }
 
@@ -63,7 +59,7 @@ hr.divider{
   gap:6px;
   font-weight: 600;
   color: var(--text-weak, #555);
-  min-width: 220px;
+  flex-grow: 1; /* Hace que el input tome todo el ancho disponible */
 }
 
 .filters input[type="date"]{
@@ -73,17 +69,62 @@ hr.divider{
   background: var(--card, #fff);
   min-height: 40px;
   font-size: .95rem;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.filters input:focus {
+  border-color: #a5b4fc !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
 }
 
 #btnReload{
   height: 40px;
+  white-space: nowrap;
 }
 
-/* KPIs */
+/* ================= TARJETA DETALLE OPERATIVO ================= */
+.detail-card {
+  padding: 12px 24px;
+  border-radius: 14px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--grid, #e5e7eb);
+  font-size: 1.02rem;
+  color: #3b3f45;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+}
+
+/* Fila de Total (Efectivo para mañana) */
+.detail-row.total {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--primary, #1c7ed6);
+  border-top: 2px solid var(--grid, #e5e7eb);
+  padding-top: 18px;
+}
+
+.detail-row.total strong {
+  font-size: 1.25rem;
+}
+
+/* ================= KPIs FINANCIEROS ================= */
 .kpi-grid{
-  margin-top: 14px;
-  display:grid;
-  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  display: grid;
+  grid-template-columns: 1fr 1fr; 
   gap: 14px;
 }
 
@@ -95,6 +136,17 @@ hr.divider{
   padding: 16px 16px 14px;
 }
 
+/* El neto ocupa todo el ancho abajo */
+.kpi-neto {
+  grid-column: 1 / -1;
+  background: color-mix(in oklab, var(--primary, #1c7ed6) 8%, transparent);
+  border-color: color-mix(in oklab, var(--primary, #1c7ed6) 25%, transparent);
+}
+
+.kpi-neto strong {
+  color: var(--primary, #1565c0);
+}
+
 .kpi small{
   color: var(--text-weak, #6b7280);
   display:block;
@@ -104,21 +156,21 @@ hr.divider{
 }
 
 .kpi strong{
-  font-size: 1.55rem;
+  font-size: 1.6rem;
   font-variant-numeric: tabular-nums;
 }
 
-/* Sección */
+/* ================= MÉTODOS DE PAGO ================= */
 .section-title{
-  margin: 18px 0 10px;
-  font-size: 1.05rem;
+  margin: 28px 0 12px;
+  font-size: 1.1rem;
   letter-spacing: .2px;
+  color: #2b2e33;
 }
 
-/* Métodos */
 .methods-grid{
-  display:grid;
-  grid-template-columns: repeat(4, minmax(200px, 1fr));
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
 
@@ -137,25 +189,31 @@ hr.divider{
 }
 
 .method .val{
-  font-size: 1.2rem;
+  font-size: 1.25rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  color: #2b2e33;
 }
 
 .note{
-  margin-top: 10px;
-  color: var(--text-weak, #6b7280);
+  margin-top: 24px;
+  color: var(--text-weak, #868e96);
   font-size: .92rem;
 }
 
-/* Responsive */
-@media (max-width: 980px){
-  .kpi-grid{ grid-template-columns: 1fr; }
-  .methods-grid{ grid-template-columns: 1fr 1fr; }
-  .filters label{ min-width: 180px; }
+/* ================= RESPONSIVE ================= */
+@media (max-width: 1024px){
+  .resumen-wrapper {
+    grid-template-columns: 1fr; /* Pasa a una sola columna en tablets */
+    gap: 24px;
+  }
+  .section-title {
+    margin-top: 10px;
+  }
 }
 
 @media (max-width: 640px){
   .page{ padding: 18px 14px 36px; }
-  .methods-grid{ grid-template-columns: 1fr; }
+  .kpi-grid, .methods-grid { grid-template-columns: 1fr; }
   .filters label{ min-width: 100%; }
 }

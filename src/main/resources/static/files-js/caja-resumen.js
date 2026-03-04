@@ -63,13 +63,8 @@ async function apiList(dateStr, reason, direction) {
   return Array.isArray(data) ? data : [];
 }
 
-function sumAmounts(list) {
-  return (list || []).reduce((a, x) => a + Number(x.amount || 0), 0);
-}
-
 async function load() {
   const date = $('#fDate').value || todayStr();
-
 
   // Solo para apertura (si tu summary anda bien)
   const sum = await apiSummary(date);
@@ -83,7 +78,6 @@ async function load() {
     purchOUT,
     purchCancIN,
     withdrawalsOUT,
-    // legacy por si todavía no existe PURCHASE_CANCEL
     purchLegacyCancelIN
   ] = await Promise.all([
     apiList(date, 'SALE_PAYMENT', 'IN'),
@@ -142,7 +136,6 @@ async function load() {
   });
 
   // Efectivo p/ mañana (estimado, caja física)
-  // Apertura + (cobros CASH - anulaciones CASH) - gastos CASH - retiro
   const cashIn  = byMethod.CASH;
   const cashOut = gastos; // gastos siempre cash en tu modelo
   const systemCashExpected = openingCash + cashIn - cashOut;
@@ -150,11 +143,13 @@ async function load() {
 
   const anulaciones = sumSaleCancel + comprasCanc;
 
-  $('#sumInfo').textContent =
-    `Fecha: ${date} · Apertura: ${fmtARS.format(openingCash)} · ` +
-    `Gastos: ${fmtARS.format(gastos)} · Compras: ${fmtARS.format(comprasNet)} · ` +
-    `Anulaciones: ${fmtARS.format(anulaciones)} · Retiro: ${fmtARS.format(retiro)} · ` +
-    `Efectivo p/ mañana (estimado): ${fmtARS.format(carryOverExpected)}`;
+  // ✅ Asignar valores a la nueva tarjeta de Detalle Operativo
+  $('#valApertura').textContent = fmtARS.format(openingCash);
+  $('#valGastos').textContent = fmtARS.format(gastos);
+  $('#valCompras').textContent = fmtARS.format(comprasNet);
+  $('#valAnulaciones').textContent = fmtARS.format(anulaciones);
+  $('#valRetiro').textContent = fmtARS.format(retiro);
+  $('#valManana').textContent = fmtARS.format(carryOverExpected);
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
