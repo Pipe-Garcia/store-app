@@ -12,7 +12,7 @@
     padding: 24px; 
     box-sizing: border-box; 
 }
-.page-head{ display:flex; align-items:center;margin: 10px 0 18px 0; gap: 35px;}
+.page-head{ display:flex; align-items:center;margin-bottom: 12px; gap: 35px;}
 .page-head h1{ margin-left: 15px; }
 
 /* ====== Cards ====== */
