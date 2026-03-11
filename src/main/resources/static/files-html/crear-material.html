@@ -4,9 +4,13 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>➕ Crear material</title>
+  
   <link rel="stylesheet" href="../files-css/style.css"/>
   <link rel="stylesheet" href="../files-css/materiales.css"/>
   <link rel="stylesheet" href="../files-css/nav.css"/>
+  
+  <!-- ✅ ACÁ AGREGAMOS SWEETALERT2 PARA QUE FUNCIONE LA ALERTA -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
   <div id="app-header"></div>
@@ -56,7 +60,8 @@
             <label for="warehouseId">Depósito inicial</label>
             <select id="warehouseId" required>
               <option value="">Seleccionar…</option>
-            </select> </div>
+            </select> 
+          </div>
             
           <div>
             <label for="initialQuantity">Cantidad inicial</label>

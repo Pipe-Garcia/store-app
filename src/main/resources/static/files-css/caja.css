@@ -206,3 +206,16 @@ a {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
   outline: none !important;
 }
+
+
+/* Para los inputs de SweetAlert (abrir, cerrar, gastos) */
+.swal2-input[type="number"]::-webkit-inner-spin-button,
+.swal2-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.swal2-input[type="number"] {
+  -moz-appearance: textfield; /* Para Firefox */
+  appearance: textfield;
+}

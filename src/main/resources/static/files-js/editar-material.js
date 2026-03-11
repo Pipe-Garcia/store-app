@@ -111,6 +111,33 @@ async function cargarAlmacenes(){
   });
 }
 
+/* ================== Validar Código Duplicado ================== */
+async function checkIfCodeExists(codigoIngresado, currentMaterialId) {
+  try {
+    const r = await authFetch(`${API_URL_MAT}?page=0&size=10000`);
+    if (!r.ok) return false;
+    
+    let data = await r.json();
+    const list = (data && Array.isArray(data.content)) ? data.content : (Array.isArray(data) ? data : []);
+    
+    const codigoABuscar = codigoIngresado.toLowerCase();
+    
+    const existe = list.some(mat => {
+      const internalCode = String(mat.internalNumber || '').toLowerCase();
+      const matId = String(mat.idMaterial || mat.id);
+      
+      // Existe si el código es igual PERO el ID es diferente al que estamos editando
+      return internalCode === codigoABuscar && matId !== String(currentMaterialId);
+    });
+
+    return existe;
+
+  } catch (error) {
+    console.error("Error verificando código existente:", error);
+    return false; 
+  }
+}
+
 /* ================== bootstrap ================== */
 document.addEventListener('DOMContentLoaded', init);
 
@@ -133,7 +160,6 @@ async function init(){
   $('#name').value           = m.name  || '';
   $('#brand').value          = m.brand || '';
   $('#priceArs').value       = (m.priceArs ?? '') === null ? '' : m.priceArs;
-  // Nuevos campos:
   $('#internalNumber').value = m.internalNumber || '';
   $('#description').value    = m.description || '';
 
@@ -159,10 +185,46 @@ async function init(){
   $('#formEditarMaterial')?.addEventListener('submit', onSave);
 }
 
-/* ================== save (MODIFICADO CON CARTEL) ================== */
+/* ================== save (MODIFICADO CON VALIDACIÓN Y CARTEL) ================== */
 async function onSave(e){
   e.preventDefault();
   if(!getToken()){ notify('Iniciá sesión','error'); go('login.html'); return; }
+
+  const internalNumber = $('#internalNumber').value.trim();
+  const btn = $('#btnSave');
+
+  // 1. Bloqueamos botón mientras verificamos
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Verificando...';
+  }
+
+  // 2. Verificamos que el código no lo tenga OTRO material
+  const yaExiste = await checkIfCodeExists(internalNumber, materialId);
+
+  if (yaExiste) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Atención',
+      text: `El código interno "${internalNumber}" ya le pertenece a otro material. Por favor, elegí otro distinto.`,
+      confirmButtonColor: '#1c7ed6'
+    });
+    
+    // Restauramos el botón porque falló la validación
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Guardar cambios';
+    }
+    $('#internalNumber').focus();
+    return; // Frenamos acá
+  }
+
+  // Restauramos el botón para que vuelva a decir "Guardar cambios" 
+  // (ya que el SweetAlert siguiente pausa la ejecución esperando al usuario)
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Guardar cambios';
+  }
 
   const famVal = $('#familyId').value;
   const whVal  = $('#warehouseId').value;
@@ -172,7 +234,7 @@ async function onSave(e){
     name:           $('#name').value.trim(),
     brand:          $('#brand').value.trim(),
     priceArs:       parseFloat($('#priceArs').value || '0'),
-    internalNumber: $('#internalNumber').value.trim(),
+    internalNumber: internalNumber,
     description:    $('#description').value.trim(),
     
     familyId:    (famVal ? parseInt(famVal, 10) : null),
@@ -186,7 +248,7 @@ async function onSave(e){
     }
   });
 
-  // 👇👇👇 AQUÍ ESTÁ EL CARTEL DE CONFIRMACIÓN AGREGADO 👇👇👇
+  // 3. Confirmación y Guardado
   Swal.fire({
     title: '¿Estás seguro?',
     text: "Vas a guardar los cambios realizados en este material.",
@@ -198,10 +260,7 @@ async function onSave(e){
     cancelButtonText: 'Cancelar'
   }).then(async (result) => {
     
-    // Solo si el usuario confirma, ejecutamos el guardado
     if (result.isConfirmed) {
-        
-        const btn=$('#btnSave'); 
         if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
 
         try{

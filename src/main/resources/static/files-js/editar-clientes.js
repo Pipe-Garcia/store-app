@@ -1,3 +1,4 @@
+// /static/files-js/editar-clientes.js
 const { authFetch, getToken } = window.api;
 const API_BASE = '/clients';
 
@@ -12,7 +13,6 @@ function go(page){
 }
 
 /* ================== TOASTS (SweetAlert2) ================== */
-// Usamos SweetAlert para las notificaciones también, para mantener consistencia
 const Toast = Swal.mixin({
   toast: true,
   position: 'top-end',
@@ -42,7 +42,6 @@ const reEmail    = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const rePhone    = /^[+]?[\d\s\-().]{6,20}$/;       
 
 function markValid(el, ok){
-  // Borde rojo si es inválido, gris si es válido (o azul si tiene focus)
   el.style.borderColor = ok ? '' : '#dc3545';
   return ok;
 }
@@ -93,9 +92,35 @@ async function init(){
   $('#formEditarCliente')?.addEventListener('submit', onSave);
 }
 
+// ✅ Función para buscar si el DNI ya le pertenece a OTRO cliente
+async function checkIfDniExists(dniIngresado, currentClientId) {
+  try {
+    const r = await authFetch(`${API_BASE}?page=0&size=10000`);
+    if (!r.ok) return false; 
+    
+    let data = await r.json();
+    const list = (data && Array.isArray(data.content)) ? data.content : (Array.isArray(data) ? data : []);
+    
+    const existe = list.some(client => {
+      const currentDni = String(client.dni || '').trim();
+      const idClient = String(client.idClient || client.id);
+      
+      // Existe si el DNI es igual PERO el ID es diferente al que estamos editando
+      return currentDni === dniIngresado && idClient !== String(currentClientId);
+    });
+
+    return existe;
+  } catch (error) {
+    console.error("Error verificando DNI existente:", error);
+    return false; 
+  }
+}
+
 async function onSave(e){
   e.preventDefault();
   if (!getToken()){ notify('Sesión vencida','error'); go('login.html'); return; }
+
+  const btnSubmit = $('#formEditarCliente button[type="submit"]');
 
   const dto = {
     idClient   : Number(clientId),
@@ -118,7 +143,7 @@ async function onSave(e){
   dto.phoneNumber = softTrim(dto.phoneNumber);
   dto.dni         = (dto.dni||'').trim();
 
-  // Validación
+  // Validación rápida visual
   const v = {
     name:     markValid($('#name'),        reName.test(dto.name)),
     surname:  markValid($('#surname'),     reName.test(dto.surname)),
@@ -137,7 +162,36 @@ async function onSave(e){
   if (!v.locality) return notify('Localidad inválida.','error');
   if (!v.phone)    return notify('Teléfono inválido.','error');
 
-  // 👇👇👇 AQUÍ EMPIEZA LA CONFIRMACIÓN 👇👇👇
+  // 1. Bloqueamos botón y verificamos DNI repetido
+  if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = 'Verificando...';
+  }
+
+  const yaExiste = await checkIfDniExists(dto.dni, dto.idClient);
+
+  if (yaExiste) {
+      Swal.fire({
+          icon: 'warning',
+          title: 'Atención',
+          text: `El DNI "${dto.dni}" ya le pertenece a otro cliente registrado.`,
+          confirmButtonColor: '#1c7ed6'
+      });
+      
+      if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = 'Guardar Cambios';
+      }
+      $('#dni').focus();
+      return; 
+  }
+
+  if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = 'Guardar Cambios';
+  }
+
+  // 2. Si el DNI está libre, tiramos el modal de confirmación
   Swal.fire({
     title: '¿Guardar cambios?',
     text: "Vas a modificar los datos del cliente.",
@@ -150,7 +204,12 @@ async function onSave(e){
   }).then(async (result) => {
     
     if (result.isConfirmed) {
-      // Si confirma, procedemos con el fetch
+      
+      if (btnSubmit) {
+          btnSubmit.disabled = true;
+          btnSubmit.textContent = 'Guardando...';
+      }
+
       try{
         const res = await authFetch(API_BASE, {
           method: 'PUT',
@@ -168,7 +227,16 @@ async function onSave(e){
         go('clientes.html');
       }catch(err){
         console.error(err);
-        notify(err.message || 'Error actualizando cliente','error');
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: err.message || 'Error actualizando cliente'
+        });
+      }finally{
+          if (btnSubmit) {
+              btnSubmit.disabled = false;
+              btnSubmit.textContent = 'Guardar Cambios';
+          }
       }
     }
   });
