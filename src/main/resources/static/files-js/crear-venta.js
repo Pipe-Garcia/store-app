@@ -812,7 +812,7 @@ function addRow(prefill){
 
   // 3. CANTIDAD
   const qty = document.createElement('input');
-  qty.type = 'text';
+  qty.type = 'number';
   qty.inputMode = 'numeric';
   qty.autocomplete = 'off';
   qty.placeholder = '1';

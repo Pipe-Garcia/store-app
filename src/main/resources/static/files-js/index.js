@@ -1066,7 +1066,7 @@ function renderAuditActionsChart(series){
       },
       scales:{
         x:{ stacked:true, ticks:{ color:getCss('--text-weak'), maxRotation:0 }, grid:{ color:getCss('--grid') } },
-        y:{ stacked:true, beginAtZero:true, ticks:{ color:getCss('--text-weak') }, grid:{ color:getCss('--grid') } }
+        y:{ stacked:true, beginAtZero:true, ticks:{ stepSize: 1, color:getCss('--text-weak') }, grid:{ color:getCss('--grid') } }
       }
     }
   }));
@@ -1086,7 +1086,7 @@ function renderAuditActorsChart(list){
     type:'bar',
     data:{ labels, datasets:[{ label:'Eventos', data, backgroundColor:bar, borderColor:line }] },
     options:{
-      indexAxis: 'y',
+      indexAxis: 'x',
       responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{ display:false },
@@ -1094,7 +1094,7 @@ function renderAuditActorsChart(list){
       },
       scales:{
         x:{ beginAtZero:true, ticks:{ color:getCss('--text-weak') }, grid:{ color:getCss('--grid') } },
-        y:{ ticks:{ color:getCss('--text-weak') }, grid:{ color:getCss('--grid') } }
+        y:{ ticks:{ stepSize: 1, color:getCss('--text-weak') }, grid:{ color:getCss('--grid') } }
       }
     }
   }));
