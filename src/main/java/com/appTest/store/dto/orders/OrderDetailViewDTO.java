@@ -17,11 +17,9 @@ public class OrderDetailViewDTO implements Serializable {
     private String materialName;
     private BigDecimal priceUni;
 
-    private BigDecimal quantityOrdered;   // pedidas
-    private BigDecimal quantityCommitted; // = ALLOCATED (vendidas/comprometidas)
-    private BigDecimal quantityDelivered; // = sum(DeliveryItem)
-    private BigDecimal remainingUnits;    // pedidas - consumidas
-
+    private BigDecimal quantityOrdered;   // presupuestadas
+    private BigDecimal quantitySold;      // vendidas totales desde este presupuesto
+    private BigDecimal quantityCommitted; // vendidas pero aún no entregadas
+    private BigDecimal quantityDelivered; // entregadas
+    private BigDecimal remainingUnits;    // pendientes de entrega
 }
-
-

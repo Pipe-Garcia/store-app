@@ -14,14 +14,18 @@
     });
   };
 
+  const pointHomeToOperativeLanding = () => {
+    document.querySelectorAll('a[href$="index.html"], a[href$="index-emp.html"]').forEach(a => {
+      a.setAttribute('href', 'index-emp.html');
+    });
+  };
+
   onReady(()=>{
     const role = (document.documentElement.getAttribute('data-role')||'').toLowerCase();
 
-    // EMPLEADO: ocultamos caja + histórico
+    // EMPLEADO
     if (role === 'employee'){
-      document.querySelectorAll('a[href$="index.html"]').forEach(a => {
-        a.setAttribute('href', 'index-emp.html');
-      });
+      pointHomeToOperativeLanding();
 
       [
         'movimientos.html',
@@ -43,12 +47,14 @@
       return;
     }
 
-    // CAJERO: sólo Inicio, Ventas, Caja, Clientes
+    // CAJERO
     if (role === 'cashier'){
+      pointHomeToOperativeLanding();
+
       [
         'movimientos.html',
         'stock-movimientos.html',
-        'caja-historico.html',    
+        'caja-historico.html',
         'materiales.html',
         'pedidos.html',
         'entregas.html',
@@ -59,7 +65,6 @@
         'auditorias.html'
       ].forEach(hideByHref);
 
-      // ✅ ocultar dropdown Auditoría completo
       const auditBtn = document.getElementById('auditBtn');
       const li = auditBtn?.closest('li');
       if (li) li.style.display = 'none';
@@ -68,6 +73,6 @@
       return;
     }
 
-    // OWNER: no hacemos nada
+    // OWNER
   });
 })();

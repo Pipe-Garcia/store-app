@@ -69,6 +69,26 @@ const fmtDateTime = (v) => {
   return s;
 };
 
+const fmtDateOnly = (v) => {
+  if (!v) return '—';
+  const s = String(v).trim();
+
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+
+  const d = new Date(s.length === 10 ? `${s}T00:00:00` : s);
+  if (!isNaN(d)) {
+    return new Intl.DateTimeFormat('es-AR', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(d);
+  }
+
+  return s;
+};
+
 const METHOD_LABEL = { CASH: 'Efectivo', TRANSFER: 'Transferencia', CARD: 'Tarjeta', OTHER: 'Otro' };
 
 function pillType(dir, reason) {
@@ -246,7 +266,7 @@ function setSessionInfo() {
     el.innerHTML = `
       ${makeBadge('Estado', 'Histórica')}
       ${makeBadge('Sesión', `#${id}`)}
-      ${makeBadge('Fecha', date)}
+      ${makeBadge('Fecha', fmtDateOnly(date))}
       ${makeBadge('Apertura', fmtARS.format(opening))}
       ${makeBadge('Retiro', fmtARS.format(withdrawal))}
       ${makeBadge('Efectivo sig. día', fmtARS.format(carry))}
@@ -272,7 +292,7 @@ function setSessionInfo() {
     el.innerHTML = `
       ${makeBadge('Estado', 'Cerrada (Hoy)', true)}
       ${makeBadge('Sesión', `#${id}`)}
-      ${makeBadge('Fecha', date)}
+      ${makeBadge('Fecha', fmtDateOnly(date))}
       ${makeBadge('Apertura', fmtARS.format(opening))}
       ${makeBadge('Retiro', fmtARS.format(withdrawal))}
       ${makeBadge('Efectivo p/ mañana', fmtARS.format(carry))}
@@ -302,7 +322,7 @@ function setSessionInfo() {
     el.innerHTML = `
       ${makeBadge('Estado', 'Abierta', true)}
       ${makeBadge('Sesión', `#${id}`)}
-      ${makeBadge('Fecha', date || '—')}
+      ${makeBadge('Fecha', fmtDateOnly(date))}
       ${makeBadge('Apertura', fmtDateTime(openedAt))}
       ${makeBadge('Monto inicial', fmtARS.format(openingCash))}
     `;
@@ -467,6 +487,22 @@ async function loadAll() {
 
   const q = (f.text || '').toLowerCase();
   let view = list;
+
+  // En la vista principal de caja no mostramos movimientos de compra.
+  // Siguen impactando caja, pero no ensuciamos la operativa diaria.
+  if (!READONLY) {
+    view = view.filter(raw => {
+      const reason = String(raw.reason || '').toUpperCase();
+      const sourceType = String(raw.sourceType || '').toUpperCase();
+
+      const isPurchaseMove =
+        reason === 'PURCHASE' ||
+        reason === 'PURCHASE_CANCEL' ||
+        sourceType === 'PURCHASE';
+
+      return !isPurchaseMove;
+    });
+  }
 
   if (q) {
     view = list.filter(raw => {

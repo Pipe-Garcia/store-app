@@ -41,12 +41,8 @@
     window.dispatchEvent(new Event('themechange'));
   });
 
-  // Inserta y configura el menú de usuario
   initHeaderUser();
-
-  // ✅ Nuevo: dropdown Auditoría
   initAuditDropdown();
-
 })();
 
 function initHeaderUser(){
@@ -69,7 +65,7 @@ function initHeaderUser(){
         <small id="uRole" class="muted">—</small>
       </div>
       <hr>
-      <a href="../files-html/index.html" role="menuitem">Panel</a>
+      <a href="../files-html/index.html" id="panelLink" role="menuitem">Panel</a>
       <a href="../files-html/usuarios.html" id="usersAdmin" hidden role="menuitem">Usuarios</a>
       <button id="logoutBtn" class="danger" role="menuitem">Cerrar sesión</button>
     </div>
@@ -79,9 +75,9 @@ function initHeaderUser(){
   if (themeBtn) nav.insertBefore(right, themeBtn); else nav.appendChild(right);
 
   const usersItem = document.getElementById('usersAdmin');
+  const panelLink = document.getElementById('panelLink');
   if (usersItem) usersItem.hidden = true;
 
-  // Dropdown
   const btn = document.getElementById('userBtn');
   const menu = document.getElementById('userMenu');
 
@@ -101,7 +97,6 @@ function initHeaderUser(){
     });
   }
 
-  // Logout
   document.getElementById('logoutBtn')?.addEventListener('click', ()=>{
     api.logout();
     location.href = '../files-html/login.html';
@@ -116,6 +111,12 @@ function initHeaderUser(){
     guest:    'INVITADO'
   };
 
+  function panelHrefByRole(roleKey){
+    return roleKey === 'owner'
+      ? '../files-html/index.html'
+      : '../files-html/index-emp.html';
+  }
+
   function applyRole({ roleKey, displayName }) {
     const name = displayName || 'Usuario';
     const roleText = ROLE_LABEL[roleKey] || ROLE_LABEL.employee;
@@ -124,30 +125,42 @@ function initHeaderUser(){
     document.getElementById('uName').textContent    = name;
     document.getElementById('uRole').textContent    = roleText;
 
-    // Solo OWNER ve "Usuarios"
+    if (panelLink) panelLink.setAttribute('href', panelHrefByRole(roleKey));
+
     if (usersItem) usersItem.hidden = (roleKey !== 'owner');
 
-    // Atributo global para guards
+    // ✅ contexto global para otras pantallas
     document.documentElement.setAttribute('data-role', roleKey);
+    document.documentElement.setAttribute('data-user', name);
+    document.documentElement.setAttribute('data-role-label', roleText);
 
-    // Guard sólo en usuarios.html
     if (pathIsUsers && roleKey !== 'owner') {
-      try { localStorage.setItem('flash', JSON.stringify({type:'error', message:'Acceso restringido a DUEÑO'})); } catch (_){}
+      try {
+        localStorage.setItem('flash', JSON.stringify({
+          type:'error',
+          message:'Acceso restringido a DUEÑO'
+        }));
+      } catch (_){}
       location.replace('../files-html/index.html');
     }
 
-    // Evento global
-    document.dispatchEvent(new CustomEvent('app:auth-ready', { detail:{ role: roleKey, owner: roleKey==='owner', cashier: roleKey==='cashier' } }));
+    document.dispatchEvent(new CustomEvent('app:auth-ready', {
+      detail:{
+        role: roleKey,
+        roleLabel: roleText,
+        userName: name,
+        owner: roleKey === 'owner',
+        cashier: roleKey === 'cashier'
+      }
+    }));
   }
 
-  // Sin token => invitado
   if (!api.getToken()){
     applyRole({ roleKey:'guest', displayName:'Invitado' });
     return;
   }
 
   (async ()=>{
-    // 1) /auth/me
     const me = await api.me();
     if (me?.ok) {
       const d = me.data || {};
@@ -162,7 +175,6 @@ function initHeaderUser(){
       return;
     }
 
-    // 2) Fallback JWT
     const payload = api.decodeJwtPayload(api.getToken()) || {};
     const roles = new Set(
       []
@@ -189,7 +201,6 @@ function initAuditDropdown(){
   const btn = root.querySelector('#auditBtn');
   if (!btn) return;
 
-  // Creamos el menú “portal” en <body> para que NO lo recorte el overflow-x del UL.menu
   let menu = document.getElementById('auditMenu');
   if (!menu){
     menu = document.createElement('div');
@@ -212,51 +223,42 @@ function initAuditDropdown(){
   }
 
   function positionMenu(){
-    // posición fija: abajo del botón
     const r = btn.getBoundingClientRect();
     menu.style.position = 'fixed';
     menu.style.top  = `${Math.round(r.bottom + 8)}px`;
 
-    // alineado a la izquierda del botón, pero sin salirse de pantalla
     const margin = 8;
     const desiredLeft = r.left;
-    // forzamos reflow para medir ancho real si estaba hidden
     menu.hidden = false;
     const w = menu.offsetWidth || 220;
     const maxLeft = window.innerWidth - w - margin;
     menu.style.left = `${Math.max(margin, Math.min(desiredLeft, maxLeft))}px`;
   }
 
-  // Toggle click
   btn.addEventListener('click', (ev)=>{
     ev.stopPropagation();
-    const open = menu.hidden; // si estaba cerrado, abrimos
+    const open = menu.hidden;
     setOpen(open);
   });
 
-  // Cerrar click afuera
   document.addEventListener('click', (e)=>{
     if (!menu.hidden && !menu.contains(e.target) && !btn.contains(e.target)){
       setOpen(false);
     }
   });
 
-  // Cerrar ESC
   document.addEventListener('keydown', (e)=>{
     if (e.key === 'Escape' && !menu.hidden) setOpen(false);
   });
 
-  // Reposicionar en resize/scroll (si está abierto)
   window.addEventListener('resize', ()=>{ if (!menu.hidden) positionMenu(); });
   window.addEventListener('scroll',  ()=>{ if (!menu.hidden) positionMenu(); }, { passive:true });
 
-  // Cerrar al clickear un item
   menu.addEventListener('click', (e)=>{
     const a = e.target.closest('a');
     if (a) setOpen(false);
   });
 
-  // ✅ Active state: si estás en una página de auditoría, marcamos el botón y el item
   const here = location.pathname.split('/').pop();
   const links = Array.from(menu.querySelectorAll('a'));
   const active = links.find(a => (a.dataset.nav || a.getAttribute('href') || '').split('/').pop() === here);

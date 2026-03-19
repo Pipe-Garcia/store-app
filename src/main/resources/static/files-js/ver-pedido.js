@@ -56,6 +56,7 @@ const getDetBudgeted = d =>
 
 const getDetSold = d => {
   const direct =
+    d.quantitySold ??
     d.quantitySoldFromBudget ??
     d.soldFromBudget ??
     d.soldUnitsFromBudget ??
@@ -66,8 +67,8 @@ const getDetSold = d => {
 
   if (direct != null) return Number(direct) || 0;
 
-  const committed = Number(d.committedUnits ?? d.unitsCommitted ?? 0);
-  const delivered = Number(d.deliveredUnits ?? d.unitsDelivered ?? 0);
+  const committed = Number(d.quantityCommitted ?? d.committedUnits ?? d.unitsCommitted ?? 0);
+  const delivered = Number(d.quantityDelivered ?? d.deliveredUnits ?? d.unitsDelivered ?? 0);
   const sum = committed + delivered;
   if (sum > 0) return sum;
 
@@ -147,6 +148,19 @@ function buildUnitsLabel(units, details, qtySelector) {
   return `${totalUnits} - ${namesStr}`;
 }
 
+function buildSoldBreakdownLabel(details) {
+  if (!Array.isArray(details) || !details.length) return '0';
+
+  const parts = details
+    .map(det => {
+      const sold = Number(getDetSold(det) || 0);
+      if (sold <= 0) return null;
+      return `${getMatName(det)}: ${sold}`;
+    })
+    .filter(Boolean);
+
+  return parts.length ? parts.join(' · ') : '0';
+}
 
 const getDetPrice = d =>
   Number(d.priceUni ?? d.unitPrice ?? d.priceArs ?? d.price ?? 0);
@@ -264,8 +278,8 @@ function renderHeader(orderId, header, details){
   if (Number.isNaN(pendingToSell))      pendingToSell     = 0;
 
   // Render etiquetas solo de VENDIDAS
-  const vendidasLabel  = buildUnitsLabel(soldUnits, details, getDetSold);
-  $('#vendidas').textContent  = vendidasLabel;
+  const vendidasLabel = buildSoldBreakdownLabel(details);
+  $('#vendidas').textContent = vendidasLabel;
 
   // IMPORTANTE: Mantenemos el cálculo de fullySold para la lógica de los botones
   const fullySold = (typeof header.fullySold === 'boolean') ? header.fullySold : (pendingToSell <= 0);

@@ -496,13 +496,19 @@ function estadoCellHtml(v){
   }
 
   const del = getDeliveryStateCode(v);
+  const pay = getPaymentStatusCode(v);
 
-  // Employee: solo entrega (no pago)
+  // Empleado: solo entrega
   if (CURRENT_ROLE === 'employee'){
     return deliveryPillHtml(del);
   }
 
-  const pay = getPaymentStatusCode(v);
+  // Cajero: solo pago
+  if (CURRENT_ROLE === 'cashier'){
+    return payPillHtml(pay);
+  }
+
+  // Owner: entrega + pago
   return `
     <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
       ${deliveryPillHtml(del)}

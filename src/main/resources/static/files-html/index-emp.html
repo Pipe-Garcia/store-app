@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>🏠 | Inicio – Empleado</title>
+  <title>🏠 | Inicio – Operación</title>
   <link rel="stylesheet" href="../files-css/style.css" />
   <link rel="stylesheet" href="../files-css/nav.css" />
   <link rel="stylesheet" href="../files-css/index-emp.css" />
@@ -16,59 +16,68 @@
       <div class="hero-icon">👋</div>
       <div class="hero-copy">
         <h1 id="greet">¡Bienvenido/a!</h1>
-        <p class="muted">
-          Tu perfil es <strong>Empleado</strong>. Tenés acceso a las tareas diarias.
+        <p class="muted" id="roleCopy">
+          Cargando perfil...
+        </p>
+        <p class="muted" id="today">
+          —
         </p>
       </div>
     </section>
 
-    <section class="grid">
+    <section class="grid" id="quickGrid">
 
-      <a class="quick card" href="./materiales.html">
+      <a class="quick card" href="./materiales.html" data-roles="employee">
         <div class="ico">📦</div>
         <div class="title">Materiales</div>
-        <div class="desc">Buscar y ver existencias</div>
+        <div class="desc">Buscar materiales y consultar existencias</div>
       </a>
 
-      <a class="quick card" href="./pedidos.html">
+      <a class="quick card" href="./pedidos.html" data-roles="employee">
         <div class="ico">🧺</div>
         <div class="title">Presupuestos</div>
-        <div class="desc">Gestionar presupuestos de clientes</div>
+        <div class="desc">Registrar y consultar presupuestos</div>
       </a>
 
-      <a class="quick card" href="./ventas.html">
+      <a class="quick card" href="./ventas.html" data-roles="employee,cashier">
         <div class="ico">🧾</div>
         <div class="title">Ventas</div>
-        <div class="desc">Crear y listar ventas</div>
+        <div class="desc" data-desc-role>
+          Consultar ventas y operar según el perfil
+        </div>
       </a>
 
-      <a class="quick card" href="./entregas.html">
+      <a class="quick card" href="./entregas.html" data-roles="employee">
         <div class="ico">🚚</div>
         <div class="title">Entregas</div>
-        <div class="desc">Ver y actualizar entregas</div>
+        <div class="desc">Registrar y consultar entregas</div>
       </a>
 
-      <a class="quick card" href="./clientes.html">
+      <a class="quick card" href="./clientes.html" data-roles="employee,cashier">
         <div class="ico">👤</div>
         <div class="title">Clientes</div>
-        <div class="desc">Directorio de clientes</div>
+        <div class="desc">Consultar y registrar clientes</div>
       </a>
 
-      <a class="quick card" href="./almacen.html">
+      <a class="quick card" href="./almacen.html" data-roles="employee">
         <div class="ico">🏭</div>
         <div class="title">Almacenes</div>
-        <div class="desc">Directorio de Almacenes</div>
+        <div class="desc">Consultar depósitos disponibles</div>
       </a>
+
+      <a class="quick card" href="./caja.html" data-roles="cashier">
+        <div class="ico">💰</div>
+        <div class="title">Caja</div>
+        <div class="desc">Gestionar cobros, gastos y cierre diario</div>
+      </a>
+
     </section>
   </main>
 
-  <!-- núcleo + header -->
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>
   <script src="../files-js/header.js"></script>
-  <!-- opcional: ocultar elementos del menú por rol (punto 3) -->
   <script src="../files-js/menu-guard.js"></script>
-  <!-- comportamiento de esta landing -->
   <script src="../files-js/index-emp.js"></script>
 </body>
 </html>

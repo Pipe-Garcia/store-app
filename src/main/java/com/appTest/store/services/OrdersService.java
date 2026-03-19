@@ -227,19 +227,20 @@ public class OrdersService implements IOrdersService {
             Long matId = d.getMaterial().getIdMaterial();
             String matName = d.getMaterial().getName();
 
-            java.math.BigDecimal ordered   = d.getQuantity(); // pedidas
+            java.math.BigDecimal ordered   = d.getQuantity(); // presupuestadas
             java.math.BigDecimal delivered = deliveredByDetail.getOrDefault(d.getIdOrderDetail(), ZERO);
-            java.math.BigDecimal sold      = soldByMat.getOrDefault(matId, ZERO);
+            java.math.BigDecimal sold      = soldByMat.getOrDefault(matId, ZERO); // vendido total
+            if (sold == null) sold = ZERO;
 
             if (delivered.compareTo(ordered) > 0) {
                 delivered = ordered; // sanity
             }
 
-            // Siempre pendiente vs pedido (no vs vendido)
+            // Pendiente de entrega
             java.math.BigDecimal remaining = ordered.subtract(delivered);
             if (remaining.signum() < 0) remaining = ZERO;
 
-            // comprometido = vendido - entregado, acotado a lo pendiente
+            // Comprometido = vendido - entregado, acotado por lo pendiente
             java.math.BigDecimal committed = sold.subtract(delivered);
             if (committed.signum() < 0) committed = ZERO;
             if (committed.compareTo(remaining) > 0) {
@@ -257,6 +258,7 @@ public class OrdersService implements IOrdersService {
                     matName,
                     d.getPriceUni(),
                     ordered,
+                    sold,
                     committed,
                     delivered,
                     remaining
