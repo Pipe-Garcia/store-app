@@ -14,7 +14,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.*;
+import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +31,6 @@ public class CashService {
 
     private LocalDate todayAR(){ return LocalDate.now(AR_TZ); }
 
-    // ✅ guardamos hora Argentina en DB (LocalDateTime "AR")
     private LocalDateTime nowAR(){ return ZonedDateTime.now(AR_TZ).toLocalDateTime(); }
 
     private String currentUser(){
@@ -56,12 +57,77 @@ public class CashService {
         return "OTHER";
     }
 
-    /**
-     * Si quedó una sesión OPEN de un día anterior, la cerramos sola:
-     * - countedCash = systemCash (asumimos sin diferencia)
-     * - withdrawalCash = 0
-     * - carryOverCash = systemCash
-     */
+    public boolean isTechnicalNonCashSession(CashSession s){
+        if (s == null) return false;
+
+        String note = (s.getNote() != null) ? s.getNote().trim().toLowerCase(Locale.ROOT) : "";
+        if (note.isBlank()) return false;
+
+        return note.contains("sesión automática (registro de compra)")
+                || note.contains("sesión automática (anulación de compra)");
+    }
+
+    public boolean shouldHideFromHistory(
+            CashSession s,
+            BigDecimal income,
+            BigDecimal expense,
+            BigDecimal purchase,
+            BigDecimal withdrawal
+    ){
+        if (s == null) return true;
+
+        // 1) ocultar sesiones técnicas de compras/anulaciones
+        if (isTechnicalNonCashSession(s)) return true;
+
+        // 2) ocultar sesiones vacías cerradas por system
+        boolean closedBySystem = "system".equalsIgnoreCase(
+                s.getClosedBy() != null ? s.getClosedBy().trim() : ""
+        );
+
+        boolean emptySession =
+                nz(s.getOpeningCash()).signum() == 0 &&
+                        nz(income).signum() == 0 &&
+                        nz(expense).signum() == 0 &&
+                        nz(purchase).signum() == 0 &&
+                        nz(withdrawal).signum() == 0 &&
+                        nz(s.getCarryOverCash()).signum() == 0;
+
+        return closedBySystem && emptySession;
+    }
+
+    public Optional<CashSession> findVisibleSessionByDate(LocalDate date){
+        if (date == null) return Optional.empty();
+
+        List<CashSession> all = sessionRepo.findByBusinessDateOrderByIdDesc(date);
+
+        return all.stream()
+                .filter(s -> !isTechnicalNonCashSession(s))
+                .findFirst();
+    }
+
+    private Optional<CashSession> findLatestTechnicalSessionByDate(LocalDate date){
+        if (date == null) return Optional.empty();
+
+        return sessionRepo.findByBusinessDateOrderByIdDesc(date).stream()
+                .filter(this::isTechnicalNonCashSession)
+                .findFirst();
+    }
+
+    private Optional<CashSession> findBlockingClosedOperationalSession(LocalDate date){
+        if (date == null) return Optional.empty();
+
+        return sessionRepo.findByBusinessDateOrderByIdDesc(date).stream()
+                .filter(s -> s.getStatus() == CashSession.Status.CLOSED)
+                .filter(s -> !isTechnicalNonCashSession(s))
+                .findFirst();
+    }
+
+    private Optional<CashSession> findLatestClosedOperationalSession(){
+        return sessionRepo.findByStatusOrderByBusinessDateDescIdDesc(CashSession.Status.CLOSED).stream()
+                .filter(s -> !isTechnicalNonCashSession(s))
+                .findFirst();
+    }
+
     @Transactional
     public void autoCloseStaleOpenSessionIfAny(){
         LocalDate today = todayAR();
@@ -84,10 +150,8 @@ public class CashService {
         s.setSystemCash(systemCash);
         s.setCountedCash(systemCash);
         s.setDifferenceCash(BigDecimal.ZERO);
-
         s.setWithdrawalCash(BigDecimal.ZERO);
         s.setCarryOverCash(systemCash);
-
         s.setClosedAt(nowAR());
         s.setClosedBy("system");
         s.setStatus(CashSession.Status.CLOSED);
@@ -100,25 +164,17 @@ public class CashService {
     }
 
     private void ensureNotClosedToday(LocalDate today){
-        sessionRepo.findTopByBusinessDateOrderByIdDesc(today).ifPresent(s -> {
-            if (s.getStatus() == CashSession.Status.CLOSED){
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        "La caja ya fue CERRADA hoy. No se puede reabrir hasta mañana."
-                );
-            }
-        });
+        if (findBlockingClosedOperationalSession(today).isPresent()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "La caja ya fue CERRADA hoy. No se puede reabrir hasta mañana."
+            );
+        }
     }
 
-
     /**
-     * ✅ Asegura una sesión para una fecha (para poder colgar movimientos).
-     * Prioridad:
-     *  1) Si hay OPEN ese día → usarla
-     *  2) Si hay alguna sesión (CLOSED) ese día → usarla
-     *  3) Si no hay ninguna:
-     *     - si es HOY → crea OPEN con openingCash sugerido (carryOver)
-     *     - si es otra fecha → crea CLOSED “técnica” para trazabilidad
+     * Sesión de soporte para movimientos NO operativos (compras / anulaciones).
+     * Nunca debe abrir caja física por sí sola.
      */
     @Transactional
     public CashSession ensureSessionForDate(LocalDate businessDate, String noteForAutoCreate){
@@ -126,12 +182,15 @@ public class CashService {
 
         LocalDate d = (businessDate != null) ? businessDate : todayAR();
 
+        // Si ya hay caja operativa abierta ese día, la reutilizamos
         var open = sessionRepo.findFirstByBusinessDateAndStatus(d, CashSession.Status.OPEN);
         if (open.isPresent()) return open.get();
 
-        var any = sessionRepo.findTopByBusinessDateOrderByIdDesc(d);
-        if (any.isPresent()) return any.get();
+        // Si ya existe una sesión técnica de ese día, la reutilizamos
+        var technical = findLatestTechnicalSessionByDate(d);
+        if (technical.isPresent()) return technical.get();
 
+        // Si no existe ninguna técnica, creamos una sesión técnica CERRADA.
         CashSession s = new CashSession();
         s.setBusinessDate(d);
         s.setOpenedAt(nowAR());
@@ -139,22 +198,14 @@ public class CashService {
         s.setOpeningCash(BigDecimal.ZERO);
         s.setNote(noteForAutoCreate);
 
-        if (d.equals(todayAR())){
-            // ✅ “inicio del día” automático (para permitir movimientos aunque nadie haya abierto todavía)
-            s.setStatus(CashSession.Status.OPEN);
-            s.setOpenedBy(currentUser());
-            s.setOpeningCash(suggestOpeningCash());
-        } else {
-            // ✅ sesión técnica histórica
-            s.setStatus(CashSession.Status.CLOSED);
-            s.setClosedAt(nowAR());
-            s.setClosedBy("system");
-            s.setSystemCash(BigDecimal.ZERO);
-            s.setCountedCash(BigDecimal.ZERO);
-            s.setDifferenceCash(BigDecimal.ZERO);
-            s.setWithdrawalCash(BigDecimal.ZERO);
-            s.setCarryOverCash(BigDecimal.ZERO);
-        }
+        s.setStatus(CashSession.Status.CLOSED);
+        s.setClosedAt(nowAR());
+        s.setClosedBy("system");
+        s.setSystemCash(BigDecimal.ZERO);
+        s.setCountedCash(BigDecimal.ZERO);
+        s.setDifferenceCash(BigDecimal.ZERO);
+        s.setWithdrawalCash(BigDecimal.ZERO);
+        s.setCarryOverCash(BigDecimal.ZERO);
 
         return sessionRepo.save(s);
     }
@@ -198,14 +249,6 @@ public class CashService {
                 });
     }
 
-    /**
-     * Cierre:
-     * - systemCash = opening + cashIn(CASH) - cashOut(EXPENSE CASH)
-     * - difference = counted - systemCash
-     * - carryOverCash = counted - withdrawal
-     * - withdrawal NO es gasto => lo registramos como movimiento WITHDRAWAL (para trazabilidad),
-     *   pero en sumCashOut() NO cuenta porque ese query filtra reason=EXPENSE.
-     */
     @Transactional
     public CashSession closeToday(BigDecimal countedCash, BigDecimal withdrawalCash, String note){
         autoCloseStaleOpenSessionIfAny();
@@ -217,7 +260,7 @@ public class CashService {
 
         BigDecimal opening = nz(s.getOpeningCash());
         BigDecimal cashIn  = nz(movementRepo.sumCashIn(today));
-        BigDecimal cashOut = nz(movementRepo.sumCashOut(today)); // SOLO EXPENSE
+        BigDecimal cashOut = nz(movementRepo.sumCashOut(today));
 
         BigDecimal systemCash = opening.add(cashIn).subtract(cashOut);
 
@@ -237,16 +280,14 @@ public class CashService {
         s.setCountedCash(counted);
         s.setSystemCash(systemCash);
         s.setDifferenceCash(diff);
-
         s.setWithdrawalCash(withdrawal);
         s.setCarryOverCash(carryOver);
-
         s.setStatus(CashSession.Status.CLOSED);
+
         if (note != null && !note.isBlank()) s.setNote(note);
 
         CashSession saved = sessionRepo.save(s);
 
-        // ✅ trazabilidad del retiro (no es gasto)
         if (withdrawal.signum() > 0) {
             CashMovement m = new CashMovement();
             m.setSession(saved);
@@ -266,7 +307,6 @@ public class CashService {
         return saved;
     }
 
-    // ✅ cobro de venta => IN
     @Transactional
     public void recordSalePayment(Payment payment){
         if (payment == null || payment.getSale() == null) return;
@@ -285,11 +325,10 @@ public class CashService {
         m.setSourceType("Sale");
         m.setSourceId(payment.getSale().getIdSale());
         m.setUserName(currentUser());
-        m.setNote(null); // nota limpia (concepto lo arma el front)
+        m.setNote(null);
         movementRepo.save(m);
     }
 
-    // ✅ gasto manual => SIEMPRE CASH
     @Transactional
     public CashMovement recordExpense(BigDecimal amount, String note, String reference){
         if (amount == null || amount.signum() <= 0){
@@ -308,7 +347,7 @@ public class CashService {
         m.setTimestamp(nowAR());
         m.setDirection(CashMovement.Direction.OUT);
         m.setAmount(amount);
-        m.setMethod("CASH"); // ✅ caja física
+        m.setMethod("CASH");
         m.setReason(CashMovement.Reason.EXPENSE);
         m.setSourceType("Manual");
         m.setSourceId(null);
@@ -323,23 +362,14 @@ public class CashService {
         return movementRepo.save(m);
     }
 
-    // ✅ sugerencia de apertura: carryOverCash de la última sesión cerrada
     @Transactional
     public BigDecimal suggestOpeningCash(){
-        // por si quedó una OPEN vieja, la cerramos antes de sugerir
         autoCloseStaleOpenSessionIfAny();
 
-        return sessionRepo.findTopByStatusOrderByBusinessDateDescIdDesc(CashSession.Status.CLOSED)
+        return findLatestClosedOperationalSession()
                 .map(s -> nz(s.getCarryOverCash()))
                 .orElse(BigDecimal.ZERO);
     }
-
-    /* ============================================================
-       ✅ NUEVO: COMPRAS como egreso automático (NO caja física)
-       - method: OTHER
-       - reason: PURCHASE
-       - direction: OUT
-       ============================================================ */
 
     @Transactional
     public void recordPurchaseOut(Long purchaseId, LocalDate businessDate, BigDecimal amount, String supplierName){
@@ -358,11 +388,9 @@ public class CashService {
         m.setBusinessDate(d);
         m.setTimestamp(nowAR());
         m.setDirection(CashMovement.Direction.OUT);
-
         m.setAmount(amount);
-        m.setMethod("OTHER"); // ✅ NO impacta caja física
+        m.setMethod("OTHER");
         m.setReason(CashMovement.Reason.PURCHASE);
-
         m.setSourceType("Purchase");
         m.setSourceId(purchaseId);
         m.setUserName(currentUser());
@@ -373,11 +401,6 @@ public class CashService {
         movementRepo.save(m);
     }
 
-    /**
-     * ✅ Anulación de compra:
-     * registramos el reverso como IN / PURCHASE / OTHER
-     * (deja trazabilidad y en el resumen del día se “compensa”).
-     */
     @Transactional
     public void recordPurchaseCancel(Long purchaseId, LocalDate businessDate, BigDecimal amount, String supplierName){
         if (purchaseId == null) return;
@@ -395,11 +418,9 @@ public class CashService {
         m.setBusinessDate(d);
         m.setTimestamp(nowAR());
         m.setDirection(CashMovement.Direction.IN);
-
         m.setAmount(amount);
         m.setMethod("OTHER");
         m.setReason(CashMovement.Reason.PURCHASE_CANCEL);
-
         m.setSourceType("Purchase");
         m.setSourceId(purchaseId);
         m.setUserName(currentUser());
@@ -423,13 +444,10 @@ public class CashService {
         m.setSession(session);
         m.setBusinessDate(d);
         m.setTimestamp(nowAR());
-
-        // reverso del cobro
         m.setDirection(CashMovement.Direction.OUT);
         m.setAmount(nz(payment.getAmount()));
         m.setMethod(normalizeMethod(payment.getMethodPayment()));
         m.setReason(CashMovement.Reason.SALE_CANCEL);
-
         m.setSourceType("Sale");
         m.setSourceId(payment.getSale().getIdSale());
         m.setUserName(currentUser());

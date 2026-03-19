@@ -181,6 +181,7 @@ public class PurchaseService implements IPurchaseService {
         purchase.setSupplier(supplier);
 
         List<PurchaseDetail> purchaseDetailList = new ArrayList<>();
+        BigDecimal purchaseTotal = BigDecimal.ZERO;
 
         for (PurchaseDetailRequestDTO item : dto.getMaterials()) {
             MaterialSupplier materialSupplier = repoMatSup.findById(item.getMaterialSupplierId())
@@ -201,25 +202,31 @@ public class PurchaseService implements IPurchaseService {
             purchaseDetail.setPurchasedPrice(materialSupplier.getPriceUnit());
             purchaseDetailList.add(purchaseDetail);
 
+            // ✅ acumulamos el total acá, sin depender de un refetch lazy
+            BigDecimal qty = item.getQuantity() != null ? item.getQuantity() : BigDecimal.ZERO;
+            BigDecimal unitPrice = materialSupplier.getPriceUnit() != null ? materialSupplier.getPriceUnit() : BigDecimal.ZERO;
+            purchaseTotal = purchaseTotal.add(qty.multiply(unitPrice));
+
             Long materialId = materialSupplier.getMaterial().getIdMaterial();
             servStock.increaseStock(materialId, item.getWarehouseId(), item.getQuantity());
         }
 
         purchase.setPurchaseDetails(purchaseDetailList);
 
-        Purchase savedPurchase = repoPurch.save(purchase);
-        savedPurchase = repoPurch.findById(savedPurchase.getIdPurchase())
-                .orElseThrow(() -> new EntityNotFoundException("Purchase not found after creation"));
+        // ✅ flush para asegurar ID generado y estado persistido
+        Purchase savedPurchase = repoPurch.saveAndFlush(purchase);
 
         final Long pid = savedPurchase.getIdPurchase();
-        final LocalDate businessDate = (savedPurchase.getDatePurchase() != null) ? savedPurchase.getDatePurchase() : LocalDate.now();
-        final BigDecimal total = calculateTotal(savedPurchase);
-        final String proveedor = supplierLabel(savedPurchase.getSupplier());
+        final LocalDate businessDate = (savedPurchase.getDatePurchase() != null)
+                ? savedPurchase.getDatePurchase()
+                : LocalDate.now();
+        final String proveedor = supplierLabel(supplier);
+        final BigDecimal total = purchaseTotal;
 
-
+        // ✅ ahora sí registramos movimiento financiero real
         cashService.recordPurchaseOut(pid, businessDate, total, proveedor);
 
-        // === AUDITORÍA (como ya lo tenías) ===
+        // === AUDITORÍA ===
         final Map<String,Object> after = snap(savedPurchase);
         final String message = "Proveedor: " + proveedor + " · Total: " + fmt(total);
 
@@ -227,7 +234,7 @@ public class PurchaseService implements IPurchaseService {
             Long evId = audit.success("CREATE", "Purchase", pid, message);
             Map<String,Object> diffPayload = Map.of(
                     "created", true,
-                    "fields",  after
+                    "fields", after
             );
             audit.attachDiff(evId, null, after, diffPayload);
         });

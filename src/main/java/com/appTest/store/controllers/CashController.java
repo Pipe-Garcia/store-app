@@ -84,7 +84,6 @@ public class CashController {
         return CashSessionDTO.from(s);
     }
 
-    // ✅ HISTÓRICO: listado de sesiones cerradas con neto
     @GetMapping("/sessions/history")
     @PreAuthorize("hasAnyAuthority('ROLE_OWNER','ROLE_CASHIER')")
     public Page<CashSessionHistoryRowDTO> history(
@@ -97,18 +96,18 @@ public class CashController {
         LocalDate fromD = (from != null) ? from : toD.minusDays(30);
 
         Pageable pgReq = PageRequest.of(page, size);
-        Page<CashSession> pg = sessionRepo.findByStatusAndBusinessDateBetweenOrderByBusinessDateDescIdDesc(
-                CashSession.Status.CLOSED, fromD, toD, pgReq
+
+        // ✅ Traemos todo el rango y filtramos antes de paginar
+        List<CashSession> sessions = sessionRepo.findAllByStatusAndBusinessDateBetweenOrderByBusinessDateDescIdDesc(
+                CashSession.Status.CLOSED, fromD, toD
         );
 
-        List<CashSession> sessions = pg.getContent();
         if (sessions.isEmpty()){
-            return new PageImpl<>(List.of(), pgReq, pg.getTotalElements());
+            return new PageImpl<>(List.of(), pgReq, 0);
         }
 
         List<Long> ids = sessions.stream().map(CashSession::getId).toList();
 
-        // map sessionId -> [income, expense, purchase, withdrawal]
         Map<Long, BigDecimal[]> totals = new HashMap<>();
         for (Object[] r : movementRepo.sumTotalsBySessionIds(ids)){
             Long sid = (Long) r[0];
@@ -119,16 +118,24 @@ public class CashController {
             totals.put(sid, new BigDecimal[]{ nz(income), nz(expense), nz(purchase), nz(withdrawal) });
         }
 
-        List<CashSessionHistoryRowDTO> out = new ArrayList<>(sessions.size());
+        List<CashSessionHistoryRowDTO> out = new ArrayList<>();
+
         for (CashSession s : sessions){
-            BigDecimal[] t = totals.getOrDefault(s.getId(),
-                    new BigDecimal[]{ BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO });
+            BigDecimal[] t = totals.getOrDefault(
+                    s.getId(),
+                    new BigDecimal[]{ BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO }
+            );
 
             BigDecimal income = t[0];
             BigDecimal expense = t[1];
             BigDecimal purchase = t[2];
+            BigDecimal withdrawal = t[3];
 
-            // ✅ neto del día: ingresos - (gastos + compras)  (retiro NO afecta neto)
+            // ✅ ocultamos técnicas / vacías
+            if (cashService.shouldHideFromHistory(s, income, expense, purchase, withdrawal)) {
+                continue;
+            }
+
             BigDecimal net = income.subtract(expense.add(purchase));
 
             out.add(new CashSessionHistoryRowDTO(
@@ -147,7 +154,11 @@ public class CashController {
             ));
         }
 
-        return new PageImpl<>(out, pgReq, pg.getTotalElements());
+        int fromIdx = Math.min(page * size, out.size());
+        int toIdx = Math.min(fromIdx + size, out.size());
+        List<CashSessionHistoryRowDTO> slice = out.subList(fromIdx, toIdx);
+
+        return new PageImpl<>(slice, pgReq, out.size());
     }
 
     @GetMapping("/summary")
@@ -155,7 +166,7 @@ public class CashController {
     public CashSummaryDTO summary(@RequestParam(required = false) LocalDate date){
         LocalDate d = (date != null) ? date : todayAR();
 
-        BigDecimal opening = sessionRepo.findTopByBusinessDateOrderByIdDesc(d)
+        BigDecimal opening = cashService.findVisibleSessionByDate(d)
                 .map(CashSession::getOpeningCash)
                 .orElse(BigDecimal.ZERO);
 
@@ -169,7 +180,7 @@ public class CashController {
         }
 
         BigDecimal cashIn  = movementRepo.sumCashIn(d);
-        BigDecimal cashOut = movementRepo.sumCashOut(d); // SOLO EXPENSE CASH
+        BigDecimal cashOut = movementRepo.sumCashOut(d);
         BigDecimal systemCashExpected = opening.add(cashIn).subtract(cashOut);
 
         return new CashSummaryDTO(d, opening, systemCashExpected, rows);
@@ -178,12 +189,12 @@ public class CashController {
     @GetMapping("/sessions/by-date")
     @PreAuthorize("hasAnyAuthority('ROLE_OWNER','ROLE_CASHIER')")
     public ResponseEntity<CashSessionDTO> sessionByDate(@RequestParam LocalDate date){
-        return sessionRepo.findTopByBusinessDateOrderByIdDesc(date)
+        return cashService.findVisibleSessionByDate(date)
                 .map(s -> ResponseEntity.ok(CashSessionDTO.from(s)))
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
-    // gasto manual (método lo fuerza el back a CASH)
+    // gasto manual (metodo lo fuerza el back a CASH)
     @PostMapping("/expenses")
     @PreAuthorize("hasAnyAuthority('ROLE_OWNER','ROLE_CASHIER')")
     public CashMovementDTO createExpense(@RequestBody @Valid CashExpenseCreateDTO dto){

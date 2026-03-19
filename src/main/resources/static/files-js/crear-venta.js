@@ -10,7 +10,7 @@ const API_URL_ORDERS_LIST    = '/orders';
 const API_URL_STOCKS_BY_MAT  = (id)=> `/stocks/by-material/${id}`;
 
 /* ===== Helpers ===== */
-const $ = (s,r=document)=>r.querySelector(s);
+const $ = (s, r = document) => r.querySelector(s);
 
 /* ================== TOASTS (SweetAlert2) ================== */
 const Toast = Swal.mixin({
@@ -20,12 +20,12 @@ const Toast = Swal.mixin({
   timer: 3000,
   timerProgressBar: true,
   didOpen: (toast) => {
-    toast.addEventListener('mouseenter', Swal.stopTimer)
-    toast.addEventListener('mouseleave', Swal.resumeTimer)
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
   }
 });
 
-function notify(msg, type='info'){
+function notify(msg, type = 'info'){
   const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
   Toast.fire({ icon, title: msg });
 }
@@ -36,14 +36,14 @@ function go(page){
 }
 
 function todayStr(){
-  const d=new Date();
-  const m=String(d.getMonth()+1).padStart(2,'0');
-  const day=String(d.getDate()).padStart(2,'0');
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-const fmtARS = new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'});
-const sleep = (ms)=> new Promise(r=>setTimeout(r,ms));
+const fmtARS = new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS' });
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function normalizePendingRowsBeforeSave(){
   const rows = Array.from(document.querySelectorAll('#items .fila:not(.encabezado)'));
@@ -93,7 +93,7 @@ function getRowWhId(row){
 
 function sumQtySameMatWh(mid, whId, excludeRow){
   let sum = 0;
-  document.querySelectorAll('#items .fila:not(.encabezado)').forEach(r=>{
+  document.querySelectorAll('#items .fila:not(.encabezado)').forEach(r => {
     if (r === excludeRow) return;
     if (getRowMatId(r) === mid && getRowWhId(r) === whId){
       sum += qtyIntFromEl(r.querySelector('.in-qty'));
@@ -104,7 +104,7 @@ function sumQtySameMatWh(mid, whId, excludeRow){
 
 function sumOrderBoundQty(mid, excludeRow){
   let sum = 0;
-  document.querySelectorAll('#items .fila:not(.encabezado)').forEach(r=>{
+  document.querySelectorAll('#items .fila:not(.encabezado)').forEach(r => {
     if (r === excludeRow) return;
     if (r.dataset.orderBound === '1' && getRowMatId(r) === mid){
       sum += qtyIntFromEl(r.querySelector('.in-qty'));
@@ -114,7 +114,6 @@ function sumOrderBoundQty(mid, excludeRow){
 }
 
 function pendingAvailableForRow(mid, row){
-  // ORDER_REMAIN = pendiente TOTAL por material (del presupuesto)
   if (!currentOrderId) return null;
   if (!ORDER_REMAIN.has(mid)) return null;
 
@@ -130,24 +129,19 @@ function applyRowBadges(row){
   const qtyEl = row.querySelector('.in-qty');
   if (!qtyEl) return;
 
-  // Celda de cantidad (wrapper div del wrap(qty))
   const qtyCell = qtyEl.parentElement;
   if (!qtyCell) return;
 
-  // Limpieza previa (por si se re-llama muchas veces)
   qtyCell.querySelectorAll('.qty-badge').forEach(n => n.remove());
   row.classList.remove('row-extra','row-bound');
   row.style.borderLeft = '';
   row.style.paddingLeft = '';
 
-  // Reset del input
   qtyEl.style.paddingLeft = '';
   qtyEl.removeAttribute('title');
 
-  // Si todavía no hay material seleccionado, no mostramos nada
   if (!matId) return;
 
-  // Determinar tipo
   let kind = null;
   if (row.dataset.orderExtra === '1') kind = 'extra';
   else if (row.dataset.orderBound === '1') kind = 'bound';
@@ -160,20 +154,15 @@ function applyRowBadges(row){
     ? 'Unidades agregadas fuera del presupuesto'
     : 'Unidades pendientes del presupuesto';
 
-  // ⚠️ Overlay: badge dentro de la misma celda, superpuesto al input
   qtyCell.style.position = 'relative';
-
-  // Dejamos espacio para el badge adentro del input
-  // (ajustá este número si querés más/menos espacio)
   qtyEl.style.paddingLeft = isExtra ? '92px' : '112px';
-  qtyEl.title = tooltip; // tooltip también al pasar por el input
+  qtyEl.title = tooltip;
 
   const badge = document.createElement('span');
   badge.className = 'qty-badge';
   badge.textContent = label;
   badge.title = tooltip;
 
-  // Estilo “pill” superpuesta dentro del input
   badge.style.position = 'absolute';
   badge.style.left = '10px';
   badge.style.top = '50%';
@@ -184,17 +173,14 @@ function applyRowBadges(row){
   badge.style.borderRadius = '999px';
   badge.style.whiteSpace = 'nowrap';
   badge.style.border = '1px solid rgba(0,0,0,.10)';
-  badge.style.pointerEvents = 'auto'; // para que el title funcione sobre la pill
+  badge.style.pointerEvents = 'auto';
   badge.style.userSelect = 'none';
 
-  // Colores
   badge.style.background = isExtra ? '#FEF3C7' : '#E0E7FF';
   badge.style.color      = isExtra ? '#92400E' : '#3730A3';
 
-  // Insertamos badge encima (sin cambiar altura)
   qtyCell.appendChild(badge);
 
-  // Borde sutil de fila (opcional, queda muy bien)
   row.classList.add(isExtra ? 'row-extra' : 'row-bound');
   row.style.borderLeft = isExtra ? '4px solid #f59e0b' : '4px solid #6366f1';
   row.style.paddingLeft = '8px';
@@ -211,13 +197,9 @@ function applyRowBadges(row){
 function sanitizeMoneyString(raw){
   let s = String(raw ?? '').trim();
 
-  // quitar todo menos dígitos, coma y punto
   s = s.replace(/[^\d.,]/g, '');
   if (!s) return '';
 
-  // si hay comas y puntos, asumimos que:
-  // - el ÚLTIMO separador es decimal
-  // - los anteriores eran miles
   const lastComma = s.lastIndexOf(',');
   const lastDot   = s.lastIndexOf('.');
   const decPos = Math.max(lastComma, lastDot);
@@ -230,13 +212,9 @@ function sanitizeMoneyString(raw){
     decPart = s.slice(decPos + 1);
   }
 
-  // int: solo dígitos
   intPart = intPart.replace(/\D+/g, '');
-
-  // dec: solo dígitos, máx 2
   decPart = decPart.replace(/\D+/g, '').slice(0, 2);
 
-  // si no quedó nada
   if (!intPart && !decPart) return '';
 
   return decPart ? `${intPart || '0'}.${decPart}` : `${intPart || '0'}`;
@@ -260,22 +238,19 @@ const fmtARSInput = new Intl.NumberFormat('es-AR', {
 });
 
 function moneyEditStringFromRaw(raw){
-  // "80000.5" -> "80000,5" (sin miles, sin $)
   const s = String(raw ?? '').trim();
   return s ? s.replace('.', ',') : '';
 }
 
-function moneyDisplayString(n, withSymbol=true){
+function moneyDisplayString(n, withSymbol = true){
   const txt = fmtARSInput.format(Number(n || 0));
   return withSymbol ? `$ ${txt}` : txt;
 }
 
-function setMoneyInput(el, n, { withSymbol=true } = {}){
+function setMoneyInput(el, n, { withSymbol = true } = {}){
   if (!el) return;
   const raw = Number(n || 0).toFixed(2);
-  // guardamos raw limpio para backend
   el.dataset.raw = raw;
-  // mostramos ARS bonito
   el.value = moneyDisplayString(Number(raw), withSymbol);
 }
 
@@ -285,12 +260,6 @@ function clearMoneyInput(el){
   el.dataset.raw = '';
 }
 
-/**
- * PRO:
- * - input: solo deja números y 1 decimal (', o .')
- * - focus: vuelve a "modo edición" (sin miles / sin $)
- * - blur: formatea ARS (miles + coma) y mantiene dataset.raw
- */
 function bindMoneyInputPro(id, {
   withSymbol = true,
   invalidTitle = 'Importe inválido',
@@ -306,7 +275,7 @@ function bindMoneyInputPro(id, {
     if (n != null){
       const raw = sanitizeMoneyString(String(n));
       setRaw(raw);
-      el.value = moneyEditStringFromRaw(raw); // editable
+      el.value = moneyEditStringFromRaw(raw);
     }
     setTimeout(() => el.select?.(), 0);
   });
@@ -314,10 +283,9 @@ function bindMoneyInputPro(id, {
   el.addEventListener('input', () => {
     const raw = sanitizeMoneyString(el.value);
     setRaw(raw);
-    el.value = moneyEditStringFromRaw(raw); // editable (sin miles)
+    el.value = moneyEditStringFromRaw(raw);
   });
 
-  // pegar: lo sanitizamos
   el.addEventListener('paste', (e) => {
     e.preventDefault();
     const txt = (e.clipboardData || window.clipboardData).getData('text');
@@ -340,14 +308,12 @@ function bindMoneyInputPro(id, {
     }
     el.classList.remove('invalid');
 
-    // normalizo raw y muestro ARS
     const rawNorm = n.toFixed(2);
     setRaw(rawNorm);
     el.value = moneyDisplayString(n, withSymbol);
   });
 }
 
-// helper: SIEMPRE leer importe desde dataset.raw (o value si no existe)
 function getMoneyNumber(elOrId){
   const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
   const raw = el?.dataset?.raw || el?.value || '';
@@ -368,28 +334,28 @@ function alertInvalidQtyAndFix(inputEl){
 }
 
 /* ===== Estado ===== */
-let materials=[], warehouses=[], clients=[];
+let materials = [], warehouses = [], clients = [];
 let lockedClientId = null;
 let suppressClientChange = false;
 let currentOrderId = null;
 const ORDER_REMAIN = new Map();
 let CURRENT_TOTAL = 0;
 
-let APP_ROLE = '';                 // owner | employee | cashier
-let PAY_ENABLED = true;            // owner puede ver bloque pago
-let PAY_NOW = false;              // owner: si true, manda payment
-let PAY_DIRTY = false;            // si el user tocó el importe, no lo pisamos
+let APP_ROLE = '';     // owner | employee | cashier
+let PAY_ENABLED = true;
+let PAY_NOW = false;
+let PAY_DIRTY = false;
 
 function waitForRole(){
-  return new Promise((resolve)=>{
-    const r = (document.documentElement.getAttribute('data-role')||'').toLowerCase();
+  return new Promise((resolve) => {
+    const r = (document.documentElement.getAttribute('data-role') || '').toLowerCase();
     if (r) return resolve(r);
 
-    document.addEventListener('app:auth-ready', ()=>{
-      resolve((document.documentElement.getAttribute('data-role')||'').toLowerCase());
+    document.addEventListener('app:auth-ready', () => {
+      resolve((document.documentElement.getAttribute('data-role') || '').toLowerCase());
     }, { once:true });
 
-    setTimeout(()=> resolve((document.documentElement.getAttribute('data-role')||'').toLowerCase()), 1500);
+    setTimeout(() => resolve((document.documentElement.getAttribute('data-role') || '').toLowerCase()), 1500);
   });
 }
 
@@ -400,16 +366,13 @@ function setPayMode(enabled){
   const chk   = document.getElementById('payNow');
 
   if (!block) return;
-
   block.style.display = enabled ? 'block' : 'none';
 
-  // Empleado: bloque oculto, no hay pago
   if (!enabled){
     setPayNow(false);
     return;
   }
 
-  // Owner: por defecto pago OFF (opcional)
   if (chk){
     chk.checked = false;
     chk.addEventListener('change', () => setPayNow(chk.checked));
@@ -431,7 +394,10 @@ function setPayNow(enabled){
   [imp, fec, met].forEach(el => { if (el) el.disabled = !PAY_NOW; });
 
   const help = document.getElementById('pagoImporteHelp');
-  if (help) { help.style.display = 'none'; help.textContent = ''; }
+  if (help) {
+    help.style.display = 'none';
+    help.textContent = '';
+  }
 
   if (!PAY_NOW){
     if (imp) clearMoneyInput(imp);
@@ -440,7 +406,6 @@ function setPayNow(enabled){
     return;
   }
 
-  // defaults
   if (fec && !fec.value) fec.value = todayStr();
   if (met && !met.value) met.value = 'CASH';
   if (imp && (!imp.dataset.raw && !imp.value) && CURRENT_TOTAL > 0) {
@@ -452,9 +417,12 @@ function setPayNow(enabled){
 window.addEventListener('DOMContentLoaded', init);
 
 async function init(){
-  if(!getToken()){ go('login.html'); return; }
+  if (!getToken()){
+    go('login.html');
+    return;
+  }
 
-  APP_ROLE = await waitForRole(); // owner/employee/cashier
+  APP_ROLE = await waitForRole();
 
   const form = document.getElementById('form-venta');
   form?.addEventListener('submit', (e) => e.preventDefault());
@@ -462,19 +430,14 @@ async function init(){
     if (e.key !== 'Enter') return;
     if (!e.target.closest('#items')) return;
 
-    // ✅ Si estás en un AUTOCOMPLETE abierto, el Enter debe seleccionar, NO bloquearse acá
     const ac = e.target.closest('.autocomplete-wrapper');
     const list = ac?.querySelector('.autocomplete-list');
     if (ac && list && list.classList.contains('active')) return;
-
-    // ✅ Si algún día agregás textarea
     if (e.target && e.target.tagName === 'TEXTAREA') return;
 
-    // ✅ Evita submit implícito y “click raro” de botones dentro de la grilla
     e.preventDefault();
   });
 
-  // Cashier no crea ventas
   if (APP_ROLE === 'cashier'){
     await Swal.fire({
       icon:'info',
@@ -486,13 +449,10 @@ async function init(){
     return;
   }
 
-  // Owner: pago habilitado; Empleado: pago deshabilitado
   setPayMode(APP_ROLE === 'owner');
 
   $('#fecha').value = todayStr();
-  if (PAY_ENABLED){
-    $('#pagoFecha').value = todayStr();
-  }
+  if (PAY_ENABLED) $('#pagoFecha').value = todayStr();
 
   const [rM, rW, rC] = await Promise.all([
     authFetch(API_URL_MATERIALS),
@@ -505,13 +465,11 @@ async function init(){
   clients    = rC.ok ? await rC.json() : [];
 
   setupClientAutocomplete();
-
-  // presupuestos
   await loadOrdersForClient('');
 
-  // Query param orderId
   const qs = new URLSearchParams(location.search);
   const orderIdFromQS = qs.get('orderId');
+
   if (orderIdFromQS){
     const sel = $('#orderSelect');
     if (sel){
@@ -528,7 +486,10 @@ async function init(){
               setClientLocked(view.clientId);
               await loadOrdersForClient(view.clientId);
               const opt2 = Array.from(sel.options).find(o => o.value === String(orderIdFromQS));
-              if(opt2) { sel.value = opt2.value; await onOrderChange(); }
+              if (opt2){
+                sel.value = opt2.value;
+                await onOrderChange();
+              }
             }
           }
         }catch(_){}
@@ -536,14 +497,13 @@ async function init(){
     }
   }
 
-  // eventos
   $('#orderSelect').addEventListener('change', onOrderChange);
-  $('#btnClearOrder')?.addEventListener('click', (e)=>{
+  $('#btnClearOrder')?.addEventListener('click', (e) => {
     e.preventDefault();
     clearOrderAndUnlockClient();
   });
 
-  $('#btnAdd').onclick = (e)=>{ e.preventDefault(); addRow(); };
+  $('#btnAdd').onclick = (e) => { e.preventDefault(); addRow(); };
   $('#btnGuardar').onclick = guardar;
 
   if (PAY_ENABLED) setupPaymentField();
@@ -593,7 +553,6 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
       div.setAttribute('role', 'option');
 
       div.addEventListener('mousedown', (e) => {
-        // mousedown para que funcione aunque el input pierda foco antes del click
         e.preventDefault();
         selectIndex(idx);
       });
@@ -627,7 +586,6 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
 
     input.value = item[displayKey];
     hidden.value = item[idKey];
-
     close();
 
     if (onSelect) onSelect(item);
@@ -637,27 +595,24 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
     const val = (input.value || '').toLowerCase().trim();
     hidden.value = '';
 
-    // si vacío => cerramos
-    if (!val) { close(); return; }
+    if (!val) {
+      close();
+      return;
+    }
 
     const found = data
       .filter(item => String(item[displayKey] || '').toLowerCase().includes(val))
-      .slice(0, 50); // cap para no generar listas gigantes
+      .slice(0, 50);
 
     openWith(found);
   };
 
-  input.addEventListener('input', () => {
-    // no cierres todas las listas acá; solo maneja la de ESTE wrapper
-    doSearch();
-  });
-
-  input.addEventListener('focus', () => {
-    if (input.value) doSearch();
-  });
+  input.addEventListener('input', doSearch);
+  input.addEventListener('focus', () => { if (input.value) doSearch(); });
 
   input.addEventListener('keydown', (e) => {
     const isOpen = list.classList.contains('active');
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (!isOpen) { doSearch(); return; }
@@ -665,6 +620,7 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
       setActive(Math.min(activeIndex + 1, matches.length - 1));
       return;
     }
+
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (!isOpen) { doSearch(); return; }
@@ -672,15 +628,16 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
       setActive(Math.max(activeIndex - 1, 0));
       return;
     }
+
     if (e.key === 'Enter') {
-      // ✅ Enter selecciona el item activo si la lista está abierta
       if (isOpen && matches.length) {
         e.preventDefault();
-        if (activeIndex < 0) setActive(0); // si no hay activo, toma el primero
+        if (activeIndex < 0) setActive(0);
         selectIndex(activeIndex < 0 ? 0 : activeIndex);
       }
       return;
     }
+
     if (e.key === 'Escape') {
       if (isOpen) {
         e.preventDefault();
@@ -688,24 +645,22 @@ function setupAutocomplete(wrapper, data, onSelect, displayKey, idKey) {
       }
       return;
     }
-    // Tab: cerramos para no dejar UI colgada
+
     if (e.key === 'Tab') {
       close();
     }
   });
 
-  // Click afuera => cerrar (tu document.addEventListener('click', closeAllLists) ya lo hace,
-  // pero esto es más robusto por wrapper)
   document.addEventListener('click', (e) => {
     if (!wrapper.contains(e.target)) close();
   });
 }
 
 function closeAllLists(elmnt) {
-  const x = document.getElementsByClassName("autocomplete-list");
+  const x = document.getElementsByClassName('autocomplete-list');
   for (let i = 0; i < x.length; i++) {
-    if (elmnt != x[i] && elmnt != x[i].previousElementSibling) {
-      x[i].classList.remove("active");
+    if (elmnt !== x[i] && elmnt !== x[i].previousElementSibling) {
+      x[i].classList.remove('active');
     }
   }
 }
@@ -715,15 +670,15 @@ function closeAllLists(elmnt) {
    ====================================================== */
 function setupClientAutocomplete(){
   const wrapper = $('#ac-cliente-wrapper');
-  if(!wrapper) return;
+  if (!wrapper) return;
 
   const mapped = clients.map(c => ({
     id: c.idClient ?? c.id,
-    fullName: `${c.name||''} ${c.surname||''}`.trim()
+    fullName: `${c.name || ''} ${c.surname || ''}`.trim()
   }));
 
   setupAutocomplete(wrapper, mapped, async (selected) => {
-    if (lockedClientId != null || suppressClientChange) return;
+    if (lockedClientId != null || suppressClientChange || !selected) return;
     await loadOrdersForClient(selected.id);
   }, 'fullName', 'id');
 }
@@ -753,8 +708,10 @@ function clearOrderAndUnlockClient(){
 
   loadOrdersForClient('');
 
-  $('#btnClearOrder') && ($('#btnClearOrder').style.display = 'none');
-  limpiarItems(); addRow(); recalc();
+  if ($('#btnClearOrder')) $('#btnClearOrder').style.display = 'none';
+  limpiarItems();
+  addRow();
+  recalc();
 }
 
 async function loadOrdersForClient(clientId){
@@ -766,41 +723,46 @@ async function loadOrdersForClient(clientId){
   const all = r.ok ? await r.json() : [];
 
   let list = (clientId
-    ? all.filter(o => String(o.clientId||o.client?.idClient||'') === String(clientId))
+    ? all.filter(o => String(o.clientId || o.client?.idClient || '') === String(clientId))
     : all
   );
 
-  // tu lista usa soldOut como “entrega completada”, pero igualmente lo filtrás
   list = list.filter(o => o.soldOut !== true);
-
-  list.sort((a,b)=> String(b.dateCreate||'').localeCompare(String(a.dateCreate||'')));
+  list.sort((a,b) => String(b.dateCreate || '').localeCompare(String(a.dateCreate || '')));
 
   for (const o of list){
     const id   = o.idOrders || o.id;
-    const name = o.clientName || `${o.client?.name||''} ${o.client?.surname||''}`.trim();
+    const name = o.clientName || `${o.client?.name || ''} ${o.client?.surname || ''}`.trim();
     const opt  = document.createElement('option');
     opt.value = id;
     opt.dataset.clientId = String(o.clientId || o.client?.idClient || '');
-    opt.textContent = `#${id} — ${name||'s/cliente'} — ${(o.dateCreate||'').slice(0,10)}`;
+    opt.textContent = `#${id} — ${name || 's/cliente'} — ${(o.dateCreate || '').slice(0,10)}`;
     sel.appendChild(opt);
   }
+
   if (list.length) sel.disabled = false;
 }
 
 async function onOrderChange(){
   const sel = $('#orderSelect');
   const val = sel.value;
-  if (!val){ clearOrderAndUnlockClient(); return; }
+
+  if (!val){
+    clearOrderAndUnlockClient();
+    return;
+  }
+
   currentOrderId = Number(val);
 
   try{
-    let rView = await authFetch(`/orders/${val}/view`);
+    const rView = await authFetch(`/orders/${val}/view`);
     if (!rView.ok) throw new Error(`HTTP ${rView.status}`);
+
     const view = await rView.json();
 
     if (view.clientId) setClientLocked(view.clientId);
     else {
-      let cid = sel.selectedOptions[0]?.dataset?.clientId;
+      const cid = sel.selectedOptions[0]?.dataset?.clientId;
       if (cid) setClientLocked(cid);
     }
 
@@ -815,14 +777,19 @@ async function onOrderChange(){
    ÍTEMS Y TABLA
    ====================================================== */
 function limpiarItems(){
-  $('#items')?.querySelectorAll('.fila:not(.encabezado)').forEach(n=> n.remove());
+  $('#items')?.querySelectorAll('.fila:not(.encabezado)').forEach(n => n.remove());
 }
-function wrap(el){ const d=document.createElement('div'); d.appendChild(el); return d; }
 
-function addRow(prefill){
+function wrap(el){
+  const d = document.createElement('div');
+  d.appendChild(el);
+  return d;
+}
+
+function addRow(prefill = {}){
   const cont = $('#items');
   const row  = document.createElement('div');
-  row.className='fila';
+  row.className = 'fila';
 
   // 1. MATERIAL
   const matCol = document.createElement('div');
@@ -836,7 +803,7 @@ function addRow(prefill){
 
   // 2. DEPÓSITO
   const whSel = document.createElement('select');
-  whSel.className='in-wh';
+  whSel.className = 'in-wh';
   whSel.innerHTML = `<option value="">(Seleccione Material)</option>`;
 
   // 3. CANTIDAD
@@ -850,91 +817,48 @@ function addRow(prefill){
   qty.value = String(prefill?.qty ?? 1);
   qty.className = 'in-qty';
 
-  // ✅ 4. PRECIO CON TEXT-RIGHT
-  const price = document.createElement('div'); 
-  price.className='price text-right'; 
-  price.textContent='$ 0,00';
+  // 4. PRECIO
+  const price = document.createElement('div');
+  price.className = 'price text-right';
+  price.textContent = '$ 0,00';
 
-  // ✅ 5. SUBTOTAL CON TEXT-RIGHT
-  const sub   = document.createElement('div'); 
-  sub.className='sub text-right strong-text';   
-  sub.textContent='$ 0,00';
+  // 5. SUBTOTAL
+  const sub = document.createElement('div');
+  sub.className = 'sub text-right strong-text';
+  sub.textContent = '$ 0,00';
 
-  // ✅ 6. QUITAR CON TEXT-RIGHT WRAPPER
+  // 6. QUITAR
   const btnDelWrapper = document.createElement('div');
   btnDelWrapper.className = 'text-right';
 
   const del = document.createElement('button');
   del.type = 'button';
-  del.className='btn danger small';
-  del.innerHTML='🗑️';
-  del.onclick = (e)=>{ e.preventDefault(); row.remove(); requestAnimationFrame(recalc); };
-  
+  del.className = 'btn danger small';
+  del.innerHTML = '🗑️';
+  del.onclick = (e) => {
+    e.preventDefault();
+    row.remove();
+    requestAnimationFrame(recalc);
+  };
   btnDelWrapper.appendChild(del);
 
   if (prefill?.orderBound) row.dataset.orderBound = '1';
   if (prefill?.orderExtra) row.dataset.orderExtra = '1';
 
   const wrapper = matCol.querySelector('.autocomplete-wrapper');
+  const searchInput = wrapper.querySelector('.in-search');
+  const hiddenMatId = wrapper.querySelector('.in-mat-id');
 
-  const onMaterialSelect = async (selectedMat) => {
-    const priceVal = Number(selectedMat.priceArs || 0);
-    price.textContent = fmtARS.format(priceVal);
-    price.dataset.val = priceVal;
-
-    whSel.innerHTML = `<option value="">Cargando...</option>`;
-    try{
-      const r = await authFetch(API_URL_STOCKS_BY_MAT(selectedMat.idMaterial));
-      const list = r.ok ? await r.json() : [];
-      whSel.innerHTML = `<option value="">(Seleccionar Depósito)</option>`;
-
-      list.forEach(w=>{
-        const o=document.createElement('option');
-        o.value = w.warehouseId;
-        o.textContent = `${w.warehouseName} (Disp: ${Number(w.quantityAvailable||0)})`;
-        o.dataset.available = String(w.quantityAvailable || 0);
-        whSel.appendChild(o);
-      });
-      if(prefill?.warehouseId) whSel.value = prefill.warehouseId;
-
-    }catch(e){
-      whSel.innerHTML = `<option value="">Error stock</option>`;
-    }
-
-    validateMaxQty({ silent:true });
-    queueSplitIfNeeded(false);
-    recalc();
-  };
-
-  setupAutocomplete(wrapper, materials, onMaterialSelect, 'name', 'idMaterial');
-
-  if (prefill?.materialId){
-    const m = materials.find(x => x.idMaterial == prefill.materialId);
-    if (m) {
-      wrapper.querySelector('input[type="text"]').value = prefill.materialName || m.name;
-      wrapper.querySelector('input[type="hidden"]').value = m.idMaterial;
-
-      const priceVal = Number(prefill?.priceVal ?? m.priceArs ?? 0);
-      price.textContent = fmtARS.format(priceVal);
-      price.dataset.val = priceVal;
-
-      // Si la fila viene de un split, reutilizamos depósito/opciones actuales
-      if (Array.isArray(prefill?.warehouseOptions) && prefill.warehouseOptions.length){
-        whSel.innerHTML = `<option value="">(Seleccionar Depósito)</option>`;
-        prefill.warehouseOptions.forEach(opt => whSel.appendChild(opt.cloneNode(true)));
-        if (prefill?.warehouseId) whSel.value = String(prefill.warehouseId);
-
-        validateMaxQty({ silent:true });
-        recalc();
-      } else {
-        onMaterialSelect(m);
-      }
-    }
+  function getSelectedMatId(){
+    return Number(hiddenMatId?.value || 0);
   }
 
-  // VALIDACIÓN DE STOCK MÁXIMO
-  const getStockCapForRow = () => {
-    const mid = Number(wrapper.querySelector('.in-mat-id')?.value || 0);
+  function cloneWarehouseOptions(selectEl){
+    return Array.from(selectEl.options).map(o => o.cloneNode(true));
+  }
+
+  function getStockCapForRow(){
+    const mid = getSelectedMatId();
     const whId = Number(whSel.value || 0);
     if (!mid || !whId) return null;
 
@@ -943,14 +867,13 @@ function addRow(prefill){
     const usedElsewhere = sumQtySameMatWh(mid, whId, row);
 
     return Math.max(0, avail - usedElsewhere);
-  };
+  }
 
-  const validateMaxQty = (opts = { silent:false }) => {
+  function validateMaxQty(opts = { silent:false }){
     const stockCap = getStockCapForRow();
     if (stockCap == null) return;
 
     const wanted = qtyIntFromEl(qty);
-
     if (wanted > stockCap) {
       qty.value = stockCap > 0 ? String(stockCap) : '';
       if (!opts.silent) {
@@ -962,13 +885,74 @@ function addRow(prefill){
         });
       }
     }
-  };
+  }
 
-  async function splitIfExceedsPending(opts = { notifyUser: true }){
+  function setPriceFromMaterial(selectedMat, forcedPrice){
+    const priceVal = Number(forcedPrice ?? selectedMat?.priceArs ?? 0);
+    price.textContent = fmtARS.format(priceVal);
+    price.dataset.val = String(priceVal);
+  }
+
+  async function loadWarehousesForMaterial(materialId, preferredWarehouseId){
+    whSel.innerHTML = `<option value="">Cargando...</option>`;
+
+    try{
+      const r = await authFetch(API_URL_STOCKS_BY_MAT(materialId));
+      const list = r.ok ? await r.json() : [];
+
+      whSel.innerHTML = `<option value="">(Seleccionar Depósito)</option>`;
+
+      list.forEach(w => {
+        const o = document.createElement('option');
+        o.value = w.warehouseId;
+        o.textContent = `${w.warehouseName} (Disp: ${Number(w.quantityAvailable || 0)})`;
+        o.dataset.available = String(w.quantityAvailable || 0);
+        whSel.appendChild(o);
+      });
+
+      if (preferredWarehouseId) {
+        whSel.value = String(preferredWarehouseId);
+      }
+    } catch (e){
+      whSel.innerHTML = `<option value="">Error stock</option>`;
+    }
+  }
+
+  async function onMaterialSelect(selectedMat){
+    setPriceFromMaterial(selectedMat);
+    await loadWarehousesForMaterial(selectedMat.idMaterial, prefill?.warehouseId);
+
+    validateMaxQty({ silent:true });
+    await normalizeOrderQty({ notifyUser:false });
+  }
+
+  setupAutocomplete(wrapper, materials, onMaterialSelect, 'name', 'idMaterial');
+
+  if (prefill?.materialId){
+    const m = materials.find(x => x.idMaterial == prefill.materialId);
+    if (m) {
+      searchInput.value = prefill.materialName || m.name;
+      hiddenMatId.value = m.idMaterial;
+      setPriceFromMaterial(m, prefill?.priceVal);
+
+      if (Array.isArray(prefill?.warehouseOptions) && prefill.warehouseOptions.length){
+        whSel.innerHTML = '';
+        prefill.warehouseOptions.forEach(opt => whSel.appendChild(opt.cloneNode(true)));
+        if (prefill?.warehouseId) whSel.value = String(prefill.warehouseId);
+
+        validateMaxQty({ silent:true });
+        recalc();
+      } else {
+        onMaterialSelect(m);
+      }
+    }
+  }
+
+  async function splitIfExceedsPending(opts = { notifyUser:true }){
     if (!currentOrderId) return false;
     if (row.dataset.orderBound !== '1') return false;
 
-    const mid = Number(wrapper.querySelector('.in-mat-id')?.value || 0);
+    const mid = getSelectedMatId();
     if (!mid || !ORDER_REMAIN.has(mid)) return false;
 
     const wanted = qtyIntFromEl(qty);
@@ -977,10 +961,10 @@ function addRow(prefill){
     const pendingAvail = pendingAvailableForRow(mid, row);
     if (pendingAvail == null || wanted <= pendingAvail) return false;
 
-    const matName = wrapper.querySelector('.in-search')?.value || `Material #${mid}`;
+    const matName = searchInput?.value || `Material #${mid}`;
     const extra = wanted - pendingAvail;
 
-    // Caso A: ya no quedaba pendiente => todo pasa a ADICIONAL
+    // ya no quedaba pendiente: esta fila pasa a adicional
     if (pendingAvail <= 0) {
       delete row.dataset.orderBound;
       row.dataset.orderExtra = '1';
@@ -992,17 +976,14 @@ function addRow(prefill){
       return true;
     }
 
-    // Caso B: split real
+    // split real: fila actual queda como presupuesto, nueva fila como adicional
     qty.value = String(pendingAvail);
-
-    const whId = Number(whSel.value || 0) || undefined;
-    const clonedOptions = Array.from(whSel.options).map(o => o.cloneNode(true));
 
     addRow({
       materialId: mid,
       materialName: matName,
-      warehouseId: whId,
-      warehouseOptions: clonedOptions,
+      warehouseId: Number(whSel.value || 0) || undefined,
+      warehouseOptions: cloneWarehouseOptions(whSel),
       priceVal: Number(price.dataset.val || 0),
       qty: extra,
       orderBound: false,
@@ -1015,32 +996,16 @@ function addRow(prefill){
       notify(`${matName}: ${pendingAvail} queda en PRESUPUESTO y ${extra} pasa a ADICIONAL.`, 'info');
     }
 
-    validateMaxQty({ silent:true });
     recalc();
     return true;
   }
 
-  async function reevaluateOrderRow(opts = { notifyUser: false }){
-    validateMaxQty({ silent:true });
-
-    const qNow = qtyIntFromEl(qty);
-    if (!qNow || qNow <= 0){
-      recalc();
-      return;
-    }
-
-    await splitIfExceedsPending(opts);
-    validateMaxQty({ silent:true });
-    applyRowBadges(row);
-    recalc();
-  }
-
-    async function normalizeOrderQty(opts = { notifyUser:false }){
+  async function normalizeOrderQty(opts = { notifyUser:false }){
     normalizeQtyInputValue(qty);
     validateMaxQty({ silent:true });
 
     const qNow = qtyIntFromEl(qty);
-    if (!qNow) {
+    if (!qNow){
       recalc();
       return false;
     }
@@ -1067,12 +1032,11 @@ function addRow(prefill){
     normalizeQtyInputValue(qty);
     validateMaxQty({ silent:true });
 
-    const mid = Number(wrapper.querySelector('.in-mat-id')?.value || 0);
+    const mid = getSelectedMatId();
     const wanted = qtyIntFromEl(qty);
     const pendingAvail = pendingAvailableForRow(mid, row);
     const stockCap = getStockCapForRow();
 
-    // Si supera lo pendiente y HAY stock, hacemos split enseguida
     if (
       row.dataset.orderBound === '1' &&
       mid &&
@@ -1096,7 +1060,7 @@ function addRow(prefill){
     const q2 = normalizeQtyInputValue(qty);
 
     if (!q2 || q2 <= 0) {
-      const mid = Number(wrapper.querySelector('.in-mat-id')?.value || 0);
+      const mid = getSelectedMatId();
       const whId = Number(whSel.value || 0);
 
       if (mid && whId && !qty.value) {
@@ -1115,7 +1079,6 @@ function addRow(prefill){
     await normalizeOrderQty({ notifyUser:false });
   });
 
-  // ✅ Agregamos el wrapper en vez del botón directamente
   row.append(matCol, wrap(whSel), wrap(qty), price, sub, btnDelWrapper);
   cont.appendChild(row);
   applyRowBadges(row);
@@ -1124,18 +1087,19 @@ function addRow(prefill){
 
 function recalc(){
   let total = 0;
-  document.querySelectorAll('#items .fila:not(.encabezado)').forEach(row=>{
+
+  document.querySelectorAll('#items .fila:not(.encabezado)').forEach(row => {
     const qtyEl = row.querySelector('.in-qty');
     const priceEl = row.querySelector('.price');
     const subEl = row.querySelector('.sub');
-    if(!qtyEl || !priceEl || !subEl) return;
+    if (!qtyEl || !priceEl || !subEl) return;
 
-    const q   = Number(qtyEl.value || 0);
-    const p   = Number(priceEl.dataset.val || 0);
-    const sub = q * p;
+    const q = Number(qtyEl.value || 0);
+    const p = Number(priceEl.dataset.val || 0);
+    const subtotal = q * p;
 
-    subEl.textContent = fmtARS.format(sub);
-    total += sub;
+    subEl.textContent = fmtARS.format(subtotal);
+    total += subtotal;
   });
 
   CURRENT_TOTAL = total;
@@ -1145,7 +1109,6 @@ function recalc(){
 
   const payInput = $('#pagoImporte');
   if (PAY_NOW && payInput) {
-    // ✅ solo auto-completa si el user no lo tocó y NO está editando justo ahora
     if (!PAY_DIRTY && document.activeElement !== payInput) {
       if (total > 0) setMoneyInput(payInput, total, { withSymbol:true });
       else clearMoneyInput(payInput);
@@ -1159,7 +1122,6 @@ function setupPaymentField(){
   const $imp = $('#pagoImporte');
   if (!$imp) return;
 
-  // ✅ activar modo PRO (formato ARS en blur)
   bindMoneyInputPro('pagoImporte', {
     withSymbol: true,
     invalidTitle: 'Importe inválido',
@@ -1175,17 +1137,15 @@ function setupPaymentField(){
     $imp.insertAdjacentElement('afterend', help);
   }
 
-  // ✅ marcar dirty si el user toca el importe
-  $imp.addEventListener('input', ()=>{
+  $imp.addEventListener('input', () => {
     PAY_DIRTY = true;
     validatePaymentField();
   });
 
-  // al salir, ya queda formateado y revalidamos
-  $imp.addEventListener('blur', ()=> validatePaymentField());
+  $imp.addEventListener('blur', () => validatePaymentField());
 
-  $('#pagoFecha')?.addEventListener('change', ()=>{});
-  $('#pagoMetodo')?.addEventListener('change', ()=>{});
+  $('#pagoFecha')?.addEventListener('change', () => {});
+  $('#pagoMetodo')?.addEventListener('change', () => {});
 }
 
 function validatePaymentField(){
@@ -1201,7 +1161,7 @@ function validatePaymentField(){
   if (!total || !val){
     $imp.classList.remove('input-error');
     help.style.display = 'none';
-    help.textContent   = '';
+    help.textContent = '';
     return;
   }
 
@@ -1214,7 +1174,7 @@ function validatePaymentField(){
   } else {
     $imp.classList.remove('input-error');
     help.style.display = 'none';
-    help.textContent   = '';
+    help.textContent = '';
   }
 }
 
@@ -1260,13 +1220,13 @@ async function preloadFromOrderView(view){
 
   for (const det of lines){
     const materialId = Number(det.materialId ?? det.idMaterial ?? 0);
-    const qty        = Number(det.__pendingSell || 0);
+    const qty = Number(det.__pendingSell || 0);
 
     let wh = null;
     try{
       const rs = await authFetch(API_URL_STOCKS_BY_MAT(materialId));
       const list = rs.ok ? await rs.json() : [];
-      wh = (list||[]).sort((a,b)=> Number(b.quantityAvailable)-Number(a.quantityAvailable))[0]?.warehouseId;
+      wh = (list || []).sort((a,b) => Number(b.quantityAvailable) - Number(a.quantityAvailable))[0]?.warehouseId;
     }catch(_){}
 
     await sleep(10);
@@ -1274,7 +1234,7 @@ async function preloadFromOrderView(view){
   }
 
   recalc();
-  $('#btnClearOrder') && ($('#btnClearOrder').style.display = 'inline-flex');
+  if ($('#btnClearOrder')) $('#btnClearOrder').style.display = 'inline-flex';
   notify('Ítems pendientes cargados desde el presupuesto','success');
 }
 
@@ -1286,7 +1246,10 @@ async function guardar(e){
 
   const date = $('#fecha').value;
   const clientId = Number($('#cliente').value || 0);
-  if (!date || !clientId) { notify('Fecha y cliente son obligatorios','error'); return; }
+  if (!date || !clientId) {
+    notify('Fecha y cliente son obligatorios','error');
+    return;
+  }
 
   await normalizePendingRowsBeforeSave();
 
@@ -1296,8 +1259,7 @@ async function guardar(e){
   for (const row of rows){
     const matId = Number(row.querySelector('.in-mat-id').value || 0);
     const whId  = Number(row.querySelector('.in-wh').value || 0);
-    
-    const qty = qtyIntFromEl(row.querySelector('.in-qty'));
+    const qty   = qtyIntFromEl(row.querySelector('.in-qty'));
 
     if (!qty || qty <= 0) {
       await Swal.fire({
@@ -1315,9 +1277,11 @@ async function guardar(e){
     }
   }
 
-  if(!items.length){ notify('Agregá al menos un ítem válido','error'); return; }
+  if (!items.length){
+    notify('Agregá al menos un ítem válido','error');
+    return;
+  }
 
-  // Owner: pago OPCIONAL (solo si PAY_NOW=true). Empleado: nunca manda pago.
   let payment = null;
 
   if (PAY_ENABLED && PAY_NOW){
@@ -1345,7 +1309,6 @@ async function guardar(e){
 
   const willRegisterPayment = !!payment;
 
-  // ✅ Mensaje de confirmación (depende de si HAY pago)
   const confirmHtml = willRegisterPayment
     ? `Se registrará una venta por <b>${fmtARS.format(CURRENT_TOTAL)}</b> y el pago quedará aplicado.`
     : `Se registrará una venta por <b>${fmtARS.format(CURRENT_TOTAL)}</b>.<br>
@@ -1374,8 +1337,12 @@ async function guardar(e){
   if (payment) payload.payment = payment;
 
   try{
-    const res = await authFetch(API_URL_SALES, { method:'POST', body: JSON.stringify(payload) });
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await authFetch(API_URL_SALES, {
+      method:'POST',
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     localStorage.setItem('flash', JSON.stringify({
       message: willRegisterPayment

@@ -227,6 +227,61 @@ async function apiSuggestOpeningCash() {
   return n;
 }
 
+async function apiListByReasonAndDirection(dateStr, reason, direction) {
+  const q = new URLSearchParams();
+  q.set('from', dateStr);
+  q.set('to', dateStr);
+  if (reason) q.set('reason', reason);
+  if (direction) q.set('direction', direction);
+  q.set('page', '0');
+  q.set('size', '5000');
+
+  const r = await authFetch(`/cash/movements?${q.toString()}`);
+  if (!r.ok) return [];
+
+  let data = await tryJson(r);
+  if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
+  return Array.isArray(data) ? data : [];
+}
+
+function sumAmounts(list) {
+  return (list || []).reduce((acc, x) => acc + Number(x.amount || 0), 0);
+}
+
+function sumAmountsByMethod(list, method) {
+  const target = String(method || '').toUpperCase();
+  return (list || [])
+    .filter(x => String(x.method || '').toUpperCase() === target)
+    .reduce((acc, x) => acc + Number(x.amount || 0), 0);
+}
+
+async function calculateCloseEstimate(dateStr, withdrawalCash = 0) {
+  const [summary, salePaysIN, saleCancOUT, expensesOUT] = await Promise.all([
+    apiSummary(dateStr),
+    apiListByReasonAndDirection(dateStr, 'SALE_PAYMENT', 'IN'),
+    apiListByReasonAndDirection(dateStr, 'SALE_CANCEL', 'OUT'),
+    apiListByReasonAndDirection(dateStr, 'EXPENSE', 'OUT'),
+  ]);
+
+  const openingCash = Number(summary?.openingCash ?? OPEN_SESSION?.openingCash ?? 0);
+
+  const cashSalesIn = sumAmountsByMethod(salePaysIN, 'CASH');
+  const cashSaleCancel = sumAmountsByMethod(saleCancOUT, 'CASH');
+  const gastos = sumAmounts(expensesOUT);
+
+  const expectedAtClose = Math.max(0, openingCash + cashSalesIn - cashSaleCancel - gastos);
+  const carryOverExpected = Math.max(0, expectedAtClose - Number(withdrawalCash || 0));
+
+  return {
+    openingCash,
+    cashSalesIn,
+    cashSaleCancel,
+    gastos,
+    expectedAtClose,
+    carryOverExpected
+  };
+}
+
 /* ================== UI ================== */
 function readFilters() {
   return {
@@ -576,6 +631,40 @@ async function closeCash() {
     return;
   }
 
+  const businessDate = OPEN_SESSION?.businessDate || todayStr();
+
+  let estimate = null;
+  try {
+    estimate = await calculateCloseEstimate(businessDate, 0);
+  } catch (e) {
+    console.warn('No se pudo calcular el estimado de cierre:', e);
+  }
+
+  const estimateHtml = estimate ? `
+    <div style="
+      margin: 4px 0 2px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      background: #f8fafc;
+      display: grid;
+      gap: 6px;
+    ">
+      <div style="display:flex;justify-content:space-between;gap:12px;">
+        <span>Apertura</span>
+        <strong>${fmtARS.format(estimate.openingCash)}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;gap:12px;">
+        <span>Efectivo esperado al cierre</span>
+        <strong id="sw-close-expected">${fmtARS.format(estimate.expectedAtClose)}</strong>
+      </div>
+    </div>
+  ` : `
+    <small class="muted">
+      No se pudo calcular el efectivo estimado automáticamente.
+    </small>
+  `;
+
   const { value: form } = await Swal.fire({
     title: 'Cerrar caja',
     icon: 'warning',
@@ -585,6 +674,8 @@ async function closeCash() {
         <p style="margin:0;color:#555;">
           Vas a <b>cerrar la caja de hoy</b>. Luego <b>no se puede reabrir</b> hasta mañana.
         </p>
+
+        ${estimateHtml}
 
         <label>Efectivo contado (cierre)</label>
         <input id="sw-close-counted" class="swal2-input" style="margin:0;" type="number" min="0" step="0.01" placeholder="0.00">
@@ -609,11 +700,25 @@ async function closeCash() {
     didOpen: () => {
       const btn = Swal.getConfirmButton();
       const chk = document.getElementById('sw-close-confirm');
+      const withdrawEl = document.getElementById('sw-close-withdraw');
+
       if (btn) btn.disabled = true;
 
       chk?.addEventListener('change', () => {
         if (btn) btn.disabled = !chk.checked;
       });
+
+      const refreshEstimate = () => {
+        if (!estimate) return;
+
+        const withdrawalCash = Number(withdrawEl?.value || 0);
+        const nextDayCash = Math.max(0, estimate.expectedAtClose - withdrawalCash);
+
+        const carryEl = document.getElementById('sw-close-carry');
+        if (carryEl) carryEl.textContent = fmtARS.format(nextDayCash);
+      };
+
+      withdrawEl?.addEventListener('input', refreshEstimate);
     },
     preConfirm: () => {
       const chk = document.getElementById('sw-close-confirm');
@@ -626,8 +731,16 @@ async function closeCash() {
       const withdrawalCash = Number(document.getElementById('sw-close-withdraw').value || 0);
       const note = (document.getElementById('sw-close-note').value || '').trim();
 
-      if (countedCash < 0) { Swal.showValidationMessage('El contado no puede ser negativo'); return false; }
-      if (withdrawalCash < 0) { Swal.showValidationMessage('El retiro no puede ser negativo'); return false; }
+      if (countedCash < 0) {
+        Swal.showValidationMessage('El contado no puede ser negativo');
+        return false;
+      }
+
+      if (withdrawalCash < 0) {
+        Swal.showValidationMessage('El retiro no puede ser negativo');
+        return false;
+      }
+
       if (withdrawalCash > countedCash) {
         Swal.showValidationMessage('El retiro no puede ser mayor que el contado.');
         return false;

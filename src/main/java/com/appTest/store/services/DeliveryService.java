@@ -132,6 +132,72 @@ public class DeliveryService implements IDeliveryService {
     }
 
 
+    private BigDecimal deliveredSoFarForSaleDetail(Long saleDetailId) {
+        BigDecimal v = repoDeliveryItem.sumDeliveredBySaleDetail(saleDetailId);
+        return v != null ? v : BigDecimal.ZERO;
+    }
+
+    private SaleDetail resolveSaleDetail(Sale sale, Long saleDetailId) {
+        if (sale == null || saleDetailId == null) return null;
+
+        return sale.getSaleDetailList().stream()
+                .filter(sd -> Objects.equals(sd.getIdSaleDetail(), saleDetailId))
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "SaleDetail not found in sale " + sale.getIdSale() + ": " + saleDetailId
+                ));
+    }
+
+    private List<OrderDetail> findOrderDetailsWithRemaining(
+            Orders orders,
+            Long materialId,
+            Map<Long, BigDecimal> deliveredByDetail
+    ) {
+        if (orders == null || orders.getOrderDetails() == null || materialId == null) {
+            return List.of();
+        }
+
+        return orders.getOrderDetails().stream()
+                .filter(od -> od.getMaterial() != null
+                        && Objects.equals(od.getMaterial().getIdMaterial(), materialId))
+                .filter(od -> {
+                    BigDecimal already = deliveredByDetail.getOrDefault(od.getIdOrderDetail(), BigDecimal.ZERO);
+                    BigDecimal remaining = od.getQuantity().subtract(already);
+                    return remaining.compareTo(BigDecimal.ZERO) > 0;
+                })
+                .sorted(Comparator.comparing(OrderDetail::getIdOrderDetail))
+                .collect(Collectors.toList());
+    }
+
+    private DeliveryItem buildDeliveryItem(
+            Delivery delivery,
+            SaleDetail saleDetail,
+            OrderDetail orderDetail,
+            Material material,
+            Warehouse warehouse,
+            BigDecimal qty
+    ) {
+        DeliveryItem di = new DeliveryItem();
+        di.setDelivery(delivery);
+        di.setSaleDetail(saleDetail);
+        di.setOrderDetail(orderDetail);
+        di.setMaterial(material);
+        di.setWarehouse(warehouse);
+        di.setQuantityDelivered(qty);
+
+        BigDecimal snapshotPrice;
+        if (orderDetail != null && orderDetail.getPriceUni() != null) {
+            snapshotPrice = orderDetail.getPriceUni();
+        } else if (saleDetail != null && saleDetail.getPriceUni() != null) {
+            snapshotPrice = saleDetail.getPriceUni();
+        } else {
+            snapshotPrice = material.getPriceArs() != null ? material.getPriceArs() : BigDecimal.ZERO;
+        }
+
+        di.setUnitPriceSnapshot(snapshotPrice);
+        return di;
+    }
+
     /* ==================== DTO mappers ==================== */
 
     private String buildItemsSummary(Delivery delivery, BigDecimal deliveredUnits) {
@@ -400,47 +466,36 @@ public class DeliveryService implements IDeliveryService {
             throw new IllegalArgumentException("At least one delivery item is required.");
         }
 
-        // === 1) Resolver la venta (nuevo eje del modelo) ===
-        Sale sale = null;
-        if (dto.getSaleId() != null) {
-            sale = repoSale.findById(dto.getSaleId())
-                    .orElseThrow(() ->
-                            new EntityNotFoundException("Sale not found with ID: " + dto.getSaleId()));
-        } else {
-            // Para el modelo nuevo queremos SIEMPRE una venta
-            throw new IllegalArgumentException("Sale ID is required to create a delivery.");
-        }
+        // === 1) Resolver venta ===
+        Sale sale = repoSale.findById(dto.getSaleId())
+                .orElseThrow(() ->
+                        new EntityNotFoundException("Sale not found with ID: " + dto.getSaleId()));
 
-        // === 2) Resolver el pedido (solo como origen / control interno) ===
+        // === 2) Resolver pedido asociado (si existe) ===
         Orders orders = null;
-
         if (dto.getOrdersId() != null) {
-            // Caso compatibilidad: si vino ordersId en el JSON, lo usamos
             orders = repoOrders.findById(dto.getOrdersId())
                     .orElseThrow(() ->
                             new EntityNotFoundException("Orders not found with ID: " + dto.getOrdersId()));
         } else if (sale.getOrders() != null) {
-            // Caso modelo nuevo: derivamos el pedido desde la venta
             orders = sale.getOrders();
         }
 
         if (orders == null) {
-            // Por ahora solo soportamos entregas para ventas que provienen de un presupuesto.
             throw new IllegalArgumentException(
                     "This sale has no associated Order. Deliveries are currently supported only for sales generated from a Presupuesto."
             );
         }
 
-        // Coherencia: si la venta ya tiene pedido asociado, debe coincidir con el ordersId (si vino)
         if (sale.getOrders() != null &&
                 !Objects.equals(sale.getOrders().getIdOrders(), orders.getIdOrders())) {
             throw new IllegalArgumentException("Sale does not belong to the given Order");
         }
 
-        // === 3) Validar fechas (entrega no puede ser anterior al presupuesto) ===
+        // === 3) Validar fecha ===
         ensureDate(orders, dto.getDeliveryDate());
 
-        // === 4) Exigir venta 100% paga antes de entregar (política de negocio) ===
+        // === 4) Venta 100% paga ===
         BigDecimal saleTotal = sale.getSaleDetailList().stream()
                 .map(sd -> sd.getPriceUni().multiply(sd.getQuantity()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -455,72 +510,32 @@ public class DeliveryService implements IDeliveryService {
             throw new IllegalStateException("Delivery requires a fully paid sale.");
         }
 
-        // === 5) Mapa: orderDetailId -> ya entregado antes de esta entrega (modelo viejo) ===
+        // === 5) Entregado previo por orderDetail ===
         Map<Long, BigDecimal> deliveredByDetail = loadDeliveredByDetailForOrder(orders.getIdOrders());
 
-        // === 6) Armar la cabecera de la entrega ===
+        // === 6) Cabecera ===
         Delivery delivery = new Delivery();
         delivery.setOrders(orders);
+        delivery.setSale(sale);
         delivery.setDeliveryDate(dto.getDeliveryDate());
         delivery.setStatus(DeliveryStatus.PENDING);
 
-        // === 7) Procesar renglones ===
+        // === 7) Renglones ===
         for (DeliveryItemCreateDTO it : dto.getItems()) {
 
             if (it.getMaterialId() == null) {
                 throw new IllegalArgumentException("materialId is required for each delivery item.");
             }
 
-            BigDecimal qty = it.getQuantityDelivered();
-            if (qty == null || qty.signum() <= 0) {
+            BigDecimal qtyRequested = it.getQuantityDelivered();
+            if (qtyRequested == null || qtyRequested.signum() <= 0) {
                 throw new IllegalArgumentException("quantityDelivered must be > 0");
             }
 
-            // Material
             Material mat = repoMaterial.findById(it.getMaterialId())
                     .orElseThrow(() ->
                             new EntityNotFoundException("Material not found: " + it.getMaterialId()));
 
-            // === 7.a) Resolver OrderDetail (si existe), por ID o por material ===
-            OrderDetail od = null;
-            if (it.getOrderDetailId() != null) {
-                od = repoOrderDetail.findById(it.getOrderDetailId())
-                        .orElseThrow(() ->
-                                new EntityNotFoundException("OrderDetail not found: " + it.getOrderDetailId()));
-
-                // Si hay pedido asociado, validamos que coincida
-                if (orders != null && !Objects.equals(od.getOrders().getIdOrders(), orders.getIdOrders())) {
-                    throw new IllegalArgumentException("OrderDetail does not belong to the Delivery's Order");
-                }
-                if (od.getMaterial() == null ||
-                        !Objects.equals(od.getMaterial().getIdMaterial(), mat.getIdMaterial())) {
-                    throw new IllegalArgumentException("materialId does not match the OrderDetail material");
-                }
-
-            } else if (orders != null) {
-                // Inferimos el OrderDetail solamente a efectos de trazabilidad y control (si hay pedido asociado)
-                final Orders ord = orders; // efectivamente final para usar en la lambda
-
-                od = ord.getOrderDetails().stream()
-                        .filter(d -> d.getMaterial() != null &&
-                                Objects.equals(d.getMaterial().getIdMaterial(), mat.getIdMaterial()))
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                "No OrderDetail found for material " + mat.getIdMaterial()
-                                        + " in Order " + ord.getIdOrders()));
-            }
-            // Si orders == null y no vino orderDetailId, dejamos od = null (entrega ligada solo a venta)
-
-
-            // === 7.b) No sobre-entregar vs pedido (solo si tenemos OrderDetail) ===
-            if (od != null) {
-                BigDecimal already = deliveredByDetail.getOrDefault(od.getIdOrderDetail(), BigDecimal.ZERO);
-                if (already.add(qty).compareTo(od.getQuantity()) > 0) {
-                    throw new IllegalArgumentException("Over-delivery on orderDetail " + od.getIdOrderDetail());
-                }
-            }
-
-            // Depósito
             Warehouse wh = null;
             if (it.getWarehouseId() != null) {
                 wh = repoWarehouse.findById(it.getWarehouseId())
@@ -528,45 +543,112 @@ public class DeliveryService implements IDeliveryService {
                                 new EntityNotFoundException("Warehouse not found: " + it.getWarehouseId()));
             }
 
-            // Crear renglón de entrega
-            DeliveryItem di = new DeliveryItem();
-            di.setDelivery(delivery);
-            di.setOrderDetail(od); // si no hay pedido asociado, puede quedar null
-            di.setMaterial(mat);
-            di.setWarehouse(wh);
-            di.setQuantityDelivered(qty);
+            // === 7.a) Resolver saleDetail y validar pendiente real de la venta ===
+            SaleDetail saleDetail = null;
+            if (it.getSaleDetailId() != null) {
+                saleDetail = resolveSaleDetail(sale, it.getSaleDetailId());
 
-            // Precio snapshot: preferimos OrderDetail, si no usamos el del material
-            BigDecimal snapshotPrice = (od != null && od.getPriceUni() != null)
-                    ? od.getPriceUni()
-                    : (mat.getPriceArs() != null ? mat.getPriceArs() : BigDecimal.ZERO);
-            di.setUnitPriceSnapshot(snapshotPrice);
+                if (saleDetail.getMaterial() == null ||
+                        !Objects.equals(saleDetail.getMaterial().getIdMaterial(), mat.getIdMaterial())) {
+                    throw new IllegalArgumentException("materialId does not match the SaleDetail material");
+                }
 
-            delivery.getItems().add(di);
+                BigDecimal alreadyDeliveredOnSaleDetail = deliveredSoFarForSaleDetail(saleDetail.getIdSaleDetail());
+                BigDecimal pendingOnSaleDetail = saleDetail.getQuantity().subtract(alreadyDeliveredOnSaleDetail);
 
-            // Actualizamos acumulado solo si hay OrderDetail
-            if (od != null) {
-                deliveredByDetail.merge(od.getIdOrderDetail(), qty, BigDecimal::add);
+                if (pendingOnSaleDetail.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new IllegalArgumentException("SaleDetail " + saleDetail.getIdSaleDetail() + " has no pending quantity");
+                }
+
+                if (qtyRequested.compareTo(pendingOnSaleDetail) > 0) {
+                    throw new IllegalArgumentException("Over-delivery on saleDetail " + saleDetail.getIdSaleDetail());
+                }
             }
 
+            // === 7.b) Resolver orderDetails candidatos con saldo pendiente ===
+            List<OrderDetail> candidateOrderDetails;
+
+            if (it.getOrderDetailId() != null) {
+                OrderDetail explicit = repoOrderDetail.findById(it.getOrderDetailId())
+                        .orElseThrow(() ->
+                                new EntityNotFoundException("OrderDetail not found: " + it.getOrderDetailId()));
+
+                if (!Objects.equals(explicit.getOrders().getIdOrders(), orders.getIdOrders())) {
+                    throw new IllegalArgumentException("OrderDetail does not belong to the Delivery's Order");
+                }
+                if (explicit.getMaterial() == null ||
+                        !Objects.equals(explicit.getMaterial().getIdMaterial(), mat.getIdMaterial())) {
+                    throw new IllegalArgumentException("materialId does not match the OrderDetail material");
+                }
+
+                candidateOrderDetails = List.of(explicit);
+            } else {
+                candidateOrderDetails = findOrderDetailsWithRemaining(
+                        orders,
+                        mat.getIdMaterial(),
+                        deliveredByDetail
+                );
+            }
+
+            // === 7.c) Consumir primero lo presupuestado ===
+            BigDecimal remainingToAllocate = qtyRequested;
+
+            for (OrderDetail od : candidateOrderDetails) {
+                if (remainingToAllocate.compareTo(BigDecimal.ZERO) <= 0) break;
+
+                BigDecimal already = deliveredByDetail.getOrDefault(od.getIdOrderDetail(), BigDecimal.ZERO);
+                BigDecimal remainingOnOrderDetail = od.getQuantity().subtract(already);
+
+                if (remainingOnOrderDetail.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                BigDecimal qtyForThisOrderDetail = remainingToAllocate.min(remainingOnOrderDetail);
+
+                DeliveryItem di = buildDeliveryItem(
+                        delivery,
+                        saleDetail,
+                        od,
+                        mat,
+                        wh,
+                        qtyForThisOrderDetail
+                );
+                delivery.getItems().add(di);
+
+                deliveredByDetail.merge(od.getIdOrderDetail(), qtyForThisOrderDetail, BigDecimal::add);
+                remainingToAllocate = remainingToAllocate.subtract(qtyForThisOrderDetail);
+            }
+
+            // === 7.d) Si sobra cantidad:
+            // - si vino saleDetail => es adicional de venta, permitido
+            // - si NO vino saleDetail => viejo modelo, se rechaza
+            if (remainingToAllocate.compareTo(BigDecimal.ZERO) > 0) {
+                if (saleDetail == null) {
+                    throw new IllegalArgumentException(
+                            "Over-delivery on orderDetail for material " + mat.getIdMaterial()
+                    );
+                }
+
+                DeliveryItem extraItem = buildDeliveryItem(
+                        delivery,
+                        saleDetail,
+                        null,
+                        mat,
+                        wh,
+                        remainingToAllocate
+                );
+                delivery.getItems().add(extraItem);
+            }
         }
 
-        // === 8) Guardar y linkear con la venta (1..N) ===
-
-        // Primero colgamos la venta en la entrega (lado dueño de la relación)
-        delivery.setSale(sale);
-
-        // Guardamos la entrega
+        // === 8) Guardar ===
         Delivery saved = repoDelivery.save(delivery);
 
-        // Mantenemos la colección de entregas de la venta coherente en memoria
         if (sale.getDeliveries() == null) {
             sale.setDeliveries(new ArrayList<>());
         }
         sale.getDeliveries().add(saved);
         repoSale.save(sale);
 
-        // === 9) Recalcular estado global del pedido respecto de sus entregas (modelo existente) ===
+        // === 9) Recalcular estado del pedido ===
         DeliveryStatus status = calculateStatusForOrder(orders.getIdOrders());
         saved.setStatus(status);
         repoDelivery.save(saved);

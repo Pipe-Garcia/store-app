@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface CashSessionRepository extends JpaRepository<CashSession, Long> {
@@ -29,5 +30,16 @@ public interface CashSessionRepository extends JpaRepository<CashSession, Long> 
             LocalDate from,
             LocalDate to,
             Pageable pageable
+    );
+
+    List<CashSession> findByBusinessDateOrderByIdDesc(LocalDate businessDate);
+
+
+    List<CashSession> findByStatusOrderByBusinessDateDescIdDesc(CashSession.Status status);
+
+    List<CashSession> findAllByStatusAndBusinessDateBetweenOrderByBusinessDateDescIdDesc(
+            CashSession.Status status,
+            LocalDate from,
+            LocalDate to
     );
 }

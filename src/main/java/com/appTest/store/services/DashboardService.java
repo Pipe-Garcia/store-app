@@ -14,6 +14,7 @@ import com.appTest.store.dto.dashboard.*;
 import com.appTest.store.models.cash.CashMovement;
 import com.appTest.store.repositories.cash.CashMovementRepository;
 import com.appTest.store.repositories.cash.CashSessionRepository;
+import java.util.Locale;
 
 import java.time.ZoneId;
 import java.util.EnumMap;
@@ -242,45 +243,37 @@ public class DashboardService {
         LocalDate to = todayAR();
         LocalDate from = to.minusDays(n - 1);
 
-        // base por día
         Map<LocalDate, Agg> byDate = new LinkedHashMap<>();
         for (int i = 0; i < n; i++){
             LocalDate d = from.plusDays(i);
             byDate.put(d, new Agg());
         }
 
-        var rows = cashMovRepo.sumByDateDirectionReasonBetween(from, to);
-        for (Object[] r : rows){
-            LocalDate d = (LocalDate) r[0];
-            CashMovement.Direction dir = (CashMovement.Direction) r[1];
-            CashMovement.Reason reason = (CashMovement.Reason) r[2];
-            BigDecimal amt = (BigDecimal) r[3];
+        List<CashMovement> moves = cashMovRepo.findAllForFinanceBetween(from, to);
 
+        for (CashMovement m : moves){
+            LocalDate d = m.getBusinessDate();
             Agg a = byDate.get(d);
             if (a == null) continue;
 
-            if (dir == CashMovement.Direction.IN){
-                a.income = a.income.add(nz(amt));
-            } else {
-                // OUT
-                if (reason == CashMovement.Reason.WITHDRAWAL){
-                    a.withdrawals = a.withdrawals.add(nz(amt));
-                } else {
-                    a.expense = a.expense.add(nz(amt)); // OUT sin retiro
-                    if (reason == CashMovement.Reason.PURCHASE) a.purchases = a.purchases.add(nz(amt));
-                    if (reason == CashMovement.Reason.EXPENSE)  a.expenses  = a.expenses.add(nz(amt));
-                }
-            }
+            applyFinanceMovement(a, m);
         }
 
         List<FinanceSeriesDTO.Point> points = new ArrayList<>();
         for (var e : byDate.entrySet()){
             LocalDate d = e.getKey();
             Agg a = e.getValue();
+
             BigDecimal net = a.income.subtract(a.expense);
 
             points.add(new FinanceSeriesDTO.Point(
-                    d, a.income, a.expense, a.purchases, a.expenses, a.withdrawals, net
+                    d,
+                    a.income,
+                    a.expense,
+                    a.purchases,
+                    a.expenses,
+                    a.withdrawals,
+                    net
             ));
         }
 
@@ -293,8 +286,7 @@ public class DashboardService {
         LocalDate to = todayAR();
         LocalDate from = to.minusDays(n - 1);
 
-        // Totales (usamos la misma lógica de series, pero agregada)
-        var series = financeSeries(n).points();
+        List<CashMovement> moves = cashMovRepo.findAllForFinanceBetween(from, to);
 
         BigDecimal income = BigDecimal.ZERO;
         BigDecimal expense = BigDecimal.ZERO;
@@ -302,36 +294,74 @@ public class DashboardService {
         BigDecimal expenses = BigDecimal.ZERO;
         BigDecimal withdrawals = BigDecimal.ZERO;
 
-        for (var p : series){
-            income = income.add(nz(p.income()));
-            expense = expense.add(nz(p.expense()));
-            purchases = purchases.add(nz(p.purchases()));
-            expenses = expenses.add(nz(p.expenses()));
-            withdrawals = withdrawals.add(nz(p.withdrawals()));
+        Map<String, BigDecimal> incomeByMethod = new LinkedHashMap<>();
+        incomeByMethod.put("CASH", BigDecimal.ZERO);
+        incomeByMethod.put("TRANSFER", BigDecimal.ZERO);
+        incomeByMethod.put("CARD", BigDecimal.ZERO);
+        incomeByMethod.put("OTHER", BigDecimal.ZERO);
+
+        for (CashMovement m : moves){
+            CashMovement.Reason reason = m.getReason();
+            BigDecimal amt = nz(m.getAmount());
+            String method = normalizeMethodKey(m.getMethod());
+
+            if (reason == null) continue;
+
+            switch (reason){
+                case SALE_PAYMENT -> {
+                    income = income.add(amt);
+                    incomeByMethod.put(method, incomeByMethod.getOrDefault(method, BigDecimal.ZERO).add(amt));
+                }
+
+                case SALE_CANCEL -> {
+                    income = income.subtract(amt);
+                    incomeByMethod.put(method, incomeByMethod.getOrDefault(method, BigDecimal.ZERO).subtract(amt));
+                }
+
+                case PURCHASE -> {
+                    expense = expense.add(amt);
+                    purchases = purchases.add(amt);
+                }
+
+                case PURCHASE_CANCEL -> {
+                    expense = expense.subtract(amt);
+                    purchases = purchases.subtract(amt);
+                }
+
+                case EXPENSE -> {
+                    expense = expense.add(amt);
+                    expenses = expenses.add(amt);
+                }
+
+                case WITHDRAWAL -> {
+                    withdrawals = withdrawals.add(amt);
+                }
+
+                default -> {
+                    // no-op
+                }
+            }
         }
 
         BigDecimal net = income.subtract(expense);
 
-        // Breakdown IN por método
         List<FinanceBreakdownDTO> inByMethod = new ArrayList<>();
-        for (Object[] r : cashMovRepo.sumInByMethodBetween(from, to)){
-            String method = String.valueOf(r[0]);
-            BigDecimal total = (BigDecimal) r[1];
-            inByMethod.add(new FinanceBreakdownDTO(method, nz(total)));
-        }
+        inByMethod.add(new FinanceBreakdownDTO("CASH", nz(incomeByMethod.get("CASH"))));
+        inByMethod.add(new FinanceBreakdownDTO("TRANSFER", nz(incomeByMethod.get("TRANSFER"))));
+        inByMethod.add(new FinanceBreakdownDTO("CARD", nz(incomeByMethod.get("CARD"))));
+        inByMethod.add(new FinanceBreakdownDTO("OTHER", nz(incomeByMethod.get("OTHER"))));
 
-        // Breakdown OUT por reason (incluye WITHDRAWAL para mostrar)
         List<FinanceBreakdownDTO> outByReason = new ArrayList<>();
-        for (Object[] r : cashMovRepo.sumOutByReasonBetween(from, to)){
-            String reason = String.valueOf(r[0]);
-            BigDecimal total = (BigDecimal) r[1];
-            outByReason.add(new FinanceBreakdownDTO(reason, nz(total)));
-        }
+        outByReason.add(new FinanceBreakdownDTO("EXPENSE", expenses));
+        outByReason.add(new FinanceBreakdownDTO("PURCHASE", purchases));
+        outByReason.add(new FinanceBreakdownDTO("WITHDRAWAL", withdrawals));
 
         return new FinanceWindowDTO(
                 from, to,
-                income, expense,
-                purchases, expenses,
+                income,
+                expense,
+                purchases,
+                expenses,
                 withdrawals,
                 net,
                 inByMethod,
@@ -339,15 +369,63 @@ public class DashboardService {
         );
     }
 
-    private static BigDecimal nz(BigDecimal v){
-        return v != null ? v : BigDecimal.ZERO;
+    private void applyFinanceMovement(Agg a, CashMovement m){
+        if (m == null || m.getReason() == null) return;
+
+        BigDecimal amt = nz(m.getAmount());
+
+        switch (m.getReason()){
+            case SALE_PAYMENT -> {
+                a.income = a.income.add(amt);
+            }
+
+            case SALE_CANCEL -> {
+                a.income = a.income.subtract(amt);
+            }
+
+            case PURCHASE -> {
+                a.expense = a.expense.add(amt);
+                a.purchases = a.purchases.add(amt);
+            }
+
+            case PURCHASE_CANCEL -> {
+                a.expense = a.expense.subtract(amt);
+                a.purchases = a.purchases.subtract(amt);
+            }
+
+            case EXPENSE -> {
+                a.expense = a.expense.add(amt);
+                a.expenses = a.expenses.add(amt);
+            }
+
+            case WITHDRAWAL -> {
+                a.withdrawals = a.withdrawals.add(amt);
+            }
+
+            default -> {
+                // no-op
+            }
+        }
+    }
+
+    private String normalizeMethodKey(String raw){
+        if (raw == null || raw.isBlank()) return "OTHER";
+        String s = raw.trim().toUpperCase(Locale.ROOT);
+        return switch (s) {
+            case "CASH", "TRANSFER", "CARD", "OTHER" -> s;
+            default -> "OTHER";
+        };
     }
 
     private static class Agg {
         BigDecimal income = BigDecimal.ZERO;
-        BigDecimal expense = BigDecimal.ZERO;     // OUT sin retiro
-        BigDecimal purchases = BigDecimal.ZERO;   // OUT PURCHASE
-        BigDecimal expenses = BigDecimal.ZERO;    // OUT EXPENSE
-        BigDecimal withdrawals = BigDecimal.ZERO; // OUT WITHDRAWAL
+        BigDecimal expense = BigDecimal.ZERO;     // egreso financiero
+        BigDecimal purchases = BigDecimal.ZERO;   // compras
+        BigDecimal expenses = BigDecimal.ZERO;    // gastos manuales
+        BigDecimal withdrawals = BigDecimal.ZERO; // retiros
     }
+    private static BigDecimal nz(BigDecimal v){
+        return v != null ? v : BigDecimal.ZERO;
+    }
+
 }

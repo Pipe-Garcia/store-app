@@ -10,6 +10,14 @@ import java.util.List;
 public interface IDeliveryItemRepository extends JpaRepository<DeliveryItem, Long> {
 
     @Query("""
+        select coalesce(sum(di.quantityDelivered), 0)
+        from DeliveryItem di
+        where di.saleDetail.idSaleDetail = :saleDetailId
+          and di.delivery.status <> com.appTest.store.models.enums.DeliveryStatus.CANCELLED
+    """)
+    BigDecimal sumDeliveredBySaleDetail(@Param("saleDetailId") Long saleDetailId);
+
+    @Query("""
       select coalesce(sum(di.quantityDelivered), 0)
       from DeliveryItem di
       where di.orderDetail.orders.idOrders = :orderId

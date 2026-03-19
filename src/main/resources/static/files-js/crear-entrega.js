@@ -23,6 +23,44 @@ const Toast = Swal.mixin({
   }
 });
 
+function translateDeliveryError(msg){
+  const s = String(msg || '').trim();
+
+  if (/Over-delivery on saleDetail/i.test(s)) {
+    return 'La cantidad a entregar supera lo pendiente de ese renglón de la venta.';
+  }
+
+  if (/Over-delivery on orderDetail/i.test(s)) {
+    return 'La cantidad a entregar supera lo pendiente del renglón presupuestado.';
+  }
+
+  if (/Delivery requires a fully paid sale/i.test(s)) {
+    return 'La venta debe estar pagada por completo antes de registrar la entrega.';
+  }
+
+  if (/SaleDetail .* has no pending quantity/i.test(s)) {
+    return 'Ese renglón de la venta ya no tiene cantidad pendiente para entregar.';
+  }
+
+  if (/Sale not found/i.test(s)) {
+    return 'No se encontró la venta seleccionada.';
+  }
+
+  if (/Warehouse not found/i.test(s)) {
+    return 'No se encontró el depósito seleccionado.';
+  }
+
+  if (/order_detail_id.*cannot be null/i.test(s) || /Column 'order_detail_id' cannot be null/i.test(s)) {
+    return 'No se pudo guardar la entrega porque la base de datos todavía exige un renglón de presupuesto. Hay que actualizar el esquema.';
+  }
+
+  if (/Material not found/i.test(s)) {
+    return 'No se encontró el material seleccionado.';
+  }
+
+  return s || 'No se pudo crear la entrega.';
+}
+
 function notify(msg, type='info'){
   // Mapeo de iconos
   const icon = ['error','success','warning','info','question'].includes(type) ? type : 'info';
@@ -444,17 +482,37 @@ async function guardarEntrega(ev){
         const payload = { saleId, deliveryDate, items };
 
         try{
-          const res = await authFetch(API_URL_DELIVERIES, { method:'POST', body: JSON.stringify(payload) });
+          const res = await authFetch(API_URL_DELIVERIES, {
+            method:'POST',
+            body: JSON.stringify(payload)
+          });
+
           if (!res.ok){
-            const t = await res.text().catch(()=> '');
-            console.warn('POST /deliveries failed', res.status, t);
-            throw new Error(`HTTP ${res.status}`);
+            let rawMsg = `HTTP ${res.status}`;
+
+            try{
+              const errJson = await safeJson(res);
+              rawMsg = errJson?.message || errJson?.error || rawMsg;
+            }catch(_){
+              try{
+                const txt = await res.text();
+                if (txt) rawMsg = txt;
+              }catch(__){}
+            }
+
+            throw new Error(translateDeliveryError(rawMsg));
           }
+
           flashAndGo('Entrega creada correctamente','entregas.html');
         }catch(err){
           console.error(err);
           sending = false;
-          notify('No se pudo crear la entrega','error');
+
+          await Swal.fire({
+            icon: 'error',
+            title: 'No se pudo crear la entrega',
+            text: err?.message || 'Error inesperado al registrar la entrega.'
+          });
         }
       }  
 

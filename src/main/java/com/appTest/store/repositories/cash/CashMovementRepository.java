@@ -128,4 +128,15 @@ public interface CashMovementRepository extends JpaRepository<CashMovement, Long
             @Param("from") LocalDate from,
             @Param("to") LocalDate to
     );
+
+    @Query("""
+  select m
+  from CashMovement m
+  where m.businessDate between :from and :to
+  order by m.businessDate asc, m.timestamp asc, m.id asc
+""")
+    List<CashMovement> findAllForFinanceBetween(
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
 }
