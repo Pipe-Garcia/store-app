@@ -76,8 +76,12 @@ function pintarProveedor(p){
     row.className = 'trow';
     // Grid: Material (2) | Precio (1) | Tiempo (1)
     row.innerHTML = `
-      <div style="flex: 2;" class="strong-text">${m.materialName || m.name || '-'}</div>
-      <div class="text-right">${fmtARS.format(Number(m.priceUnit||m.price||0))}</div>
+    <div style="flex: 2;" class="strong-text">
+      <a href="ver-material.html?id=${m.materialId}" style="text-decoration:none; color:inherit;">
+        ${m.materialName || m.name || '-'}
+      </a>
+    </div>
+    <div class="text-right">${fmtARS.format(Number(m.priceUnit||m.price||0))}</div>
       <div class="text-center">${m.deliveryTimeDays ?? m.leadTimeDays ?? '-'}</div>
     `;
     cont.appendChild(row);

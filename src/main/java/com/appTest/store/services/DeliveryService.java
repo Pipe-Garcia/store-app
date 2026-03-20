@@ -242,6 +242,59 @@ public class DeliveryService implements IDeliveryService {
                 total.stripTrailingZeros().toPlainString() + " unid.)";
     }
 
+    private DeliveryStatus calculateStatusForSale(Long saleId) {
+        Sale sale = repoSale.findById(saleId)
+                .orElseThrow(() -> new EntityNotFoundException("Sale not found with ID: " + saleId));
+
+        if (sale.getSaleDetailList() == null || sale.getSaleDetailList().isEmpty()) {
+            return DeliveryStatus.PENDING;
+        }
+
+        BigDecimal totalSold = BigDecimal.ZERO;
+        BigDecimal totalDelivered = BigDecimal.ZERO;
+
+        for (SaleDetail sd : sale.getSaleDetailList()) {
+            if (sd == null) continue;
+
+            BigDecimal sold = sd.getQuantity() != null ? sd.getQuantity() : BigDecimal.ZERO;
+            BigDecimal delivered = deliveredSoFarForSaleDetail(sd.getIdSaleDetail());
+
+            // cap de seguridad
+            if (delivered.compareTo(sold) > 0) {
+                delivered = sold;
+            }
+
+            totalSold = totalSold.add(sold);
+            totalDelivered = totalDelivered.add(delivered);
+        }
+
+        if (totalSold.compareTo(BigDecimal.ZERO) <= 0) return DeliveryStatus.PENDING;
+        if (totalDelivered.compareTo(BigDecimal.ZERO) <= 0) return DeliveryStatus.PENDING;
+        if (totalDelivered.compareTo(totalSold) < 0) return DeliveryStatus.PARTIAL;
+        return DeliveryStatus.COMPLETED;
+    }
+
+    private void syncStatusesForSale(Long saleId) {
+        if (saleId == null) return;
+
+        List<Delivery> deliveries = repoDelivery.findBySale_IdSale(saleId);
+        if (deliveries == null || deliveries.isEmpty()) return;
+
+        DeliveryStatus globalStatus = calculateStatusForSale(saleId);
+
+        List<Delivery> toUpdate = deliveries.stream()
+                .filter(Objects::nonNull)
+                .filter(d -> d.getStatus() != DeliveryStatus.CANCELLED)
+                .collect(Collectors.toList());
+
+        if (toUpdate.isEmpty()) return;
+
+        for (Delivery d : toUpdate) {
+            d.setStatus(globalStatus);
+        }
+
+        repoDelivery.saveAll(toUpdate);
+    }
 
     @Override
     public DeliveryDTO convertDeliveryToDto(Delivery delivery) {
@@ -379,12 +432,14 @@ public class DeliveryService implements IDeliveryService {
             List<DeliveryItemDTO> items = d.getItems().stream().map(i ->
                     new DeliveryItemDTO(
                             i.getIdDeliveryItem(),
-                            i.getOrderDetail().getIdOrderDetail(),
+                            i.getOrderDetail() != null ? i.getOrderDetail().getIdOrderDetail() : null,
                             i.getMaterial().getIdMaterial(),
                             i.getMaterial().getName(),
                             i.getWarehouse() != null ? i.getWarehouse().getIdWarehouse() : null,
                             i.getWarehouse() != null ? i.getWarehouse().getName() : null,
-                            i.getOrderDetail().getQuantity(),
+                            i.getOrderDetail() != null && i.getOrderDetail().getQuantity() != null
+                                    ? i.getOrderDetail().getQuantity()
+                                    : (i.getSaleDetail() != null ? i.getSaleDetail().getQuantity() : BigDecimal.ZERO),
                             i.getQuantityDelivered(),
                             i.getUnitPriceSnapshot()
                     )
@@ -648,10 +703,12 @@ public class DeliveryService implements IDeliveryService {
         sale.getDeliveries().add(saved);
         repoSale.save(sale);
 
-        // === 9) Recalcular estado del pedido ===
-        DeliveryStatus status = calculateStatusForOrder(orders.getIdOrders());
-        saved.setStatus(status);
-        repoDelivery.save(saved);
+        // === 9) Recalcular estado global por VENTA ===
+        syncStatusesForSale(sale.getIdSale());
+
+        // refrescamos para devolver el status actualizado
+        saved = repoDelivery.findByIdWithGraph(saved.getIdDelivery())
+                .orElseThrow(() -> new EntityNotFoundException("Delivery not found after save"));
 
         DeliveryDTO dtoOut = convertDeliveryToDto(saved);
 
@@ -852,11 +909,16 @@ public class DeliveryService implements IDeliveryService {
             // el stock se manejó en la venta.
         }
 
-        // Recalcular estado del pedido y reflejar en esta entrega
-        DeliveryStatus status = calculateStatusForOrder(delivery.getOrders().getIdOrders());
-        delivery.setStatus(status);
-
         repoDelivery.save(delivery);
+
+        // Recalcular estado global por VENTA
+        if (delivery.getSale() != null) {
+            syncStatusesForSale(delivery.getSale().getIdSale());
+
+            delivery = repoDelivery.findByIdWithGraph(dto.getIdDelivery())
+                    .orElseThrow(() -> new EntityNotFoundException("Delivery not found with id: " + dto.getIdDelivery()));
+        }
+
         Map<String,Object> after = snap(delivery);
         List<Change> changes = diff(before, after);
         String message = summarize(changes);
@@ -892,19 +954,9 @@ public class DeliveryService implements IDeliveryService {
         delivery.setStatus(DeliveryStatus.CANCELLED);
         repoDelivery.save(delivery);
 
-        // Si esta entrega está ligada a un pedido, recalculamos el “status global” (según tu modelo actual)
-        // y lo aplicamos a las entregas NO anuladas de ese pedido para mantener consistencia visual.
-        if (delivery.getOrders() != null) {
-            Long orderId = delivery.getOrders().getIdOrders();
-            DeliveryStatus newStatus = calculateStatusForOrder(orderId);
-
-            List<Delivery> all = repoDelivery.findByOrders_IdOrders(orderId);
-            for (Delivery d : all) {
-                if (d == null) continue;
-                if (d.getStatus() == DeliveryStatus.CANCELLED) continue;
-                d.setStatus(newStatus);
-            }
-            repoDelivery.saveAll(all);
+        // Recalcular estado global por VENTA (las canceladas quedan fuera)
+        if (delivery.getSale() != null) {
+            syncStatusesForSale(delivery.getSale().getIdSale());
         }
 
         DeliveryDTO dtoOut = convertDeliveryToDto(delivery);

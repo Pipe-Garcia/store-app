@@ -1,7 +1,7 @@
 /* /static/files-css/caja-resumen.css */
 
 .page{
-  max-width: 1400px; /* Un poco más contenido para que las 2 columnas no se estiren al infinito */
+  max-width: 1400px;
   margin: 0 auto;
   padding: 22px 22px 44px;
 }
@@ -9,7 +9,7 @@
 .page-head{
   display: flex;
   justify-content: space-between;
-  align-items: center; /* Alineación centrada para título y botón */
+  align-items: center;
   gap: 14px;
   flex-wrap: wrap;
   margin-bottom: 6px;
@@ -25,17 +25,16 @@
   text-decoration: none !important;
 }
 
-/* Separación más prolija del divisor */
 hr.divider{
   margin: 14px 0 24px;
   border: none;
   border-top: 1px solid var(--grid, #e5e7eb);
 }
 
-/* ================= GRID PRINCIPAL (2 COLUMNAS) ================= */
+/* ================= GRID PRINCIPAL ================= */
 .resumen-wrapper {
   display: grid;
-  grid-template-columns: 1fr 1.2fr; /* La columna derecha toma un poco más de espacio */
+  grid-template-columns: 1fr 1.2fr;
   gap: 40px;
   align-items: flex-start;
 }
@@ -59,7 +58,7 @@ hr.divider{
   gap:6px;
   font-weight: 600;
   color: var(--text-weak, #555);
-  flex-grow: 1; /* Hace que el input tome todo el ancho disponible */
+  flex-grow: 1;
 }
 
 .filters input[type="date"]{
@@ -83,7 +82,19 @@ hr.divider{
   white-space: nowrap;
 }
 
-/* ================= TARJETA DETALLE OPERATIVO ================= */
+/* ================= TÍTULOS ================= */
+.section-title{
+  margin: 28px 0 12px;
+  font-size: 1.1rem;
+  letter-spacing: .2px;
+  color: #2b2e33;
+}
+
+.section-title-first{
+  margin-top: 0;
+}
+
+/* ================= DETALLE DE CAJA ================= */
 .detail-card {
   padding: 12px 24px;
   border-radius: 14px;
@@ -108,7 +119,6 @@ hr.divider{
   font-size: 1.05rem;
 }
 
-/* Fila de Total (Efectivo para mañana) */
 .detail-row.total {
   font-size: 1.15rem;
   font-weight: 700;
@@ -124,7 +134,7 @@ hr.divider{
 /* ================= KPIs FINANCIEROS ================= */
 .kpi-grid{
   display: grid;
-  grid-template-columns: 1fr 1fr; 
+  grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
 
@@ -136,7 +146,6 @@ hr.divider{
   padding: 16px 16px 14px;
 }
 
-/* El neto ocupa todo el ancho abajo */
 .kpi-neto {
   grid-column: 1 / -1;
   background: color-mix(in oklab, var(--primary, #1c7ed6) 8%, transparent);
@@ -160,14 +169,43 @@ hr.divider{
   font-variant-numeric: tabular-nums;
 }
 
-/* ================= MÉTODOS DE PAGO ================= */
-.section-title{
-  margin: 28px 0 12px;
-  font-size: 1.1rem;
-  letter-spacing: .2px;
+/* ================= DESGLOSE DE EGRESOS ================= */
+.breakdown-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.breakdown-card{
+  background: color-mix(in oklab, var(--card) 96%, transparent);
+  border: 1px solid var(--grid, #e5e7eb);
+  border-radius: 16px;
+  box-shadow: var(--shadow, 0 1px 2px rgba(0,0,0,.06));
+  padding: 14px 14px 12px;
+}
+
+.breakdown-card .name{
+  color: var(--text-weak, #6b7280);
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.breakdown-card .val{
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: #2b2e33;
 }
 
+.breakdown-hint{
+  margin-top: 10px;
+  margin-bottom: 0;
+  color: var(--text-weak, #868e96);
+  font-size: .9rem;
+  line-height: 1.4;
+}
+
+/* ================= MÉTODOS DE PAGO ================= */
 .methods-grid{
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -199,14 +237,16 @@ hr.divider{
   margin-top: 24px;
   color: var(--text-weak, #868e96);
   font-size: .92rem;
+  line-height: 1.45;
 }
 
 /* ================= RESPONSIVE ================= */
 @media (max-width: 1024px){
   .resumen-wrapper {
-    grid-template-columns: 1fr; /* Pasa a una sola columna en tablets */
+    grid-template-columns: 1fr;
     gap: 24px;
   }
+
   .section-title {
     margin-top: 10px;
   }
@@ -214,6 +254,20 @@ hr.divider{
 
 @media (max-width: 640px){
   .page{ padding: 18px 14px 36px; }
-  .kpi-grid, .methods-grid { grid-template-columns: 1fr; }
+
+  .kpi-grid,
+  .methods-grid,
+  .breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+
   .filters label{ min-width: 100%; }
+
+  .detail-row{
+    gap: 12px;
+  }
+
+  .detail-row span:first-child{
+    max-width: 60%;
+  }
 }

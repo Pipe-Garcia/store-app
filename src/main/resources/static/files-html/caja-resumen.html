@@ -39,7 +39,7 @@
           </div>
         </section>
 
-        <h3 class="section-title" style="margin-top:0;">Detalle Operativo</h3>
+        <h3 class="section-title section-title-first" style="margin-top:0;">Detalle de Caja</h3>
         <section class="card detail-card">
           <div class="detail-row">
             <span>Apertura de caja</span>
@@ -47,31 +47,23 @@
           </div>
           <div class="detail-row">
             <span>Gastos</span>
-            <strong id="valGastos">$ 0,00</strong>
-          </div>
-          <div class="detail-row">
-            <span>Compras</span>
-            <strong id="valCompras">$ 0,00</strong>
-          </div>
-          <div class="detail-row">
-            <span>Anulaciones</span>
-            <strong id="valAnulaciones">$ 0,00</strong>
+            <strong id="valGastos"><$ 0,00</strong>
           </div>
           <div class="detail-row">
             <span>Retiro de caja</span>
             <strong id="valRetiro">$ 0,00</strong>
           </div>
           <div class="detail-row total">
-            <span>Efectivo p/ mañana (estimado)</span>
+            <span>Efectivo para próxima apertura (estimado)</span>
             <strong id="valManana">$ 0,00</strong>
           </div>
         </section>
         
-        <p class="note">* El resumen se calcula desde los movimientos de caja del día seleccionado.</p>
+        <p class="note">* Esta columna refleja la operación de caja física del día seleccionado.</p>
       </div>
 
       <div class="resumen-right">
-        <h3 class="section-title" style="margin-top:0;">Resumen Financiero</h3>
+        <h3 class="section-title section-title-first" style="margin-top:0;">Resumen Financiero</h3>
         <div class="kpi-grid">
           <div class="kpi">
             <small>Ingresos</small>
@@ -86,6 +78,19 @@
             <strong id="kpiNet">$ 0,00</strong>
           </div>
         </div>
+
+        <h3 class="section-title">Desglose de egresos</h3>
+        <div class="breakdown-grid">
+          <div class="breakdown-card">
+            <div class="name">Gastos</div>
+            <div class="val" id="egExpenses">$ 0,00</div>
+          </div>
+          <div class="breakdown-card">
+            <div class="name">Compras</div>
+            <div class="val" id="egPurchases">$ 0,00</div>
+          </div>
+        </div>
+        <p class="breakdown-hint">Los egresos financieros del día surgen de la suma de gastos y compras.</p>
 
         <h3 class="section-title">Ingresos por método</h3>
         <div class="methods-grid">
@@ -104,7 +109,8 @@
         </div>
       </div>
 
-    </div> </main>
+    </div>
+  </main>
 
   <script src="../files-js/core/api.js"></script>
   <script>window.api.setBaseUrl('http://localhost:8088');</script>

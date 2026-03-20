@@ -24,6 +24,7 @@ public interface IMaterialService {
 
       boolean deleteMaterialById(Long idMaterial);
 
+      List<com.appTest.store.dto.material.MaterialSupplierLinkDTO> getMaterialSuppliers(Long idMaterial);
 
       void restoreMaterial(Long idMaterial);
 }

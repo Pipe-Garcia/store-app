@@ -1,18 +1,8 @@
 package com.appTest.store.services;
 
-import com.appTest.store.dto.material.MaterialCreateDTO;
-import com.appTest.store.dto.material.MaterialDTO;
-import com.appTest.store.dto.material.MaterialMostExpensiveDTO;
-import com.appTest.store.dto.material.MaterialStockAlertDTO;
-import com.appTest.store.dto.material.MaterialUpdateDTO;
-import com.appTest.store.models.Family;
-import com.appTest.store.models.Material;
-import com.appTest.store.models.Stock;
-import com.appTest.store.models.Warehouse;
-import com.appTest.store.repositories.IFamilyRepository;
-import com.appTest.store.repositories.IMaterialRepository;
-import com.appTest.store.repositories.IStockRepository;
-import com.appTest.store.repositories.IWarehouseRepository;
+import com.appTest.store.dto.material.*;
+import com.appTest.store.models.*;
+import com.appTest.store.repositories.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,10 +22,48 @@ public class MaterialService implements IMaterialService {
     @Autowired private IFamilyRepository repoFam;
     @Autowired private IWarehouseRepository repoWare;
     @Autowired private IStockRepository repoStock;
+    @Autowired private IMaterialSupplierRepository repoMatSup;
 
     @Autowired private AuditService audit;
 
     /* ==================== Utils ==================== */
+
+    private String supplierCompany(Supplier s){
+        if (s == null) return "—";
+        if (s.getNameCompany() != null && !s.getNameCompany().isBlank()) {
+            return s.getNameCompany().trim();
+        }
+        String full = ((s.getName() != null ? s.getName() : "") + " " +
+                (s.getSurname() != null ? s.getSurname() : "")).trim();
+        return full.isBlank() ? "—" : full;
+    }
+
+    private String supplierContact(Supplier s){
+        if (s == null) return "—";
+        String full = ((s.getName() != null ? s.getName() : "") + " " +
+                (s.getSurname() != null ? s.getSurname() : "")).trim();
+        return full.isBlank() ? "—" : full;
+    }
+
+    @Override
+    public List<MaterialSupplierLinkDTO> getMaterialSuppliers(Long idMaterial) {
+        Material material = repoMat.findById(idMaterial)
+                .orElseThrow(() -> new EntityNotFoundException("Material not found with ID: " + idMaterial));
+
+        List<MaterialSupplier> rows = repoMatSup.findByMaterialIdWithSupplier(material.getIdMaterial());
+
+        return rows.stream()
+                .map(ms -> new MaterialSupplierLinkDTO(
+                        ms.getIdMaterialSupplier(),
+                        ms.getSupplier() != null ? ms.getSupplier().getIdSupplier() : null,
+                        supplierCompany(ms.getSupplier()),
+                        supplierContact(ms.getSupplier()),
+                        ms.getSupplier() != null ? ms.getSupplier().getStatus() : null,
+                        ms.getPriceUnit(),
+                        ms.getDeliveryTimeDays()
+                ))
+                .collect(Collectors.toList());
+    }
 
     private String norm(String s){ return s==null? null : s.trim(); }
     private boolean hasText(String s){ return s!=null && !s.trim().isEmpty(); }

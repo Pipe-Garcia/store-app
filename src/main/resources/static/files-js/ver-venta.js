@@ -39,6 +39,64 @@ function getSoldUnits(v){ return Number(v.totalUnits ?? v.unitsSold ?? v.soldUni
 function getDeliveredUnits(v){ return Number(v.deliveredUnits ?? v.unitsDelivered ?? 0); }
 function getPendingUnits(v){ return Number(v.pendingToDeliver ?? v.pendingUnits ?? 0); }
 
+function getPaymentStateCode(v){
+  const raw = (v.paymentStatus || '').toString().toUpperCase();
+  if (['PENDING', 'PARTIAL', 'PAID'].includes(raw)) return raw;
+
+  const total = Number(v.total ?? 0);
+  const paid  = Number(v.paid ?? 0);
+
+  if (paid <= 0) return 'PENDING';
+  if (paid < total) return 'PARTIAL';
+  return 'PAID';
+}
+
+function setCreateDeliveryButtonState({ visible, enabled, href = '', hint = '' } = {}){
+  const wrap   = $('#wrapCrearEntrega');
+  const btn    = $('#btnCrearEntrega');
+  const hintEl = $('#hintCrearEntrega');
+
+  if (!btn) return;
+
+  if (wrap) wrap.style.display = visible ? 'flex' : 'none';
+  btn.style.display = visible ? 'inline-flex' : 'none';
+
+  if (!visible){
+    btn.removeAttribute('href');
+    btn.classList.remove('is-disabled');
+    btn.setAttribute('aria-disabled', 'true');
+    btn.removeAttribute('title');
+
+    if (hintEl){
+      hintEl.textContent = '';
+      hintEl.style.display = 'none';
+    }
+    return;
+  }
+
+  if (enabled){
+    btn.href = href;
+    btn.classList.remove('is-disabled');
+    btn.setAttribute('aria-disabled', 'false');
+    btn.removeAttribute('title');
+
+    if (hintEl){
+      hintEl.textContent = '';
+      hintEl.style.display = 'none';
+    }
+  } else {
+    btn.removeAttribute('href');
+    btn.classList.add('is-disabled');
+    btn.setAttribute('aria-disabled', 'true');
+    btn.title = hint || 'No disponible';
+
+    if (hintEl){
+      hintEl.textContent = '';
+      hintEl.style.display = 'none';
+    }
+  }
+}
+
 function getDeliveryStateCode(v){
   const hasOrder = !!(v.orderId ?? v.ordersId);
   if (!hasOrder) return 'DELIVERED';
@@ -88,13 +146,10 @@ async function init(){
 
     const role = getRole() || 'employee';
 
-    // Cajero: no edita ni crea entregas
+    // Cajero: no edita
     if (role === 'cashier'){
       const btnEdit = document.getElementById('btnEditar');
       if (btnEdit) btnEdit.style.display = 'none';
-
-      const btnCrear = document.getElementById('btnCrearEntrega');
-      if (btnCrear) btnCrear.style.display = 'none';
     }
 
     renderCabecera(saleDTO);
@@ -104,7 +159,7 @@ async function init(){
       setupCrearEntrega(saleDTO);
       await renderEntregasVenta(Number(saleId));
     } else {
-      $('#btnCrearEntrega').style.display = 'none';
+      setCreateDeliveryButtonState({ visible: false });
       $('#cardEntregasVenta').style.display = 'none';
     }
 
@@ -241,23 +296,51 @@ function setupCrearEntrega(s){
   const btn = $('#btnCrearEntrega');
   if (!btn) return;
 
-  const saleStatus = getSaleStatusCode(s);
-  if (saleStatus === 'CANCELLED'){
-    btn.style.display = 'none';
+  const role = getRole() || 'employee';
+  if (role === 'cashier') {
+    setCreateDeliveryButtonState({ visible: false });
     return;
   }
 
-  const sold = getSoldUnits(s);
-  const pending = getPendingUnits(s);
+  const saleStatus = getSaleStatusCode(s);
+  const hasOrder   = !!(s.orderId ?? s.ordersId);
+
+  if (!hasOrder || saleStatus === 'CANCELLED'){
+    setCreateDeliveryButtonState({ visible: false });
+    return;
+  }
+
+  const sold     = getSoldUnits(s);
+  const pending  = getPendingUnits(s);
   const delState = getDeliveryStateCode(s);
+  const payState = getPaymentStateCode(s);
+
   const hasPending = (pending > 0) || (delState === 'PENDING_DELIVERY' && sold > 0);
 
   if (!hasPending) {
-    btn.style.display = 'none';
-  } else {
-    btn.style.display = 'inline-flex';
-    btn.href = `crear-entrega.html?sale=${s.idSale}`;
+    setCreateDeliveryButtonState({ visible: false });
+    return;
   }
+
+  if (payState !== 'PAID'){
+    const hint =
+      payState === 'PARTIAL'
+        ? 'Disponible cuando la venta esté saldada por completo.'
+        : 'Disponible cuando la venta tenga el pago completo.';
+
+    setCreateDeliveryButtonState({
+      visible: true,
+      enabled: false,
+      hint
+    });
+    return;
+  }
+
+  setCreateDeliveryButtonState({
+    visible: true,
+    enabled: true,
+    href: `crear-entrega.html?sale=${s.idSale}`
+  });
 }
 
 /* =================== ÍTEMS =================== */

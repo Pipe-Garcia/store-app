@@ -28,21 +28,6 @@ async function apiSummary(dateStr) {
   return await tryJson(r);
 }
 
-async function apiListByReason(dateStr, reason) {
-  const q = new URLSearchParams();
-  q.set('from', dateStr);
-  q.set('to', dateStr);
-  q.set('reason', reason);
-  q.set('page', '0');
-  q.set('size', '1000');
-
-  const r = await authFetch(`/cash/movements?${q.toString()}`);
-  if (!r.ok) return [];
-  let data = await tryJson(r);
-  if (data && !Array.isArray(data) && Array.isArray(data.content)) data = data.content;
-  return Array.isArray(data) ? data : [];
-}
-
 function sumAmounts(list) {
   return (list || []).reduce((a, x) => a + Number(x.amount || 0), 0);
 }
@@ -66,11 +51,9 @@ async function apiList(dateStr, reason, direction) {
 async function load() {
   const date = $('#fDate').value || todayStr();
 
-  // Solo para apertura (si tu summary anda bien)
   const sum = await apiSummary(date);
   const openingCash = Number(sum?.openingCash || 0);
 
-  // Movimientos relevantes (con tolerancia legacy)
   const [
     salePaysIN,
     saleCancOUT,
@@ -81,35 +64,35 @@ async function load() {
     purchLegacyCancelIN
   ] = await Promise.all([
     apiList(date, 'SALE_PAYMENT', 'IN'),
-    apiList(date, 'SALE_CANCEL',  'OUT'),
-    apiList(date, 'EXPENSE',      'OUT'),
-    apiList(date, 'PURCHASE',     'OUT'),
+    apiList(date, 'SALE_CANCEL', 'OUT'),
+    apiList(date, 'EXPENSE', 'OUT'),
+    apiList(date, 'PURCHASE', 'OUT'),
     apiList(date, 'PURCHASE_CANCEL', 'IN'),
-    apiList(date, 'WITHDRAWAL',   'OUT'),
-    apiList(date, 'PURCHASE',     'IN'), // legacy: IN+PURCHASE = anulación
+    apiList(date, 'WITHDRAWAL', 'OUT'),
+    apiList(date, 'PURCHASE', 'IN') // legacy: IN + PURCHASE = anulación vieja
   ]);
 
-  const sumSalePay   = sumAmounts(salePaysIN);
-  const sumSaleCancel= sumAmounts(saleCancOUT);
+  const sumSalePay = sumAmounts(salePaysIN);
+  const sumSaleCancel = sumAmounts(saleCancOUT);
 
-  const gastos       = sumAmounts(expensesOUT);
+  const gastos = sumAmounts(expensesOUT);
 
-  const comprasOut   = sumAmounts(purchOUT);
-  const comprasCanc  = sumAmounts(purchCancIN) + sumAmounts(purchLegacyCancelIN);
-  const comprasNet   = Math.max(0, comprasOut - comprasCanc);
+  const comprasOut = sumAmounts(purchOUT);
+  const comprasCanc = sumAmounts(purchCancIN) + sumAmounts(purchLegacyCancelIN);
+  const comprasNet = Math.max(0, comprasOut - comprasCanc);
 
-  const retiro       = sumAmounts(withdrawalsOUT);
+  const retiro = sumAmounts(withdrawalsOUT);
 
-  // ✅ Ingresos financieros reales
+  // Ingresos financieros reales
   const ingresos = Math.max(0, sumSalePay - sumSaleCancel);
 
-  // ✅ Egresos financieros reales
+  // Egresos financieros reales
   const egresos = gastos + comprasNet;
 
-  // ✅ Neto financiero
+  // Neto financiero
   const neto = ingresos - egresos;
 
-  // ✅ Ingresos por método (netos: restamos anulaciones por método)
+  // Ingresos por método (netos: restando anulaciones de venta por método)
   const byMethod = { CASH: 0, TRANSFER: 0, CARD: 0, OTHER: 0 };
 
   for (const m of salePaysIN) {
@@ -117,6 +100,7 @@ async function load() {
     const key = Object.prototype.hasOwnProperty.call(byMethod, method) ? method : 'OTHER';
     byMethod[key] += Number(m.amount || 0);
   }
+
   for (const m of saleCancOUT) {
     const method = String(m.method || 'OTHER').toUpperCase();
     const key = Object.prototype.hasOwnProperty.call(byMethod, method) ? method : 'OTHER';
@@ -124,9 +108,13 @@ async function load() {
   }
 
   // KPI cards
-  $('#kpiIn').textContent  = fmtARS.format(ingresos);
+  $('#kpiIn').textContent = fmtARS.format(ingresos);
   $('#kpiOut').textContent = fmtARS.format(egresos);
   $('#kpiNet').textContent = fmtARS.format(neto);
+
+  // Desglose de egresos
+  $('#egExpenses').textContent = fmtARS.format(gastos);
+  $('#egPurchases').textContent = fmtARS.format(comprasNet);
 
   // Ingresos por método
   Object.entries(byMethod).forEach(([k, v]) => {
@@ -135,25 +123,24 @@ async function load() {
     if (el) el.textContent = fmtARS.format(v);
   });
 
-  // Efectivo p/ mañana (estimado, caja física)
-  const cashIn  = byMethod.CASH;
-  const cashOut = gastos; // gastos siempre cash en tu modelo
+  // Caja física estimada
+  const cashIn = byMethod.CASH;
+  const cashOut = gastos; // gastos manuales = cash físico
   const systemCashExpected = openingCash + cashIn - cashOut;
-  const carryOverExpected  = Math.max(0, systemCashExpected - retiro);
+  const carryOverExpected = Math.max(0, systemCashExpected - retiro);
 
-  const anulaciones = sumSaleCancel + comprasCanc;
-
-  // ✅ Asignar valores a la nueva tarjeta de Detalle Operativo
+  // Columna izquierda: solo caja
   $('#valApertura').textContent = fmtARS.format(openingCash);
   $('#valGastos').textContent = fmtARS.format(gastos);
-  $('#valCompras').textContent = fmtARS.format(comprasNet);
-  $('#valAnulaciones').textContent = fmtARS.format(anulaciones);
   $('#valRetiro').textContent = fmtARS.format(retiro);
   $('#valManana').textContent = fmtARS.format(carryOverExpected);
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  if (!getToken()) { location.href = '../files-html/login.html'; return; }
+  if (!getToken()) {
+    location.href = '../files-html/login.html';
+    return;
+  }
 
   $('#fDate').value = todayStr();
   $('#btnReload')?.addEventListener('click', () => load().catch(e => console.error(e)));

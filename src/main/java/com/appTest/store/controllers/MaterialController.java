@@ -58,6 +58,13 @@ public class MaterialController {
         return ResponseEntity.ok(materialStockAlertDTOList);
     }
 
+    @GetMapping("/{id}/suppliers")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
+    public ResponseEntity<List<MaterialSupplierLinkDTO>> getSuppliersByMaterial(@PathVariable Long id) {
+        return ResponseEntity.ok(servMat.getMaterialSuppliers(id));
+    }
+
+
     @GetMapping("/most-expensive")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYEE','ROLE_OWNER')")
     public ResponseEntity<MaterialMostExpensiveDTO> getMaterialByHighestPrice() {

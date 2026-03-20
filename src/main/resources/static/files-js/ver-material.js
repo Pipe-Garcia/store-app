@@ -1,8 +1,8 @@
-// /static/files-js/ver-material.js
 const { authFetch, safeJson, getToken } = window.api;
 
 const API_MAT        = '/materials';
 const API_STOCK      = (id) => `/stocks/by-material/${id}`;
+const API_MAT_SUPS   = (id) => `/materials/${id}/suppliers`;
 const API_WAREHOUSES = '/warehouses';
 
 const $ = (s, r=document) => r.querySelector(s);
@@ -32,11 +32,11 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     return;
   }
 
-  // botón editar
   $('#btnEditar').href = `editar-material.html?id=${id}`;
 
   await cargarDatos();
   await cargarStock();
+  await cargarProveedores();
 });
 
 async function cargarDatos(){
@@ -45,23 +45,19 @@ async function cargarDatos(){
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const m = await r.json();
 
-    // Cabecera
     $('#mat-id').textContent = m.internalNumber ? `#${m.internalNumber}` : `#${m.idMaterial}`;
 
-    // Datos principales
     $('#dCodigo').textContent = m.internalNumber || '—';
     $('#dNombre').textContent = m.name || '—';
     $('#dMarca').textContent  = m.brand || '—';
-    
+
     const familia = m.family?.typeFamily ?? m.familyName ?? '—';
     $('#dFamilia').textContent = familia;
 
     $('#dUnidad').textContent = m.measurementUnit || 'unidad';
     $('#dPrecio').textContent = fmtARS.format(Number(m.priceArs || m.price || 0));
-    
     $('#dDescripcion').textContent = m.description || 'Sin descripción';
 
-    // 🔹 Estado
     const up = String(m.status ?? 'ACTIVE').toUpperCase();
     const isActive = (up === 'ACTIVE');
     const elEstado = document.getElementById('dEstado');
@@ -76,7 +72,6 @@ async function cargarDatos(){
   }
 }
 
-// ====== Stock por depósito ======
 async function cargarStock(){
   const cont    = $('#tabla-stock');
   const msg     = $('#msgStock');
@@ -99,7 +94,6 @@ async function cargarStock(){
     }
     if(msg) msg.style.display = 'none';
 
-    // Almacenes
     let whMap = {};
     try{
       const rWh = await authFetch(API_WAREHOUSES);
@@ -164,6 +158,62 @@ async function cargarStock(){
     if(msg){
       msg.textContent = 'Error consultando stock.';
       msg.style.display='block';
+    }
+  }
+}
+
+async function cargarProveedores(){
+  const cont = $('#tabla-proveedores');
+  const msg  = $('#msgProveedores');
+
+  if (!cont) return;
+
+  cont.querySelectorAll('.trow').forEach(e => e.remove());
+
+  try{
+    const r = await authFetch(API_MAT_SUPS(id));
+    let list = r.ok ? await safeJson(r) : [];
+    if (!Array.isArray(list)) list = [];
+
+    if (!list.length){
+      if (msg){
+        msg.textContent = 'Este material no tiene proveedores asociados.';
+        msg.style.display = 'block';
+      }
+      return;
+    }
+
+    if (msg) msg.style.display = 'none';
+
+    list.forEach(p => {
+      const supplierId = p.supplierId;
+      const supplierName = p.supplierCompany || 'Proveedor sin nombre';
+      const contactName = p.supplierContactName || '—';
+      const price = Number(p.priceUnit || 0);
+      const days = p.deliveryTimeDays ?? '—';
+      const status = String(p.supplierStatus || '').toUpperCase();
+
+      const statusTxt = status === 'INACTIVE' ? ' · Inactivo' : '';
+
+      const row = document.createElement('div');
+      row.className = 'trow';
+      row.innerHTML = `
+        <div style="flex: 2;" class="strong-text">${supplierName}${statusTxt}</div>
+        <div class="text-center">${contactName}</div>
+        <div class="text-right">${fmtARS.format(price)}</div>
+        <div class="text-center">${days}</div>
+        <div class="text-right">
+          <a class="btn outline small" href="detalle-proveedor.html?id=${supplierId}">Ver proveedor</a>
+        </div>
+      `;
+      cont.appendChild(row);
+    });
+
+  }catch(e){
+    console.error(e);
+    if (msg){
+      msg.textContent = 'Error consultando proveedores asociados.';
+      msg.style.display = 'block';
     }
   }
 }

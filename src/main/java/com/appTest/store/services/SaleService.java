@@ -326,7 +326,7 @@ public class SaleService implements ISaleService{
     }
 
 
-
+    @Override
     @Transactional(readOnly = true)
     public List<SaleDetailLiteDTO> getSaleDetailsLite(Long saleId) {
         Sale sale = repoSale.findById(saleId)
@@ -337,43 +337,20 @@ public class SaleService implements ISaleService{
         // Venta directa: sin pedido y sin entregas asociadas
         boolean isDirectSale =
                 (sale.getOrders() == null) &&
-                (sale.getDeliveries() == null || sale.getDeliveries().isEmpty());
-
-        // Mapa: materialId -> total entregado en TODAS las entregas de esta venta
-        Map<Long, BigDecimal> deliveredByMaterial = new HashMap<>();
-
-        if (sale.getDeliveries() != null) {
-            for (Delivery delivery : sale.getDeliveries()) {
-                if (delivery == null) continue;
-                if (delivery.getStatus() == com.appTest.store.models.enums.DeliveryStatus.CANCELLED) continue;
-
-                if (delivery.getItems() == null) continue;
-
-                for (DeliveryItem item : delivery.getItems()) {
-                    if (item.getMaterial() == null) continue;
-
-                    Long matId = item.getMaterial().getIdMaterial();
-                    BigDecimal q = item.getQuantityDelivered() != null
-                            ? item.getQuantityDelivered()
-                            : BigDecimal.ZERO;
-
-                    deliveredByMaterial.merge(matId, q, BigDecimal::add);
-                }
-            }
-        }
+                        (sale.getDeliveries() == null || sale.getDeliveries().isEmpty());
 
         if (sale.getSaleDetailList() != null) {
             for (SaleDetail sd : sale.getSaleDetailList()) {
+                if (sd == null) continue;
 
-                Long matId = sd.getMaterial().getIdMaterial();
                 BigDecimal qty = sd.getQuantity() != null ? sd.getQuantity() : BigDecimal.ZERO;
 
                 BigDecimal delivered;
                 if (isDirectSale) {
-                    // Venta directa: consideramos entregado todo lo vendido
+                    // venta mostrador: se considera entregada al momento
                     delivered = qty;
                 } else {
-                    delivered = deliveredByMaterial.getOrDefault(matId, BigDecimal.ZERO);
+                    delivered = deliveredForSaleDetail(sale, sd.getIdSaleDetail());
                     if (delivered.compareTo(qty) > 0) {
                         delivered = qty; // cap de seguridad
                     }
@@ -386,7 +363,7 @@ public class SaleService implements ISaleService{
 
                 result.add(new SaleDetailLiteDTO(
                         sd.getIdSaleDetail(),
-                        matId,
+                        sd.getMaterial().getIdMaterial(),
                         sd.getMaterial().getName(),
                         qty,
                         sd.getPriceUni(),
@@ -399,6 +376,30 @@ public class SaleService implements ISaleService{
         return result;
     }
 
+    private BigDecimal deliveredForSaleDetail(Sale sale, Long saleDetailId) {
+        if (sale == null || saleDetailId == null) return BigDecimal.ZERO;
+        if (sale.getDeliveries() == null) return BigDecimal.ZERO;
+
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (Delivery delivery : sale.getDeliveries()) {
+            if (delivery == null) continue;
+            if (delivery.getStatus() == com.appTest.store.models.enums.DeliveryStatus.CANCELLED) continue;
+            if (delivery.getItems() == null) continue;
+
+            for (DeliveryItem item : delivery.getItems()) {
+                if (item == null) continue;
+                if (item.getSaleDetail() == null) continue;
+                if (!Objects.equals(item.getSaleDetail().getIdSaleDetail(), saleDetailId)) continue;
+
+                total = total.add(
+                        item.getQuantityDelivered() != null ? item.getQuantityDelivered() : BigDecimal.ZERO
+                );
+            }
+        }
+
+        return total;
+    }
 
     private BigDecimal calculateTotal(Sale sale) {
         if (sale == null || sale.getSaleDetailList() == null) return BigDecimal.ZERO;
